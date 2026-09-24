@@ -3,62 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sacramento ERP — Nova Geração</title>
+    <title>Sacramento ERP — Gestão Empresarial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #2563eb;
+            --primary-light: #eff6ff;
             --secondary: #1e3a8a;
-            --bg: #f4f6f9;
+            --success: #10b981;
+            --bg: #f8fafc;
             --card: #ffffff;
-            --text-main: #1e293b;
+            --text-main: #0f172a;
             --text-light: #64748b;
             --border: #e2e8f0;
-            --sidebar-bg: #0f172a;
-            --sidebar-text: #94a3b8;
+            --sidebar-bg: #1e293b; /* Azul ardósia corporativo limpo */
+            --sidebar-text: #cbd5e1;
+            --sidebar-hover: #334155;
         }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); display: flex; min-height: 100vh; }
-        
-        /* Menu Lateral Moderno */
-        .sidebar { width: 280px; background: var(--sidebar-bg); color: var(--sidebar-text); position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border); }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px; font-weight: 700; color: #fff; }
-        .sidebar-menu { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
-        .menu-item { padding: 10px 14px; border-radius: 8px; color: var(--sidebar-text); text-decoration: none; display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; transition: 0.2s; }
-        .menu-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
-        .menu-item.active { background: rgba(37, 99, 235, 0.2); color: #60a5fa; font-weight: 600; }
 
-        /* Conteúdo Principal */
-        .main-content { margin-left: 280px; flex: 1; display: flex; flex-direction: column; }
-        .top-header { height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; }
-        .page-body { padding: 24px; }
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        /* --- MENU LATERAL (Estilo SaaS Profissional) --- */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar-bg);
+            color: var(--sidebar-text);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.03);
+            z-index: 1000;
+        }
+        .sidebar-brand {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.1);
+        }
+        .brand-icon {
+            width: 38px; height: 38px; background: var(--primary); border-radius: 8px;
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 16px;
+            box-shadow: 0 4px 10px rgba(37,99,235,0.3);
+        }
+        .brand-text h1 { font-size: 13px; font-weight: 700; color: #fff; line-height: 1.2; }
+        .brand-text span { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .sidebar-menu { padding: 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+        .menu-label { font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; padding: 12px 12px 4px; letter-spacing: 0.5px; }
+        .menu-item {
+            padding: 10px 12px; border-radius: 8px; color: var(--sidebar-text); text-decoration: none;
+            display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; transition: all 0.2s;
+        }
+        .menu-item i { font-size: 14px; width: 20px; text-align: center; color: #94a3b8; }
+        .menu-item:hover { background: var(--sidebar-hover); color: #fff; }
+        .menu-item:hover i { color: #fff; }
+        .menu-item.active { background: var(--primary); color: #fff; font-weight: 600; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+        .menu-item.active i { color: #fff; }
+
+        /* --- CONTEÚDO PRINCIPAL --- */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .top-header {
+            height: 64px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            position: sticky;
+            top: 0;
+            z-index: 900;
+        }
+        .header-title { font-size: 16px; font-weight: 700; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .header-user { display: flex; align-items: center; gap: 12px; font-size: 12px; color: var(--text-light); font-weight: 500; }
+        .user-badge { background: var(--primary-light); color: var(--primary); padding: 6px 12px; border-radius: 20px; font-weight: 600; }
+
+        .page-body { padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+        
+        /* Cartões e Grid Modernos (Estilo WebDFe) */
+        .welcome-card {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+            color: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 25px -5px rgba(37,99,235,0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .welcome-text h2 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+        .welcome-text p { font-size: 14px; opacity: 0.85; max-width: 500px; line-height: 1.5; }
+        
+        .kpi-container { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-box:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.06); }
+        .kpi-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-light); font-size: 13px; font-weight: 600; }
+        .kpi-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--text-main); }
     </style>
 </head>
 <body>
 
+<!-- MENU LATERAL MODERNO -->
 <aside class="sidebar">
-    <div class="sidebar-header">
-        <i class="fas fa-cube" style="color: #3b82f6; margin-right: 8px;"></i> Sacramento ERP
+    <div class="sidebar-brand">
+        <div class="brand-icon"><i class="fas fa-cube"></i></div>
+        <div class="brand-text">
+            <h1>Sacramento ERP</h1>
+            <span>Gestão Corporativa</span>
+        </div>
     </div>
     <div class="sidebar-menu">
-        <a href="#" class="menu-item active"><i class="fas fa-desktop"></i> Dashboard Executivo</a>
-        <a href="#" class="menu-item"><i class="fas fa-file-invoice"></i> Documentos Recebidos</a>
-        <a href="#" class="menu-item"><i class="fas fa-wallet"></i> Contas a Pagar</a>
+        <div class="menu-label">Principal</div>
+        <a href="#" class="menu-item active"><i class="fas fa-chart-pie"></i> Dashboard</a>
+        <a href="#" class="menu-item"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
+        
+        <div class="menu-label">Financeiro & Fiscal</div>
+        <a href="#" class="menu-item"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
+        <a href="#" class="menu-item"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
+        <a href="#" class="menu-item"><i class="fas fa-wallet"></i> Contas Bancárias</a>
     </div>
 </aside>
 
+<!-- CONTEÚDO PRINCIPAL -->
 <main class="main-content">
     <header class="top-header">
-        <div style="font-weight: 700; color: var(--secondary); font-size: 16px;">Dashboard Executivo</div>
-        <div style="font-size: 12px; color: var(--text-light);">Administrador — Sacramento ERP</div>
+        <div class="header-title">
+            <i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo
+        </div>
+        <div class="header-user">
+            <div class="user-badge"><i class="fas fa-user-circle"></i> Administrador</div>
+        </div>
     </header>
+
     <div class="page-body">
-        <div class="card">
-            <h2 style="color: var(--secondary); margin-bottom: 8px;">Bem-vindo à Nova Geração do Sacramento ERP</h2>
-            <p style="color: var(--text-light); font-size: 14px;">A fundação visual e a estrutura moderna estão oficialmente no ar!</p>
+        <!-- Banner de Boas-Vindas Estilo WebDFe -->
+        <div class="welcome-card">
+            <div class="welcome-text">
+                <h2>Bem-vindo à Nova Geração, Luciano</h2>
+                <p>O ambiente do Sacramento ERP foi totalmente reestruturado com padrões corporativos de alta performance, navegação fluida e design moderno.</p>
+            </div>
+            <div>
+                <i class="fas fa-shield-alt" style="font-size: 64px; opacity: 0.2;"></i>
+            </div>
+        </div>
+
+        <!-- Cartões de Exemplo (KPIs) -->
+        <div class="kpi-container">
+            <div class="kpi-box">
+                <div class="kpi-header">
+                    <span>Saldo Consolidado</span>
+                    <div class="kpi-icon" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-wallet"></i></div>
+                </div>
+                <div class="kpi-value">R$ 9.833,53</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-header">
+                    <span>Contas a Pagar (Mês)</span>
+                    <div class="kpi-icon" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-file-invoice-dollar"></i></div>
+                </div>
+                <div class="kpi-value">R$ 6.402,60</div>
+            </div>
+            <div class="kpi-box">
+                <div class="kpi-header">
+                    <span>Documentos Recebidos</span>
+                    <div class="kpi-icon" style="background: #d1fae5; color: #10b981;"><i class="fas fa-file-alt"></i></div>
+                </div>
+                <div class="kpi-value">24 Notas</div>
+            </div>
         </div>
     </div>
 </main>
