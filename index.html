@@ -98,22 +98,36 @@
         .kpi-number { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
         .kpi-footer { font-size: 11px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
 
-        /* Estilo de Tabelas */
+        /* Tabelas e Ações Interativas */
         .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .table-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .table-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
         
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; }
         .btn-acao:hover { background: #1d4ed8; }
 
+        .search-input { padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; width: 280px; outline: none; background: var(--bg); color: var(--text-main); }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
         .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
         .num { text-align: right; }
         
         .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
         .badge.pendente { background: #fee2e2; color: #991b1b; }
         .badge.pago { background: #d1fae5; color: #065f46; }
+
+        .btn-icon { background: transparent; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: var(--bg); color: var(--primary); }
+        .btn-icon.excluir:hover { color: var(--danger); }
+
+        /* Modals */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -205,12 +219,16 @@
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte importados.</p>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="filtroDocs" class="search-input" placeholder="Pesquisar documento..." oninput="filtrarTabela('docs')">
+                        <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
                     </div>
                 </div>
                 <table>
                     <thead>
-                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th>Status</th></tr>
+                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th style="text-align:center;">Ações</th></tr>
                     </thead>
                     <tbody id="tbodyDocs">
                         <tr><td colspan="6" class="vazio">Carregando documentos...</td></tr>
@@ -225,15 +243,18 @@
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Pagar</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de despesas, fornecedores e títulos em aberto.</p>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de despesas e fornecedores.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="filtroPagar" class="search-input" placeholder="Pesquisar fornecedor..." oninput="filtrarTabela('pagar')">
                     </div>
                 </div>
                 <table>
                     <thead>
-                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th></tr>
+                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;">Ações</th></tr>
                     </thead>
                     <tbody id="tbodyPagar">
-                        <tr><td colspan="5" class="vazio">Carregando contas a pagar...</td></tr>
+                        <tr><td colspan="6" class="vazio">Carregando contas a pagar...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -242,8 +263,41 @@
     </div>
 </main>
 
+<!-- MODAL DETALHES / VISUALIZAÇÃO -->
+<div class="modal-overlay" id="modalDetalhes">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-info-circle"></i> Detalhes do Registo</h3>
+      <button onclick="fecharDetalhes()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="conteudoDetalhes" style="font-size:13px; line-height:1.6; color:var(--text-main); margin-bottom:20px;"></div>
+    <div style="display:flex; justify-content:flex-end;">
+      <button onclick="fecharDetalhes()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL IMPORTAR XML -->
+<div class="modal-overlay" id="modalImportar">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-upload"></i> Importar XML</h3>
+      <button onclick="fecharImportar()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
+    </div>
+    <input type="file" id="arquivoXml" accept=".xml" onchange="lerXml(event)" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; background:var(--bg); color:var(--text-main);">
+    <div id="infoXml" style="display:none; font-size:12px; background:var(--bg); padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border);"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button onclick="fecharImportar()" style="padding:9px 16px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-main); cursor:pointer; font-weight:600;">Cancelar</button>
+      <button onclick="salvarImportado()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let xmlLido = null;
+    let cacheDocs = [];
+    let cachePagar = [];
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -353,15 +407,18 @@
         if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
 
         const { data, error } = await sb.from('documentos_recebidos').select('*').eq('cliente_id', cid).order('data_emissao', { ascending: false });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
 
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum documento fiscal encontrado.</td></tr>';
-            return;
-        }
+        cacheDocs = data || [];
+        renderizarDocumentos(cacheDocs);
+    }
 
+    function renderizarDocumentos(lista) {
+        const tbody = document.getElementById('tbodyDocs');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum documento encontrado.</td></tr>'; return; }
+        
         tbody.innerHTML = '';
-        data.forEach(d => {
+        lista.forEach(d => {
             tbody.innerHTML += `
                 <tr>
                     <td><span class="badge" style="background:#dbeafe; color:#1d4ed8;">${d.tipo || 'NF-e'}</span></td>
@@ -369,7 +426,11 @@
                     <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(d.valor_total)}</td>
                     <td>${d.emitente_nome || '—'}</td>
-                    <td>${d.status || 'recebido'}</td>
+                    <td style="text-align:center;">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesDoc('${d.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon excluir" title="Excluir" onclick="excluirDoc('${d.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
                 </tr>
             `;
         });
@@ -378,18 +439,21 @@
     async function carregarPagarTabela() {
         const cid = clienteIdAtual();
         const tbody = document.getElementById('tbodyPagar');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
 
         const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
 
-        if (!data || data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhuma conta a pagar encontrada.</td></tr>';
-            return;
-        }
+        cachePagar = data || [];
+        renderizarPagar(cachePagar);
+    }
+
+    function renderizarPagar(lista) {
+        const tbody = document.getElementById('tbodyPagar');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta encontrada.</td></tr>'; return; }
 
         tbody.innerHTML = '';
-        data.forEach(t => {
+        lista.forEach(t => {
             const st = (t.status || 'pendente').toLowerCase();
             const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
             tbody.innerHTML += `
@@ -399,9 +463,118 @@
                     <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(t.valor)}</td>
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
+                    <td style="text-align:center;">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesPagar('${t.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon excluir" title="Excluir" onclick="excluirPagar('${t.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
                 </tr>
             `;
         });
+    }
+
+    function filtrarTabela(tipo) {
+        if (tipo === 'docs') {
+            const termo = document.getElementById('filtroDocs').value.toLowerCase();
+            const filtrados = cacheDocs.filter(d => (d.emitente_nome || '').toLowerCase().includes(termo) || (d.numero || '').toLowerCase().includes(termo));
+            renderizarDocumentos(filtrados);
+        } else if (tipo === 'pagar') {
+            const termo = document.getElementById('filtroPagar').value.toLowerCase();
+            const filtrados = cachePagar.filter(t => (t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(termo) || (t.descricao || '').toLowerCase().includes(termo));
+            renderizarPagar(filtrados);
+        }
+    }
+
+    function verDetalhesDoc(id) {
+        const d = cacheDocs.find(x => x.id == id);
+        if (!d) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `
+            <b>Tipo:</b> ${d.tipo || 'NF-e'}<br>
+            <b>Número:</b> ${d.numero || '—'}<br>
+            <b>Chave de Acesso:</b> ${d.chave_acesso || '—'}<br>
+            <b>Emitente:</b> ${d.emitente_nome || '—'}<br>
+            <b>Data de Emissão:</b> ${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}<br>
+            <b>Valor Total:</b> ${formatBRL(d.valor_total)}<br>
+            <b>Status:</b> ${d.status || 'recebido'}
+        `;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function verDetalhesPagar(id) {
+        const t = cachePagar.find(x => x.id == id);
+        if (!t) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `
+            <b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br>
+            <b>Descrição:</b> ${t.descricao || '—'}<br>
+            <b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
+            <b>Valor:</b> ${formatBRL(t.valor)}<br>
+            <b>Status:</b> ${t.status || 'Pendente'}
+        `;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function fecharDetalhes() { document.getElementById('modalDetalhes').classList.remove('ativo'); }
+
+    async function excluirDoc(id) {
+        if (!confirm('Deseja realmente excluir este documento?')) return;
+        const { error } = await sb.from('documentos_recebidos').delete().eq('id', id);
+        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        carregarDocumentosTabela();
+        carregarDadosDashboard();
+    }
+
+    async function excluirPagar(id) {
+        if (!confirm('Deseja realmente excluir esta conta a pagar?')) return;
+        const { error } = await sb.from('contas_pagar').delete().eq('id', id);
+        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        carregarPagarTabela();
+        carregarDadosDashboard();
+    }
+
+    function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
+    function fecharImportar() { document.getElementById('modalImportar').classList.remove('ativo'); }
+
+    function lerXml(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parser = new DOMParser(), doc = parser.parseFromString(e.target.result, 'text/xml');
+                const raiz = doc.documentElement;
+                const tipo = raiz.nodeName.indexOf('CTe') > -1 ? 'CT-e' : 'NF-e';
+                const chave = (raiz.getElementsByTagName('chNFe')[0] || raiz.getElementsByTagName('chCTe')[0] || {}).textContent || '';
+                const numero = (raiz.getElementsByTagName('nNF')[0]|| raiz.getElementsByTagName('nCT')[0] || {}).textContent || '';
+                const data = (raiz.getElementsByTagName('dhEmi')[0] || {}).textContent || '';
+                const valor = (raiz.getElementsByTagName('vNF')[0] || raiz.getElementsByTagName('vTPrest')[0] || {}).textContent || '';
+                const emitNome = (raiz.getElementsByTagName('xNome')[0] || {}).textContent || '';
+                
+                xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
+                document.getElementById('infoXml').style.display = 'block';
+                document.getElementById('infoXml').innerHTML = `<b>Lido com Sucesso:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
+            } catch(err) {
+                alert('Erro ao ler XML: ' + err.message);
+                xmlLido = null;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    async function salvarImportado() {
+        const cid = clienteIdAtual();
+        if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
+        
+        const { error } = await sb.from('documentos_recebidos').insert([{
+            cliente_id: cid, tipo: xmlLido.tipo, chave_acesso: xmlLido.chave,
+            numero: xmlLido.numero, data_emissao: xmlLido.data,
+            valor_total: xmlLido.valor, emitente_nome: xmlLido.emitNome, status: 'recebido'
+        }]);
+        
+        if (error) { alert('Erro: ' + error.message); return; }
+        alert('Documento importado com sucesso!');
+        fecharImportar();
+        carregarDocumentosTabela();
+        carregarDadosDashboard();
     }
 
     window.onload = inicializar;
