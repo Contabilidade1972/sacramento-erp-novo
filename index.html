@@ -124,23 +124,36 @@
         .btn-icon:hover { background: var(--bg); color: var(--primary); }
         .btn-icon.excluir:hover { color: var(--danger); }
 
+        /* Cabeçalho exclusivo para impressão (Oculto na tela normal) */
+        .print-header { display: none; }
+
         /* Modals */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-overlay.ativo { display: flex; }
         .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
 
-        /* --- CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL (RELATÓRIO LIMPO) --- */
+        /* --- CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL (RELATÓRIO LIMPO COM CABEÇALHO) --- */
         @media print {
-            .sidebar, .top-header, .table-header-actions, .btn-acao, .search-input, .btn-icon, .modal-overlay { display: none !important; }
+            .sidebar, .top-header, .table-header-actions, .btn-acao, .search-input, .btn-icon, .modal-overlay, .col-acoes { display: none !important; }
             .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
             body { background: #fff !important; color: #000 !important; }
             .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            table { width: 100% !important; border: 1px solid #ccc !important; }
-            thead th { background: #f1f5f9 !important; color: #000 !important; border-bottom: 2px solid #000 !important; }
-            tbody td { border-bottom: 1px solid #ddd !important; color: #000 !important; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { border-bottom: 1px solid #e2e8f0 !important; color: #1e293b !important; }
             .view-section { display: none !important; }
             .view-section.ativo { display: block !important; }
+            
+            /* Exibir o cabeçalho oficial no papel */
+            .print-header {
+                display: block !important;
+                border-bottom: 2px solid #1e3a8a;
+                padding-bottom: 15px;
+                margin-bottom: 20px;
+            }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
         }
     </style>
 </head>
@@ -230,6 +243,11 @@
         <!-- VIEW 2: DOCUMENTOS RECEBIDOS (XML) -->
         <section id="viewDocumentos" class="view-section">
             <div class="card-table">
+                <!-- Cabeçalho visível apenas na impressão -->
+                <div class="print-header">
+                    <h2 id="printTitleDocs">Relatório de Documentos Fiscais Recebidos</h2>
+                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+                </div>
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
@@ -237,7 +255,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroDocs" class="search-input" placeholder="Pesquisar documento..." oninput="filtrarTabela('docs')">
-                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
                         <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
                     </div>
                 </div>
@@ -255,6 +273,10 @@
         <!-- VIEW 3: CONTAS A PAGAR -->
         <section id="viewPagar" class="view-section">
             <div class="card-table">
+                <div class="print-header">
+                    <h2>Relatório de Contas a Pagar</h2>
+                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+                </div>
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Pagar</h3>
@@ -262,7 +284,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroPagar" class="search-input" placeholder="Pesquisar fornecedor..." oninput="filtrarTabela('pagar')">
-                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
                     </div>
                 </div>
                 <table>
@@ -279,6 +301,10 @@
         <!-- VIEW 4: CONTAS A RECEBER -->
         <section id="viewReceber" class="view-section">
             <div class="card-table">
+                <div class="print-header">
+                    <h2>Relatório de Contas a Receber</h2>
+                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+                </div>
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Receber</h3>
@@ -286,7 +312,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroReceber" class="search-input" placeholder="Pesquisar cliente..." oninput="filtrarTabela('receber')">
-                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
                     </div>
                 </div>
                 <table>
@@ -303,13 +329,17 @@
         <!-- VIEW 5: CONTAS BANCÁRIAS -->
         <section id="viewBancos" class="view-section">
             <div class="card-table">
+                <div class="print-header">
+                    <h2>Relatório de Contas Bancárias / Caixa</h2>
+                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+                </div>
                 <div class="table-header-actions">
                     <div>
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas Bancárias / Caixa</h3>
                         <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Saldos e instituições financeiras.</p>
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
                     </div>
                 </div>
                 <table>
@@ -374,6 +404,17 @@
 
     function formatBRL(v) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    function prepararImpressao() {
+        const select = document.getElementById('selectEmpresa');
+        const nomeEmpresa = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Empresa';
+        const agora = new Date().toLocaleString('pt-BR');
+
+        document.querySelectorAll('.printEmpresaNome').forEach(el => el.innerText = nomeEmpresa);
+        document.querySelectorAll('.printDataHora').forEach(el => el.innerText = agora);
+
+        window.print();
     }
 
     function mudarView(view) {
@@ -502,7 +543,7 @@
                     <td>${d.emitente_nome || '—'}</td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesDoc('${d.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirDoc('${d.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -539,7 +580,7 @@
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesPagar('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirPagar('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -576,7 +617,7 @@
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesReceber('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirReceber('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -610,7 +651,7 @@
                     <td class="num">${formatBRL(cb.saldo_inicial)}</td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesBanco('${cb.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
                     </td>
                 </tr>
             `;
