@@ -48,7 +48,7 @@
         .menu-label { font-size: 10px; text-transform: uppercase; color: #475569; font-weight: 700; padding: 12px 12px 6px; letter-spacing: 0.8px; }
         .menu-item {
             padding: 11px 14px; border-radius: 10px; color: var(--sidebar-text); text-decoration: none;
-            display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; transition: all 0.2s ease;
+            display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; transition: all 0.2s ease; cursor: pointer;
         }
         .menu-item i { font-size: 14px; width: 20px; text-align: center; color: #64748b; transition: color 0.2s; }
         .menu-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
@@ -74,6 +74,10 @@
 
         .page-body { padding: 36px; display: flex; flex-direction: column; gap: 28px; }
         
+        /* Views Dinâmicas */
+        .view-section { display: none; flex-direction: column; gap: 24px; }
+        .view-section.ativo { display: flex; }
+
         .hero-banner {
             background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff;
             border-radius: 20px; padding: 40px; box-shadow: 0 15px 30px -10px rgba(15,23,42,0.25);
@@ -87,13 +91,34 @@
         .kpi-card {
             background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px;
-            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .kpi-card:hover { transform: translateY(-4px); box-shadow: 0 12px 25px rgba(0,0,0,0.05); border-color: #cbd5e1; }
         .kpi-top { display: flex; justify-content: space-between; align-items: center; color: var(--text-light); font-size: 13px; font-weight: 600; }
         .kpi-icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
         .kpi-number { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
         .kpi-footer { font-size: 11px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
+
+        /* Estilo de Tabelas e Modais */
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; }
+        .btn-acao:hover { background: #1d4ed8; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+        .num { text-align: right; }
+        
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+        .badge.NF-e { background: #dbeafe; color: #1d4ed8; }
+        .badge.CT-e { background: #fef3c7; color: #b45309; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 520px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -109,20 +134,20 @@
     </div>
     <div class="sidebar-menu">
         <div class="menu-label">Principal</div>
-        <a href="#" class="menu-item active"><i class="fas fa-chart-pie"></i> Dashboard</a>
-        <a href="#" class="menu-item"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
+        <a class="menu-item active" id="menuDashboard" onclick="mudarView('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</a>
+        <a class="menu-item" id="menuDocumentos" onclick="mudarView('documentos')"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
         
         <div class="menu-label">Financeiro & Fiscal</div>
-        <a href="#" class="menu-item"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
-        <a href="#" class="menu-item"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
-        <a href="#" class="menu-item"><i class="fas fa-wallet"></i> Contas Bancárias</a>
+        <a class="menu-item"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
+        <a class="menu-item"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
+        <a class="menu-item"><i class="fas fa-wallet"></i> Contas Bancárias</a>
     </div>
 </aside>
 
 <!-- CONTEÚDO PRINCIPAL -->
 <main class="main-content">
     <header class="top-header">
-        <div class="header-title">
+        <div class="header-title" id="headerTitleText">
             <i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo
         </div>
         <div class="header-right">
@@ -138,49 +163,93 @@
     </header>
 
     <div class="page-body">
-        <div class="hero-banner">
-            <div class="hero-text">
-                <h2>Painel de Gestão Integrada</h2>
-                <p>Bem-vindo ao novo ambiente de alta performance do Sacramento ERP. Navegue pelos módulos com total fluidez, segurança e controle centralizado das suas operações.</p>
+        
+        <!-- VIEW 1: DASHBOARD -->
+        <section id="viewDashboard" class="view-section ativo">
+            <div class="hero-banner">
+                <div class="hero-text">
+                    <h2>Painel de Gestão Integrada</h2>
+                    <p>Bem-vindo ao novo ambiente de alta performance do Sacramento ERP. Navegue pelos módulos com total fluidez, segurança e controle centralizado das suas operações.</p>
+                </div>
+                <i class="fas fa-shield-alt hero-icon-bg"></i>
             </div>
-            <i class="fas fa-shield-alt hero-icon-bg"></i>
-        </div>
 
-        <!-- Indicadores reais do Supabase -->
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-top">
-                    <span>Documentos Recebidos (XML)</span>
-                    <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-file-alt"></i></div>
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-top">
+                        <span>Documentos Recebidos (XML)</span>
+                        <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-file-alt"></i></div>
+                    </div>
+                    <div class="kpi-number" id="kpiDocs">Carregando...</div>
+                    <div class="kpi-footer"><i class="fas fa-check-circle"></i> Sincronizado com Supabase</div>
                 </div>
-                <div class="kpi-number" id="kpiDocs">Carregando...</div>
-                <div class="kpi-footer"><i class="fas fa-check-circle"></i> Sincronizado com Supabase</div>
-            </div>
-            
-            <div class="kpi-card">
-                <div class="kpi-top">
-                    <span>Contas a Pagar Pendentes</span>
-                    <div class="kpi-icon-box" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-file-invoice-dollar"></i></div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-top">
+                        <span>Contas a Pagar Pendentes</span>
+                        <div class="kpi-icon-box" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-file-invoice-dollar"></i></div>
+                    </div>
+                    <div class="kpi-number" id="kpiPagar" style="color: #ef4444;">Carregando...</div>
+                    <div class="kpi-footer" style="color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Faturas em aberto</div>
                 </div>
-                <div class="kpi-number" id="kpiPagar" style="color: #ef4444;">Carregando...</div>
-                <div class="kpi-footer" style="color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Faturas em aberto</div>
-            </div>
-            
-            <div class="kpi-card">
-                <div class="kpi-top">
-                    <span>Contas a Receber Pendentes</span>
-                    <div class="kpi-icon-box" style="background: #d1fae5; color: #10b981;"><i class="fas fa-hand-holding-usd"></i></div>
+                
+                <div class="kpi-card">
+                    <div class="kpi-top">
+                        <span>Contas a Receber Pendentes</span>
+                        <div class="kpi-icon-box" style="background: #d1fae5; color: #10b981;"><i class="fas fa-hand-holding-usd"></i></div>
+                    </div>
+                    <div class="kpi-number" id="kpiReceber" style="color: #10b981;">Carregando...</div>
+                    <div class="kpi-footer" style="color: #10b981;"><i class="fas fa-arrow-down"></i> Projeção de entradas</div>
                 </div>
-                <div class="kpi-number" id="kpiReceber" style="color: #10b981;">Carregando...</div>
-                <div class="kpi-footer" style="color: #10b981;"><i class="fas fa-arrow-down"></i> Projeção de entradas</div>
             </div>
-        </div>
+        </section>
+
+        <!-- VIEW 2: DOCUMENTOS RECEBIDOS (XML) -->
+        <section id="viewDocumentos" class="view-section">
+            <div class="card-table">
+                <div class="table-header-actions">
+                    <div>
+                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte importados.</p>
+                    </div>
+                    <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyDocs">
+                        <tr><td colspan="6" class="vazio">Carregando documentos...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </div>
 </main>
 
+<!-- MODAL IMPORTAR XML -->
+<div class="modal-overlay" id="modalImportar">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-upload"></i> Importar XML de NF-e / CT-e</h3>
+      <button onclick="fecharImportar()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
+    </div>
+    <label style="font-size:11px; font-weight:700; color:var(--text-light); display:block; margin-bottom:4px; text-transform:uppercase;">Selecione o arquivo XML</label>
+    <input type="file" id="arquivoXml" accept=".xml" onchange="lerXml(event)" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; background:var(--bg); color:var(--text-main);">
+    <div id="infoXml" style="display:none; font-size:12px; background:var(--bg); padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border);"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button onclick="fecharImportar()" style="padding:9px 16px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-main); cursor:pointer; font-weight:600;">Cancelar</button>
+      <button onclick="salvarImportado()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Salvar no Sistema</button>
+    </div>
+  </div>
+</div>
+
 <script>
-    // Conexão oficial com o Supabase
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let xmlLido = null;
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -195,6 +264,23 @@
 
     function formatBRL(v) {
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    function mudarView(view) {
+        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('ativo'));
+        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+        
+        if (view === 'dashboard') {
+            document.getElementById('viewDashboard').classList.add('ativo');
+            document.getElementById('menuDashboard').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo';
+            carregarDadosDashboard();
+        } else if (view === 'documentos') {
+            document.getElementById('viewDocumentos').classList.add('ativo');
+            document.getElementById('menuDocumentos').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-file-invoice" style="color: var(--primary);"></i> Documentos Fiscais Recebidos';
+            carregarDocumentosTabela();
+        }
     }
 
     async function inicializar() {
@@ -233,47 +319,114 @@
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
         carregarDadosDashboard();
+        if (document.getElementById('viewDocumentos').classList.contains('ativo')) {
+            carregarDocumentosTabela();
+        }
     }
 
     async function carregarDadosDashboard() {
         const cid = clienteIdAtual();
-        if (!cid) {
-            document.getElementById('kpiDocs').innerText = '0';
-            document.getElementById('kpiPagar').innerText = formatBRL(0);
-            document.getElementById('kpiReceber').innerText = formatBRL(0);
-            return;
-        }
+        if (!cid) return;
 
         try {
-            // 1. Contar documentos recebidos
             const { count: countDocs } = await sb.from('documentos_recebidos').select('*', { count: 'exact', head: true }).eq('cliente_id', cid);
             document.getElementById('kpiDocs').innerText = (countDocs || 0) + ' Notas';
 
-            // 2. Somar Contas a Pagar
             const { data: pagarData } = await sb.from('contas_pagar').select('valor, status').eq('cliente_id', cid);
             let totalPagar = 0;
             (pagarData || []).forEach(t => {
                 const st = (t.status || '').toLowerCase();
-                if (!st.includes('pago') && !st.includes('quitado')) {
-                    totalPagar += parseFloat(t.valor) || 0;
-                }
+                if (!st.includes('pago') && !st.includes('quitado')) totalPagar += parseFloat(t.valor) || 0;
             });
             document.getElementById('kpiPagar').innerText = formatBRL(totalPagar);
 
-            // 3. Somar Contas a Receber
             const { data: receberData } = await sb.from('contas_receber').select('valor, status').eq('cliente_id', cid);
             let totalReceber = 0;
             (receberData || []).forEach(t => {
                 const st = (t.status || '').toLowerCase();
-                if (!st.includes('recebido') && !st.includes('pago')) {
-                    totalReceber += parseFloat(t.valor) || 0;
-                }
+                if (!st.includes('recebido') && !st.includes('pago')) totalReceber += parseFloat(t.valor) || 0;
             });
             document.getElementById('kpiReceber').innerText = formatBRL(totalReceber);
+        } catch(err) { console.error("Erro no dashboard:", err); }
+    }
 
-        } catch(err) {
-            console.error("Erro ao puxar dados do Supabase:", err);
+    async function carregarDocumentosTabela() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyDocs');
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+
+        const { data, error } = await sb.from('documentos_recebidos').select('*').eq('cliente_id', cid).order('data_emissao', { ascending: false });
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum documento fiscal encontrado.</td></tr>';
+            return;
         }
+
+        tbody.innerHTML = '';
+        data.forEach(d => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge ${d.tipo || 'NF-e'}">${d.tipo || 'NF-e'}</span></td>
+                    <td><strong>${d.numero || '—'}</strong></td>
+                    <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num">${formatBRL(d.valor_total)}</td>
+                    <td>${d.emitente_nome || '—'}</td>
+                    <td>${d.status || 'recebido'}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
+    function fecharImportar() { document.getElementById('modalImportar').classList.remove('ativo'); }
+
+    function lerXml(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parser = new DOMParser(), doc = parser.parseFromString(e.target.result, 'text/xml');
+                const raiz = doc.documentElement;
+                const tipo = raiz.nodeName.indexOf('CTe') > -1 ? 'CT-e' : 'NF-e';
+                const chave = (raiz.getElementsByTagName('chNFe')[0] || raiz.getElementsByTagName('chCTe')[0] || {}).textContent || '';
+                const numero = (raiz.getElementsByTagName('nNF')[0]|| raiz.getElementsByTagName('nCT')[0] || {}).textContent || '';
+                const data = (raiz.getElementsByTagName('dhEmi')[0] || {}).textContent || '';
+                const valor = (raiz.getElementsByTagName('vNF')[0] || raiz.getElementsByTagName('vTPrest')[0] || {}).textContent || '';
+                const emitNome = (raiz.getElementsByTagName('xNome')[0] || {}).textContent || '';
+                
+                xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
+                document.getElementById('infoXml').style.display = 'block';
+                document.getElementById('infoXml').innerHTML = `<b>Lido com Sucesso:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
+            } catch(err) {
+                alert('Erro ao ler XML: ' + err.message);
+                xmlLido = null;
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    async function salvarImportado() {
+        const cid = clienteIdAtual();
+        if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
+        
+        const { error } = await sb.from('documentos_recebidos').insert([{
+            cliente_id: cid,
+            tipo: xmlLido.tipo,
+            chave_acesso: xmlLido.chave,
+            numero: xmlLido.numero,
+            data_emissao: xmlLido.data,
+            valor_total: xmlLido.valor,
+            emitente_nome: xmlLido.emitNome,
+            status: 'recebido'
+        }]);
+        
+        if (error) { alert('Erro ao salvar no Supabase: ' + error.message); return; }
+        alert('Documento importado com sucesso!');
+        fecharImportar();
+        carregarDocumentosTabela();
+        carregarDadosDashboard();
     }
 
     window.onload = inicializar;
