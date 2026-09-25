@@ -14,6 +14,7 @@
             --secondary: #1e3a8a;
             --success: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
             --bg: #f8fafc;
             --card: #ffffff;
             --text-main: #0f172a;
@@ -26,11 +27,11 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); display: flex; min-height: 100vh; }
 
-        /* --- MENU LATERAL ESTILO PORTAL SaaS --- */
+        /* --- MENU LATERAL --- */
         .sidebar {
             width: 270px; background: var(--sidebar-bg); color: var(--sidebar-text);
             position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.05); z-index: 1000;
+            box-shadow: 4px 0 20px rgba(0,0,0,0.05); z-index: 1000; overflow-y: auto;
         }
         .sidebar-brand {
             padding: 24px 20px; display: flex; align-items: center; gap: 12px;
@@ -44,7 +45,7 @@
         .brand-text h1 { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
         .brand-text span { font-size: 9px; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
-        .sidebar-menu { padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+        .sidebar-menu { padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; }
         .menu-label { font-size: 10px; text-transform: uppercase; color: #475569; font-weight: 700; padding: 12px 12px 6px; letter-spacing: 0.8px; }
         .menu-item {
             padding: 11px 14px; border-radius: 10px; color: var(--sidebar-text); text-decoration: none;
@@ -97,7 +98,7 @@
         .kpi-number { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
         .kpi-footer { font-size: 11px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
 
-        /* Estilo de Tabelas e Modais */
+        /* Estilo de Tabelas */
         .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .table-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         
@@ -111,14 +112,8 @@
         .num { text-align: right; }
         
         .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-        .badge.NF-e { background: #dbeafe; color: #1d4ed8; }
-        .badge.CT-e { background: #fef3c7; color: #b45309; }
-
-        /* Modal */
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-overlay.ativo { display: flex; }
-        .modal-card { background: var(--card); width: 100%; max-width: 520px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        .badge.pendente { background: #fee2e2; color: #991b1b; }
+        .badge.pago { background: #d1fae5; color: #065f46; }
     </style>
 </head>
 <body>
@@ -138,7 +133,7 @@
         <a class="menu-item" id="menuDocumentos" onclick="mudarView('documentos')"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
         
         <div class="menu-label">Financeiro & Fiscal</div>
-        <a class="menu-item"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
+        <a class="menu-item" id="menuPagar" onclick="mudarView('pagar')"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
         <a class="menu-item"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
         <a class="menu-item"><i class="fas fa-wallet"></i> Contas Bancárias</a>
     </div>
@@ -212,13 +207,10 @@
                         <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
                         <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte importados.</p>
                     </div>
-                    <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
                 </div>
                 <table>
                     <thead>
-                        <tr>
-                            <th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th>Status</th>
-                        </tr>
+                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th>Status</th></tr>
                     </thead>
                     <tbody id="tbodyDocs">
                         <tr><td colspan="6" class="vazio">Carregando documentos...</td></tr>
@@ -227,29 +219,31 @@
             </div>
         </section>
 
+        <!-- VIEW 3: CONTAS A PAGAR -->
+        <section id="viewPagar" class="view-section">
+            <div class="card-table">
+                <div class="table-header-actions">
+                    <div>
+                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Pagar</h3>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de despesas, fornecedores e títulos em aberto.</p>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th></tr>
+                    </thead>
+                    <tbody id="tbodyPagar">
+                        <tr><td colspan="5" class="vazio">Carregando contas a pagar...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </div>
 </main>
 
-<!-- MODAL IMPORTAR XML -->
-<div class="modal-overlay" id="modalImportar">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-upload"></i> Importar XML de NF-e / CT-e</h3>
-      <button onclick="fecharImportar()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
-    </div>
-    <label style="font-size:11px; font-weight:700; color:var(--text-light); display:block; margin-bottom:4px; text-transform:uppercase;">Selecione o arquivo XML</label>
-    <input type="file" id="arquivoXml" accept=".xml" onchange="lerXml(event)" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; background:var(--bg); color:var(--text-main);">
-    <div id="infoXml" style="display:none; font-size:12px; background:var(--bg); padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border);"></div>
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-      <button onclick="fecharImportar()" style="padding:9px 16px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-main); cursor:pointer; font-weight:600;">Cancelar</button>
-      <button onclick="salvarImportado()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Salvar no Sistema</button>
-    </div>
-  </div>
-</div>
-
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    let xmlLido = null;
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -280,6 +274,11 @@
             document.getElementById('menuDocumentos').classList.add('active');
             document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-file-invoice" style="color: var(--primary);"></i> Documentos Fiscais Recebidos';
             carregarDocumentosTabela();
+        } else if (view === 'pagar') {
+            document.getElementById('viewPagar').classList.add('ativo');
+            document.getElementById('menuPagar').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-arrow-up" style="color: var(--danger);"></i> Contas a Pagar';
+            carregarPagarTabela();
         }
     }
 
@@ -290,7 +289,6 @@
             document.getElementById('userName').innerText = nome.split(' ')[0];
             document.getElementById('userInitial').innerText = nome.charAt(0).toUpperCase();
         }
-
         await carregarSeletorEmpresa();
         await carregarDadosDashboard();
     }
@@ -319,9 +317,8 @@
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
         carregarDadosDashboard();
-        if (document.getElementById('viewDocumentos').classList.contains('ativo')) {
-            carregarDocumentosTabela();
-        }
+        if (document.getElementById('viewDocumentos').classList.contains('ativo')) carregarDocumentosTabela();
+        if (document.getElementById('viewPagar').classList.contains('ativo')) carregarPagarTabela();
     }
 
     async function carregarDadosDashboard() {
@@ -367,7 +364,7 @@
         data.forEach(d => {
             tbody.innerHTML += `
                 <tr>
-                    <td><span class="badge ${d.tipo || 'NF-e'}">${d.tipo || 'NF-e'}</span></td>
+                    <td><span class="badge" style="background:#dbeafe; color:#1d4ed8;">${d.tipo || 'NF-e'}</span></td>
                     <td><strong>${d.numero || '—'}</strong></td>
                     <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(d.valor_total)}</td>
@@ -378,55 +375,33 @@
         });
     }
 
-    function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
-    function fecharImportar() { document.getElementById('modalImportar').classList.remove('ativo'); }
-
-    function lerXml(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const parser = new DOMParser(), doc = parser.parseFromString(e.target.result, 'text/xml');
-                const raiz = doc.documentElement;
-                const tipo = raiz.nodeName.indexOf('CTe') > -1 ? 'CT-e' : 'NF-e';
-                const chave = (raiz.getElementsByTagName('chNFe')[0] || raiz.getElementsByTagName('chCTe')[0] || {}).textContent || '';
-                const numero = (raiz.getElementsByTagName('nNF')[0]|| raiz.getElementsByTagName('nCT')[0] || {}).textContent || '';
-                const data = (raiz.getElementsByTagName('dhEmi')[0] || {}).textContent || '';
-                const valor = (raiz.getElementsByTagName('vNF')[0] || raiz.getElementsByTagName('vTPrest')[0] || {}).textContent || '';
-                const emitNome = (raiz.getElementsByTagName('xNome')[0] || {}).textContent || '';
-                
-                xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
-                document.getElementById('infoXml').style.display = 'block';
-                document.getElementById('infoXml').innerHTML = `<b>Lido com Sucesso:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
-            } catch(err) {
-                alert('Erro ao ler XML: ' + err.message);
-                xmlLido = null;
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    async function salvarImportado() {
+    async function carregarPagarTabela() {
         const cid = clienteIdAtual();
-        if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
-        
-        const { error } = await sb.from('documentos_recebidos').insert([{
-            cliente_id: cid,
-            tipo: xmlLido.tipo,
-            chave_acesso: xmlLido.chave,
-            numero: xmlLido.numero,
-            data_emissao: xmlLido.data,
-            valor_total: xmlLido.valor,
-            emitente_nome: xmlLido.emitNome,
-            status: 'recebido'
-        }]);
-        
-        if (error) { alert('Erro ao salvar no Supabase: ' + error.message); return; }
-        alert('Documento importado com sucesso!');
-        fecharImportar();
-        carregarDocumentosTabela();
-        carregarDadosDashboard();
+        const tbody = document.getElementById('tbodyPagar');
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+
+        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+
+        if (!data || data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhuma conta a pagar encontrada.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        data.forEach(t => {
+            const st = (t.status || 'pendente').toLowerCase();
+            const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
+                    <td>${t.descricao || '—'}</td>
+                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num">${formatBRL(t.valor)}</td>
+                    <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
+                </tr>
+            `;
+        });
     }
 
     window.onload = inicializar;
