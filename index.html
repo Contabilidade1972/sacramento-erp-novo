@@ -118,6 +118,7 @@
         .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
         .badge.pendente { background: #fee2e2; color: #991b1b; }
         .badge.pago { background: #d1fae5; color: #065f46; }
+        .badge.recebido { background: #d1fae5; color: #065f46; }
 
         .btn-icon { background: transparent; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: var(--bg); color: var(--primary); }
@@ -128,6 +129,19 @@
         .modal-overlay.ativo { display: flex; }
         .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+
+        /* --- CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL (RELATÓRIO LIMPO) --- */
+        @media print {
+            .sidebar, .top-header, .table-header-actions, .btn-acao, .search-input, .btn-icon, .modal-overlay { display: none !important; }
+            .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
+            body { background: #fff !important; color: #000 !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { width: 100% !important; border: 1px solid #ccc !important; }
+            thead th { background: #f1f5f9 !important; color: #000 !important; border-bottom: 2px solid #000 !important; }
+            tbody td { border-bottom: 1px solid #ddd !important; color: #000 !important; }
+            .view-section { display: none !important; }
+            .view-section.ativo { display: block !important; }
+        }
     </style>
 </head>
 <body>
@@ -148,8 +162,8 @@
         
         <div class="menu-label">Financeiro & Fiscal</div>
         <a class="menu-item" id="menuPagar" onclick="mudarView('pagar')"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
-        <a class="menu-item"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
-        <a class="menu-item"><i class="fas fa-wallet"></i> Contas Bancárias</a>
+        <a class="menu-item" id="menuReceber" onclick="mudarView('receber')"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
+        <a class="menu-item" id="menuBancos" onclick="mudarView('bancos')"><i class="fas fa-wallet"></i> Contas Bancárias</a>
     </div>
 </aside>
 
@@ -223,12 +237,13 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroDocs" class="search-input" placeholder="Pesquisar documento..." oninput="filtrarTabela('docs')">
+                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
                         <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
                     </div>
                 </div>
                 <table>
                     <thead>
-                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th style="text-align:center;">Ações</th></tr>
+                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
                     </thead>
                     <tbody id="tbodyDocs">
                         <tr><td colspan="6" class="vazio">Carregando documentos...</td></tr>
@@ -247,11 +262,12 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroPagar" class="search-input" placeholder="Pesquisar fornecedor..." oninput="filtrarTabela('pagar')">
+                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
                     </div>
                 </div>
                 <table>
                     <thead>
-                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;">Ações</th></tr>
+                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
                     </thead>
                     <tbody id="tbodyPagar">
                         <tr><td colspan="6" class="vazio">Carregando contas a pagar...</td></tr>
@@ -260,10 +276,57 @@
             </div>
         </section>
 
+        <!-- VIEW 4: CONTAS A RECEBER -->
+        <section id="viewReceber" class="view-section">
+            <div class="card-table">
+                <div class="table-header-actions">
+                    <div>
+                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Receber</h3>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de recebimentos e clientes.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="filtroReceber" class="search-input" placeholder="Pesquisar cliente..." oninput="filtrarTabela('receber')">
+                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyReceber">
+                        <tr><td colspan="6" class="vazio">Carregando contas a receber...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- VIEW 5: CONTAS BANCÁRIAS -->
+        <section id="viewBancos" class="view-section">
+            <div class="card-table">
+                <div class="table-header-actions">
+                    <div>
+                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas Bancárias / Caixa</h3>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Saldos e instituições financeiras.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Banco / Conta</th><th>Tipo</th><th>Titularidade</th><th class="num">Saldo Inicial (R$)</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyBancos">
+                        <tr><td colspan="5" class="vazio">Carregando contas bancárias...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
     </div>
 </main>
 
-<!-- MODAL DETALHES / VISUALIZAÇÃO -->
+<!-- MODAL DETALHES -->
 <div class="modal-overlay" id="modalDetalhes">
   <div class="modal-card">
     <div class="modal-header">
@@ -296,8 +359,7 @@
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     let xmlLido = null;
-    let cacheDocs = [];
-    let cachePagar = [];
+    let cacheDocs = [], cachePagar = [], cacheReceber = [], cacheBancos = [];
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -333,6 +395,16 @@
             document.getElementById('menuPagar').classList.add('active');
             document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-arrow-up" style="color: var(--danger);"></i> Contas a Pagar';
             carregarPagarTabela();
+        } else if (view === 'receber') {
+            document.getElementById('viewReceber').classList.add('ativo');
+            document.getElementById('menuReceber').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-arrow-down" style="color: var(--success);"></i> Contas a Receber';
+            carregarReceberTabela();
+        } else if (view === 'bancos') {
+            document.getElementById('viewBancos').classList.add('ativo');
+            document.getElementById('menuBancos').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Contas Bancárias / Caixa';
+            carregarBancosTabela();
         }
     }
 
@@ -373,6 +445,8 @@
         carregarDadosDashboard();
         if (document.getElementById('viewDocumentos').classList.contains('ativo')) carregarDocumentosTabela();
         if (document.getElementById('viewPagar').classList.contains('ativo')) carregarPagarTabela();
+        if (document.getElementById('viewReceber').classList.contains('ativo')) carregarReceberTabela();
+        if (document.getElementById('viewBancos').classList.contains('ativo')) carregarBancosTabela();
     }
 
     async function carregarDadosDashboard() {
@@ -426,7 +500,7 @@
                     <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(d.valor_total)}</td>
                     <td>${d.emitente_nome || '—'}</td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesDoc('${d.id}')"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirDoc('${d.id}')"><i class="fas fa-trash-alt"></i></button>
@@ -463,7 +537,7 @@
                     <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(t.valor)}</td>
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
-                    <td style="text-align:center;">
+                    <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesPagar('${t.id}')"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirPagar('${t.id}')"><i class="fas fa-trash-alt"></i></button>
@@ -473,62 +547,135 @@
         });
     }
 
+    async function carregarReceberTabela() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyReceber');
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+
+        const { data, error } = await sb.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
+
+        cacheReceber = data || [];
+        renderizarReceber(cacheReceber);
+    }
+
+    function renderizarReceber(lista) {
+        const tbody = document.getElementById('tbodyReceber');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum recebimento encontrado.</td></tr>'; return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(t => {
+            const st = (t.status || 'pendente').toLowerCase();
+            const badgeClass = st.includes('recebido') || st.includes('pago') ? 'recebido' : 'pendente';
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${t.cliente_nome || t.cliente || 'Cliente'}</strong></td>
+                    <td>${t.descricao || '—'}</td>
+                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num">${formatBRL(t.valor)}</td>
+                    <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
+                    <td style="text-align:center;" class="col-acoes">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesReceber('${t.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon excluir" title="Excluir" onclick="excluirReceber('${t.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function carregarBancosTabela() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyBancos');
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+
+        const { data, error } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro: ${error.message}</td></tr>`; return; }
+
+        cacheBancos = data || [];
+        renderizarBancos(cacheBancos);
+    }
+
+    function renderizarBancos(lista) {
+        const tbody = document.getElementById('tbodyBancos');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhuma conta bancária cadastrada.</td></tr>'; return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(cb => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${cb.nome || cb.banco || 'Conta'}</strong></td>
+                    <td>${cb.tipo || 'Conta PJ'}</td>
+                    <td>${cb.titularidade || 'Empresa'}</td>
+                    <td class="num">${formatBRL(cb.saldo_inicial)}</td>
+                    <td style="text-align:center;" class="col-acoes">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesBanco('${cb.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir" onclick="window.print()"><i class="fas fa-print"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
     function filtrarTabela(tipo) {
         if (tipo === 'docs') {
             const termo = document.getElementById('filtroDocs').value.toLowerCase();
-            const filtrados = cacheDocs.filter(d => (d.emitente_nome || '').toLowerCase().includes(termo) || (d.numero || '').toLowerCase().includes(termo));
-            renderizarDocumentos(filtrados);
+            renderizarDocumentos(cacheDocs.filter(d => (d.emitente_nome || '').toLowerCase().includes(termo) || (d.numero || '').toLowerCase().includes(termo)));
         } else if (tipo === 'pagar') {
             const termo = document.getElementById('filtroPagar').value.toLowerCase();
-            const filtrados = cachePagar.filter(t => (t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(termo) || (t.descricao || '').toLowerCase().includes(termo));
-            renderizarPagar(filtrados);
+            renderizarPagar(cachePagar.filter(t => (t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(termo) || (t.descricao || '').toLowerCase().includes(termo)));
+        } else if (tipo === 'receber') {
+            const termo = document.getElementById('filtroReceber').value.toLowerCase();
+            renderizarReceber(cacheReceber.filter(t => (t.cliente_nome || t.cliente || '').toLowerCase().includes(termo) || (t.descricao || '').toLowerCase().includes(termo)));
         }
     }
 
     function verDetalhesDoc(id) {
         const d = cacheDocs.find(x => x.id == id);
         if (!d) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `
-            <b>Tipo:</b> ${d.tipo || 'NF-e'}<br>
-            <b>Número:</b> ${d.numero || '—'}<br>
-            <b>Chave de Acesso:</b> ${d.chave_acesso || '—'}<br>
-            <b>Emitente:</b> ${d.emitente_nome || '—'}<br>
-            <b>Data de Emissão:</b> ${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}<br>
-            <b>Valor Total:</b> ${formatBRL(d.valor_total)}<br>
-            <b>Status:</b> ${d.status || 'recebido'}
-        `;
+        document.getElementById('conteudoDetalhes').innerHTML = `<b>Tipo:</b> ${d.tipo || 'NF-e'}<br><b>Número:</b> ${d.numero || '—'}<br><b>Chave:</b> ${d.chave_acesso || '—'}<br><b>Emitente:</b> ${d.emitente_nome || '—'}<br><b>Data:</b> ${d.data_emissao || '—'}<br><b>Valor:</b> ${formatBRL(d.valor_total)}`;
         document.getElementById('modalDetalhes').classList.add('ativo');
     }
 
     function verDetalhesPagar(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `
-            <b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br>
-            <b>Descrição:</b> ${t.descricao || '—'}<br>
-            <b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
-            <b>Valor:</b> ${formatBRL(t.valor)}<br>
-            <b>Status:</b> ${t.status || 'Pendente'}
-        `;
+        document.getElementById('conteudoDetalhes').innerHTML = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function verDetalhesReceber(id) {
+        const t = cacheReceber.find(x => x.id == id);
+        if (!t) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `<b>Cliente:</b> ${t.cliente_nome || t.cliente || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function verDetalhesBanco(id) {
+        const cb = cacheBancos.find(x => x.id == id);
+        if (!cb) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `<b>Conta:</b> ${cb.nome || cb.banco || '—'}<br><b>Tipo:</b> ${cb.tipo || '—'}<br><b>Titularidade:</b> ${cb.titularidade || '—'}<br><b>Saldo:</b> ${formatBRL(cb.saldo_inicial)}`;
         document.getElementById('modalDetalhes').classList.add('ativo');
     }
 
     function fecharDetalhes() { document.getElementById('modalDetalhes').classList.remove('ativo'); }
 
     async function excluirDoc(id) {
-        if (!confirm('Deseja realmente excluir este documento?')) return;
-        const { error } = await sb.from('documentos_recebidos').delete().eq('id', id);
-        if (error) { alert('Erro ao excluir: ' + error.message); return; }
-        carregarDocumentosTabela();
-        carregarDadosDashboard();
+        if (!confirm('Excluir documento?')) return;
+        await sb.from('documentos_recebidos').delete().eq('id', id);
+        carregarDocumentosTabela(); carregarDadosDashboard();
     }
 
     async function excluirPagar(id) {
-        if (!confirm('Deseja realmente excluir esta conta a pagar?')) return;
-        const { error } = await sb.from('contas_pagar').delete().eq('id', id);
-        if (error) { alert('Erro ao excluir: ' + error.message); return; }
-        carregarPagarTabela();
-        carregarDadosDashboard();
+        if (!confirm('Excluir conta a pagar?')) return;
+        await sb.from('contas_pagar').delete().eq('id', id);
+        carregarPagarTabela(); carregarDadosDashboard();
+    }
+
+    async function excluirReceber(id) {
+        if (!confirm('Excluir conta a receber?')) return;
+        await sb.from('contas_receber').delete().eq('id', id);
+        carregarReceberTabela(); carregarDadosDashboard();
     }
 
     function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
@@ -551,11 +698,8 @@
                 
                 xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
                 document.getElementById('infoXml').style.display = 'block';
-                document.getElementById('infoXml').innerHTML = `<b>Lido com Sucesso:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
-            } catch(err) {
-                alert('Erro ao ler XML: ' + err.message);
-                xmlLido = null;
-            }
+                document.getElementById('infoXml').innerHTML = `<b>Lido:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
+            } catch(err) { alert('Erro ao ler XML: ' + err.message); xmlLido = null; }
         };
         reader.readAsText(file);
     }
@@ -563,18 +707,12 @@
     async function salvarImportado() {
         const cid = clienteIdAtual();
         if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
-        
-        const { error } = await sb.from('documentos_recebidos').insert([{
+        await sb.from('documentos_recebidos').insert([{
             cliente_id: cid, tipo: xmlLido.tipo, chave_acesso: xmlLido.chave,
             numero: xmlLido.numero, data_emissao: xmlLido.data,
             valor_total: xmlLido.valor, emitente_nome: xmlLido.emitNome, status: 'recebido'
         }]);
-        
-        if (error) { alert('Erro: ' + error.message); return; }
-        alert('Documento importado com sucesso!');
-        fecharImportar();
-        carregarDocumentosTabela();
-        carregarDadosDashboard();
+        fecharImportar(); carregarDocumentosTabela(); carregarDadosDashboard();
     }
 
     window.onload = inicializar;
