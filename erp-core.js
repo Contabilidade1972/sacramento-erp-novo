@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão Executiva Avançada)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão Substituição Forçada)
 
 (function() {
-    const styleId = 'erp-core-styles-elite-v2';
+    const styleId = 'erp-core-styles-v3';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -100,51 +100,54 @@
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
-        if (!document.querySelector('.site-header')) {
-            // Descobre se estamos dentro de um módulo ou na raiz para ajustar o botão de retorno inteligente
-            const pathAtual = window.location.pathname.toLowerCase();
-            let linkRetorno = "index.html";
-            let textoRetorno = "Início";
-            let iconeRetorno = "fa-home";
-
-            if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("modulo_financeiro")) {
-                linkRetorno = "modulo_financeiro.html";
-                textoRetorno = "Módulo Financeiro";
-                iconeRetorno = "fa-wallet";
-            }
-
-            const headerHtml = `
-                <header class="site-header">
-                    <a href="index.html" class="site-brand">
-                        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-                        <div class="brand-info">
-                            <h1>Sacramento ERP</h1>
-                            <span>Portal Corporativo</span>
-                        </div>
-                    </a>
-
-                    <div class="search-global-box">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo ou rotina... (Ex: Pagar, Parceiros)" autocomplete="off">
-                        <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
-                    </div>
-
-                    <div class="site-nav-right">
-                        <a href="${linkRetorno}" class="btn-topo-acao"><i class="fas ${iconeRetorno}"></i> ${textoRetorno}</a>
-                        <div class="empresa-selector">
-                            <i class="fas fa-building" style="color: #93c5fd;"></i>
-                            <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
-                        </div>
-                        <div class="user-box">
-                            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-                            <span id="userNameCore">Usuário</span>
-                        </div>
-                        <button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-                    </div>
-                </header>
-            `;
-            document.body.insertAdjacentHTML('afterbegin', headerHtml);
+        // Remove qualquer cabeçalho antigo existente na página para forçar a entrada do novo cabeçalho inteligente
+        const headerAntigo = document.querySelector('header');
+        if (headerAntigo) {
+            headerAntigo.remove();
         }
+
+        const pathAtual = window.location.pathname.toLowerCase();
+        let linkRetorno = "index.html";
+        let textoRetorno = "Início";
+        let iconeRetorno = "fa-home";
+
+        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("modulo_financeiro")) {
+            linkRetorno = "modulo_financeiro.html";
+            textoRetorno = "Módulo Financeiro";
+            iconeRetorno = "fa-wallet";
+        }
+
+        const headerHtml = `
+            <header class="site-header">
+                <a href="index.html" class="site-brand">
+                    <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+                    <div class="brand-info">
+                        <h1>Sacramento ERP</h1>
+                        <span>Portal Corporativo</span>
+                    </div>
+                </a>
+
+                <div class="search-global-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo ou rotina... (Ex: Pagar, Parceiros)" autocomplete="off">
+                    <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
+                </div>
+
+                <div class="site-nav-right">
+                    <a href="${linkRetorno}" class="btn-topo-acao"><i class="fas ${iconeRetorno}"></i> ${textoRetorno}</a>
+                    <div class="empresa-selector">
+                        <i class="fas fa-building" style="color: #93c5fd;"></i>
+                        <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
+                    </div>
+                    <div class="user-box">
+                        <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+                        <span id="userNameCore">Usuário</span>
+                    </div>
+                    <button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+                </div>
+            </header>
+        `;
+        document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
         if (!document.querySelector('.assistant-widget')) {
             const assistantHtml = `
@@ -231,7 +234,6 @@
         input.value = '';
         body.scrollTop = body.scrollHeight;
 
-        // Resposta inteligente simulada baseada na dúvida
         setTimeout(() => {
             let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
             const tLower = texto.toLowerCase();
