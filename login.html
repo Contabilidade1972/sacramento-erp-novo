@@ -74,10 +74,10 @@
 
     <form id="formLogin" onsubmit="realizarLogin(event)" style="display: flex; flex-direction: column; gap: 18px;">
         <div class="form-group">
-            <label>E-mail ou Identificação</label>
+            <label>E-mail de Acesso</label>
             <div class="input-box">
-                <i class="fas fa-user"></i>
-                <input type="text" id="email" required placeholder="Seu e-mail ou 'master'">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="email" required placeholder="seu.email@empresa.com">
             </div>
         </div>
 
@@ -102,36 +102,41 @@
 
     async function realizarLogin(event) {
         event.preventDefault();
-        const userInput = document.getElementById('email').value.trim();
+        const email = document.getElementById('email').value.trim();
         const senha = document.getElementById('senha').value.trim();
         const erroBox = document.getElementById('erroBox');
         erroBox.style.display = 'none';
 
         // Acesso Master Exclusivo do Desenvolvedor
-        if (userInput === 'master' && senha === 'master2026') {
-            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: 'master@sacramento.erp', cliente_id: 1, tipo: 'master' }));
+        if (email === 'master@sacramento.erp' && senha === 'master2026') {
+            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: email, cliente_id: 1, tipo: 'master' }));
             localStorage.setItem('empresaSelecionada', '1');
             location.href = 'index.html';
             return;
         }
 
         try {
-            // Procura na tabela de clientes contratantes ou empresas cadastradas
-            const { data, error } = await sb.from('clientes_contratantes').select('*').limit(1);
+            // Autenticação oficial encriptada via Supabase Auth
+            const { data, error } = await sb.auth.signInWithPassword({
+                email: email,
+                password: senha
+            });
 
-            if (error || !data || data.length === 0) {
-                mostrarErro('Erro de ligação à base de dados.');
+            if (error || !data.user) {
+                mostrarErro('E-mail ou palavra-passe incorretos. Acesso negado.');
                 return;
             }
 
-            // Simulação de acesso validado com base na empresa selecionada
-            const empresaExemplo = data[0];
-            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: userInput, email: userInput, cliente_id: empresaExemplo.id }));
-            localStorage.setItem('empresaSelecionada', empresaExemplo.id);
+            // Busca os dados do cliente associado ao utilizador autenticado
+            const { data: clienteData } = await sb.from('clientes_contratantes').select('*').limit(1);
+            const clienteId = (clienteData && clienteData.length > 0) ? clienteData[0].id : 1;
+
+            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: data.user.email, email: data.user.email, cliente_id: clienteId }));
+            localStorage.setItem('empresaSelecionada', clienteId);
 
             location.href = 'index.html';
         } catch (err) {
-            mostrarErro('Erro ao processar autenticação: ' + err.message);
+            mostrarErro('Erro de autenticação: ' + err.message);
         }
     }
 
