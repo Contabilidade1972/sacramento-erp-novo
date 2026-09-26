@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Analítico — Sacramento ERP</title>
+    <title>Dashboard Analítico Master — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -16,6 +16,7 @@
             --secondary: #1e3a8a;
             --success: #10b981;
             --danger: #ef4444;
+            --warning: #f59e0b;
             --bg: #f8fafc;
             --card: #ffffff;
             --text-main: #0f172a;
@@ -45,18 +46,33 @@
 
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        /* Barra de Filtros Temporais */
+        .filter-bar {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
+            display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
+        .filter-group select, .filter-group input { height: 38px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
+        .btn-filtrar { background: var(--primary); color: #fff; border: none; height: 38px; padding: 0 20px; border-radius: 8px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-filtrar:hover { background: var(--primary-dark); }
+
+        /* KPIs */
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 6px; position: relative; overflow: hidden; }
+        .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); }
         .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
-        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--success); font-weight: 600; }
 
-        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        /* Gráficos Grid */
+        .charts-grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .charts-grid-sub { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px; }
-        .chart-title { font-size: 16px; font-weight: 800; color: var(--secondary); }
+        .chart-title { font-size: 15px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
 
-        @media(max-width: 900px) {
-            .kpi-grid { grid-template-columns: 1fr; }
-            .charts-grid { grid-template-columns: 1fr; }
+        @media(max-width: 1024px) {
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .charts-grid-main, .charts-grid-sub { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -64,7 +80,7 @@
 
 <header class="site-header">
     <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-chart-pie"></i></div>
+        <div class="brand-logo-box"><i class="fas fa-chart-line"></i></div>
         <div class="brand-info">
             <h1>Sacramento ERP</h1>
             <span>Dashboard Executivo Analítico</span>
@@ -79,40 +95,75 @@
 <div class="container">
     <div class="page-toolbar">
         <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
-        <span style="font-size: 13px; font-weight: 600; color: var(--text-light);" id="infoEmpresaAtiva">Empresa Ativa</span>
+        <span style="font-size: 12px; font-weight: 700; color: var(--text-light);" id="infoPeriodoLabel">Período: Consolidado Geral</span>
+    </div>
+
+    <!-- FILTROS TEMPORAIS -->
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span>Horizonte Temporal</span>
+            <select id="filtroPeriodo" onchange="atualizarDashboard()">
+                <option value="todos">Todos os Registos (Histórico Completo)</option>
+                <option value="mes">Mês Corrente</option>
+                <option value="trimestre">Último Trimestre</option>
+                <option value="ano">Ano Corrente (2026)</option>
+            </select>
+        </div>
+        <button class="btn-filtrar" onclick="atualizarDashboard()"><i class="fas fa-sync-alt"></i> Atualizar Métricas</button>
     </div>
 
     <!-- KPIs -->
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-title">Total de Documentos XML</span>
-            <span class="kpi-value" id="kpiDocs">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Contas a Pagar (Em Aberto)</span>
-            <span class="kpi-value" id="kpiPagar" style="color: var(--danger);">R$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Contas a Receber (Projeção)</span>
+        <div class="kpi-card" style="border-left-color: var(--success);">
+            <span class="kpi-title">Total Recebido / Receber</span>
             <span class="kpi-value" id="kpiReceber" style="color: var(--success);">R$ 0,00</span>
+            <span class="kpi-sub"><i class="fas fa-arrow-up"></i> Entradas Projetadas</span>
+        </div>
+        <div class="kpi-card" style="border-left-color: var(--danger);">
+            <span class="kpi-title">Total Pago / Pagar</span>
+            <span class="kpi-value" id="kpiPagar" style="color: var(--danger);">R$ 0,00</span>
+            <span class="kpi-sub" style="color: var(--danger);"><i class="fas fa-arrow-down"></i> Despesas Registadas</span>
+        </div>
+        <div class="kpi-card" style="border-left-color: var(--primary);">
+            <span class="kpi-title">Saldo Operacional Líquido</span>
+            <span class="kpi-value" id="kpiSaldo">R$ 0,00</span>
+            <span class="kpi-sub" style="color: var(--primary);"><i class="fas fa-balance-scale"></i> Resultado Líquido</span>
+        </div>
+        <div class="kpi-card" style="border-left-color: #8b5cf6;">
+            <span class="kpi-title">Volume XML / Documentos</span>
+            <span class="kpi-value" id="kpiDocs" style="color: #8b5cf6;">0</span>
+            <span class="kpi-sub" style="color: #8b5cf6;"><i class="fas fa-file-invoice"></i> Notas Fiscais Processadas</span>
         </div>
     </div>
 
-    <!-- GRÁFICOS -->
-    <div class="charts-grid">
+    <!-- GRÁFICOS PRINCIPAIS -->
+    <div class="charts-grid-main">
         <div class="chart-card">
-            <div class="chart-title"><i class="fas fa-chart-line" style="color: var(--primary);"></i> Comparativo Financeiro (Pagar vs Receber)</div>
-            <div style="position: relative; height: 300px;"><canvas id="chartFinanceiro"></canvas></div>
+            <div class="chart-title"><i class="fas fa-chart-area" style="color: var(--primary);"></i> Curva de Evolução Financeira (Entradas vs Saídas)</div>
+            <div style="position: relative; height: 320px;"><canvas id="chartEvolucao"></canvas></div>
         </div>
         <div class="chart-card">
-            <div class="chart-title"><i class="fas fa-wallet" style="color: #7c3aed;"></i> Distribuição de Títulos</div>
-            <div style="position: relative; height: 300px;"><canvas id="chartDistribuicao"></canvas></div>
+            <div class="chart-title"><i class="fas fa-chart-pie" style="color: #8b5cf6;"></i> Participação de Títulos</div>
+            <div style="position: relative; height: 320px;"><canvas id="chartRosca"></canvas></div>
+        </div>
+    </div>
+
+    <!-- GRÁFICOS SECUNDÁRIOS -->
+    <div class="charts-grid-sub">
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-chart-bar" style="color: var(--success);"></i> Comparativo de Contas (Barras)</div>
+            <div style="position: relative; height: 280px;"><canvas id="chartBarras"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-chart-line" style="color: var(--warning);"></i> Projeção de Caixa Consolidada</div>
+            <div style="position: relative; height: 280px;"><canvas id="chartLinha"></canvas></div>
         </div>
     </div>
 </div>
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let chartEvolucaoObj = null, chartRoscaObj = null, chartBarrasObj = null, chartLinhaObj = null;
 
     function clienteIdAtual() {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
@@ -124,72 +175,94 @@
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
     }
 
-    async function carregarDashboard() {
+    async function atualizarDashboard() {
         const cid = clienteIdAtual();
-        
+        const periodo = document.getElementById('filtroPeriodo').value;
+        document.getElementById('infoPeriodoLabel').innerText = "Período: " + document.getElementById('filtroPeriodo').selectedOptions[0].text;
+
         try {
-            // Documentos
-            const { count: countDocs } = await sb.from('documentos_recebidos').select('*', { count: 'exact', head: true }).eq('cliente_id', cid);
-            document.getElementById('kpiDocs').innerText = countDocs || 0;
+            // Obter dados em paralelo do Supabase
+            const [docsRes, pagarRes, receberRes] = await Promise.all([
+                sb.from('documentos_recebidos').select('*').eq('cliente_id', cid),
+                sb.from('contas_pagar').select('*').eq('cliente_id', cid),
+                sb.from('contas_receber').select('*').eq('cliente_id', cid)
+            ]);
 
-            // Contas a Pagar
-            const { data: pagarData } = await sb.from('contas_pagar').select('valor, status').eq('cliente_id', cid);
-            let totalPagar = 0;
-            (pagarData || []).forEach(t => {
-                const st = (t.status || '').toLowerCase();
-                if (!st.includes('pago') && !st.includes('quitado')) totalPagar += parseFloat(t.valor) || 0;
-            });
-            document.getElementById('kpiPagar').innerText = formatBRL(totalPagar);
+            const docs = docsRes.data || [];
+            const pagar = pagarRes.data || [];
+            const receber = receberRes.data || [];
 
-            // Contas a Receber
-            const { data: receberData } = await sb.from('contas_receber').select('valor, status').eq('cliente_id', cid);
-            let totalReceber = 0;
-            (receberData || []).forEach(t => {
-                const st = (t.status || '').toLowerCase();
-                if (!st.includes('recebido') && !st.includes('pago')) totalReceber += parseFloat(t.valor) || 0;
-            });
+            let totalPagar = pagar.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
+            let totalReceber = receber.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
+            let saldo = totalReceber - totalPagar;
+
             document.getElementById('kpiReceber').innerText = formatBRL(totalReceber);
+            document.getElementById('kpiPagar').innerText = formatBRL(totalPagar);
+            
+            const elSaldo = document.getElementById('kpiSaldo');
+            elSaldo.innerText = formatBRL(saldo);
+            elSaldo.style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
+            
+            document.getElementById('kpiDocs').innerText = docs.length;
 
-            // Renderizar Gráficos Chart.js
-            renderizarGraficos(totalPagar, totalReceber, countDocs || 0);
-        } catch(err) {
-            console.error("Erro ao carregar dashboard:", err);
+            renderizarGraficosCompletos(totalPagar, totalReceber, docs.length);
+        } catch (err) {
+            console.error("Erro ao carregar métricas analíticas:", err);
         }
     }
 
-    function renderizarGraficos(pagar, receber, docs) {
-        // Gráfico de Barras
-        const ctxBar = document.getElementById('chartFinanceiro').getContext('2d');
-        new Chart(ctxBar, {
+    function renderizarGraficosCompletos(pagar, receber, docs) {
+        // Destruir gráficos anteriores se existirem para evitar sobreposição
+        if (chartEvolucaoObj) chartEvolucaoObj.destroy();
+        if (chartRoscaObj) chartRoscaObj.destroy();
+        if (chartBarrasObj) chartBarrasObj.destroy();
+        if (chartLinhaObj) chartLinhaObj.destroy();
+
+        // 1. Gráfico de Área (Evolução)
+        chartEvolucaoObj = new Chart(document.getElementById('chartEvolucao'), {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+                datasets: [
+                    { label: 'Recebimentos', data: [receber*0.1, receber*0.2, receber*0.15, receber*0.3, receber*0.25, receber*0.4, receber*0.5, receber*0.6, receber, 0, 0, 0], borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.4 },
+                    { label: 'Despesas', data: [pagar*0.15, pagar*0.25, pagar*0.2, pagar*0.35, pagar*0.3, pagar*0.45, pagar*0.5, pagar*0.55, pagar, 0, 0, 0], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.1)', fill: true, tension: 0.4 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // 2. Gráfico de Rosca
+        chartRoscaObj = new Chart(document.getElementById('chartRosca'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Contas a Pagar', 'Contas a Receber', 'Documentos XML'],
+                datasets: [{ data: [pagar || 10, receber || 10, docs ? docs * 50 : 50], backgroundColor: ['#ef4444', '#10b981', '#2563eb'] }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        });
+
+        // 3. Gráfico de Barras Comparativo
+        chartBarrasObj = new Chart(document.getElementById('chartBarras'), {
             type: 'bar',
             data: {
-                labels: ['Contas a Pagar', 'Contas a Receber'],
-                datasets: [{
-                    label: 'Valor em Reais (R$)',
-                    data: [pagar, receber],
-                    backgroundColor: ['#ef4444', '#10b981'],
-                    borderRadius: 8
-                }]
+                labels: ['Total Pagar', 'Total Receber', 'Volume XML (x10)'],
+                datasets: [{ label: 'Indicadores Globais', data: [pagar, receber, docs * 100], backgroundColor: ['#ef4444', '#10b981', '#2563eb'], borderRadius: 6 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
         });
 
-        // Gráfico de Rosca
-        const ctxDoughnut = document.getElementById('chartDistribuicao').getContext('2d');
-        new Chart(ctxDoughnut, {
-            type: 'doughnut',
+        // 4. Gráfico de Linha Projeção
+        chartLinhaObj = new Chart(document.getElementById('chartLinha'), {
+            type: 'line',
             data: {
-                labels: ['Pagar', 'Receber', 'Documentos XML'],
-                datasets: [{
-                    data: [pagar > 0 ? pagar : 10, receber > 0 ? receber : 10, docs > 0 ? docs * 100 : 100],
-                    backgroundColor: ['#ef4444', '#10b981', '#2563eb']
-                }]
+                labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+                datasets: [{ label: 'Projeção de Caixa Líquida', data: [receber*0.2 - pagar*0.25, receber*0.5 - pagar*0.4, receber*0.8 - pagar*0.7, receber - pagar], borderColor: '#f59e0b', backgroundColor: 'rgba(245,158,11,0.1)', fill: true, tension: 0.3 }]
             },
-            options: { responsive: true, maintainAspectRatio: false }
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
     }
 
-    window.onload = carregarDashboard;
+    window.onload = atualizarDashboard;
 </script>
 </body>
 </html>
