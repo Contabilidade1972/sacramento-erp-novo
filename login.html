@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #0b1329;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+
+        .login-wrapper {
+            background: var(--card); width: 100%; max-width: 440px; border-radius: 20px; padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column; gap: 24px;
+        }
+
+        .login-header { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+        .login-logo {
+            width: 56px; height: 56px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 14px;
+            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px;
+            box-shadow: 0 8px 20px rgba(37,99,235,0.3);
+        }
+        .login-header h1 { font-size: 20px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .login-header p { font-size: 13px; color: var(--text-light); }
+
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
+        .input-box { position: relative; display: flex; align-items: center; }
+        .input-box i { position: absolute; left: 14px; color: var(--text-light); font-size: 14px; }
+        .input-box input {
+            width: 100%; height: 46px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: 10px;
+            font-size: 14px; background: #f8fafc; color: var(--text-main); outline: none; transition: 0.2s;
+        }
+        .input-box input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .btn-entrar {
+            background: var(--primary); color: #fff; border: none; height: 46px; border-radius: 10px;
+            font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s;
+            box-shadow: 0 4px 12px rgba(37,99,235,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-entrar:hover { background: var(--primary-dark); }
+
+        .login-footer { text-align: center; font-size: 11px; color: var(--text-light); margin-top: 8px; }
+        .erro-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; display: none; }
+    </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+    <div class="login-header">
+        <div class="login-logo"><i class="fas fa-cube"></i></div>
+        <div>
+            <h1>Sacramento ERP</h1>
+            <p>Portal Corporativo de Acesso</p>
+        </div>
+    </div>
+
+    <div id="erroBox" class="erro-msg"></div>
+
+    <form id="formLogin" onsubmit="realizarLogin(event)" style="display: flex; flex-direction: column; gap: 18px;">
+        <div class="form-group">
+            <label>E-mail de Acesso</label>
+            <div class="input-box">
+                <i class="fas fa-envelope"></i>
+                <input type="email" id="email" required placeholder="seu.email@empresa.com">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Palavra-passe</label>
+            <div class="input-box">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="senha" required placeholder="••••••••">
+            </div>
+        </div>
+
+        <button type="submit" class="btn-entrar"><i class="fas fa-sign-in-alt"></i> Entrar no Sistema</button>
+    </form>
+
+    <div class="login-footer">
+        Sacramento ERP — Licenciamento Seguro e Isolado © 2026
+    </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+    async function realizarLogin(event) {
+        event.preventDefault();
+        const email = document.getElementById('email').value.trim();
+        const senha = document.getElementById('senha').value.trim();
+        const erroBox = document.getElementById('erroBox');
+        erroBox.style.display = 'none';
+
+        try {
+            // Consulta na tabela de utilizadores / clientes cadastrados
+            const { data, error } = await sb.from('usuarios_erp').select('*').eq('email', email).single();
+
+            if (error || !data) {
+                mostrarErro('Utilizador não encontrado ou sem acesso ativo.');
+                return;
+            }
+
+            // Validação de palavra-passe (ou master)
+            if (data.senha !== senha) {
+                mostrarErro('Palavra-passe incorreta.');
+                return;
+            }
+
+            // Salva os dados da sessão no navegador
+            localStorage.setItem('usuarioLogado', JSON.stringify(data));
+            localStorage.setItem('empresaSelecionada', data.cliente_id || 1);
+
+            // Redireciona para o painel principal
+            location.href = 'index.html';
+        } catch (err) {
+            mostrarErro('Erro ao processar autenticação: ' + err.message);
+        }
+    }
+
+    function mostrarErro(msg) {
+        const erroBox = document.getElementById('erroBox');
+        erroBox.innerText = msg;
+        erroBox.style.display = 'block';
+    }
+</script>
+</body>
+</html>
