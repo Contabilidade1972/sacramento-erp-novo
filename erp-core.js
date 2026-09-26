@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão Elite)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão Executiva Avançada)
 
 (function() {
-    const styleId = 'erp-core-styles-elite';
+    const styleId = 'erp-core-styles-elite-v2';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -30,25 +30,23 @@
             .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
             .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
 
-            /* BARRA DE PESQUISA GLOBAL ELITE (SPOTLIGHT) */
-            .search-global-box { position: relative; flex: 1; max-width: 420px; margin: 0 24px; }
-            .search-global-box input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 16px 10px 42px; color: #fff; font-size: 13.5px; outline: none; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); }
+            /* BARRA DE PESQUISA GLOBAL ELITE */
+            .search-global-box { position: relative; flex: 1; max-width: 400px; margin: 0 24px; }
+            .search-global-box input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 16px 10px 42px; color: #fff; font-size: 13.5px; outline: none; transition: all 0.25s ease; }
             .search-global-box input::placeholder { color: #94a3b8; font-weight: 400; }
             .search-global-box input:focus { background: rgba(255,255,255,0.14); border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.25); }
             .search-global-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 14px; }
             
-            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 14px; box-shadow: 0 20px 40px rgba(15,23,42,0.2); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); animation: dropDownFade 0.2s ease; }
-            @keyframes dropDownFade { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-            
+            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 14px; box-shadow: 0 20px 40px rgba(15,23,42,0.2); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
             .search-dropdown-header { padding: 10px 16px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: var(--text-light); background: #f8fafc; border-bottom: 1px solid var(--border); letter-spacing: 0.8px; }
             .search-item { padding: 12px 16px; font-size: 13.5px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); transition: 0.15s; font-weight: 500; }
             .search-item:last-child { border-bottom: none; }
             .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 20px; }
             .search-item i { width: 20px; color: var(--primary); font-size: 14px; text-align: center; }
 
-            .site-nav-right { display: flex; align-items: center; gap: 16px; }
+            .site-nav-right { display: flex; align-items: center; gap: 12px; }
             .btn-topo-acao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; transition: 0.2s; }
-            .btn-topo-acao:hover { background: rgba(255,255,255,0.18); color: #fff; border-color: rgba(255,255,255,0.3); }
+            .btn-topo-acao:hover { background: rgba(255,255,255,0.18); color: #fff; }
 
             .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 6px 12px; }
             .empresa-selector select { border: none; background: transparent; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
@@ -59,14 +57,30 @@
             .btn-sair { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: 0.2s; }
             .btn-sair:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
 
-            /* ASSISTENTE VIRTUAL FLUTUANTE DE ELITE */
-            .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 4000; display: flex; flex-direction: column; align-items: flex-end; font-family: 'Inter', sans-serif; }
-            .assistant-bubble { background: #ffffff; border: 1px solid var(--border); border-radius: 16px; padding: 14px 18px; box-shadow: 0 15px 35px rgba(15,23,42,0.12); max-width: 300px; margin-bottom: 12px; font-size: 13px; color: var(--text-main); position: relative; line-height: 1.5; font-weight: 500; animation: bubblePop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-            @keyframes bubblePop { from { opacity: 0; transform: scale(0.9) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-            .assistant-bubble::after { content: ''; position: absolute; bottom: -8px; right: 24px; width: 14px; height: 14px; background: #fff; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); transform: rotate(45deg); }
-            
-            .assistant-avatar { width: 56px; height: 56px; background: linear-gradient(135deg, #2563eb, #1e3a8a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 8px 25px rgba(37,99,235,0.4); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid #fff; }
-            .assistant-avatar:hover { transform: scale(1.1) rotate(5deg); box-shadow: 0 12px 30px rgba(37,99,235,0.5); }
+            /* PAINEL DE ASSISTENTE VIRTUAL INTERATIVO (CHAT MODERNO) */
+            .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 4000; font-family: 'Inter', sans-serif; }
+            .assistant-trigger { width: 58px; height: 58px; background: linear-gradient(135deg, #2563eb, #1e3a8a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 10px 30px rgba(37,99,235,0.4); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid #fff; position: relative; }
+            .assistant-trigger:hover { transform: scale(1.08); box-shadow: 0 15px 35px rgba(37,99,235,0.5); }
+            .assistant-badge { position: absolute; top: 0; right: 0; width: 16px; height: 16px; background: #10b981; border-radius: 50%; border: 2px solid #fff; }
+
+            .assistant-chat-box { position: absolute; bottom: 75px; right: 0; width: 340px; background: #fff; border-radius: 18px; box-shadow: 0 20px 50px rgba(15,23,42,0.2); border: 1px solid var(--border); display: none; flex-direction: column; overflow: hidden; animation: chatPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+            @keyframes chatPop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+            .chat-header { background: #0f172a; color: #fff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
+            .chat-header span { display: flex; align-items: center; gap: 8px; }
+            .chat-close { background: transparent; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; transition: 0.15s; }
+            .chat-close:hover { color: #fff; }
+
+            .chat-body { padding: 16px; height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; font-size: 13px; }
+            .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.4; }
+            .chat-msg.bot { background: #fff; color: var(--text-main); align-self: flex-start; border: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+            .chat-msg.user { background: var(--primary); color: #fff; align-self: flex-end; }
+
+            .chat-footer { padding: 12px; background: #fff; border-top: 1px solid var(--border); display: flex; gap: 8px; }
+            .chat-footer input { flex: 1; height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 12.5px; outline: none; }
+            .chat-footer input:focus { border-color: var(--primary); }
+            .chat-footer button { background: var(--primary); color: #fff; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+            .chat-footer button:hover { background: var(--primary-dark); }
         `;
         document.head.appendChild(style);
     }
@@ -85,15 +99,20 @@
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
 
-    const dicasAssistente = [
-        "Dica Pro: Utilize a busca inteligente no topo para alternar entre os módulos em menos de um segundo.",
-        "Dica Pro: Nos relatórios financeiros, você pode imprimir ou exportar sem os filtros operacionais.",
-        "Dica Pro: Alterne o contexto empresarial instantaneamente através do seletor no cabeçalho superior.",
-        "Dica Pro: Precisa de suporte a dados cadastrais? A consulta automática por CNPJ está ativa no módulo de Parceiros."
-    ];
-
     window.addEventListener('DOMContentLoaded', () => {
         if (!document.querySelector('.site-header')) {
+            // Descobre se estamos dentro de um módulo ou na raiz para ajustar o botão de retorno inteligente
+            const pathAtual = window.location.pathname.toLowerCase();
+            let linkRetorno = "index.html";
+            let textoRetorno = "Início";
+            let iconeRetorno = "fa-home";
+
+            if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("modulo_financeiro")) {
+                linkRetorno = "modulo_financeiro.html";
+                textoRetorno = "Módulo Financeiro";
+                iconeRetorno = "fa-wallet";
+            }
+
             const headerHtml = `
                 <header class="site-header">
                     <a href="index.html" class="site-brand">
@@ -111,7 +130,7 @@
                     </div>
 
                     <div class="site-nav-right">
-                        <a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>
+                        <a href="${linkRetorno}" class="btn-topo-acao"><i class="fas ${iconeRetorno}"></i> ${textoRetorno}</a>
                         <div class="empresa-selector">
                             <i class="fas fa-building" style="color: #93c5fd;"></i>
                             <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
@@ -130,11 +149,22 @@
         if (!document.querySelector('.assistant-widget')) {
             const assistantHtml = `
                 <div class="assistant-widget">
-                    <div class="assistant-bubble" id="assistantTextCore">
-                        Olá! Sou o seu assistente executivo. Como posso otimizar a sua gestão hoje?
+                    <div class="assistant-chat-box" id="chatBoxCore">
+                        <div class="chat-header">
+                            <span><i class="fas fa-robot" style="color: #60a5fa;"></i> Assistente Executivo IA</span>
+                            <button class="chat-close" onclick="alternarChatCore()"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="chat-body" id="chatBodyCore">
+                            <div class="chat-msg bot">Olá! Sou o seu assistente inteligente no Sacramento ERP. Como posso ajudar com os lançamentos ou relatórios hoje?</div>
+                        </div>
+                        <div class="chat-footer">
+                            <input type="text" id="chatInputCore" placeholder="Digite sua dúvida ou comando..." onkeypress="tratarEnterChatCore(event)">
+                            <button onclick="enviarMensagemChatCore()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
                     </div>
-                    <div class="assistant-avatar" onclick="falarComAssistenteCore()" title="Clique para ver uma dica executiva!">
+                    <div class="assistant-trigger" onclick="alternarChatCore()" title="Abrir Assistente Virtual">
                         <i class="fas fa-robot"></i>
+                        <div class="assistant-badge"></div>
                     </div>
                 </div>
             `;
@@ -184,6 +214,46 @@
         inicializarCore();
     });
 
+    window.alternarChatCore = function() {
+        const chat = document.getElementById('chatBoxCore');
+        if (chat) {
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
+    }
+
+    window.enviarMensagemChatCore = function() {
+        const input = document.getElementById('chatInputCore');
+        const body = document.getElementById('chatBodyCore');
+        if (!input || !input.value.trim()) return;
+
+        const texto = input.value.trim();
+        body.innerHTML += `<div class="chat-msg user">${texto}</div>`;
+        input.value = '';
+        body.scrollTop = body.scrollHeight;
+
+        // Resposta inteligente simulada baseada na dúvida
+        setTimeout(() => {
+            let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
+            const tLower = texto.toLowerCase();
+            if (tLower.includes('pagar') || tLower.includes('despesa')) {
+                resposta = "No módulo de Contas a Pagar, você pode registrar novos títulos, dar baixa em faturas e filtrar por fornecedor.";
+            } else if (tLower.includes('receber') || tLower.includes('cliente')) {
+                resposta = "Em Contas a Receber, o sistema controla os recebimentos pendentes e faturas emitidas aos clientes.";
+            } else if (tLower.includes('cnpj') || tLower.includes('parceiro')) {
+                resposta = "O cadastro de Parceiros possui busca automática integrada à Receita Federal via CNPJ.";
+            } else if (tLower.includes('ajuda') || tLower.includes('como')) {
+                resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo para navegar rapidamente.";
+            }
+
+            body.innerHTML += `<div class="chat-msg bot">${resposta}</div>`;
+            body.scrollTop = body.scrollHeight;
+        }, 600);
+    }
+
+    window.tratarEnterChatCore = function(e) {
+        if (e.key === 'Enter') enviarMensagemChatCore();
+    }
+
     async function inicializarCore() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
@@ -227,18 +297,6 @@
             localStorage.removeItem('usuarioLogado');
             localStorage.removeItem('empresaSelecionada');
             location.href = 'login.html';
-        }
-    }
-
-    window.falarComAssistenteCore = function() {
-        const txtEl = document.getElementById('assistantTextCore');
-        const dica = dicasAssistente[Math.floor(Math.random() * dicasAssistente.length)];
-        if (txtEl) {
-            txtEl.style.opacity = '0';
-            setTimeout(() => {
-                txtEl.innerText = dica;
-                txtEl.style.opacity = '1';
-            }, 150);
         }
     }
 })();
