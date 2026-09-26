@@ -97,17 +97,9 @@
         .kpi-number { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
         .kpi-footer { font-size: 11px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
 
-        /* Barra de Filtros Moderna */
         .filter-bar {
-            background: var(--bg);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            gap: 14px;
-            align-items: flex-end;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
+            background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
+            display: flex; gap: 14px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;
         }
         .filter-group { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
         .filter-group input, .filter-group select {
@@ -129,9 +121,9 @@
         .num { text-align: right; }
         
         .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-        .badge.pendente { background: #fee2e2; color: #991b1b; }
-        .badge.pago { background: #d1fae5; color: #065f46; }
-        .badge.recebido { background: #d1fae5; color: #065f46; }
+        .badge.cliente { background: #dbeafe; color: #1d4ed8; }
+        .badge.fornecedor { background: #fef3c7; color: #b45309; }
+        .badge.prestador { background: #d1fae5; color: #065f46; }
 
         .btn-icon { background: transparent; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: var(--bg); color: var(--primary); }
@@ -181,6 +173,9 @@
         <a class="menu-item active" id="menuDashboard" onclick="mudarView('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</a>
         <a class="menu-item" id="menuDocumentos" onclick="mudarView('documentos')"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
         
+        <div class="menu-label">Cadastros</div>
+        <a class="menu-item" id="menuParceiros" onclick="mudarView('parceiros')"><i class="fas fa-address-book" style="color: #3b82f6;"></i> Parceiros / Clientes</a>
+
         <div class="menu-label">Financeiro & Fiscal</div>
         <a class="menu-item" id="menuPagar" onclick="mudarView('pagar')"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
         <a class="menu-item" id="menuReceber" onclick="mudarView('receber')"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
@@ -246,6 +241,35 @@
                     <div class="kpi-number" id="kpiReceber" style="color: #10b981;">Carregando...</div>
                     <div class="kpi-footer" style="color: #10b981;"><i class="fas fa-arrow-down"></i> Projeção de entradas</div>
                 </div>
+            </div>
+        </section>
+
+        <!-- PARCEIROS / CLIENTES -->
+        <section id="viewParceiros" class="view-section">
+            <div class="card-table">
+                <div class="print-header">
+                    <h2>Relatório de Parceiros e Clientes</h2>
+                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+                </div>
+                <div class="table-header-actions">
+                    <div>
+                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Cadastro de Parceiros</h3>
+                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gestão unificada de clientes, fornecedores e prestadores.</p>
+                    </div>
+                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                </div>
+                <div class="filter-bar">
+                    <div class="filter-group" style="flex:1;"><span>Pesquisa por Nome ou CNPJ/CPF</span><input type="text" id="filtroParceirosTexto" placeholder="Digite para filtrar..." oninput="filtrarTabela('parceiros')"></div>
+                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('parceiros')">Limpar</button>
+                </div>
+                <table>
+                    <thead>
+                        <tr><th>Nome / Razão Social</th><th>CNPJ / CPF</th><th>Categoria / Tipo</th><th>E-mail</th><th>Telefone</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyParceiros">
+                        <tr><td colspan="6" class="vazio">Carregando parceiros...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </section>
 
@@ -445,26 +469,9 @@
   </div>
 </div>
 
-<!-- MODAL IMPORTAR XML -->
-<div class="modal-overlay" id="modalImportar">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-upload"></i> Importar XML</h3>
-      <button onclick="fecharImportar()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
-    </div>
-    <input type="file" id="arquivoXml" accept=".xml" onchange="lerXml(event)" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; background:var(--bg); color:var(--text-main);">
-    <div id="infoXml" style="display:none; font-size:12px; background:var(--bg); padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border);"></div>
-    <div style="display:flex; justify-content:flex-end; gap:10px;">
-      <button onclick="fecharImportar()" style="padding:9px 16px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-main); cursor:pointer; font-weight:600;">Cancelar</button>
-      <button onclick="salvarImportado()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Salvar</button>
-    </div>
-  </div>
-</div>
-
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    let xmlLido = null;
-    let cacheDocs = [], cachePagar = [], cacheReceber = [], cacheBancos = [], cacheFluxo = [];
+    let cacheDocs = [], cachePagar = [], cacheReceber = [], cacheBancos = [], cacheFluxo = [], cacheParceiros = [];
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -530,6 +537,11 @@
             document.getElementById('menuDashboard').classList.add('active');
             document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo';
             carregarDadosDashboard();
+        } else if (view === 'parceiros') {
+            document.getElementById('viewParceiros').classList.add('ativo');
+            document.getElementById('menuParceiros').classList.add('active');
+            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-address-book" style="color: #3b82f6;"></i> Cadastro de Parceiros / Clientes';
+            carregarParceirosTabela();
         } else if (view === 'documentos') {
             document.getElementById('viewDocumentos').classList.add('ativo');
             document.getElementById('menuDocumentos').classList.add('active');
@@ -598,6 +610,7 @@
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
         carregarDadosDashboard();
+        if (document.getElementById('viewParceiros').classList.contains('ativo')) carregarParceirosTabela();
         if (document.getElementById('viewDocumentos').classList.contains('ativo')) carregarDocumentosTabela();
         if (document.getElementById('viewPagar').classList.contains('ativo')) carregarPagarTabela();
         if (document.getElementById('viewReceber').classList.contains('ativo')) carregarReceberTabela();
@@ -630,6 +643,42 @@
             });
             document.getElementById('kpiReceber').innerText = formatBRL(totalReceber);
         } catch(err) { console.error("Erro no dashboard:", err); }
+    }
+
+    async function carregarParceirosTabela() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyParceiros');
+        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
+
+        const { data, error } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('nome', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
+
+        cacheParceiros = data || [];
+        renderizarParceiros(cacheParceiros);
+    }
+
+    function renderizarParceiros(lista) {
+        const tbody = document.getElementById('tbodyParceiros');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum parceiro encontrado.</td></tr>'; return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(p => {
+            const cat = (p.tipo || p.categoria || 'Cliente').toLowerCase();
+            const badgeClass = cat.includes('fornecedor') ? 'fornecedor' : (cat.includes('prestador') ? 'prestador' : 'cliente');
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${p.nome || p.razao_social || '—'}</strong></td>
+                    <td>${p.cnpj_cpf || '—'}</td>
+                    <td><span class="badge ${badgeClass}">${p.tipo || p.categoria || 'Cliente'}</span></td>
+                    <td>${p.email || '—'}</td>
+                    <td>${p.telefone || '—'}</td>
+                    <td style="text-align:center;" class="col-acoes">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesParceiro('${p.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoParceiro('${p.id}')"><i class="fas fa-print"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
     }
 
     async function carregarDocumentosTabela() {
@@ -861,7 +910,14 @@
     }
 
     function filtrarTabela(modulo) {
-        if (modulo === 'docs') {
+        if (modulo === 'parceiros') {
+            const txt = document.getElementById('filtroParceirosTexto').value.toLowerCase();
+            const filtrados = cacheParceiros.filter(p => {
+                if (txt && !(p.nome || p.razao_social || '').toLowerCase().includes(txt) && !(p.cnpj_cpf || '').includes(txt)) return false;
+                return true;
+            });
+            renderizarParceiros(filtrados);
+        } else if (modulo === 'docs') {
             const ini = document.getElementById('filtroDocsInicio').value;
             const fim = document.getElementById('filtroDocsFim').value;
             const txt = document.getElementById('filtroDocsTexto').value.toLowerCase();
@@ -916,7 +972,10 @@
     }
 
     function limparFiltros(modulo) {
-        if (modulo === 'docs') {
+        if (modulo === 'parceiros') {
+            document.getElementById('filtroParceirosTexto').value = '';
+            renderizarParceiros(cacheParceiros);
+        } else if (modulo === 'docs') {
             document.getElementById('filtroDocsInicio').value = '';
             document.getElementById('filtroDocsFim').value = '';
             document.getElementById('filtroDocsTexto').value = '';
@@ -940,6 +999,20 @@
             document.getElementById('filtroFluxoTexto').value = '';
             renderizarFluxo(cacheFluxo);
         }
+    }
+
+    function verDetalhesParceiro(id) {
+        const p = cacheParceiros.find(x => x.id == id);
+        if (!p) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `<b>Nome / Razão Social:</b> ${p.nome || p.razao_social || '—'}<br><b>CNPJ / CPF:</b> ${p.cnpj_cpf || '—'}<br><b>Categoria:</b> ${p.tipo || p.categoria || 'Cliente'}<br><b>E-mail:</b> ${p.email || '—'}<br><b>Telefone:</b> ${p.telefone || '—'}<br><b>Endereço:</b> ${p.endereco || '—'}`;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function imprimirItemDiretoParceiro(id) {
+        const p = cacheParceiros.find(x => x.id == id);
+        if (!p) return;
+        const html = `<b>Nome / Razão Social:</b> ${p.nome || p.razao_social || '—'}<br><b>CNPJ / CPF:</b> ${p.cnpj_cpf || '—'}<br><b>Categoria:</b> ${p.tipo || p.categoria || 'Cliente'}<br><b>E-mail:</b> ${p.email || '—'}<br><b>Telefone:</b> ${p.telefone || '—'}<br><b>Endereço:</b> ${p.endereco || '—'}`;
+        dispararJanelaImpressaoItem(html);
     }
 
     function verDetalhesDoc(id) {
@@ -1044,43 +1117,6 @@
         if (!confirm('Excluir conta a receber?')) return;
         await sb.from('contas_receber').delete().eq('id', id);
         carregarReceberTabela(); carregarDadosDashboard();
-    }
-
-    function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
-    function fecharImportar() { document.getElementById('modalImportar').classList.remove('ativo'); }
-
-    function lerXml(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const parser = new DOMParser(), doc = parser.parseFromString(e.target.result, 'text/xml');
-                const raiz = doc.documentElement;
-                const tipo = raiz.nodeName.indexOf('CTe') > -1 ? 'CT-e' : 'NF-e';
-                const chave = (raiz.getElementsByTagName('chNFe')[0] || raiz.getElementsByTagName('chCTe')[0] || {}).textContent || '';
-                const numero = (raiz.getElementsByTagName('nNF')[0]|| raiz.getElementsByTagName('nCT')[0] || {}).textContent || '';
-                const data = (raiz.getElementsByTagName('dhEmi')[0] || {}).textContent || '';
-                const valor = (raiz.getElementsByTagName('vNF')[0] || raiz.getElementsByTagName('vTPrest')[0] || {}).textContent || '';
-                const emitNome = (raiz.getElementsByTagName('xNome')[0] || {}).textContent || '';
-                
-                xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
-                document.getElementById('infoXml').style.display = 'block';
-                document.getElementById('infoXml').innerHTML = `<b>Lido:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
-            } catch(err) { alert('Erro ao ler XML: ' + err.message); xmlLido = null; }
-        };
-        reader.readAsText(file);
-    }
-
-    async function salvarImportado() {
-        const cid = clienteIdAtual();
-        if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
-        await sb.from('documentos_recebidos').insert([{
-            cliente_id: cid, tipo: xmlLido.tipo, chave_acesso: xmlLido.chave,
-            numero: xmlLido.numero, data_emissao: xmlLido.data,
-            valor_total: xmlLido.valor, emitente_nome: xmlLido.emitNome, status: 'recebido'
-        }]);
-        fecharImportar(); carregarDocumentosTabela(); carregarDadosDashboard();
     }
 
     window.onload = inicializar;
