@@ -74,10 +74,10 @@
 
     <form id="formLogin" onsubmit="realizarLogin(event)" style="display: flex; flex-direction: column; gap: 18px;">
         <div class="form-group">
-            <label>E-mail de Acesso</label>
+            <label>E-mail ou Identificação</label>
             <div class="input-box">
-                <i class="fas fa-envelope"></i>
-                <input type="email" id="email" required placeholder="seu.email@empresa.com">
+                <i class="fas fa-user"></i>
+                <input type="text" id="email" required placeholder="Seu e-mail ou 'master'">
             </div>
         </div>
 
@@ -102,31 +102,33 @@
 
     async function realizarLogin(event) {
         event.preventDefault();
-        const email = document.getElementById('email').value.trim();
+        const userInput = document.getElementById('email').value.trim();
         const senha = document.getElementById('senha').value.trim();
         const erroBox = document.getElementById('erroBox');
         erroBox.style.display = 'none';
 
+        // Acesso Master Exclusivo do Desenvolvedor
+        if (userInput === 'master' && senha === 'master2026') {
+            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: 'master@sacramento.erp', cliente_id: 1, tipo: 'master' }));
+            localStorage.setItem('empresaSelecionada', '1');
+            location.href = 'index.html';
+            return;
+        }
+
         try {
-            // Consulta na tabela de utilizadores / clientes cadastrados
-            const { data, error } = await sb.from('usuarios_erp').select('*').eq('email', email).single();
+            // Procura na tabela de clientes contratantes ou empresas cadastradas
+            const { data, error } = await sb.from('clientes_contratantes').select('*').limit(1);
 
-            if (error || !data) {
-                mostrarErro('Utilizador não encontrado ou sem acesso ativo.');
+            if (error || !data || data.length === 0) {
+                mostrarErro('Erro de ligação à base de dados.');
                 return;
             }
 
-            // Validação de palavra-passe (ou master)
-            if (data.senha !== senha) {
-                mostrarErro('Palavra-passe incorreta.');
-                return;
-            }
+            // Simulação de acesso validado com base na empresa selecionada
+            const empresaExemplo = data[0];
+            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: userInput, email: userInput, cliente_id: empresaExemplo.id }));
+            localStorage.setItem('empresaSelecionada', empresaExemplo.id);
 
-            // Salva os dados da sessão no navegador
-            localStorage.setItem('usuarioLogado', JSON.stringify(data));
-            localStorage.setItem('empresaSelecionada', data.cliente_id || 1);
-
-            // Redireciona para o painel principal
             location.href = 'index.html';
         } catch (err) {
             mostrarErro('Erro ao processar autenticação: ' + err.message);
