@@ -124,7 +124,6 @@
         .btn-icon:hover { background: var(--bg); color: var(--primary); }
         .btn-icon.excluir:hover { color: var(--danger); }
 
-        /* Cabeçalho exclusivo para impressão (Oculto na tela normal) */
         .print-header { display: none; }
 
         /* Modals */
@@ -133,7 +132,7 @@
         .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
 
-        /* --- CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL (RELATÓRIO LIMPO COM CABEÇALHO) --- */
+        /* --- CONFIGURAÇÃO DE IMPRESSÃO PROFISSIONAL (RELATÓRIO GERAL) --- */
         @media print {
             .sidebar, .top-header, .table-header-actions, .btn-acao, .search-input, .btn-icon, .modal-overlay, .col-acoes { display: none !important; }
             .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
@@ -145,7 +144,6 @@
             .view-section { display: none !important; }
             .view-section.ativo { display: block !important; }
             
-            /* Exibir o cabeçalho oficial no papel */
             .print-header {
                 display: block !important;
                 border-bottom: 2px solid #1e3a8a;
@@ -243,9 +241,8 @@
         <!-- VIEW 2: DOCUMENTOS RECEBIDOS (XML) -->
         <section id="viewDocumentos" class="view-section">
             <div class="card-table">
-                <!-- Cabeçalho visível apenas na impressão -->
                 <div class="print-header">
-                    <h2 id="printTitleDocs">Relatório de Documentos Fiscais Recebidos</h2>
+                    <h2>Relatório de Documentos Fiscais Recebidos</h2>
                     <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
                 </div>
                 <div class="table-header-actions">
@@ -255,7 +252,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroDocs" class="search-input" placeholder="Pesquisar documento..." oninput="filtrarTabela('docs')">
-                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                         <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
                     </div>
                 </div>
@@ -284,7 +281,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroPagar" class="search-input" placeholder="Pesquisar fornecedor..." oninput="filtrarTabela('pagar')">
-                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                     </div>
                 </div>
                 <table>
@@ -312,7 +309,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
                         <input type="text" id="filtroReceber" class="search-input" placeholder="Pesquisar cliente..." oninput="filtrarTabela('receber')">
-                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                     </div>
                 </div>
                 <table>
@@ -339,7 +336,7 @@
                         <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Saldos e instituições financeiras.</p>
                     </div>
                     <div style="display:flex; gap:10px; align-items:center;">
-                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir</button>
+                        <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                     </div>
                 </div>
                 <table>
@@ -356,7 +353,7 @@
     </div>
 </main>
 
-<!-- MODAL DETALHES -->
+<!-- MODAL DETALHES / IMPRESSÃO INDIVIDUAL -->
 <div class="modal-overlay" id="modalDetalhes">
   <div class="modal-card">
     <div class="modal-header">
@@ -364,7 +361,8 @@
       <button onclick="fecharDetalhes()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
     </div>
     <div id="conteudoDetalhes" style="font-size:13px; line-height:1.6; color:var(--text-main); margin-bottom:20px;"></div>
-    <div style="display:flex; justify-content:flex-end;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <button onclick="imprimirModal()" class="btn-acao" style="background:var(--success);"><i class="fas fa-print"></i> Imprimir Este Item</button>
       <button onclick="fecharDetalhes()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Fechar</button>
     </div>
   </div>
@@ -415,6 +413,35 @@
         document.querySelectorAll('.printDataHora').forEach(el => el.innerText = agora);
 
         window.print();
+    }
+
+    function imprimirModal() {
+        const conteudo = document.getElementById('conteudoDetalhes').innerHTML;
+        const select = document.getElementById('selectEmpresa');
+        const nomeEmpresa = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Empresa';
+        const agora = new Date().toLocaleString('pt-BR');
+
+        const janela = window.open('', '_blank', 'width=700,height=600');
+        janela.document.write(`
+            <html>
+            <head>
+                <title>Comprovativo / Detalhe — Sacramento ERP</title>
+                <style>
+                    body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
+                    h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
+                    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
+                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <h2>Comprovativo de Registo — ${nomeEmpresa}</h2>
+                <div class="info-box">${conteudo}</div>
+                <div class="footer">Emitido em: ${agora} via Sacramento ERP</div>
+                <script>window.print();<\/script>
+            </body>
+            </html>
+        `);
+        janela.document.close();
     }
 
     function mudarView(view) {
@@ -543,7 +570,7 @@
                     <td>${d.emitente_nome || '—'}</td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesDoc('${d.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir Este Item" onclick="verDetalhesDoc('${d.id}');"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirDoc('${d.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -580,7 +607,7 @@
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesPagar('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir Este Item" onclick="verDetalhesPagar('${t.id}');"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirPagar('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -617,7 +644,7 @@
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesReceber('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir Este Item" onclick="verDetalhesReceber('${t.id}');"><i class="fas fa-print"></i></button>
                         <button class="btn-icon excluir" title="Excluir" onclick="excluirReceber('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
@@ -651,7 +678,7 @@
                     <td class="num">${formatBRL(cb.saldo_inicial)}</td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesBanco('${cb.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir" onclick="prepararImpressao()"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon" title="Imprimir Este Item" onclick="verDetalhesBanco('${cb.id}');"><i class="fas fa-print"></i></button>
                     </td>
                 </tr>
             `;
