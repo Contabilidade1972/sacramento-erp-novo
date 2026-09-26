@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo de Caixa — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER CORPORATIVO UNIFICADO */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #0284c7, #0369a1); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #bae6fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        /* KPIs Superiores */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+
+        /* Barra de Filtros Avançada */
+        .filter-bar {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
+            display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
+        .filter-group input { height: 38px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
+        .filter-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+        .num { text-align: right; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .filter-bar, .btn-acao { display: none !important; }
+            body { background: #fff !important; }
+            .kpi-grid { display: none !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-chart-line"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Módulo de Fluxo de Caixa</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+    </div>
+
+    <!-- KPIs SUPERIORES -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-title">Total Entradas</span>
+            <span class="kpi-value" id="kpiEntradas" style="color: var(--success);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Total Saídas</span>
+            <span class="kpi-value" id="kpiSaidas" style="color: var(--danger);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Saldo Consolidado</span>
+            <span class="kpi-value" id="kpiSaldo">R$ 0,00</span>
+        </div>
+    </div>
+
+    <!-- BARRA DE FILTROS -->
+    <div class="filter-bar">
+        <div class="filter-group"><span>Data Início</span><input type="date" id="filtroDataInicio" onchange="aplicarFiltros()"></div>
+        <div class="filter-group"><span>Data Fim</span><input type="date" id="filtroDataFim" onchange="aplicarFiltros()"></div>
+        <div class="filter-group" style="flex:1;"><span>Pesquisa por Descrição</span><input type="text" id="filtroTexto" placeholder="Digite para filtrar..." oninput="aplicarFiltros()"></div>
+        <button class="btn-acao" style="height:38px;" onclick="limparFiltros()">Limpar</button>
+    </div>
+
+    <div class="card-table">
+        <div class="print-header">
+            <h2>Relatório de Fluxo de Caixa Consolidado</h2>
+            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
+        </div>
+        <div class="table-header">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Fluxo de Caixa Operacional</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Consolidado dinâmico de receitas e despesas por período.</p>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Descrição / Histórico</th><th>Tipo</th><th>Vencimento</th><th class="num">Entradas (R$)</th><th class="num">Saídas (R$)</th></tr>
+            </thead>
+            <tbody id="tbodyFluxo">
+                <tr><td colspan="5" class="vazio">A calcular fluxo de caixa...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let cacheFluxo = [];
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    function formatBRL(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    function sairSistema() {
+        if (confirm('Deseja realmente encerrar a sessão?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
+    }
+
+    async function carregarFluxo() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyFluxo');
+        
+        try {
+            const [pagarRes, receberRes] = await Promise.all([
+                sb.from('contas_pagar').select('*').eq('cliente_id', cid),
+                sb.from('contas_receber').select('*').eq('cliente_id', cid)
+            ]);
+
+            const pagamentos = (pagarRes.data || []).map(p => ({
+                descricao: p.descricao || p.fornecedor_nome || 'Conta a Pagar',
+                tipo: 'Saída',
+                vencimento: p.vencimento,
+                entrada: 0,
+                saida: parseFloat(p.valor) || 0
+            }));
+
+            const recebimentos = (receberRes.data || []).map(r => ({
+                descricao: r.descricao || r.cliente_nome || 'Conta a Receber',
+                tipo: 'Entrada',
+                vencimento: r.vencimento,
+                entrada: parseFloat(r.valor) || 0,
+                saida: 0
+            }));
+
+            cacheFluxo = [...recebimentos, ...pagamentos].sort((a,b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
+            aplicarFiltros();
+            document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro ao carregar fluxo: ${err.message}</td></tr>`;
+        }
+    }
+
+    function renderizar(lista) {
+        const tbody = document.getElementById('tbodyFluxo');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum movimento encontrado para o período.</td></tr>'; atualizarKpis([]); return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(item => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${item.descricao}</strong></td>
+                    <td><span class="badge" style="background:${item.tipo === 'Entrada' ? '#d1fae5; color:#065f46;' : '#fee2e2; color:#991b1b;'}">${item.tipo}</span></td>
+                    <td>${item.vencimento ? item.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num" style="color:#10b981;">${item.entrada > 0 ? formatBRL(item.entrada) : '—'}</td>
+                    <td class="num" style="color:#ef4444;">${item.saida > 0 ? formatBRL(item.saida) : '—'}</td>
+                </tr>
+            `;
+        });
+        atualizarKpis(lista);
+    }
+
+    function atualizarKpis(lista) {
+        let totalEntradas = 0;
+        let totalSaidas = 0;
+
+        lista.forEach(i => {
+            totalEntradas += i.entrada;
+            totalSaidas += i.saida;
+        });
+
+        const saldo = totalEntradas - totalSaidas;
+
+        document.getElementById('kpiEntradas').innerText = formatBRL(totalEntradas);
+        document.getElementById('kpiSaidas').innerText = formatBRL(totalSaidas);
+        
+        const elSaldo = document.getElementById('kpiSaldo');
+        elSaldo.innerText = formatBRL(saldo);
+        elSaldo.style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
+    }
+
+    function aplicarFiltros() {
+        const inicio = document.getElementById('filtroDataInicio').value;
+        const fim = document.getElementById('filtroDataFim').value;
+        const texto = document.getElementById('filtroTexto').value.toLowerCase();
+
+        const filtrados = cacheFluxo.filter(item => {
+            if (inicio && item.vencimento && item.vencimento < inicio) return false;
+            if (fim && item.vencimento && item.vencimento > fim) return false;
+            if (texto && !(item.descricao || '').toLowerCase().includes(texto)) return false;
+            return true;
+        });
+
+        renderizar(filtrados);
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
+        document.getElementById('filtroTexto').value = '';
+        renderizar(cacheFluxo);
+    }
+
+    window.onload = carregarFluxo;
+</script>
+</body>
+</html>
