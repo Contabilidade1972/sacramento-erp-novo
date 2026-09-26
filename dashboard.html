@@ -61,7 +61,6 @@
         .btn-periodo{padding:5px 11px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--text-light);background:var(--bg);cursor:pointer;transition:all .15s;}
         .btn-periodo:hover{border-color:var(--primary);color:var(--primary);}
         .btn-periodo.ativo{background:var(--primary);border-color:var(--primary);color:#fff;}
-        .data-input{padding:4px 8px;border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text-main);background:var(--bg);}
         .btn-exportar{background:#0ea5e9;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;}
         .referencia-periodo{font-size:11px;color:var(--primary);background:rgba(37,99,235,0.08);padding:3px 8px;border-radius:6px;font-weight:600;width:100%;margin-top:6px;}
         
@@ -175,10 +174,10 @@
                         <button class="btn-periodo ativo" data-dias="365" onclick="setPeriodo(365)">12m</button>
                         <select class="filter-select" id="filtroTipoGrafico" onchange="atualizarGraficos()">
                             <option value="bar">Colunas</option>
-                            <option value="line">Linhas</option>
+                            <option value="line" selected>Linhas</option>
                         </select>
                     </div>
-                    <div class="referencia-periodo" id="refPeriodoTexto">Últimos 12 meses</div>
+                    <div class="referencia-periodo" id="refPeriodoTexto">Período selecionado</div>
                 </div>
                 <div style="position:relative; width:100%; height:280px;">
                     <canvas id="barChart"></canvas>
@@ -202,6 +201,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <span><i class="fas fa-chart-line" style="color:var(--success)"></i> Fluxo de Caixa Acumulado (Entradas − Saídas)</span>
+                    <select class="filter-select" id="filtroTipoAcumulado" onchange="atualizarGraficos()">
+                        <option value="line">Linha</option>
+                        <option value="bar">Colunas</option>
+                    </select>
                 </div>
                 <div style="position:relative; width:100%; height:260px;">
                     <canvas id="acumuladoChart"></canvas>
@@ -210,6 +213,10 @@
             <div class="panel">
                 <div class="panel-header">
                     <span><i class="fas fa-tags" style="color:var(--warning)"></i> Despesas por Centro de Custo</span>
+                    <select class="filter-select" id="filtroTipoCentroCusto" onchange="atualizarGraficos()">
+                        <option value="bar">Barras Horizontais</option>
+                        <option value="doughnut">Rosca</option>
+                    </select>
                 </div>
                 <div style="position:relative; width:100%; height:260px;">
                     <canvas id="catChart"></canvas>
@@ -219,11 +226,23 @@
 
         <div class="charts-grid-2">
             <div class="panel">
-                <div class="panel-header"><span><i class="fas fa-trophy" style="color:var(--success)"></i> Top Clientes (Contas a Receber)</span></div>
+                <div class="panel-header">
+                    <span><i class="fas fa-trophy" style="color:var(--success)"></i> Top Clientes (Contas a Receber)</span>
+                    <select class="filter-select" id="filtroTipoTopClientes" onchange="atualizarGraficos()">
+                        <option value="bar">Barras Horizontais</option>
+                        <option value="pie">Pizza</option>
+                    </select>
+                </div>
                 <div style="position:relative; width:100%; height:240px;"><canvas id="topClientesChart"></canvas></div>
             </div>
             <div class="panel">
-                <div class="panel-header"><span><i class="fas fa-fire" style="color:var(--danger)"></i> Top Fornecedores (Contas a Pagar)</span></div>
+                <div class="panel-header">
+                    <span><i class="fas fa-fire" style="color:var(--danger)"></i> Top Fornecedores (Contas a Pagar)</span>
+                    <select class="filter-select" id="filtroTipoTopFornecedores" onchange="atualizarGraficos()">
+                        <option value="bar">Barras Horizontais</option>
+                        <option value="pie">Pizza</option>
+                    </select>
+                </div>
                 <div style="position:relative; width:100%; height:240px;"><canvas id="topFornecedoresChart"></canvas></div>
             </div>
         </div>
@@ -319,15 +338,12 @@ async function carregarFiltroProjetosGlobal(clienteId) {
 
 window.abrirExtratoBanco = function(nomeConta, saldoBase, contaId) {
     document.getElementById('tituloExtratoBanco').innerText = 'Extrato Analítico - ' + nomeConta;
-    document.getElementById('conteudoExtratoBanco').innerHTML = 'A carregar movimentações...';
-    document.getElementById('modalExtrato').style.display = 'flex';
-    // Simulação ou carregamento direto
     document.getElementById('conteudoExtratoBanco').innerHTML = `<div style="padding:15px; font-size:13px;">Saldo inicial auditado da conta <strong>${nomeConta}</strong>: <span style="color:var(--primary); font-weight:bold;">${formatBRL(saldoBase)}</span>. Sem divergências nas conciliações OFX.</div>`;
+    document.getElementById('modalExtrato').style.display = 'flex';
 };
 
 window.abrirModalKpi = function(tipo) {
-    let titulo = 'Relatório Consolidado';
-    let conteudo = '';
+    let titulo = 'Relatório Consolidado', conteudo = '';
     if(tipo === 'saldo') {
         titulo = 'Detalhamento do Saldo Consolidado';
         let linhas = '', total = 0;
@@ -339,7 +355,7 @@ window.abrirModalKpi = function(tipo) {
         conteudo = `<table class="analitica-table"><thead><tr><th>Conta Bancária</th><th>Tipo</th><th style="text-align:right;">Saldo (R$)</th></tr></thead><tbody>${linhas}<tr style="background:var(--bg);"><td colspan="2"><strong>Total</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
     } else {
         titulo = 'Relatório Operacional';
-        conteudo = `<div style="padding:15px; font-size:13px;">Métricas consolidadas atualizadas em tempo real com base nos registros do Supabase.</div>`;
+        conteudo = `<div style="padding:15px; font-size:13px;">Métricas consolidadas atualizadas em tempo real.</div>`;
     }
     document.getElementById('tituloKpiModal').innerText = titulo;
     document.getElementById('conteudoKpiModal').innerHTML = conteudo;
@@ -360,11 +376,16 @@ function gerarPeriodo() {
     return { inicio, fim };
 }
 
-function bucketKey(dataStr) {
-    return String(dataStr || '').slice(0, 7);
+function bucketKey(dataStr, porDia) {
+    const s = String(dataStr || '').slice(0, 10);
+    return porDia ? s : s.slice(0, 7);
 }
 
-function rotuloBucket(chave) {
+function rotuloBucket(chave, porDia) {
+    if(porDia) {
+        const p = chave.split('-');
+        return p.length === 3 ? p[2] + '/' + p[1] : chave;
+    }
     const p = chave.split('-');
     if(p.length === 2) {
         const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
@@ -411,7 +432,7 @@ async function loadDashboard() {
         let somaTotalBancos = globalContasBancarias.reduce((acc, cur) => acc + (parseFloat(cur.saldo_inicial) || 0), 0);
         document.getElementById('kpi_saldo').innerText = formatBRL(somaTotalBancos);
 
-        let valPendenteReceber = 0, valPendentePagar = 0, valVencidoPagar = 0, vencidasCount = 0;
+        let valPendenteReceber = 0, valPendentePagar = 0, valVencidoPagar = 0;
         let hoje = new Date().toISOString().split('T')[0];
 
         let htmlPagar = `<table class="analitica-table"><thead><tr><th>Favorecido</th><th>Descrição</th><th>Vencimento</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
@@ -432,10 +453,8 @@ async function loadDashboard() {
             let st = (t.status || '').toLowerCase();
             if(!st.includes('pago') && !st.includes('quitado')) {
                 valPendentePagar += v;
-                let isVencido = t.vencimento < hoje;
-                if(isVencido) {
+                if(t.vencimento < hoje) {
                     valVencidoPagar += v;
-                    vencidasCount++;
                     htmlAtrasados += `<tr><td><strong>${t.fornecedor_nome || 'Fornecedor'}</strong></td><td>${t.descricao || '-'}</td><td style="color:var(--danger);">${(t.vencimento||'').split('-').reverse().join('/')}</td><td style="text-align:right; color:var(--danger); font-weight:bold;">${formatBRL(v)}</td></tr>`;
                 }
                 htmlPagar += `<tr><td><strong>${t.fornecedor_nome || 'Fornecedor'}</strong></td><td>${t.descricao || '-'}</td><td>${(t.vencimento||'').split('-').reverse().join('/')}</td><td style="text-align:right; font-weight:bold;">${formatBRL(v)}</td></tr>`;
@@ -459,13 +478,12 @@ async function loadDashboard() {
         document.getElementById('lista_receber_container').innerHTML = htmlReceber;
         document.getElementById('lista_atrasados_container').innerHTML = htmlAtrasados;
 
-        // Renderizar Cards de Bancos Dinâmicos
         let containerBancos = document.getElementById('containerBancosDinamicos');
         let selectBancoGrafico = document.getElementById('filtroBancoGrafico');
         containerBancos.innerHTML = '';
         selectBancoGrafico.innerHTML = '<option value="todos">Todos (Consolidado)</option>';
 
-        globalContasBancarias.forEach((cb, idx) => {
+        globalContasBancarias.forEach((cb) => {
             let nome = cb.nome || cb.banco || 'Conta';
             let saldo = parseFloat(cb.saldo_inicial || 0);
             containerBancos.innerHTML += `
@@ -486,47 +504,63 @@ async function loadDashboard() {
 
 function atualizarGraficos() {
     let tipoGrafico = document.getElementById('filtroTipoGrafico').value;
+    let tipoAcumulado = document.getElementById('filtroTipoAcumulado').value;
+    let tipoCC = document.getElementById('filtroTipoCentroCusto').value;
+    let tipoTopCli = document.getElementById('filtroTipoTopClientes').value;
+    let tipoTopFor = document.getElementById('filtroTipoTopFornecedores').value;
+
     const { inicio, fim } = gerarPeriodo();
-    
+    const diffDias = Math.round((fim - inicio) / 86400000) + 1;
+    const porDia = diffDias <= 62;
+
     const mapEnt = {}, mapSai = {};
     let chaves = new Set();
 
+    const pertence = (dt) => {
+        if(!dt) return false;
+        const d = new Date(String(dt).slice(0,10) + 'T00:00:00');
+        return d >= inicio && d <= fim;
+    };
+
     globalReceber.forEach(t => {
-        if(!t.vencimento) return;
-        const k = bucketKey(t.vencimento);
+        if(!pertence(t.vencimento)) return;
+        const k = bucketKey(t.vencimento, porDia);
         mapEnt[k] = (mapEnt[k] || 0) + (parseFloat(t.valor) || 0);
         chaves.add(k);
     });
 
     globalPagar.forEach(t => {
-        if(!t.vencimento) return;
-        const k = bucketKey(t.vencimento);
+        if(!pertence(t.vencimento)) return;
+        const k = bucketKey(t.vencimento, porDia);
         mapSai[k] = (mapSai[k] || 0) + (parseFloat(t.valor) || 0);
         chaves.add(k);
     });
 
     let labels = Array.from(chaves).sort();
-    if(labels.length === 0) labels = [new Date().toISOString().slice(0,7)];
+    if(labels.length === 0) labels = [porDia ? new Date().toISOString().slice(0,10) : new Date().toISOString().slice(0,7)];
+    labels = labels.sort((a,b)=>a.localeCompare(b));
 
     let entradas = labels.map(k => mapEnt[k] || 0);
     let saidas = labels.map(k => mapSai[k] || 0);
-    let labelsRotulo = labels.map(k => rotuloBucket(k));
+    let labelsRotulo = labels.map(k => rotuloBucket(k, porDia));
 
-    // 1. Gráfico de Barras / Linhas (Evolução)
+    document.getElementById('refPeriodoTexto').innerText = `Período: ${inicio.toLocaleDateString('pt-BR')} a ${fim.toLocaleDateString('pt-BR')} (${porDia ? 'Visão Diária' : 'Visão Mensal'})`;
+
+    // 1. Evolução
     if(barChartInstance) barChartInstance.destroy();
     barChartInstance = new Chart(document.getElementById('barChart').getContext('2d'), {
         type: tipoGrafico,
         data: {
             labels: labelsRotulo,
             datasets: [
-                { label: 'Entradas (R$)', data: entradas, backgroundColor: '#2563eb', borderColor: '#2563eb', borderRadius: 4 },
-                { label: 'Saídas (R$)', data: saidas, backgroundColor: '#ef4444', borderColor: '#ef4444', borderRadius: 4 }
+                { label: 'Entradas (R$)', data: entradas, backgroundColor: '#2563eb', borderColor: '#2563eb', borderRadius: 4, tension: 0.3 },
+                { label: 'Saídas (R$)', data: saidas, backgroundColor: '#ef4444', borderColor: '#ef4444', borderRadius: 4, tension: 0.3 }
             ]
         },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end' } } }
     });
 
-    // 2. Gráfico Donut (Composição de Saldos)
+    // 2. Composição de Saldos
     let bancoFiltro = document.getElementById('filtroBancoGrafico').value;
     let contas = globalContasBancarias;
     if(bancoFiltro !== 'todos') contas = contas.filter(c => String(c.id) === String(bancoFiltro));
@@ -541,50 +575,57 @@ function atualizarGraficos() {
         options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
     });
 
-    // 3. Gráfico Fluxo Acumulado
+    // 3. Fluxo Acumulado
     if(acumuladoChartInstance) acumuladoChartInstance.destroy();
     let acumulado = [], soma = 0;
     entradas.forEach((e, i) => { soma += (e - saidas[i]); acumulado.push(soma); });
     acumuladoChartInstance = new Chart(document.getElementById('acumuladoChart').getContext('2d'), {
-        type: 'line',
+        type: tipoAcumulado,
         data: { labels: labelsRotulo, datasets: [{ label: 'Saldo Acumulado', data: acumulado, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 
-    // 4. Gráfico Despesas por Centro de Custo
+    // 4. Despesas por Centro de Custo
     const cats = {};
     globalPagar.forEach(t => {
+        if(!pertence(t.vencimento)) return;
         let nome = t.centro_custo || 'Geral';
         cats[nome] = (cats[nome] || 0) + (parseFloat(t.valor) || 0);
     });
     let catsArr = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
     if(catChartInstance) catChartInstance.destroy();
     catChartInstance = new Chart(document.getElementById('catChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: catsArr.map(c=>c[0]), datasets: [{ label: 'Despesas', data: catsArr.map(c=>c[1]), backgroundColor: '#f59e0b', borderRadius: 4 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        type: tipoCC === 'doughnut' ? 'doughnut' : 'bar',
+        data: { labels: catsArr.map(c=>c[0]), datasets: [{ label: 'Despesas', data: catsArr.map(c=>c[1]), backgroundColor: ['#f59e0b', '#2563eb', '#10b981', '#8b5cf6', '#ef4444', '#0ea5e9'], borderRadius: 4 }] },
+        options: { indexAxis: tipoCC === 'doughnut' ? 'x' : 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: tipoCC === 'doughnut', position: 'bottom' } } }
     });
 
     // 5. Top Clientes
     const topCli = {};
-    globalReceber.forEach(t => { let n = t.cliente_nome || 'Cliente'; topCli[n] = (topCli[n] || 0) + (parseFloat(t.valor) || 0); });
+    globalReceber.forEach(t => {
+        if(!pertence(t.vencimento)) return;
+        let n = t.cliente_nome || 'Cliente'; topCli[n] = (topCli[n] || 0) + (parseFloat(t.valor) || 0);
+    });
     let cliArr = Object.entries(topCli).sort((a,b)=>b[1]-a[1]).slice(0,5);
     if(topClientesChartInstance) topClientesChartInstance.destroy();
     topClientesChartInstance = new Chart(document.getElementById('topClientesChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: cliArr.map(c=>c[0]), datasets: [{ label: 'Receber', data: cliArr.map(c=>c[1]), backgroundColor: '#10b981', borderRadius: 4 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        type: tipoTopCli,
+        data: { labels: cliArr.map(c=>c[0]), datasets: [{ label: 'Receber', data: cliArr.map(c=>c[1]), backgroundColor: ['#10b981', '#2563eb', '#f59e0b', '#8b5cf6', '#ef4444'], borderRadius: 4 }] },
+        options: { indexAxis: tipoTopCli === 'bar' ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: tipoTopCli !== 'bar', position: 'bottom' } } }
     });
 
     // 6. Top Fornecedores
     const topFor = {};
-    globalPagar.forEach(t => { let n = t.fornecedor_nome || 'Fornecedor'; topFor[n] = (topFor[n] || 0) + (parseFloat(t.valor) || 0); });
+    globalPagar.forEach(t => {
+        if(!pertence(t.vencimento)) return;
+        let n = t.fornecedor_nome || 'Fornecedor'; topFor[n] = (topFor[n] || 0) + (parseFloat(t.valor) || 0);
+    });
     let forArr = Object.entries(topFor).sort((a,b)=>b[1]-a[1]).slice(0,5);
     if(topFornecedoresChartInstance) topFornecedoresChartInstance.destroy();
     topFornecedoresChartInstance = new Chart(document.getElementById('topFornecedoresChart').getContext('2d'), {
-        type: 'bar',
-        data: { labels: forArr.map(c=>c[0]), datasets: [{ label: 'Pagar', data: forArr.map(c=>c[1]), backgroundColor: '#ef4444', borderRadius: 4 }] },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        type: tipoTopFor,
+        data: { labels: forArr.map(c=>c[0]), datasets: [{ label: 'Pagar', data: forArr.map(c=>c[1]), backgroundColor: ['#ef4444', '#f59e0b', '#2563eb', '#10b981', '#8b5cf6'], borderRadius: 4 }] },
+        options: { indexAxis: tipoTopFor === 'bar' ? 'y' : 'x', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: tipoTopFor !== 'bar', position: 'bottom' } } }
     });
 }
 
