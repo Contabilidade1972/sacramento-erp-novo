@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parceiros & Clientes — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); text-decoration: none; }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        .filter-bar {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
+            display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
+        .filter-group input, .filter-group select { height: 38px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #e0f2fe; color: #0369a1; }
+        .badge.fornecedor { background: #fef3c7; color: #b45309; }
+
+        .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: rgba(37,99,235,0.1); color: var(--primary); border-color: var(--primary); }
+        .btn-icon.excluir:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; grid-column: span 1; }
+        .form-group.full { grid-column: span 2; }
+        .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
+        .form-group input, .form-group select { height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); outline: none; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-address-book"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Módulo de Parceiros & Clientes</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <button class="btn-acao" onclick="abrirModalNovo()"><i class="fas fa-user-plus"></i> Novo Parceiro</button>
+    </div>
+
+    <div class="filter-bar">
+        <div class="filter-group">
+            <span>Tipo de Parceiro</span>
+            <select id="filtroTipo" onchange="aplicarFiltros()">
+                <option value="todos">Todos os Tipos</option>
+                <option value="Cliente">Cliente</option>
+                <option value="Fornecedor">Fornecedor</option>
+                <option value="Prestador">Prestador</option>
+            </select>
+        </div>
+        <div class="filter-group" style="flex:1;">
+            <span>Pesquisa por Nome ou CNPJ/CPF</span>
+            <input type="text" id="filtroTexto" placeholder="Digite para filtrar..." oninput="aplicarFiltros()">
+        </div>
+        <button class="btn-acao" style="height:38px;" onclick="limparFiltros()">Limpar</button>
+    </div>
+
+    <div class="card-table">
+        <div class="table-header">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Diretório de Parceiros Cadastrados</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gestão unificada de clientes, fornecedores e prestadores da empresa.</p>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Nome / Razão Social</th><th>CNPJ / CPF</th><th>Tipo</th><th>E-mail / Contato</th><th style="text-align:center;">Ações</th></tr>
+            </thead>
+            <tbody id="tbodyParceiros">
+                <tr><td colspan="5" class="vazio">A carregar parceiros do Supabase...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL NOVO PARCEIRO -->
+<div class="modal-overlay" id="modalParceiro">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-user-plus"></i> Registar Novo Parceiro</h3>
+      <button onclick="fecharModal()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <form id="formParceiro" onsubmit="salvarParceiro(event)" class="form-grid">
+        <div class="form-group full">
+            <label>CNPJ / CPF (Consulta Automática)</label>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="cadCnpj" placeholder="00.000.000/0001-00" style="flex:1;">
+                <button type="button" class="btn-acao" style="height:40px; padding:0 14px;" onclick="consultarCnpjParceiro()"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+        <div class="form-group full">
+            <label>Nome / Razão Social</label>
+            <input type="text" id="cadNome" required placeholder="Nome completo ou razão social...">
+        </div>
+        <div class="form-group">
+            <label>Tipo de Parceiro</label>
+            <select id="cadTipo">
+                <option value="Cliente">Cliente</option>
+                <option value="Fornecedor">Fornecedor</option>
+                <option value="Prestador">Prestador</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Telefone / WhatsApp</label>
+            <input type="text" id="cadTelefone" placeholder="(31) 90000-0000">
+        </div>
+        <div class="form-group full">
+            <label>E-mail de Contato</label>
+            <input type="email" id="cadEmail" placeholder="parceiro@email.com">
+        </div>
+        <div class="form-group full" style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+            <button type="button" onclick="fecharModal()" style="background:#e2e8f0; border:none; padding:10px 16px; border-radius:8px; font-weight:600; cursor:pointer;">Cancelar</button>
+            <button type="submit" class="btn-acao"><i class="fas fa-save"></i> Guardar Parceiro</button>
+        </div>
+    </form>
+  </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let cacheParceiros = [];
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    async function carregarParceiros() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyParceiros');
+        
+        const { data, error } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum parceiro registado ou tabela em preparação.</td></tr>`;
+            return;
+        }
+
+        cacheParceiros = data || [];
+        aplicarFiltros();
+    }
+
+    function renderizar(lista) {
+        const tbody = document.getElementById('tbodyParceiros');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum parceiro encontrado.</td></tr>'; return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(p => {
+            const tipo = p.tipo || 'Cliente';
+            const badgeClass = tipo === 'Fornecedor' ? 'fornecedor' : '';
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${p.nome || p.razao_social || '—'}</strong></td>
+                    <td>${p.cnpj_cpf || '—'}</td>
+                    <td><span class="badge ${badgeClass}">${tipo}</span></td>
+                    <td>${p.email || p.telefone || '—'}</td>
+                    <td style="text-align:center;">
+                        <button class="btn-icon excluir" title="Excluir" onclick="excluirParceiro('${p.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    function aplicarFiltros() {
+        const tipo = document.getElementById('filtroTipo').value;
+        const texto = document.getElementById('filtroTexto').value.toLowerCase();
+
+        const filtrados = cacheParceiros.filter(p => {
+            if (tipo !== 'todos' && (p.tipo || 'Cliente') !== tipo) return false;
+            if (texto && !(p.nome || p.razao_social || '').toLowerCase().includes(texto) && !(p.cnpj_cpf || '').includes(texto)) return false;
+            return true;
+        });
+
+        renderizar(filtrados);
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroTexto').value = '';
+        renderizar(cacheParceiros);
+    }
+
+    function abrirModalNovo() { document.getElementById('modalParceiro').classList.add('ativo'); }
+    function fecharModal() { document.getElementById('modalParceiro').classList.remove('ativo'); }
+
+    async function consultarCnpjParceiro() {
+        let cnpj = document.getElementById('cadCnpj').value.replace(/\D/g, '');
+        if (cnpj.length !== 14) return;
+        try {
+            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+            if (!response.ok) throw new Error('Não encontrado');
+            const data = await response.json();
+            document.getElementById('cadNome').value = data.nome_fantasia || data.razao_social || '';
+            if (data.email) document.getElementById('cadEmail').value = data.email;
+            if (data.ddd_telefone_1) document.getElementById('cadTelefone').value = data.ddd_telefone_1;
+            alert('Dados obtidos com sucesso da Receita Federal!');
+        } catch(e) {
+            alert('Preencha os dados manualmente.');
+        }
+    }
+
+    async function salvarParceiro(event) {
+        event.preventDefault();
+        const cid = clienteIdAtual();
+        const nome = document.getElementById('cadNome').value;
+        const cnpj = document.getElementById('cadCnpj').value;
+        const tipo = document.getElementById('cadTipo').value;
+        const telefone = document.getElementById('cadTelefone').value;
+        const email = document.getElementById('cadEmail').value;
+
+        const { error } = await sb.from('parceiros').insert([{
+            cliente_id: cid,
+            nome: nome,
+            cnpj_cpf: cnpj,
+            tipo: tipo,
+            telefone: telefone,
+            email: email
+        }]);
+
+        if (error) {
+            alert('Erro ao guardar parceiro: ' + error.message);
+            return;
+        }
+
+        alert('Parceiro guardado com sucesso!');
+        fecharModal();
+        carregarParceiros();
+    }
+
+    async function excluirParceiro(id) {
+        if (!confirm('Deseja realmente excluir este parceiro?')) return;
+        const { error } = await sb.from('parceiros').delete().eq('id', id);
+        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        carregarParceiros();
+    }
+
+    window.onload = carregarParceiros;
+</script>
+</body>
+</html>
