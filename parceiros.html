@@ -390,7 +390,24 @@ async function consultarOuValidarDocumento() {
                 document.getElementById('numero').value = dados.numero || '';
                 document.getElementById('bairro').value = dados.bairro || '';
                 document.getElementById('cidade_uf').value = `${dados.municipio || ''} - ${dados.uf || ''}`;
-                toast("Dados importados da Receita Federal com sucesso!", "success");
+                
+                // Importação detalhada de CNAE e Inscrição Estadual (IE)
+                if (dados.cnae_fiscal) {
+                    let descCnae = dados.cnae_fiscal_descricao ? ` - ${dados.cnae_fiscal_descricao}` : '';
+                    document.getElementById('cnae_principal').value = `${dados.cnae_fiscal}${descCnae}`;
+                }
+                if (dados.cnaes_secundarios && dados.cnaes_secundarios.length > 0) {
+                    let listaSec = dados.cnaes_secundarios.map(c => `${c.codigo}${c.descricao ? ' - '+c.descricao : ''}`).join(' | ');
+                    document.getElementById('cnae_secundarios').value = listaSec;
+                }
+                if (dados.inscricoes_estaduais && dados.inscricoes_estaduais.length > 0) {
+                    let ieAtiva = dados.inscricoes_estaduais.find(ie => ie.ativo === true) || dados.inscricoes_estaduais[0];
+                    if (ieAtiva && ieAtiva.inscricao_estadual) {
+                        document.getElementById('fiscal_1').value = ieAtiva.inscricao_estadual;
+                    }
+                }
+
+                toast("Dados, CNAE e Inscrição Estadual importados da Receita Federal com sucesso!", "success");
             }
         } catch (err) {}
     }
@@ -444,7 +461,7 @@ function aplicarFiltrosRelatorio() {
             <td>${p.cnpj_cpf || '-'}</td>
             <td><strong>${p.nome || '-'}</strong></td>
             <td>${p.centro_custo || '-'}</td>
-            <td><small><b>Contato:</b> ${p.nome_contato || '-'}</small></td>
+            <td><small><b>Contato:</b> ${p.nome_contato || '-'}<br>CNAE: ${p.cnae_principal || '-'}</small></td>
             <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
             <td><small>${enderecoCompleto}</small></td>
         </tr>`;
@@ -473,7 +490,7 @@ function renderTabela() {
             <td>${p.cnpj_cpf || '-'}</td>
             <td><strong>${p.nome || '-'}</strong></td>
             <td>${p.centro_custo || '-'}</td>
-            <td><small><b>Contato:</b> ${p.nome_contato || '-'}</small></td>
+            <td><small><b>Contato:</b> ${p.nome_contato || '-'}<br>CNAE: ${p.cnae_principal || '-'}</small></td>
             <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
             <td><small>${enderecoCompleto}</small></td>
             <td style="text-align:right;">
@@ -500,7 +517,11 @@ async function salvarParceiro() {
         tipo_cadastro, cnpj_cpf, nome, centro_custo,
         cliente_id: clienteIdAtual(),
         email: document.getElementById('email').value.trim(),
+        email_nfe: document.getElementById('email_nfe').value.trim(),
         telefone: document.getElementById('telefone').value.trim(),
+        cnae_principal: document.getElementById('cnae_principal').value.trim(),
+        cnae_secundarios: document.getElementById('cnae_secundarios').value.trim(),
+        nome_contato: document.getElementById('nome_contato').value.trim(),
         cep: document.getElementById('cep').value.trim(),
         logradouro: document.getElementById('logradouro').value.trim(),
         numero: document.getElementById('numero').value.trim(),
@@ -534,7 +555,11 @@ window.editarParceiro = function(id) {
     document.getElementById('nome').value = p.nome || '';
     document.getElementById('centro_custo').value = p.centro_custo || '';
     document.getElementById('email').value = p.email || '';
+    document.getElementById('email_nfe').value = p.email_nfe || '';
     document.getElementById('telefone').value = p.telefone || '';
+    document.getElementById('cnae_principal').value = p.cnae_principal || '';
+    document.getElementById('cnae_secundarios').value = p.cnae_secundarios || '';
+    document.getElementById('nome_contato').value = p.nome_contato || '';
     document.getElementById('cep').value = p.cep || '';
     document.getElementById('logradouro').value = p.logradouro || '';
     document.getElementById('numero').value = p.numero || '';
@@ -553,7 +578,11 @@ function cancelarEdicao() {
     document.getElementById('nome').value = '';
     document.getElementById('centro_custo').value = '';
     document.getElementById('email').value = '';
+    document.getElementById('email_nfe').value = '';
     document.getElementById('telefone').value = '';
+    document.getElementById('cnae_principal').value = '';
+    document.getElementById('cnae_secundarios').value = '';
+    document.getElementById('nome_contato').value = '';
     document.getElementById('cep').value = '';
     document.getElementById('logradouro').value = '';
     document.getElementById('numero').value = '';
