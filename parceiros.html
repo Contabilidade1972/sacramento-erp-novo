@@ -39,7 +39,6 @@
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
         .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
         
-        /* Sistema de Recolhimento Dinâmico */
         .card-body { display: flex; flex-direction: column; gap: 14px; transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
         .card.recolhido .card-body { display: none; }
         .card.recolhido { padding-bottom: 24px; }
@@ -80,14 +79,18 @@
         .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
 
         .print-header { display: none; }
+
         @media print {
-            body { background: #fff !important; }
+            @page { size: landscape; margin: 10mm; }
+            body { background: #fff !important; color: #000 !important; }
             .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay, .btn-colapsar { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
             .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; display: block !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 12px; border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
-            table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 11px !important; color: #000 !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; }
+            .print-header h2 { font-size: 16px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 10px !important; color: #000 !important; }
             th { background: #1e3a8a !important; color: #fff !important; }
         }
     </style>
@@ -102,9 +105,7 @@
             <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-id-card"></i> Ficha Detalhada do Parceiro</h3>
             <button onclick="fecharModalVisualizar()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
-        <div id="conteudoFichaDetalhada" style="font-size:13px; display:flex; flex-direction:column; gap:12px; line-height:1.6;">
-            <!-- Preenchido via JS -->
-        </div>
+        <div id="conteudoFichaDetalhada" style="font-size:13px; display:flex; flex-direction:column; gap:12px; line-height:1.6;"></div>
         <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Ficha</button>
             <button class="btn btn-outline" onclick="fecharModalVisualizar()">Fechar</button>
@@ -136,7 +137,7 @@
 </header>
 
 <div class="container">
-    <!-- FORMULÁRIO DE CADASTRO (COM RECOLHIMENTO) -->
+    <!-- FORMULÁRIO DE CADASTRO -->
     <div class="card recolhido" id="cardFormulario">
         <div class="card-header" onclick="alternarPainel('cardFormulario')">
             <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
@@ -249,16 +250,16 @@
         </div>
     </div>
 
-    <!-- RELATÓRIO OPERACIONAL (COM RECOLHIMENTO) -->
+    <!-- RELATÓRIO OPERACIONAL -->
     <div class="card" id="cardRelatorioModo">
         <div class="print-header">
             <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros aplicados: <span id="printFiltrosInfo">Todos os Tipos</span></p>
         </div>
         <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
             <div style="display:flex; align-items:center; gap:10px;">
-                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                 <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
@@ -292,7 +293,7 @@
         </div>
     </div>
 
-    <!-- DIRETÓRIO AVANÇADO (COM RECOLHIMENTO) -->
+    <!-- DIRETÓRIO AVANÇADO -->
     <div class="card" id="cardDiretorioAvancado">
         <div class="card-header" onclick="alternarPainel('cardDiretorioAvancado')">
             <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros (Gerenciamento)</h3>
@@ -476,6 +477,11 @@ function aplicarFiltrosRelatorio() {
     let stFiltro = document.getElementById('filtroTipo').value;
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
     
+    // Atualiza dinamicamente o cabeçalho impresso com os filtros reais aplicados
+    let descFiltroTipo = stFiltro === 'todos' ? 'Todos os Tipos' : stFiltro;
+    let descBusca = txtBusca ? ` | Busca: "${txtBusca}"` : '';
+    document.getElementById('printFiltrosInfo').innerText = `${descFiltroTipo}${descBusca}`;
+
     let dadosFiltrados = parceirosCache.filter(p => {
         let tipoNormalizado = normalizarTipo(p.tipo_cadastro);
         if (stFiltro !== 'todos' && tipoNormalizado !== stFiltro) return false;
@@ -643,7 +649,6 @@ window.editarParceiro = function(id) {
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Parceiro';
     document.getElementById('btnCancelar').style.display = 'inline-block';
     
-    // Abre automaticamente o painel de formulário ao editar para facilitar
     const cardForm = document.getElementById('cardFormulario');
     if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
     
