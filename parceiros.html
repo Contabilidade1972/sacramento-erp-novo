@@ -9,24 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #1e3a8a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text-main: #0f172a;
-            --text-light: #64748b;
-            --border: #e2e8f0;
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:column;}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        /* HEADER CORPORATIVO DO PORTAL (PADRÃO UNIFICADO) */
         .site-header {
             background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -307,12 +293,6 @@ function sbFiltroLeitura(tabela) {
     return q;
 }
 
-setInterval(() => {
-    let now = new Date();
-    const dt = document.getElementById('current_datetime');
-    if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-}, 1000);
-
 function toast(msg, type='success'){
     var c = document.getElementById('toastContainer'), x = document.createElement('div');
     if(!c) {
@@ -380,7 +360,6 @@ document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateS
 
 async function buscarCep() {
     let cep = document.getElementById('cep').value.replace(/\D/g, '');
-    let statusCep = document.getElementById('status_cep');
     if(cep.length !== 8) return;
     try {
         let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
@@ -428,9 +407,21 @@ async function carregarParceiros() {
 function aplicarFiltrosRelatorio() {
     let stFiltro = document.getElementById('filtroTipo').value.toLowerCase();
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+    
     let dadosFiltrados = parceirosCache.filter(p => {
         let tipoParc = (p.tipo_cadastro || 'cliente').toLowerCase();
-        if (stFiltro !== 'todos' && !tipoParc.includes(stFiltro)) return false;
+        
+        // Filtro estrito por tipo para evitar sobreposições incorretas
+        if (stFiltro !== 'todos') {
+            if (stFiltro === 'cliente') {
+                if (!tipoParc.includes('cliente') || tipoParc.includes('ambos') || tipo.includes('&')) return false;
+            } else if (stFiltro === 'fornecedor') {
+                if (!tipoParc.includes('fornecedor') || tipoParc.includes('ambos') || tipo.includes('&')) return false;
+            } else if (stFiltro === 'ambos') {
+                if (!tipoParc.includes('ambos') && !tipoParc.includes('&') && !(tipoParc.includes('cliente') && tipoParc.includes('fornecedor'))) return false;
+            }
+        }
+
         if (txtBusca) {
             let linha = (p.nome + ' ' + (p.cnpj_cpf || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || '')).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
@@ -444,11 +435,12 @@ function aplicarFiltrosRelatorio() {
         tbodyRel.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
         return;
     }
+    
     dadosFiltrados.forEach(p => {
         let badge = '';
         let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
-        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        if(tipo.includes('fornecedor') && !tipo.includes('ambos') && !tipo.includes('&')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos') || tipo.includes('&') || (tipo.includes('cliente') && tipo.includes('fornecedor'))) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
         else badge = '<span class="badge badge-cliente">Cliente</span>';
 
         let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
@@ -476,8 +468,8 @@ function renderTabela() {
     parceirosCache.forEach(p => {
         let badge = '';
         let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
-        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        if(tipo.includes('fornecedor') && !tipo.includes('ambos') && !tipo.includes('&')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos') || tipo.includes('&') || (tipo.includes('cliente') && tipo.includes('fornecedor'))) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
         else badge = '<span class="badge badge-cliente">Cliente</span>';
 
         let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
