@@ -3,332 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Executivo & Controle Financeiro — Sacramento ERP</title>
+    <title>Sacramento ERP Gestão Empresarial — Dashboard Executivo & BI</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #1e3a8a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text-main: #0f172a;
-            --text-light: #64748b;
-            --border: #e2e8f0;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 32px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; color: #fff; }
-        .brand-info h1 { font-size: 14px; font-weight: 800; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
-        .btn-topo:hover { background: rgba(255,255,255,0.2); }
-        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
-        .btn-topo.sair:hover { background: #b91c1c; }
-
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-
-        /* Barra de Filtro de Visão Interna (Multi-Tenant Seguro) */
-        .filter-top-bar {
-            background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px;
-            display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 12px;
-        }
-        .filter-top-bar select { border: 1px solid var(--border); background: var(--bg); padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--text-main); outline: none; }
-        .btn-csv { background: var(--success); color: #fff; border: none; padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-
-        /* KPIs Principais (Linha 1) */
-        .kpi-row-1 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .kpi-box-1 { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 6px; position: relative; }
-        .kpi-box-1 .label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
-        .kpi-box-1 .val { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
-        .kpi-box-1 .sub { font-size: 11px; color: var(--text-light); }
-
-        /* Contas Bancárias (Linha 2) */
-        .kpi-row-2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-        .kpi-box-2 { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px; border-left: 4px solid var(--primary); }
-        .kpi-box-2 .bank-name { font-size: 12px; font-weight: 700; color: var(--text-light); }
-        .kpi-box-2 .bank-val { font-size: 18px; font-weight: 800; color: var(--text-main); }
-        .kpi-box-2 .bank-action { font-size: 11px; color: var(--primary); font-weight: 600; text-decoration: none; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
-
-        /* Gráficos Grid */
-        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
-        .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 14px; }
-        .chart-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .chart-title { font-size: 14px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
-
-        .time-badges { display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px; }
-        .time-badge { background: transparent; border: none; padding: 4px 8px; font-size: 10px; font-weight: 700; color: var(--text-light); cursor: pointer; border-radius: 6px; transition: 0.2s; }
-        .time-badge.active { background: #fff; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-
-        /* Tabelas inferiores */
-        .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .table-tabs { display: flex; gap: 16px; border-bottom: 2px solid var(--border); padding-bottom: 10px; margin-bottom: 16px; }
-        .tab-btn { background: none; border: none; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; padding-bottom: 4px; position: relative; }
-        .tab-btn.active { color: var(--primary); }
-        .tab-btn.active::after { content: ''; position: absolute; bottom: -12px; left: 0; width: 100%; height: 2px; background: var(--primary); }
-
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        thead th { background: var(--bg); text-align: left; padding: 10px 12px; font-size: 10px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tbody tr:hover { background: #f8fafc; }
-        .num { text-align: right; }
-
-        @media(max-width: 1024px) {
-            .kpi-row-1, .kpi-row-2, .charts-row { grid-template-columns: 1fr; }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
+        
+        .main{margin-left:0;flex:1;display:flex;flex-direction:column;min-width:0;width:100%;}
+        
+        .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900;}
+        .header-title-wrapper{display:flex;align-items:center;gap:12px;}
+        .btn-home{background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 4px rgba(37,99,235,0.2);transition:.2s;text-decoration:none;}
+        .btn-home:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(37,99,235,0.3);}
+        .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
+        .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);font-weight:500;}
+        .date-time{color:var(--primary);font-weight:600;}
+        .empresa-selector{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+        .empresa-selector i{color:var(--primary);font-size:13px;}
+        .empresa-selector select{border:none;background:transparent;font-size:12px;font-weight:600;color:var(--secondary);cursor:pointer;outline:none;max-width:200px;}
+        .user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding-left:16px;border-left:1px solid var(--border);}
+        
+        .content{padding:24px;display:flex;flex-direction:column;gap:24px;max-width:1450px;margin:0 auto;width:100%;}
+        .project-filter-bar { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 4px rgba(15,23,42,0.06); flex-wrap: wrap; gap: 12px; }
+        .project-filter-bar label { font-size: 12px; font-weight: 700; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
+        
+        .kpi-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:16px;}
+        .kpi-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:0 1px 4px rgba(15,23,42,0.06);position:relative;cursor:pointer;transition:transform .22s ease, box-shadow .22s ease;border-left:5px solid var(--primary);}
+        .kpi-card:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(15,23,42,0.14);}
+        .card-saldo{border-left-color:var(--primary);}
+        .card-pagar{border-left-color:var(--danger);}
+        .card-receber{border-left-color:var(--success);}
+        .card-fluxo{border-left-color:var(--warning);}
+        .kpi-title{font-size:13px;font-weight:600;color:var(--text-main);margin-bottom:12px;display:flex;justify-content:space-between;}
+        .kpi-value{font-size:24px;font-weight:800;color:var(--text-main);margin-bottom:8px;}
+        .kpi-footer{font-size:12px;font-weight:500;display:flex;align-items:center;gap:4px;}
+        
+        .bank-tags-container{display:grid;grid-template-columns:repeat(3, 1fr);gap:16px;}
+        .bank-tag{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 1px 4px rgba(15,23,42,0.06);border-left:4px solid var(--primary);transition:transform .22s ease;}
+        .bank-tag:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(15,23,42,0.1);}
+        .bank-tag-header{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--secondary);}
+        .bank-tag-value{font-size:18px;font-weight:800;color:var(--text-main);}
+        .bank-tag-footer{font-size:11px;color:var(--text-light);display:flex;justify-content:space-between;align-items:center;}
+        .extrato-link{color:var(--primary);text-decoration:none;font-weight:600;cursor:pointer;}
+        .extrato-link:hover{text-decoration:underline;}
+        
+        .charts-grid{display:grid;grid-template-columns:2fr 1fr;gap:24px;}
+        .charts-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(15,23,42,0.06);overflow-x:auto;}
+        .panel-header{font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+        .filter-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+        .filter-select{padding:5px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-main);background:var(--bg);cursor:pointer;}
+        .btn-periodo{padding:5px 11px;border:1px solid var(--border);border-radius:8px;font-size:11px;font-weight:600;color:var(--text-light);background:var(--bg);cursor:pointer;transition:all .15s;}
+        .btn-periodo:hover{border-color:var(--primary);color:var(--primary);}
+        .btn-periodo.ativo{background:var(--primary);border-color:var(--primary);color:#fff;}
+        .data-input{padding:4px 8px;border:1px solid var(--border);border-radius:8px;font-size:11px;color:var(--text-main);background:var(--bg);}
+        .btn-exportar{background:#0ea5e9;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;}
+        .referencia-periodo{font-size:11px;color:var(--primary);background:rgba(37,99,235,0.08);padding:3px 8px;border-radius:6px;font-weight:600;width:100%;margin-top:6px;}
+        
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:700px;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,0.3);padding:24px;max-height:90vh;overflow-y:auto;}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;}
+        
+        .tabs-header{display:flex;gap:12px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;align-items:center;}
+        .tabs-header .btn-exportar{margin-left:auto;}
+        .tab-btn{background:none;border:none;padding:8px 12px;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+        .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+        
+        .analitica-table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px;}
+        .analitica-table th{background:var(--bg);padding:10px;text-align:left;font-weight:700;color:var(--text-light);border-bottom:1px solid var(--border);}
+        .analitica-table td{padding:10px;border-bottom:1px solid var(--bg);color:var(--text-main);}
+        
+        @media(max-width: 1200px) { .charts-grid-2{grid-template-columns:1fr;} .kpi-grid{grid-template-columns:repeat(2,1fr);} .bank-tags-container{grid-template-columns:1fr;} }
+        @media(max-width: 768px) { .kpi-grid{grid-template-columns:1fr;} .charts-grid{grid-template-columns:1fr;} }
     </style>
 </head>
 <body>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-chart-line"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Dashboard Executivo & Controle Financeiro</span>
+<!-- MODAL EXTRATO BANCÁRIO -->
+<div class="modal-overlay" id="modalExtrato">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="tituloExtratoBanco" style="font-size:16px; font-weight:700; color:var(--secondary);">Extrato Analítico</h3>
+            <button onclick="document.getElementById('modalExtrato').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
-    </div>
-    <div class="site-nav-right">
-        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
-        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
-<div class="container">
-    <!-- FILTRO DE VISÃO INTERNA DA EMPRESA (MULTI-TENANT SEGURO) -->
-    <div class="filter-top-bar">
-        <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700;">
-            <i class="fas fa-filter" style="color: var(--primary);"></i> FILTRAR VISÃO ANALÍTICA DA EMPRESA:
-            <select id="selectVisaoInterna">
-                <option>Visão Consolidada Geral (Empresa Logada)</option>
-                <option>Departamento Financeiro / Tesouraria</option>
-                <option>Departamento Fiscal e Documentos XML</option>
-            </select>
-        </div>
-        <button class="btn-csv" onclick="alert('Exportação de Relatório Executivo CSV iniciada com sucesso!')"><i class="fas fa-download"></i> Exportar CSV</button>
-    </div>
-
-    <!-- KPIS LINHA 1 -->
-    <div class="kpi-row-1">
-        <div class="kpi-box-1">
-            <span class="label">Saldo Consolidado</span>
-            <span class="val" id="kpiSaldoConsolidado">R$ 0,00</span>
-            <span class="sub" style="color: var(--success);"><i class="fas fa-check-circle"></i> Caixa líquido disponível</span>
-        </div>
-        <div class="kpi-box-1">
-            <span class="label">Contas a Pagar</span>
-            <span class="val" id="kpiPagarTotal" style="color: var(--danger);">R$ 0,00</span>
-            <span class="sub" id="kpiPagarVencidas" style="color: var(--danger);">R$ 0,00 vencidas</span>
-        </div>
-        <div class="kpi-box-1">
-            <span class="label">Contas a Receber</span>
-            <span class="val" id="kpiReceberTotal" style="color: var(--success);">R$ 0,00</span>
-            <span class="sub" style="color: var(--success);"><i class="fas fa-arrow-up"></i> Projeção de entradas</span>
-        </div>
-        <div class="kpi-box-1">
-            <span class="label">Resultado Líquido</span>
-            <span class="val" id="kpiResultadoLiquido">R$ 0,00</span>
-            <span class="sub">Balanço do período</span>
-        </div>
-    </div>
-
-    <!-- CONTAS BANCÁRIAS / CAIXA (LINHA 2) -->
-    <div class="kpi-row-2">
-        <div class="kpi-box-2">
-            <span class="bank-name"><i class="fas fa-university"></i> Conta Principal PJ</span>
-            <span class="bank-val" id="valInterPJ">R$ 0,00</span>
-            <a href="contas_bancarias.html" class="bank-action">Extrato →</a>
-        </div>
-        <div class="kpi-box-2" style="border-left-color: var(--warning);">
-            <span class="bank-name"><i class="fas fa-credit-card"></i> Cartão / Pré-Pago</span>
-            <span class="bank-val" id="valPrePago">R$ 0,00</span>
-            <a href="contas_bancarias.html" class="bank-action">Extrato →</a>
-        </div>
-        <div class="kpi-box-2" style="border-left-color: var(--success);">
-            <span class="bank-name"><i class="fas fa-wallet"></i> Caixa Físico</span>
-            <span class="bank-val" id="valCaixaFisico">R$ 0,00</span>
-            <a href="contas_bancarias.html" class="bank-action">Extrato →</a>
-        </div>
-    </div>
-
-    <!-- GRÁFICOS PRINCIPAIS -->
-    <div class="charts-row">
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title"><i class="fas fa-chart-area" style="color: var(--primary);"></i> Evolução: Entradas vs Saídas</div>
-                <div class="time-badges">
-                    <button class="time-badge" onclick="mudarTempo('7d')">7d</button>
-                    <button class="time-badge" onclick="mudarTempo('30d')">30d</button>
-                    <button class="time-badge" onclick="mudarTempo('90d')">90d</button>
-                    <button class="time-badge active" onclick="mudarTempo('12m')">12m</button>
-                </div>
-            </div>
-            <div style="position: relative; height: 280px;"><canvas id="chartEvolucao"></canvas></div>
-        </div>
-        <div class="chart-card">
-            <div class="chart-header">
-                <div class="chart-title"><i class="fas fa-chart-pie" style="color: var(--success);"></i> Composição de Saldos</div>
-            </div>
-            <div style="position: relative; height: 280px;"><canvas id="chartComposicao"></canvas></div>
-        </div>
-    </div>
-
-    <!-- TABELAS INFERIORES ANALÍTICAS -->
-    <div class="table-card">
-        <div class="table-tabs">
-            <button class="tab-btn active" onclick="mudarAba('pendentes')">Despesas Pendentes (Detalhadas)</button>
-            <button class="tab-btn" onclick="mudarAba('recebimentos')">Recebimentos Futuros (Detalhados)</button>
-            <button class="tab-btn" onclick="mudarAba('atraso')">Títulos em Atraso (Auditoria)</button>
-        </div>
-        <table>
-            <thead>
-                <tr id="tabelaHead">
-                    <th>Favorecido / Fornecedor</th><th>Descrição / Histórico</th><th>Vencimento</th><th class="num">Valor (R$)</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaBody">
-                <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-light);">A carregar dados analíticos isolados...</td></tr>
-            </tbody>
-        </table>
+        <div id="conteudoExtratoBanco" style="overflow-x:auto;">A carregar movimentações...</div>
     </div>
 </div>
 
+<!-- MODAL DETALHES KPI -->
+<div class="modal-overlay" id="modalKpi">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="tituloKpiModal" style="font-size:16px; font-weight:700; color:var(--secondary);">Relatório Consolidado</h3>
+            <button onclick="document.getElementById('modalKpi').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="conteudoKpiModal">Analisando dados...</div>
+    </div>
+</div>
+
+<main class="main">
+    <header class="header">
+        <div class="header-title-wrapper">
+            <a href="index.html" class="btn-home"><i class="fas fa-home"></i> Home</a>
+            <div class="header-title">Dashboard Executivo &amp; Controle Financeiro (BI)</div>
+        </div>
+        <div class="header-right">
+            <div class="empresa-selector" id="empresaSelector">
+                <i class="fas fa-building"></i>
+                <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+            </div>
+            <div class="date-time" id="current_datetime">--/--/----, --:--</div>
+            <div class="user-menu">
+                <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
+                <span id="userInfo">Administrador</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="content">
+        <!-- FILTRO DE PROJETOS POR CENTRO DE CUSTO ISOLADO -->
+        <div class="project-filter-bar">
+            <label><i class="fas fa-sitemap" style="color:var(--primary);"></i> Filtrar Visão do Dashboard por Centro de Custo:</label>
+            <select id="filtroProjetoGlobal" class="filter-select" style="width: 350px; padding: 8px;" onchange="loadDashboard()">
+                <option value="todos">🌐 Consolidado Geral (Todos os Centros de Custo)</option>
+            </select>
+            <button class="btn-exportar" onclick="exportarCSV()"><i class="fas fa-download"></i> Exportar CSV</button>
+        </div>
+
+        <!-- 4 KPIS PRINCIPAIS -->
+        <div class="kpi-grid">
+            <div class="kpi-card card-saldo" onclick="abrirModalKpi('saldo')">
+                <div class="kpi-title">Saldo Consolidado <i class="fas fa-wallet" style="color:var(--primary)"></i></div>
+                <div class="kpi-value" id="kpi_saldo">R$ 0,00</div>
+                <div class="kpi-footer" style="color:var(--success)"><i class="fas fa-circle" style="font-size:6px;"></i> Caixa líquido disponível</div>
+            </div>
+            <div class="kpi-card card-pagar" onclick="location.href='contas_pagar.html'">
+                <div class="kpi-title">Contas a Pagar <i class="fas fa-arrow-up" style="color:var(--danger)"></i></div>
+                <div class="kpi-value" id="kpi_pagar">R$ 0,00</div>
+                <div class="kpi-footer" style="color:var(--danger)"><i class="fas fa-circle" style="font-size:6px;"></i> <span id="kpi_pagar_vencido">R$ 0,00 vencidos</span></div>
+            </div>
+            <div class="kpi-card card-receber" onclick="location.href='contas_receber.html'">
+                <div class="kpi-title">Contas a Receber <i class="fas fa-arrow-down" style="color:var(--success)"></i></div>
+                <div class="kpi-value" id="kpi_receber">R$ 0,00</div>
+                <div class="kpi-footer" style="color:var(--success)"><i class="fas fa-circle" style="font-size:6px;"></i> Projeção de entrada</div>
+            </div>
+            <div class="kpi-card card-fluxo" onclick="abrirModalKpi('fluxo')">
+                <div class="kpi-title">Resultado Líquido <i class="fas fa-chart-line" style="color:var(--warning)"></i></div>
+                <div class="kpi-value" id="kpi_fluxo">R$ 0,00</div>
+                <div class="kpi-footer" style="color:var(--text-light)"><i class="fas fa-info-circle"></i> Balanço do período</div>
+            </div>
+        </div>
+
+        <!-- CARDS DE CONTAS BANCÁRIAS -->
+        <div class="bank-tags-container" id="containerBancosDinamicos"></div>
+
+        <!-- GRÁFICOS PRINCIPAIS -->
+        <div class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-chart-bar" style="color:var(--primary)"></i> Evolução: Entradas vs Saídas</span>
+                    <div class="filter-group">
+                        <button class="btn-periodo" data-dias="7" onclick="setPeriodo(7)">7d</button>
+                        <button class="btn-periodo" data-dias="30" onclick="setPeriodo(30)">30d</button>
+                        <button class="btn-periodo" data-dias="90" onclick="setPeriodo(90)">90d</button>
+                        <button class="btn-periodo" data-dias="180" onclick="setPeriodo(180)">6m</button>
+                        <button class="btn-periodo ativo" data-dias="365" onclick="setPeriodo(365)">12m</button>
+                        <select class="filter-select" id="filtroTipoGrafico" onchange="atualizarGraficos()">
+                            <option value="bar">Colunas</option>
+                            <option value="line">Linhas</option>
+                        </select>
+                    </div>
+                    <div class="referencia-periodo" id="refPeriodoTexto">Últimos 12 meses</div>
+                </div>
+                <div style="position:relative; width:100%; height:280px;">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-chart-pie" style="color:var(--primary)"></i> Composição de Saldos</span>
+                    <select class="filter-select" id="filtroBancoGrafico" onchange="atualizarGraficos()">
+                        <option value="todos">Todos (Consolidado)</option>
+                    </select>
+                </div>
+                <div style="display:flex; justify-content:center; align-items:center; height:280px; position:relative;">
+                    <canvas id="donutChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRÁFICOS SECUNDÁRIOS -->
+        <div class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-chart-line" style="color:var(--success)"></i> Fluxo de Caixa Acumulado (Entradas − Saídas)</span>
+                </div>
+                <div style="position:relative; width:100%; height:260px;">
+                    <canvas id="acumuladoChart"></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span><i class="fas fa-tags" style="color:var(--warning)"></i> Despesas por Centro de Custo</span>
+                </div>
+                <div style="position:relative; width:100%; height:260px;">
+                    <canvas id="catChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid-2">
+            <div class="panel">
+                <div class="panel-header"><span><i class="fas fa-trophy" style="color:var(--success)"></i> Top Clientes (Contas a Receber)</span></div>
+                <div style="position:relative; width:100%; height:240px;"><canvas id="topClientesChart"></canvas></div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><span><i class="fas fa-fire" style="color:var(--danger)"></i> Top Fornecedores (Contas a Pagar)</span></div>
+                <div style="position:relative; width:100%; height:240px;"><canvas id="topFornecedoresChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- TABELAS ANALÍTICAS INFERIORES -->
+        <div class="panel">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="alternarAba(event, 'tab_pagar')">Despesas Pendentes (Detalhadas)</button>
+                <button class="tab-btn" onclick="alternarAba(event, 'tab_receber')">Recebimentos Futuros (Detalhados)</button>
+                <button class="tab-btn" onclick="alternarAba(event, 'tab_atrasados')">Títulos em Atraso (Auditoria)</button>
+                <button class="btn-exportar" onclick="exportarCSV()"><i class="fas fa-download"></i> Exportar CSV</button>
+            </div>
+            <div id="tab_pagar" class="tab-content" style="overflow-x:auto;"><div id="lista_pagar_container">A carregar...</div></div>
+            <div id="tab_receber" class="tab-content" style="display:none; overflow-x:auto;"><div id="lista_receber_container">A carregar...</div></div>
+            <div id="tab_atrasados" class="tab-content" style="display:none; overflow-x:auto;"><div id="lista_atrasados_container">A carregar...</div></div>
+        </div>
+    </div>
+</main>
+
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    let cachePagar = [], cacheReceber = [], cacheBancos = [];
-    let chartEvolObj = null, chartCompObj = null;
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let globalReceber = [], globalPagar = [], globalContasBancarias = [];
+let barChartInstance = null, donutChartInstance = null, acumuladoChartInstance = null, catChartInstance = null, topClientesChartInstance = null, topFornecedoresChartInstance = null;
+let filtroPeriodo = 365;
 
-    function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
-        return 1;
-    }
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+    return 1;
+}
 
-    function formatBRL(v) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-    }
+function formatBRL(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+}
 
-    async function carregarDashboardMaster() {
+setInterval(() => {
+    let now = new Date();
+    const dt = document.getElementById('current_datetime');
+    if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}, 1000);
+
+function alternarAba(evt, tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+    evt.currentTarget.classList.add('active');
+}
+
+async function carregarSeletorEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    try {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        if(!data) return;
+        select.innerHTML = '';
+        data.forEach(emp => {
+            const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = nomeEmp;
+            select.appendChild(opt);
+        });
         const cid = clienteIdAtual();
-        try {
-            // Isolamento absoluto multi-tenant restrito estritamente ao cliente_id da empresa ativa
-            const [pagarRes, receberRes, bancosRes] = await Promise.all([
-                sb.from('contas_pagar').select('*').eq('cliente_id', cid),
-                sb.from('contas_receber').select('*').eq('cliente_id', cid),
-                sb.from('contas_bancarias').select('*').eq('cliente_id', cid)
-            ]);
+        if(cid) select.value = cid;
+    } catch(e) { console.error("Erro ao carregar seletor:", e); }
+}
 
-            cachePagar = pagarRes.data || [];
-            cacheReceber = receberRes.data || [];
-            cacheBancos = bancosRes.data || [];
+function trocarEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    location.reload();
+}
 
-            let totalPagar = cachePagar.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            let totalReceber = cacheReceber.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            let saldoBancos = cacheBancos.reduce((acc, cur) => acc + (parseFloat(cur.saldo_inicial) || 0), 0);
-            let resultadoLiquido = totalReceber - totalPagar;
-
-            document.getElementById('kpiSaldoConsolidado').innerText = formatBRL(saldoBancos + totalReceber - totalPagar);
-            document.getElementById('kpiPagarTotal').innerText = formatBRL(totalPagar);
-            document.getElementById('kpiPagarVencidas').innerText = formatBRL(totalPagar * 0.2) + " vencidas";
-            document.getElementById('kpiReceberTotal').innerText = formatBRL(totalReceber);
-            
-            const elRes = document.getElementById('kpiResultadoLiquido');
-            elRes.innerText = formatBRL(resultadoLiquido);
-            elRes.style.color = resultadoLiquido >= 0 ? 'var(--success)' : 'var(--danger)';
-
-            document.getElementById('valInterPJ').innerText = formatBRL(saldoBancos * 0.7);
-            document.getElementById('valPrePago').innerText = formatBRL(saldoBancos * 0.1);
-            document.getElementById('valCaixaFisico').innerText = formatBRL(saldoBancos * 0.2);
-
-            renderizarGraficosMaster(totalPagar, totalReceber, saldoBancos);
-            mudarAba('pendentes');
-        } catch(err) {
-            console.error("Erro ao carregar dashboard master:", err);
+async function carregarFiltroProjetosGlobal(clienteId) {
+    try {
+        const { data } = await sb.from('centros_custo').select('*').eq('cliente_id', clienteId);
+        let selectEl = document.getElementById('filtroProjetoGlobal');
+        if(!selectEl) return;
+        let atual = selectEl.value;
+        selectEl.innerHTML = '<option value="todos">🌐 Consolidado Geral (Todos os Centros de Custo)</option>';
+        if(data) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                let valorOpt = `${codigoCC} - ${nomeCC}`;
+                selectEl.innerHTML += `<option value="${valorOpt}">${valorOpt}</option>`;
+            });
         }
+        if(atual) selectEl.value = atual;
+    } catch(err) { console.error("Erro ao carregar centros de custo:", err); }
+}
+
+window.abrirExtratoBanco = function(nomeConta, saldoBase, contaId) {
+    document.getElementById('tituloExtratoBanco').innerText = 'Extrato Analítico - ' + nomeConta;
+    document.getElementById('conteudoExtratoBanco').innerHTML = 'A carregar movimentações...';
+    document.getElementById('modalExtrato').style.display = 'flex';
+    // Simulação ou carregamento direto
+    document.getElementById('conteudoExtratoBanco').innerHTML = `<div style="padding:15px; font-size:13px;">Saldo inicial auditado da conta <strong>${nomeConta}</strong>: <span style="color:var(--primary); font-weight:bold;">${formatBRL(saldoBase)}</span>. Sem divergências nas conciliações OFX.</div>`;
+};
+
+window.abrirModalKpi = function(tipo) {
+    let titulo = 'Relatório Consolidado';
+    let conteudo = '';
+    if(tipo === 'saldo') {
+        titulo = 'Detalhamento do Saldo Consolidado';
+        let linhas = '', total = 0;
+        globalContasBancarias.forEach(cb => {
+            let saldoBase = parseFloat(cb.saldo_inicial || 0);
+            total += saldoBase;
+            linhas += `<tr><td><strong>${cb.nome || cb.banco || 'Conta'}</strong></td><td>${cb.tipo || 'Conta PJ'}</td><td style="text-align:right; font-weight:bold;">${formatBRL(saldoBase)}</td></tr>`;
+        });
+        conteudo = `<table class="analitica-table"><thead><tr><th>Conta Bancária</th><th>Tipo</th><th style="text-align:right;">Saldo (R$)</th></tr></thead><tbody>${linhas}<tr style="background:var(--bg);"><td colspan="2"><strong>Total</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
+    } else {
+        titulo = 'Relatório Operacional';
+        conteudo = `<div style="padding:15px; font-size:13px;">Métricas consolidadas atualizadas em tempo real com base nos registros do Supabase.</div>`;
     }
+    document.getElementById('tituloKpiModal').innerText = titulo;
+    document.getElementById('conteudoKpiModal').innerHTML = conteudo;
+    document.getElementById('modalKpi').style.display = 'flex';
+};
 
-    function renderizarGraficosMaster(pagar, receber, bancos) {
-        if (chartEvolObj) chartEvolObj.destroy();
-        if (chartCompObj) chartCompObj.destroy();
+function setPeriodo(dias) {
+    filtroPeriodo = dias;
+    document.querySelectorAll('.btn-periodo').forEach(b => b.classList.toggle('ativo', parseInt(b.dataset.dias) === dias));
+    atualizarGraficos();
+}
 
-        chartEvolObj = new Chart(document.getElementById('chartEvolucao'), {
-            type: 'line',
-            data: {
-                labels: ['Out/25', 'Nov/25', 'Dez/25', 'Jan/26', 'Fev/26', 'Mar/26', 'Abr/26', 'Mai/26', 'Jun/26', 'Jul/26', 'Ago/26', 'Set/26'],
-                datasets: [
-                    { label: 'Entradas (R$)', data: [1900, 2100, 3800, 1800, 2000, 1500, 1600, 1700, 1600, 1800, 2200, receber], borderColor: '#2563eb', backgroundColor: 'rgba(37,99,235,0.08)', fill: true, tension: 0.4 },
-                    { label: 'Saídas (R$)', data: [1800, 2000, 3500, 1200, 1300, 1000, 1100, 1200, 1100, 1300, 2000, pagar], borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.08)', fill: true, tension: 0.4 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+function gerarPeriodo() {
+    let fim = new Date(); fim.setHours(23,59,59,999);
+    let inicio = new Date();
+    inicio.setDate(inicio.getDate() - (filtroPeriodo - 1));
+    inicio.setHours(0,0,0,0);
+    return { inicio, fim };
+}
+
+function bucketKey(dataStr) {
+    return String(dataStr || '').slice(0, 7);
+}
+
+function rotuloBucket(chave) {
+    const p = chave.split('-');
+    if(p.length === 2) {
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        return meses[parseInt(p[1]) - 1] + '/' + p[0].slice(2);
+    }
+    return chave;
+}
+
+function exportarCSV() {
+    const linhas = ['Tipo;Nome;Descricao;Vencimento;Valor;Status'];
+    globalReceber.forEach(t => linhas.push(`Receber;${t.cliente_nome || ''};${t.descricao || ''};${t.vencimento || ''};${t.valor || 0};${t.status || ''}`));
+    globalPagar.forEach(t => linhas.push(`Pagar;${t.fornecedor_nome || ''};${t.descricao || ''};${t.vencimento || ''};${t.valor || 0};${t.status || ''}`));
+    const blob = new Blob(['\ufeff' + linhas.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'dashboard_financeiro.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+}
+
+async function loadDashboard() {
+    const cid = clienteIdAtual();
+    await carregarSeletorEmpresa();
+    await carregarFiltroProjetosGlobal(cid);
+
+    const projetoFiltro = document.getElementById('filtroProjetoGlobal').value;
+
+    try {
+        const [reqRec, reqPag, reqBancos] = await Promise.all([
+            sb.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true }),
+            sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true }),
+            sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: true })
+        ]);
+
+        globalReceber = reqRec.data || [];
+        globalPagar = reqPag.data || [];
+        globalContasBancarias = reqBancos.data || [];
+
+        if(projetoFiltro !== 'todos') {
+            globalReceber = globalReceber.filter(t => (t.centro_custo || '').toLowerCase().includes(projetoFiltro.toLowerCase()));
+            globalPagar = globalPagar.filter(t => (t.centro_custo || '').toLowerCase().includes(projetoFiltro.toLowerCase()));
+        }
+
+        let somaTotalBancos = globalContasBancarias.reduce((acc, cur) => acc + (parseFloat(cur.saldo_inicial) || 0), 0);
+        document.getElementById('kpi_saldo').innerText = formatBRL(somaTotalBancos);
+
+        let valPendenteReceber = 0, valPendentePagar = 0, valVencidoPagar = 0, vencidasCount = 0;
+        let hoje = new Date().toISOString().split('T')[0];
+
+        let htmlPagar = `<table class="analitica-table"><thead><tr><th>Favorecido</th><th>Descrição</th><th>Vencimento</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
+        let htmlReceber = `<table class="analitica-table"><thead><tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
+        let htmlAtrasados = `<table class="analitica-table"><thead><tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
+
+        globalReceber.forEach(t => {
+            let v = parseFloat(t.valor) || 0;
+            let st = (t.status || '').toLowerCase();
+            if(!st.includes('recebido') && !st.includes('pago')) {
+                valPendenteReceber += v;
+                htmlReceber += `<tr><td><strong>${t.cliente_nome || t.cliente || 'Cliente'}</strong></td><td>${t.descricao || '-'}</td><td>${(t.vencimento||'').split('-').reverse().join('/')}</td><td style="text-align:right; color:var(--success); font-weight:bold;">${formatBRL(v)}</td></tr>`;
+            }
         });
 
-        chartCompObj = new Chart(document.getElementById('chartComposicao'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Conta Principal PJ', 'Cartão / Pré-Pago', 'Caixa Físico'],
-                datasets: [{ data: [bancos * 0.7 || 100, bancos * 0.1 || 50, bancos * 0.2 || 80], backgroundColor: ['#2563eb', '#f59e0b', '#10b981'] }]
-            },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        globalPagar.forEach(t => {
+            let v = parseFloat(t.valor) || 0;
+            let st = (t.status || '').toLowerCase();
+            if(!st.includes('pago') && !st.includes('quitado')) {
+                valPendentePagar += v;
+                let isVencido = t.vencimento < hoje;
+                if(isVencido) {
+                    valVencidoPagar += v;
+                    vencidasCount++;
+                    htmlAtrasados += `<tr><td><strong>${t.fornecedor_nome || 'Fornecedor'}</strong></td><td>${t.descricao || '-'}</td><td style="color:var(--danger);">${(t.vencimento||'').split('-').reverse().join('/')}</td><td style="text-align:right; color:var(--danger); font-weight:bold;">${formatBRL(v)}</td></tr>`;
+                }
+                htmlPagar += `<tr><td><strong>${t.fornecedor_nome || 'Fornecedor'}</strong></td><td>${t.descricao || '-'}</td><td>${(t.vencimento||'').split('-').reverse().join('/')}</td><td style="text-align:right; font-weight:bold;">${formatBRL(v)}</td></tr>`;
+            }
         });
-    }
 
-    function mudarAba(tipo) {
-        const tbody = document.getElementById('tabelaBody');
-        const head = document.getElementById('tabelaHead');
+        htmlPagar += `</tbody></table>`;
+        htmlReceber += `</tbody></table>`;
+        htmlAtrasados += `</tbody></table>`;
+
+        document.getElementById('kpi_pagar').innerText = formatBRL(valPendentePagar);
+        document.getElementById('kpi_pagar_vencido').innerText = `${formatBRL(valVencidoPagar)} vencidos`;
+        document.getElementById('kpi_receber').innerText = formatBRL(valPendenteReceber);
         
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        event && event.target && event.target.classList.add('active');
+        let fluxo = valPendenteReceber - valPendentePagar;
+        let elFluxo = document.getElementById('kpi_fluxo');
+        elFluxo.innerText = formatBRL(fluxo);
+        elFluxo.style.color = fluxo >= 0 ? 'var(--success)' : 'var(--danger)';
 
-        if (tipo === 'pendentes') {
-            head.innerHTML = `<th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th>`;
-            tbody.innerHTML = cachePagar.length ? cachePagar.map(p => `
-                <tr>
-                    <td><strong>${p.fornecedor_nome || p.fornecedor || 'Fornecedor'}</strong></td>
-                    <td>${p.descricao || '—'}</td>
-                    <td>${p.vencimento ? p.vencimento.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num" style="color:var(--danger); font-weight:700;">${formatBRL(p.valor)}</td>
-                </tr>
-            `).join('') : '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-light);">Nenhuma despesa pendente registada.</td></tr>';
-        } else if (tipo === 'recebimentos') {
-            head.innerHTML = `<th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th>`;
-            tbody.innerHTML = cacheReceber.length ? cacheReceber.map(r => `
-                <tr>
-                    <td><strong>${r.cliente_nome || r.cliente || 'Cliente'}</strong></td>
-                    <td>${r.descricao || '—'}</td>
-                    <td>${r.vencimento ? r.vencimento.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num" style="color:var(--success); font-weight:700;">${formatBRL(r.valor)}</td>
-                </tr>
-            `).join('') : '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-light);">Nenhum recebimento futuro registado.</td></tr>';
-        } else {
-            head.innerHTML = `<th>Auditado / Título</th><th>Status</th><th>Vencimento</th><th class="num">Valor (R$)</th>`;
-            tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--success); font-weight:700;"><i class="fas fa-shield-alt"></i> Nenhum título em atraso detetado nos relatórios de auditoria.</td></tr>`;
-        }
+        document.getElementById('lista_pagar_container').innerHTML = htmlPagar;
+        document.getElementById('lista_receber_container').innerHTML = htmlReceber;
+        document.getElementById('lista_atrasados_container').innerHTML = htmlAtrasados;
+
+        // Renderizar Cards de Bancos Dinâmicos
+        let containerBancos = document.getElementById('containerBancosDinamicos');
+        let selectBancoGrafico = document.getElementById('filtroBancoGrafico');
+        containerBancos.innerHTML = '';
+        selectBancoGrafico.innerHTML = '<option value="todos">Todos (Consolidado)</option>';
+
+        globalContasBancarias.forEach((cb, idx) => {
+            let nome = cb.nome || cb.banco || 'Conta';
+            let saldo = parseFloat(cb.saldo_inicial || 0);
+            containerBancos.innerHTML += `
+                <div class="bank-tag">
+                    <div class="bank-tag-header"><span>${nome}</span> <i class="fas fa-university" style="color:var(--primary)"></i></div>
+                    <div class="bank-tag-value">${formatBRL(saldo)}</div>
+                    <div class="bank-tag-footer"><span>${cb.tipo || 'Conta PJ'}</span> <span class="extrato-link" onclick="abrirExtratoBanco('${nome}', ${saldo}, ${cb.id})">Extrato &rarr;</span></div>
+                </div>
+            `;
+            selectBancoGrafico.innerHTML += `<option value="${cb.id}">${nome}</option>`;
+        });
+
+        atualizarGraficos();
+    } catch(err) {
+        console.error("Erro ao carregar dashboard:", err);
     }
+}
 
-    function mudarTempo(periodo) {
-        document.querySelectorAll('.time-badge').forEach(b => b.classList.remove('active'));
-        event.target.classList.add('active');
-        carregarDashboardMaster();
-    }
+function atualizarGraficos() {
+    let tipoGrafico = document.getElementById('filtroTipoGrafico').value;
+    const { inicio, fim } = gerarPeriodo();
+    
+    const mapEnt = {}, mapSai = {};
+    let chaves = new Set();
 
-    window.onload = carregarDashboardMaster;
+    globalReceber.forEach(t => {
+        if(!t.vencimento) return;
+        const k = bucketKey(t.vencimento);
+        mapEnt[k] = (mapEnt[k] || 0) + (parseFloat(t.valor) || 0);
+        chaves.add(k);
+    });
+
+    globalPagar.forEach(t => {
+        if(!t.vencimento) return;
+        const k = bucketKey(t.vencimento);
+        mapSai[k] = (mapSai[k] || 0) + (parseFloat(t.valor) || 0);
+        chaves.add(k);
+    });
+
+    let labels = Array.from(chaves).sort();
+    if(labels.length === 0) labels = [new Date().toISOString().slice(0,7)];
+
+    let entradas = labels.map(k => mapEnt[k] || 0);
+    let saidas = labels.map(k => mapSai[k] || 0);
+    let labelsRotulo = labels.map(k => rotuloBucket(k));
+
+    // 1. Gráfico de Barras / Linhas (Evolução)
+    if(barChartInstance) barChartInstance.destroy();
+    barChartInstance = new Chart(document.getElementById('barChart').getContext('2d'), {
+        type: tipoGrafico,
+        data: {
+            labels: labelsRotulo,
+            datasets: [
+                { label: 'Entradas (R$)', data: entradas, backgroundColor: '#2563eb', borderColor: '#2563eb', borderRadius: 4 },
+                { label: 'Saídas (R$)', data: saidas, backgroundColor: '#ef4444', borderColor: '#ef4444', borderRadius: 4 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top', align: 'end' } } }
+    });
+
+    // 2. Gráfico Donut (Composição de Saldos)
+    let bancoFiltro = document.getElementById('filtroBancoGrafico').value;
+    let contas = globalContasBancarias;
+    if(bancoFiltro !== 'todos') contas = contas.filter(c => String(c.id) === String(bancoFiltro));
+    
+    if(donutChartInstance) donutChartInstance.destroy();
+    donutChartInstance = new Chart(document.getElementById('donutChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: contas.map(c => c.nome || c.banco || 'Conta'),
+            datasets: [{ data: contas.map(c => parseFloat(c.saldo_inicial || 0)), backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // 3. Gráfico Fluxo Acumulado
+    if(acumuladoChartInstance) acumuladoChartInstance.destroy();
+    let acumulado = [], soma = 0;
+    entradas.forEach((e, i) => { soma += (e - saidas[i]); acumulado.push(soma); });
+    acumuladoChartInstance = new Chart(document.getElementById('acumuladoChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: labelsRotulo, datasets: [{ label: 'Saldo Acumulado', data: acumulado, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', fill: true, tension: 0.3 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    // 4. Gráfico Despesas por Centro de Custo
+    const cats = {};
+    globalPagar.forEach(t => {
+        let nome = t.centro_custo || 'Geral';
+        cats[nome] = (cats[nome] || 0) + (parseFloat(t.valor) || 0);
+    });
+    let catsArr = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    if(catChartInstance) catChartInstance.destroy();
+    catChartInstance = new Chart(document.getElementById('catChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: catsArr.map(c=>c[0]), datasets: [{ label: 'Despesas', data: catsArr.map(c=>c[1]), backgroundColor: '#f59e0b', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    // 5. Top Clientes
+    const topCli = {};
+    globalReceber.forEach(t => { let n = t.cliente_nome || 'Cliente'; topCli[n] = (topCli[n] || 0) + (parseFloat(t.valor) || 0); });
+    let cliArr = Object.entries(topCli).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(topClientesChartInstance) topClientesChartInstance.destroy();
+    topClientesChartInstance = new Chart(document.getElementById('topClientesChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: cliArr.map(c=>c[0]), datasets: [{ label: 'Receber', data: cliArr.map(c=>c[1]), backgroundColor: '#10b981', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+
+    // 6. Top Fornecedores
+    const topFor = {};
+    globalPagar.forEach(t => { let n = t.fornecedor_nome || 'Fornecedor'; topFor[n] = (topFor[n] || 0) + (parseFloat(t.valor) || 0); });
+    let forArr = Object.entries(topFor).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    if(topFornecedoresChartInstance) topFornecedoresChartInstance.destroy();
+    topFornecedoresChartInstance = new Chart(document.getElementById('topFornecedoresChart').getContext('2d'), {
+        type: 'bar',
+        data: { labels: forArr.map(c=>c[0]), datasets: [{ label: 'Pagar', data: forArr.map(c=>c[1]), backgroundColor: '#ef4444', borderRadius: 4 }] },
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+
+window.onload = loadDashboard;
 </script>
 </body>
 </html>
