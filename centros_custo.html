@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Centros de Custo — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+        
+        .card-body { display: flex; flex-direction: column; gap: 14px; transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+        .card.recolhido .card-body { display: none; }
+        .card.recolhido { padding-bottom: 24px; }
+        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: transform 0.2s; }
+        .card.recolhido .btn-colapsar i { transform: rotate(-90deg); }
+
+        .form-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;margin-bottom:14px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark);}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669;}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
+        .btn-outline:hover{background:var(--bg);}
+
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        .print-header { display: none; }
+
+        @media print {
+            @page { size: landscape; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .btn-colapsar, .filtro-container-print { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- HEADER SUPERIOR DO PORTAL -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-sitemap"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Gestão de Centros de Custo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <div class="empresa-selector">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 18px; color: #93c5fd;"></i>
+            <span id="userInfo">Usuário</span>
+        </div>
+        <button class="btn-topo sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <!-- FORMULÁRIO DE CADASTRO (RECOLHÍVEL) -->
+    <div class="card recolhido" id="cardFormulario">
+        <div class="card-header" onclick="alternarPainel('cardFormulario')">
+            <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Centro de Custo / Projeto</h3>
+            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div class="card-body">
+            <input type="hidden" id="edit_id">
+            <div class="form-grid">
+                <div>
+                    <label>Código *</label>
+                    <input type="text" id="codigo" class="form-control" placeholder="Ex: 1.01">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Nome / Descrição *</label>
+                    <input type="text" id="nome" class="form-control" placeholder="Nome do Centro de Custo ou Projeto">
+                </div>
+            </div>
+            <div style="margin-top: 10px; display:flex; gap:10px;">
+                <button class="btn btn-primary" id="btnSalvar" onclick="salvarCentroCusto()"><i class="fas fa-save"></i> Salvar Centro de Custo</button>
+                <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RELATÓRIO & DIRETÓRIO DE CENTROS DE CUSTO (RECOLHÍVEL) -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Sacramento ERP — Relatório Operacional: Centros de Custo & Projetos</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Emitido por: <span id="printUsuarioNome">Sistema</span></p>
+        </div>
+        <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
+            <h3><i class="fas fa-sitemap"></i> Diretório de Centros de Custo</h3>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="filtro-container-print" style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
+                <div style="flex:1;">
+                    <label>Pesquisar Centro de Custo</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Digite para filtrar por código ou nome..." oninput="filtrarTabela()">
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="limparFiltro()"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Código</th><th>Nome / Descrição</th><th>Data de Registo</th><th style="text-align:right;">Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyCentrosCusto">
+                        <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">A carregar centros de custo...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let cacheCentros = [];
+
+function alternarPainel(idCard) {
+    const card = document.getElementById(idCard);
+    if(card) card.classList.toggle('recolhido');
+}
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarSeletorEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    try {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        if(!data) return;
+        select.innerHTML = '';
+        data.forEach(emp => {
+            const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = nomeEmp;
+            select.appendChild(opt);
+        });
+        const cid = clienteIdAtual();
+        if(cid) select.value = cid;
+    } catch(e) {}
+}
+
+function trocarEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    location.reload();
+}
+
+function sair() {
+    if (confirm('Deseja realmente sair do sistema?')) { 
+        localStorage.removeItem('usuarioLogado'); 
+        localStorage.removeItem('empresaSelecionada'); 
+        location.href = 'login.html'; 
+    }
+}
+
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+async function carregarCentrosCusto() {
+    const { data, error } = await sbFiltroLeitura('centros_custo').order('id', { ascending: false });
+    if(error) {
+        document.getElementById('tbodyCentrosCusto').innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger); padding:20px;">Erro ao carregar dados.</td></tr>`;
+        return;
+    }
+    cacheCentros = data || [];
+    renderizarTabela(cacheCentros);
+}
+
+function renderizarTabela(lista) {
+    const tbody = document.getElementById('tbodyCentrosCusto');
+    tbody.innerHTML = '';
+    if(!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum centro de custo registado.</td></tr>`;
+        return;
+    }
+    lista.forEach(cc => {
+        let dataReg = cc.created_at ? cc.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>#${cc.id}</strong></td>
+                <td><code>${cc.codigo || '-'}</code></td>
+                <td><strong>${cc.nome || cc.descricao || '-'}</strong></td>
+                <td>${dataReg}</td>
+                <td style="text-align:right;">
+                    <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="editarCentroCusto(${cc.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn" style="padding:4px 8px; font-size:11px; background:#fee2e2; color:#b91c1c;" onclick="excluirCentroCusto(${cc.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function filtrarTabela() {
+    let termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
+    let filtrados = cacheCentros.filter(cc => {
+        let linha = ((cc.codigo || '') + ' ' + (cc.nome || cc.descricao || '')).toLowerCase();
+        return linha.includes(termo);
+    });
+    renderizarTabela(filtrados);
+}
+
+function limparFiltro() {
+    document.getElementById('filtroBusca').value = '';
+    renderizarTabela(cacheCentros);
+}
+
+async function salvarCentroCusto() {
+    const id = document.getElementById('edit_id').value;
+    const codigo = document.getElementById('codigo').value.trim();
+    const nome = document.getElementById('nome').value.trim();
+
+    if(!codigo || !nome) {
+        toast("Preencha o código e o nome do centro de custo!", "error");
+        return;
+    }
+
+    let payload = {
+        codigo: codigo,
+        nome: nome,
+        descricao: nome,
+        cliente_id: clienteIdAtual()
+    };
+
+    let res;
+    if(id) {
+        res = await sb.from('centros_custo').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('centros_custo').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar: " + res.error.message, "error");
+        return;
+    }
+
+    toast(id ? "Centro de custo atualizado com sucesso!" : "Centro de custo registado com sucesso!");
+    cancelarEdicao();
+    carregarCentrosCusto();
+}
+
+window.editarCentroCusto = function(id) {
+    let cc = cacheCentros.find(x => String(x.id) === String(id));
+    if(!cc) return;
+    document.getElementById('edit_id').value = cc.id;
+    document.getElementById('codigo').value = cc.codigo || '';
+    document.getElementById('nome').value = cc.nome || cc.descricao || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Centro de Custo (#${cc.id})`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Centro de Custo';
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    
+    const cardForm = document.getElementById('cardFormulario');
+    if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function cancelarEdicao() {
+    document.getElementById('edit_id').value = '';
+    document.getElementById('codigo').value = '';
+    document.getElementById('nome').value = '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-plus-circle"></i> Novo Centro de Custo / Projeto`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Centro de Custo';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+window.excluirCentroCusto = async function(id) {
+    if(confirm("Deseja realmente excluir este centro de custo?")) {
+        const { error } = await sb.from('centros_custo').delete().eq('id', id);
+        if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
+        toast("Centro de custo removido com sucesso!");
+        carregarCentrosCusto();
+    }
+}
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    var elUser = document.getElementById('userInfo');
+    let nomeUsuario = u.nome || u.email || 'Usuário';
+    if (elUser) elUser.innerText = nomeUsuario.split(' ')[0];
+    document.getElementById('printUsuarioNome').innerText = nomeUsuario;
+    await carregarSeletorEmpresa();
+    await carregarCentrosCusto();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
