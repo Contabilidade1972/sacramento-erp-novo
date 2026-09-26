@@ -3,475 +3,190 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sacramento ERP — Gestão Empresarial</title>
+    <title>Sacramento ERP — Portal Corporativo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --primary: #2563eb;
-            --primary-light: #eff6ff;
+            --primary-dark: #1d4ed8;
             --secondary: #1e3a8a;
             --success: #10b981;
             --danger: #ef4444;
-            --warning: #f59e0b;
             --bg: #f8fafc;
             --card: #ffffff;
             --text-main: #0f172a;
             --text-light: #64748b;
             --border: #e2e8f0;
-            --sidebar-bg: #0b1329;
-            --sidebar-text: #94a3b8;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); display: flex; min-height: 100vh; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* --- MENU LATERAL --- */
-        .sidebar {
-            width: 270px; background: var(--sidebar-bg); color: var(--sidebar-text);
-            position: fixed; top: 0; left: 0; height: 100vh; display: flex; flex-direction: column;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.05); z-index: 1000; overflow-y: auto;
+        /* HEADER DO SITE */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
         }
-        .sidebar-brand {
-            padding: 24px 20px; display: flex; align-items: center; gap: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-        .brand-icon {
-            width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 10px;
-            display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px;
-            box-shadow: 0 4px 12px rgba(37,99,235,0.4);
-        }
-        .brand-text h1 { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.2; }
-        .brand-text span { font-size: 9px; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+        .brand-info h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
-        .sidebar-menu { padding: 20px 12px; display: flex; flex-direction: column; gap: 6px; }
-        .menu-label { font-size: 10px; text-transform: uppercase; color: #475569; font-weight: 700; padding: 12px 12px 6px; letter-spacing: 0.8px; }
-        .menu-item {
-            padding: 11px 14px; border-radius: 10px; color: var(--sidebar-text); text-decoration: none;
-            display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 500; transition: all 0.2s ease; cursor: pointer;
-        }
-        .menu-item i { font-size: 14px; width: 20px; text-align: center; color: #64748b; transition: color 0.2s; }
-        .menu-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
-        .menu-item:hover i { color: #3b82f6; }
-        .menu-item.active { background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; font-weight: 600; box-shadow: 0 4px 15px rgba(37,99,235,0.35); }
-        .menu-item.active i { color: #fff; }
+        .site-nav-right { display: flex; align-items: center; gap: 20px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
 
-        /* --- CONTEÚDO PRINCIPAL --- */
-        .main-content { margin-left: 270px; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        /* CONTAINER DOS CARDS DINÂMICOS (ESTILO WEBDFE) */
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; }
+        .welcome-box { margin-bottom: 32px; }
+        .welcome-box h2 { font-size: 24px; font-weight: 800; color: var(--secondary); margin-bottom: 6px; }
+        .welcome-box p { font-size: 14px; color: var(--text-light); }
 
-        .top-header {
-            height: 70px; background: var(--card); border-bottom: 1px solid var(--border);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 36px;
-            position: sticky; top: 0; z-index: 900; box-shadow: 0 1px 3px rgba(0,0,0,0.02);
-        }
-        .header-title { font-size: 18px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
         
-        .header-right { display: flex; align-items: center; gap: 20px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: var(--secondary); cursor: pointer; outline: none; }
-        .user-profile { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; color: var(--text-main); }
-        .user-avatar { width: 34px; height: 34px; background: var(--primary-light); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
-
-        .page-body { padding: 36px; display: flex; flex-direction: column; gap: 28px; }
-        
-        .view-section { display: none; flex-direction: column; gap: 24px; }
-        .view-section.ativo { display: flex; }
-
-        .hero-banner {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); color: #fff;
-            border-radius: 20px; padding: 40px; box-shadow: 0 15px 30px -10px rgba(15,23,42,0.25);
-            display: flex; justify-content: space-between; align-items: center; position: relative; overflow: hidden;
-        }
-        .hero-text h2 { font-size: 26px; font-weight: 800; margin-bottom: 10px; letter-spacing: -0.5px; }
-        .hero-text p { font-size: 14px; opacity: 0.8; max-width: 550px; line-height: 1.6; }
-        .hero-icon-bg { position: absolute; right: -20px; bottom: -20px; font-size: 180px; color: rgba(255,255,255,0.03); pointer-events: none; }
-
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
-        .kpi-card {
+        .portal-card {
             background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 28px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px;
+            display: flex; flex-direction: column; gap: 16px; text-decoration: none; color: var(--text-main);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02); transition: all 0.25s ease; position: relative; overflow: hidden;
         }
-        .kpi-top { display: flex; justify-content: space-between; align-items: center; color: var(--text-light); font-size: 13px; font-weight: 600; }
-        .kpi-icon-box { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-        .kpi-number { font-size: 30px; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
-        .kpi-footer { font-size: 11px; font-weight: 600; color: var(--success); display: flex; align-items: center; gap: 6px; }
-
-        .filter-bar {
-            background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px;
-            display: flex; gap: 14px; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap;
+        .portal-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: var(--primary);
+            transition: height 0.2s ease;
         }
-        .filter-group { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
-        .filter-group input, .filter-group select {
-            height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--card); color: var(--text-main); outline: none;
-        }
-        .filter-group input:focus, .filter-group select:focus { border-color: var(--primary); }
+        .portal-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(37,99,235,0.1); border-color: var(--primary); }
+        .portal-card:hover::before { height: 8px; }
 
-        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .table-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-        
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; }
-        .btn-acao:hover { background: #1d4ed8; }
+        .card-icon-title { display: flex; align-items: center; gap: 14px; }
+        .card-ico { width: 48px; height: 48px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        .card-title h3 { font-size: 16px; font-weight: 700; color: var(--secondary); }
+        .card-title span { font-size: 11px; color: var(--text-light); font-weight: 600; text-transform: uppercase; }
+        .card-desc { font-size: 13px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .card-footer { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
 
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tbody tr:hover { background: #f8fafc; }
-        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
-        .num { text-align: right; }
-        
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
-        .badge.cliente { background: #dbeafe; color: #1d4ed8; }
-        .badge.fornecedor { background: #fef3c7; color: #b45309; }
-        .badge.prestador { background: #d1fae5; color: #065f46; }
-
-        .btn-icon { background: transparent; border: none; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.15s; display: inline-flex; align-items: center; justify-content: center; }
-        .btn-icon:hover { background: var(--bg); color: var(--primary); }
-        .btn-icon.excluir:hover { color: var(--danger); }
-
-        .print-header { display: none; }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-overlay.ativo { display: flex; }
-        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
-
-        @media print {
-            .sidebar, .top-header, .table-header-actions, .filter-bar, .btn-acao, .search-input, .btn-icon, .modal-overlay, .col-acoes { display: none !important; }
-            .main-content { margin-left: 0 !important; width: 100% !important; padding: 0 !important; }
-            body { background: #fff !important; color: #000 !important; }
-            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
-            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { border-bottom: 1px solid #e2e8f0 !important; color: #1e293b !important; }
-            .view-section { display: none !important; }
-            .view-section.ativo { display: block !important; }
-            
-            .print-header {
-                display: block !important;
-                border-bottom: 2px solid #1e3a8a;
-                padding-bottom: 15px;
-                margin-bottom: 20px;
-            }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
-        }
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
 
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-icon"><i class="fas fa-cube"></i></div>
-        <div class="brand-text">
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
             <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
+            <span>Portal de Gestão Empresarial</span>
         </div>
     </div>
-    <div class="sidebar-menu">
-        <div class="menu-label">Principal</div>
-        <a class="menu-item active" id="menuDashboard" onclick="mudarView('dashboard')"><i class="fas fa-chart-pie"></i> Dashboard</a>
-        <a class="menu-item" id="menuDocumentos" onclick="mudarView('documentos')"><i class="fas fa-file-invoice"></i> Documentos (XML)</a>
+    <div class="site-nav-right">
+        <div class="empresa-selector">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 18px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="welcome-box">
+        <h2>Painel Principal de Módulos</h2>
+        <p>Selecione abaixo o módulo desejado para abrir o painel operacional completo com relatórios, filtros e base editável.</p>
+    </div>
+
+    <div class="cards-grid">
         
-        <div class="menu-label">Cadastros</div>
-        <a class="menu-item" id="menuParceiros" onclick="mudarView('parceiros')"><i class="fas fa-address-book" style="color: #3b82f6;"></i> Parceiros / Clientes</a>
-
-        <div class="menu-label">Financeiro & Fiscal</div>
-        <a class="menu-item" id="menuPagar" onclick="mudarView('pagar')"><i class="fas fa-arrow-up" style="color: #ef4444;"></i> Contas a Pagar</a>
-        <a class="menu-item" id="menuReceber" onclick="mudarView('receber')"><i class="fas fa-arrow-down" style="color: #10b981;"></i> Contas a Receber</a>
-        <a class="menu-item" id="menuBancos" onclick="mudarView('bancos')"><i class="fas fa-wallet"></i> Contas Bancárias</a>
-        <a class="menu-item" id="menuFluxo" onclick="mudarView('fluxo')"><i class="fas fa-chart-line" style="color: #3b82f6;"></i> Fluxo de Caixa</a>
-        <a class="menu-item" id="menuDre" onclick="mudarView('dre')"><i class="fas fa-file-invoice-dollar" style="color: #8b5cf6;"></i> DRE Gerencial</a>
-    </div>
-</aside>
-
-<main class="main-content">
-    <header class="top-header">
-        <div class="header-title" id="headerTitleText">
-            <i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo
-        </div>
-        <div class="header-right">
-            <div class="empresa-selector">
-                <i class="fas fa-building" style="color: var(--primary);"></i>
-                <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-            </div>
-            <div class="user-profile">
-                <div class="user-avatar" id="userInitial">L</div>
-                <span id="userName">Carregando...</span>
-            </div>
-        </div>
-    </header>
-
-    <div class="page-body">
-        
-        <!-- DASHBOARD -->
-        <section id="viewDashboard" class="view-section ativo">
-            <div class="hero-banner">
-                <div class="hero-text">
-                    <h2>Painel de Gestão Integrada</h2>
-                    <p>Bem-vindo ao novo ambiente de alta performance do Sacramento ERP. Navegue pelos módulos com total fluidez, segurança e controle centralizado das suas operações.</p>
-                </div>
-                <i class="fas fa-shield-alt hero-icon-bg"></i>
-            </div>
-
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-top">
-                        <span>Documentos Recebidos (XML)</span>
-                        <div class="kpi-icon-box" style="background: var(--primary-light); color: var(--primary);"><i class="fas fa-file-alt"></i></div>
-                    </div>
-                    <div class="kpi-number" id="kpiDocs">Carregando...</div>
-                    <div class="kpi-footer"><i class="fas fa-check-circle"></i> Sincronizado com Supabase</div>
-                </div>
-                
-                <div class="kpi-card">
-                    <div class="kpi-top">
-                        <span>Contas a Pagar Pendentes</span>
-                        <div class="kpi-icon-box" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-file-invoice-dollar"></i></div>
-                    </div>
-                    <div class="kpi-number" id="kpiPagar" style="color: #ef4444;">Carregando...</div>
-                    <div class="kpi-footer" style="color: #ef4444;"><i class="fas fa-exclamation-circle"></i> Faturas em aberto</div>
-                </div>
-                
-                <div class="kpi-card">
-                    <div class="kpi-top">
-                        <span>Contas a Receber Pendentes</span>
-                        <div class="kpi-icon-box" style="background: #d1fae5; color: #10b981;"><i class="fas fa-hand-holding-usd"></i></div>
-                    </div>
-                    <div class="kpi-number" id="kpiReceber" style="color: #10b981;">Carregando...</div>
-                    <div class="kpi-footer" style="color: #10b981;"><i class="fas fa-arrow-down"></i> Projeção de entradas</div>
+        <!-- CARD 1: PARCEIROS -->
+        <a href="parceiros.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #eff6ff; color: #2563eb;"><i class="fas fa-address-book"></i></div>
+                <div class="card-title">
+                    <h3>Parceiros</h3>
+                    <span>Cadastros</span>
                 </div>
             </div>
-        </section>
+            <div class="card-desc">Gestão unificada de clientes, fornecedores e prestadores com suporte a dados cadastrais.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
-        <!-- PARCEIROS / CLIENTES -->
-        <section id="viewParceiros" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Parceiros e Clientes</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+        <!-- CARD 2: DOCUMENTOS (XML) -->
+        <a href="documentos.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #fef3c7; color: #b45309;"><i class="fas fa-file-invoice"></i></div>
+                <div class="card-title">
+                    <h3>Documentos XML</h3>
+                    <span>Fiscal</span>
                 </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Cadastro de Parceiros</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gestão unificada de clientes, fornecedores e prestadores.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa por Nome ou CNPJ/CPF</span><input type="text" id="filtroParceirosTexto" placeholder="Digite para filtrar..." oninput="filtrarTabela('parceiros')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('parceiros')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Nome / Razão Social</th><th>CNPJ / CPF</th><th>Categoria / Tipo</th><th>E-mail</th><th>Telefone</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyParceiros">
-                        <tr><td colspan="6" class="vazio">Carregando parceiros...</td></tr>
-                    </tbody>
-                </table>
             </div>
-        </section>
+            <div class="card-desc">Importação, leitura e gestão automática de Notas Fiscais (NF-e) e CT-es.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
-        <!-- DOCUMENTOS -->
-        <section id="viewDocumentos" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Documentos Fiscais Recebidos</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+        <!-- CARD 3: CONTAS A PAGAR -->
+        <a href="contas_pagar.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #fee2e2; color: #ef4444;"><i class="fas fa-arrow-up"></i></div>
+                <div class="card-title">
+                    <h3>Contas a Pagar</h3>
+                    <span>Financeiro</span>
                 </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group"><span>Data Início</span><input type="date" id="filtroDocsInicio" onchange="filtrarTabela('docs')"></div>
-                    <div class="filter-group"><span>Data Fim</span><input type="date" id="filtroDocsFim" onchange="filtrarTabela('docs')"></div>
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa</span><input type="text" id="filtroDocsTexto" placeholder="Emitente ou número..." oninput="filtrarTabela('docs')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('docs')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyDocs">
-                        <tr><td colspan="6" class="vazio">Carregando documentos...</td></tr>
-                    </tbody>
-                </table>
             </div>
-        </section>
+            <div class="card-desc">Controle de despesas, faturas em aberto, fornecedores e baixa de títulos.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
-        <!-- CONTAS A PAGAR -->
-        <section id="viewPagar" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Contas a Pagar</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+        <!-- CARD 4: CONTAS A RECEBER -->
+        <a href="contas_receber.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #d1fae5; color: #10b981;"><i class="fas fa-arrow-down"></i></div>
+                <div class="card-title">
+                    <h3>Contas a Receber</h3>
+                    <span>Financeiro</span>
                 </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Pagar</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de despesas e fornecedores.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group"><span>Vencimento De</span><input type="date" id="filtroPagarInicio" onchange="filtrarTabela('pagar')"></div>
-                    <div class="filter-group"><span>Vencimento Até</span><input type="date" id="filtroPagarFim" onchange="filtrarTabela('pagar')"></div>
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa</span><input type="text" id="filtroPagarTexto" placeholder="Fornecedor ou descrição..." oninput="filtrarTabela('pagar')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('pagar')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Fornecedor</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyPagar">
-                        <tr><td colspan="6" class="vazio">Carregando contas a pagar...</td></tr>
-                    </tbody>
-                </table>
             </div>
-        </section>
+            <div class="card-desc">Projeção e controle de recebimentos, faturas de clientes e títulos pendentes.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
-        <!-- CONTAS A RECEBER -->
-        <section id="viewReceber" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Contas a Receber</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+        <!-- CARD 5: CONTAS BANCÁRIAS -->
+        <a href="contas_bancarias.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #f3e8ff; color: #9333ea;"><i class="fas fa-wallet"></i></div>
+                <div class="card-title">
+                    <h3>Contas Bancárias</h3>
+                    <span>Tesouraria</span>
                 </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas a Receber</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Controle de recebimentos e clientes.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group"><span>Vencimento De</span><input type="date" id="filtroReceberInicio" onchange="filtrarTabela('receber')"></div>
-                    <div class="filter-group"><span>Vencimento Até</span><input type="date" id="filtroReceberFim" onchange="filtrarTabela('receber')"></div>
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa</span><input type="text" id="filtroReceberTexto" placeholder="Cliente ou descrição..." oninput="filtrarTabela('receber')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('receber')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyReceber">
-                        <tr><td colspan="6" class="vazio">Carregando contas a receber...</td></tr>
-                    </tbody>
-                </table>
             </div>
-        </section>
+            <div class="card-desc">Gestão de saldos, contas correntes e instituições financeiras ativas.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
-        <!-- CONTAS BANCÁRIAS -->
-        <section id="viewBancos" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Contas Bancárias / Caixa</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
+        <!-- CARD 6: FLUXO DE CAIXA -->
+        <a href="fluxo_caixa.html" class="portal-card">
+            <div class="card-icon-title">
+                <div class="card-ico" style="background: #e0f2fe; color: #0284c7;"><i class="fas fa-chart-line"></i></div>
+                <div class="card-title">
+                    <h3>Fluxo de Caixa</h3>
+                    <span>Gerencial</span>
                 </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Contas Bancárias / Caixa</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Saldos e instituições financeiras.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa</span><input type="text" id="filtroBancosTexto" placeholder="Nome do banco ou conta..." oninput="filtrarTabela('bancos')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('bancos')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Banco / Conta</th><th>Tipo</th><th>Titularidade</th><th class="num">Saldo Inicial (R$)</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyBancos">
-                        <tr><td colspan="5" class="vazio">Carregando contas bancárias...</td></tr>
-                    </tbody>
-                </table>
             </div>
-        </section>
-
-        <!-- FLUXO DE CAIXA -->
-        <section id="viewFluxo" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>Relatório de Fluxo de Caixa</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
-                </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Fluxo de Caixa Consolidado</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Projeção e resumo de entradas e saídas.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir Fluxo</button>
-                </div>
-                <div class="filter-bar">
-                    <div class="filter-group"><span>Data De</span><input type="date" id="filtroFluxoInicio" onchange="filtrarTabela('fluxo')"></div>
-                    <div class="filter-group"><span>Data Até</span><input type="date" id="filtroFluxoFim" onchange="filtrarTabela('fluxo')"></div>
-                    <div class="filter-group" style="flex:1;"><span>Pesquisa</span><input type="text" id="filtroFluxoTexto" placeholder="Histórico..." oninput="filtrarTabela('fluxo')"></div>
-                    <button class="btn-acao" style="height:36px;" onclick="limparFiltros('fluxo')">Limpar</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Descrição / Histórico</th><th>Tipo</th><th>Vencimento</th><th class="num">Entradas (R$)</th><th class="num">Saídas (R$)</th></tr>
-                    </thead>
-                    <tbody id="tbodyFluxo">
-                        <tr><td colspan="5" class="vazio">A calcular fluxo de caixa...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <!-- DRE GERENCIAL -->
-        <section id="viewDre" class="view-section">
-            <div class="card-table">
-                <div class="print-header">
-                    <h2>DRE Gerencial</h2>
-                    <p>Empresa: <span class="printEmpresaNome">--</span> | Emitido em: <span class="printDataHora">--</span></p>
-                </div>
-                <div class="table-header-actions">
-                    <div>
-                        <h3 style="font-size:16px; font-weight:700; color:var(--secondary);">Demonstração do Resultado do Exercício</h3>
-                        <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Apuração gerencial de receitas, custos e despesas.</p>
-                    </div>
-                    <button class="btn-acao" onclick="prepararImpressao()"><i class="fas fa-print"></i> Imprimir DRE</button>
-                </div>
-                <table>
-                    <thead>
-                        <tr><th>Indicador / Conta</th><th class="num">Valor Consolidado (R$)</th></tr>
-                    </thead>
-                    <tbody id="tbodyDre">
-                        <tr><td colspan="2" class="vazio">A calcular DRE gerencial...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </section>
+            <div class="card-desc">Consolidado dinâmico de entradas, saídas e saldo projetado por período.</div>
+            <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+        </a>
 
     </div>
-</main>
-
-<!-- MODAL DETALHES -->
-<div class="modal-overlay" id="modalDetalhes">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-info-circle"></i> Detalhes do Registo</h3>
-      <button onclick="fecharDetalhes()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
-    </div>
-    <div id="conteudoDetalhes" style="font-size:13px; line-height:1.6; color:var(--text-main); margin-bottom:20px;"></div>
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <button onclick="imprimirModal()" class="btn-acao" style="background:var(--success);"><i class="fas fa-print"></i> Imprimir Este Item</button>
-      <button onclick="fecharDetalhes()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Fechar</button>
-    </div>
-  </div>
 </div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    let cacheDocs = [], cachePagar = [], cacheReceber = [], cacheBancos = [], cacheFluxo = [], cacheParceiros = [];
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -484,106 +199,12 @@
         return (u && u.cliente_id) ? u.cliente_id : null;
     }
 
-    function formatBRL(v) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
-    }
-
-    function prepararImpressao() {
-        const select = document.getElementById('selectEmpresa');
-        const nomeEmpresa = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Empresa';
-        const agora = new Date().toLocaleString('pt-BR');
-
-        document.querySelectorAll('.printEmpresaNome').forEach(el => el.innerText = nomeEmpresa);
-        document.querySelectorAll('.printDataHora').forEach(el => el.innerText = agora);
-
-        window.print();
-    }
-
-    function imprimirModal() {
-        const conteudo = document.getElementById('conteudoDetalhes').innerHTML;
-        const select = document.getElementById('selectEmpresa');
-        const nomeEmpresa = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Empresa';
-        const agora = new Date().toLocaleString('pt-BR');
-
-        const janela = window.open('', '_blank', 'width=700,height=600');
-        janela.document.write(`
-            <html>
-            <head>
-                <title>Comprovativo / Detalhe — Sacramento ERP</title>
-                <style>
-                    body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
-                    h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
-                    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
-                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-                </style>
-            </head>
-            <body>
-                <h2>Comprovativo de Registo — ${nomeEmpresa}</h2>
-                <div class="info-box">${conteudo}</div>
-                <div class="footer">Emitido em: ${agora} via Sacramento ERP</div>
-                <script>window.print();<\/script>
-            </body>
-            </html>
-        `);
-        janela.document.close();
-    }
-
-    function mudarView(view) {
-        document.querySelectorAll('.view-section').forEach(el => el.classList.remove('ativo'));
-        document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-        
-        if (view === 'dashboard') {
-            document.getElementById('viewDashboard').classList.add('ativo');
-            document.getElementById('menuDashboard').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-desktop" style="color: var(--primary);"></i> Dashboard Executivo';
-            carregarDadosDashboard();
-        } else if (view === 'parceiros') {
-            document.getElementById('viewParceiros').classList.add('ativo');
-            document.getElementById('menuParceiros').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-address-book" style="color: #3b82f6;"></i> Cadastro de Parceiros / Clientes';
-            carregarParceirosTabela();
-        } else if (view === 'documentos') {
-            document.getElementById('viewDocumentos').classList.add('ativo');
-            document.getElementById('menuDocumentos').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-file-invoice" style="color: var(--primary);"></i> Documentos Fiscais Recebidos';
-            carregarDocumentosTabela();
-        } else if (view === 'pagar') {
-            document.getElementById('viewPagar').classList.add('ativo');
-            document.getElementById('menuPagar').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-arrow-up" style="color: var(--danger);"></i> Contas a Pagar';
-            carregarPagarTabela();
-        } else if (view === 'receber') {
-            document.getElementById('viewReceber').classList.add('ativo');
-            document.getElementById('menuReceber').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-arrow-down" style="color: var(--success);"></i> Contas a Receber';
-            carregarReceberTabela();
-        } else if (view === 'bancos') {
-            document.getElementById('viewBancos').classList.add('ativo');
-            document.getElementById('menuBancos').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-wallet" style="color: var(--primary);"></i> Contas Bancárias / Caixa';
-            carregarBancosTabela();
-        } else if (view === 'fluxo') {
-            document.getElementById('viewFluxo').classList.add('ativo');
-            document.getElementById('menuFluxo').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-chart-line" style="color: #3b82f6;"></i> Fluxo de Caixa Consolidado';
-            carregarFluxoCaixa();
-        } else if (view === 'dre') {
-            document.getElementById('viewDre').classList.add('ativo');
-            document.getElementById('menuDre').classList.add('active');
-            document.getElementById('headerTitleText').innerHTML = '<i class="fas fa-file-invoice-dollar" style="color: #8b5cf6;"></i> DRE Gerencial';
-            carregarDreGerencial();
-        }
-    }
-
     async function inicializar() {
         const u = obterUsuarioAtual();
         if (u) {
-            const nome = u.nome || u.email || 'Usuário';
-            document.getElementById('userName').innerText = nome.split(' ')[0];
-            document.getElementById('userInitial').innerText = nome.charAt(0).toUpperCase();
+            document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
         }
         await carregarSeletorEmpresa();
-        await carregarDadosDashboard();
     }
 
     async function carregarSeletorEmpresa() {
@@ -609,514 +230,6 @@
         const select = document.getElementById('selectEmpresa');
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
-        carregarDadosDashboard();
-        if (document.getElementById('viewParceiros').classList.contains('ativo')) carregarParceirosTabela();
-        if (document.getElementById('viewDocumentos').classList.contains('ativo')) carregarDocumentosTabela();
-        if (document.getElementById('viewPagar').classList.contains('ativo')) carregarPagarTabela();
-        if (document.getElementById('viewReceber').classList.contains('ativo')) carregarReceberTabela();
-        if (document.getElementById('viewBancos').classList.contains('ativo')) carregarBancosTabela();
-        if (document.getElementById('viewFluxo').classList.contains('ativo')) carregarFluxoCaixa();
-        if (document.getElementById('viewDre').classList.contains('ativo')) carregarDreGerencial();
-    }
-
-    async function carregarDadosDashboard() {
-        const cid = clienteIdAtual();
-        if (!cid) return;
-
-        try {
-            const { count: countDocs } = await sb.from('documentos_recebidos').select('*', { count: 'exact', head: true }).eq('cliente_id', cid);
-            document.getElementById('kpiDocs').innerText = (countDocs || 0) + ' Notas';
-
-            const { data: pagarData } = await sb.from('contas_pagar').select('valor, status').eq('cliente_id', cid);
-            let totalPagar = 0;
-            (pagarData || []).forEach(t => {
-                const st = (t.status || '').toLowerCase();
-                if (!st.includes('pago') && !st.includes('quitado')) totalPagar += parseFloat(t.valor) || 0;
-            });
-            document.getElementById('kpiPagar').innerText = formatBRL(totalPagar);
-
-            const { data: receberData } = await sb.from('contas_receber').select('valor, status').eq('cliente_id', cid);
-            let totalReceber = 0;
-            (receberData || []).forEach(t => {
-                const st = (t.status || '').toLowerCase();
-                if (!st.includes('recebido') && !st.includes('pago')) totalReceber += parseFloat(t.valor) || 0;
-            });
-            document.getElementById('kpiReceber').innerText = formatBRL(totalReceber);
-        } catch(err) { console.error("Erro no dashboard:", err); }
-    }
-
-    async function carregarParceirosTabela() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyParceiros');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        const { data, error } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('nome', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
-
-        cacheParceiros = data || [];
-        renderizarParceiros(cacheParceiros);
-    }
-
-    function renderizarParceiros(lista) {
-        const tbody = document.getElementById('tbodyParceiros');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum parceiro encontrado.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(p => {
-            const cat = (p.tipo || p.categoria || 'Cliente').toLowerCase();
-            const badgeClass = cat.includes('fornecedor') ? 'fornecedor' : (cat.includes('prestador') ? 'prestador' : 'cliente');
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${p.nome || p.razao_social || '—'}</strong></td>
-                    <td>${p.cnpj_cpf || '—'}</td>
-                    <td><span class="badge ${badgeClass}">${p.tipo || p.categoria || 'Cliente'}</span></td>
-                    <td>${p.email || '—'}</td>
-                    <td>${p.telefone || '—'}</td>
-                    <td style="text-align:center;" class="col-acoes">
-                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesParceiro('${p.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoParceiro('${p.id}')"><i class="fas fa-print"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarDocumentosTabela() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyDocs');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        const { data, error } = await sb.from('documentos_recebidos').select('*').eq('cliente_id', cid).order('data_emissao', { ascending: false });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
-
-        cacheDocs = data || [];
-        renderizarDocumentos(cacheDocs);
-    }
-
-    function renderizarDocumentos(lista) {
-        const tbody = document.getElementById('tbodyDocs');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum documento encontrado.</td></tr>'; return; }
-        
-        tbody.innerHTML = '';
-        lista.forEach(d => {
-            tbody.innerHTML += `
-                <tr>
-                    <td><span class="badge" style="background:#dbeafe; color:#1d4ed8;">${d.tipo || 'NF-e'}</span></td>
-                    <td><strong>${d.numero || '—'}</strong></td>
-                    <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num">${formatBRL(d.valor_total)}</td>
-                    <td>${d.emitente_nome || '—'}</td>
-                    <td style="text-align:center;" class="col-acoes">
-                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesDoc('${d.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoDoc('${d.id}')"><i class="fas fa-print"></i></button>
-                        <button class="btn-icon excluir" title="Excluir" onclick="excluirDoc('${d.id}')"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarPagarTabela() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyPagar');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
-
-        cachePagar = data || [];
-        renderizarPagar(cachePagar);
-    }
-
-    function renderizarPagar(lista) {
-        const tbody = document.getElementById('tbodyPagar');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta encontrada.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(t => {
-            const st = (t.status || 'pendente').toLowerCase();
-            const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
-                    <td>${t.descricao || '—'}</td>
-                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num">${formatBRL(t.valor)}</td>
-                    <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
-                    <td style="text-align:center;" class="col-acoes">
-                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesPagar('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoPagar('${t.id}')"><i class="fas fa-print"></i></button>
-                        <button class="btn-icon excluir" title="Excluir" onclick="excluirPagar('${t.id}')"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarReceberTabela() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyReceber');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        const { data, error } = await sb.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro: ${error.message}</td></tr>`; return; }
-
-        cacheReceber = data || [];
-        renderizarReceber(cacheReceber);
-    }
-
-    function renderizarReceber(lista) {
-        const tbody = document.getElementById('tbodyReceber');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum recebimento encontrado.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(t => {
-            const st = (t.status || 'pendente').toLowerCase();
-            const badgeClass = st.includes('recebido') || st.includes('pago') ? 'recebido' : 'pendente';
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${t.cliente_nome || t.cliente || 'Cliente'}</strong></td>
-                    <td>${t.descricao || '—'}</td>
-                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num">${formatBRL(t.valor)}</td>
-                    <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
-                    <td style="text-align:center;" class="col-acoes">
-                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesReceber('${t.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoReceber('${t.id}')"><i class="fas fa-print"></i></button>
-                        <button class="btn-icon excluir" title="Excluir" onclick="excluirReceber('${t.id}')"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarBancosTabela() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyBancos');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        const { data, error } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro: ${error.message}</td></tr>`; return; }
-
-        cacheBancos = data || [];
-        renderizarBancos(cacheBancos);
-    }
-
-    function renderizarBancos(lista) {
-        const tbody = document.getElementById('tbodyBancos');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhuma conta bancária cadastrada.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(cb => {
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${cb.nome || cb.banco || 'Conta'}</strong></td>
-                    <td>${cb.tipo || 'Conta PJ'}</td>
-                    <td>${cb.titularidade || 'Empresa'}</td>
-                    <td class="num">${formatBRL(cb.saldo_inicial)}</td>
-                    <td style="text-align:center;" class="col-acoes">
-                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhesBanco('${cb.id}')"><i class="fas fa-eye"></i></button>
-                        <button class="btn-icon" title="Imprimir Este Item" onclick="imprimirItemDiretoBanco('${cb.id}')"><i class="fas fa-print"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarFluxoCaixa() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyFluxo');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        try {
-            const [pagarRes, receberRes] = await Promise.all([
-                sb.from('contas_pagar').select('*').eq('cliente_id', cid),
-                sb.from('contas_receber').select('*').eq('cliente_id', cid)
-            ]);
-
-            const pagamentos = (pagarRes.data || []).map(p => ({
-                descricao: p.descricao || p.fornecedor_nome || 'Conta a Pagar',
-                tipo: 'Saída',
-                vencimento: p.vencimento,
-                entrada: 0,
-                saida: parseFloat(p.valor) || 0
-            }));
-
-            const recebimentos = (receberRes.data || []).map(r => ({
-                descricao: r.descricao || r.cliente_nome || 'Conta a Receber',
-                tipo: 'Entrada',
-                vencimento: r.vencimento,
-                entrada: parseFloat(r.valor) || 0,
-                saida: 0
-            }));
-
-            cacheFluxo = [...recebimentos, ...pagamentos].sort((a,b) => (a.vencimento || '').localeCompare(b.vencimento || ''));
-            renderizarFluxo(cacheFluxo);
-        } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro ao carregar fluxo: ${err.message}</td></tr>`;
-        }
-    }
-
-    function renderizarFluxo(lista) {
-        const tbody = document.getElementById('tbodyFluxo');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum movimento registrado para o fluxo de caixa.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(item => {
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${item.descricao}</strong></td>
-                    <td><span class="badge" style="background:${item.tipo === 'Entrada' ? '#d1fae5; color:#065f46;' : '#fee2e2; color:#991b1b;'}">${item.tipo}</span></td>
-                    <td>${item.vencimento ? item.vencimento.split('-').reverse().join('/') : '—'}</td>
-                    <td class="num" style="color:#10b981;">${item.entrada > 0 ? formatBRL(item.entrada) : '—'}</td>
-                    <td class="num" style="color:#ef4444;">${item.saida > 0 ? formatBRL(item.saida) : '—'}</td>
-                </tr>
-            `;
-        });
-    }
-
-    async function carregarDreGerencial() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyDre');
-        if (!cid) { tbody.innerHTML = '<tr><td colspan="2" class="vazio">Selecione uma empresa.</td></tr>'; return; }
-
-        try {
-            const [recRes, pagRes] = await Promise.all([
-                sb.from('contas_receber').select('valor').eq('cliente_id', cid),
-                sb.from('contas_pagar').select('valor').eq('cliente_id', cid)
-            ]);
-
-            const totalReceitas = (recRes.data || []).reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            const totalDespesas = (pagRes.data || []).reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            const resultadoLiquido = totalReceitas - totalDespesas;
-
-            tbody.innerHTML = `
-                <tr>
-                    <td><strong>(+) Receitas Totais Operacionais / Previstas</strong></td>
-                    <td class="num" style="color:#10b981; font-weight:700;">${formatBRL(totalReceitas)}</td>
-                </tr>
-                <tr>
-                    <td><strong>(-) Despesas Totais Operacionais / Previstas</strong></td>
-                    <td class="num" style="color:#ef4444; font-weight:700;">${formatBRL(totalDespesas)}</td>
-                </tr>
-                <tr style="background:#f8fafc; font-size:14px;">
-                    <td><strong>(=) Resultado Líquido Gerencial</strong></td>
-                    <td class="num" style="color:${resultadoLiquido >= 0 ? '#10b981' : '#ef4444'}; font-weight:800;">${formatBRL(resultadoLiquido)}</td>
-                </tr>
-            `;
-        } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="2" class="vazio">Erro ao calcular DRE: ${err.message}</td></tr>`;
-        }
-    }
-
-    function filtrarTabela(modulo) {
-        if (modulo === 'parceiros') {
-            const txt = document.getElementById('filtroParceirosTexto').value.toLowerCase();
-            const filtrados = cacheParceiros.filter(p => {
-                if (txt && !(p.nome || p.razao_social || '').toLowerCase().includes(txt) && !(p.cnpj_cpf || '').includes(txt)) return false;
-                return true;
-            });
-            renderizarParceiros(filtrados);
-        } else if (modulo === 'docs') {
-            const ini = document.getElementById('filtroDocsInicio').value;
-            const fim = document.getElementById('filtroDocsFim').value;
-            const txt = document.getElementById('filtroDocsTexto').value.toLowerCase();
-            const filtrados = cacheDocs.filter(d => {
-                if (ini && d.data_emissao && d.data_emissao < ini) return false;
-                if (fim && d.data_emissao && d.data_emissao > fim) return false;
-                if (txt && !(d.emitente_nome || '').toLowerCase().includes(txt) && !(d.numero || '').toLowerCase().includes(txt)) return false;
-                return true;
-            });
-            renderizarDocumentos(filtrados);
-        } else if (modulo === 'pagar') {
-            const ini = document.getElementById('filtroPagarInicio').value;
-            const fim = document.getElementById('filtroPagarFim').value;
-            const txt = document.getElementById('filtroPagarTexto').value.toLowerCase();
-            const filtrados = cachePagar.filter(t => {
-                if (ini && t.vencimento && t.vencimento < ini) return false;
-                if (fim && t.vencimento && t.vencimento > fim) return false;
-                if (txt && !(t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(txt) && !(t.descricao || '').toLowerCase().includes(txt)) return false;
-                return true;
-            });
-            renderizarPagar(filtrados);
-        } else if (modulo === 'receber') {
-            const ini = document.getElementById('filtroReceberInicio').value;
-            const fim = document.getElementById('filtroReceberFim').value;
-            const txt = document.getElementById('filtroReceberTexto').value.toLowerCase();
-            const filtrados = cacheReceber.filter(t => {
-                if (ini && t.vencimento && t.vencimento < ini) return false;
-                if (fim && t.vencimento && t.vencimento > fim) return false;
-                if (txt && !(t.cliente_nome || t.cliente || '').toLowerCase().includes(txt) && !(t.descricao || '').toLowerCase().includes(txt)) return false;
-                return true;
-            });
-            renderizarReceber(filtrados);
-        } else if (modulo === 'bancos') {
-            const txt = document.getElementById('filtroBancosTexto').value.toLowerCase();
-            const filtrados = cacheBancos.filter(cb => {
-                if (txt && !(cb.nome || cb.banco || '').toLowerCase().includes(txt)) return false;
-                return true;
-            });
-            renderizarBancos(filtrados);
-        } else if (modulo === 'fluxo') {
-            const ini = document.getElementById('filtroFluxoInicio').value;
-            const fim = document.getElementById('filtroFluxoFim').value;
-            const txt = document.getElementById('filtroFluxoTexto').value.toLowerCase();
-            const filtrados = cacheFluxo.filter(item => {
-                if (ini && item.vencimento && item.vencimento < ini) return false;
-                if (fim && item.vencimento && item.vencimento > fim) return false;
-                if (txt && !(item.descricao || '').toLowerCase().includes(txt)) return false;
-                return true;
-            });
-            renderizarFluxo(filtrados);
-        }
-    }
-
-    function limparFiltros(modulo) {
-        if (modulo === 'parceiros') {
-            document.getElementById('filtroParceirosTexto').value = '';
-            renderizarParceiros(cacheParceiros);
-        } else if (modulo === 'docs') {
-            document.getElementById('filtroDocsInicio').value = '';
-            document.getElementById('filtroDocsFim').value = '';
-            document.getElementById('filtroDocsTexto').value = '';
-            renderizarDocumentos(cacheDocs);
-        } else if (modulo === 'pagar') {
-            document.getElementById('filtroPagarInicio').value = '';
-            document.getElementById('filtroPagarFim').value = '';
-            document.getElementById('filtroPagarTexto').value = '';
-            renderizarPagar(cachePagar);
-        } else if (modulo === 'receber') {
-            document.getElementById('filtroReceberInicio').value = '';
-            document.getElementById('filtroReceberFim').value = '';
-            document.getElementById('filtroReceberTexto').value = '';
-            renderizarReceber(cacheReceber);
-        } else if (modulo === 'bancos') {
-            document.getElementById('filtroBancosTexto').value = '';
-            renderizarBancos(cacheBancos);
-        } else if (modulo === 'fluxo') {
-            document.getElementById('filtroFluxoInicio').value = '';
-            document.getElementById('filtroFluxoFim').value = '';
-            document.getElementById('filtroFluxoTexto').value = '';
-            renderizarFluxo(cacheFluxo);
-        }
-    }
-
-    function verDetalhesParceiro(id) {
-        const p = cacheParceiros.find(x => x.id == id);
-        if (!p) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `<b>Nome / Razão Social:</b> ${p.nome || p.razao_social || '—'}<br><b>CNPJ / CPF:</b> ${p.cnpj_cpf || '—'}<br><b>Categoria:</b> ${p.tipo || p.categoria || 'Cliente'}<br><b>E-mail:</b> ${p.email || '—'}<br><b>Telefone:</b> ${p.telefone || '—'}<br><b>Endereço:</b> ${p.endereco || '—'}`;
-        document.getElementById('modalDetalhes').classList.add('ativo');
-    }
-
-    function imprimirItemDiretoParceiro(id) {
-        const p = cacheParceiros.find(x => x.id == id);
-        if (!p) return;
-        const html = `<b>Nome / Razão Social:</b> ${p.nome || p.razao_social || '—'}<br><b>CNPJ / CPF:</b> ${p.cnpj_cpf || '—'}<br><b>Categoria:</b> ${p.tipo || p.categoria || 'Cliente'}<br><b>E-mail:</b> ${p.email || '—'}<br><b>Telefone:</b> ${p.telefone || '—'}<br><b>Endereço:</b> ${p.endereco || '—'}`;
-        dispararJanelaImpressaoItem(html);
-    }
-
-    function verDetalhesDoc(id) {
-        const d = cacheDocs.find(x => x.id == id);
-        if (!d) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `<b>Tipo:</b> ${d.tipo || 'NF-e'}<br><b>Número:</b> ${d.numero || '—'}<br><b>Chave:</b> ${d.chave_acesso || '—'}<br><b>Emitente:</b> ${d.emitente_nome || '—'}<br><b>Data:</b> ${d.data_emissao || '—'}<br><b>Valor:</b> ${formatBRL(d.valor_total)}`;
-        document.getElementById('modalDetalhes').classList.add('ativo');
-    }
-
-    function imprimirItemDiretoDoc(id) {
-        const d = cacheDocs.find(x => x.id == id);
-        if (!d) return;
-        const html = `<b>Tipo:</b> ${d.tipo || 'NF-e'}<br><b>Número:</b> ${d.numero || '—'}<br><b>Chave:</b> ${d.chave_acesso || '—'}<br><b>Emitente:</b> ${d.emitente_nome || '—'}<br><b>Data:</b> ${d.data_emissao || '—'}<br><b>Valor:</b> ${formatBRL(d.valor_total)}`;
-        dispararJanelaImpressaoItem(html);
-    }
-
-    function verDetalhesPagar(id) {
-        const t = cachePagar.find(x => x.id == id);
-        if (!t) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
-        document.getElementById('modalDetalhes').classList.add('ativo');
-    }
-
-    function imprimirItemDiretoPagar(id) {
-        const t = cachePagar.find(x => x.id == id);
-        if (!t) return;
-        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
-        dispararJanelaImpressaoItem(html);
-    }
-
-    function verDetalhesReceber(id) {
-        const t = cacheReceber.find(x => x.id == id);
-        if (!t) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `<b>Cliente:</b> ${t.cliente_nome || t.cliente || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
-        document.getElementById('modalDetalhes').classList.add('ativo');
-    }
-
-    function imprimirItemDiretoReceber(id) {
-        const t = cacheReceber.find(x => x.id == id);
-        if (!t) return;
-        const html = `<b>Cliente:</b> ${t.cliente_nome || t.cliente || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento || '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
-        dispararJanelaImpressaoItem(html);
-    }
-
-    function verDetalhesBanco(id) {
-        const cb = cacheBancos.find(x => x.id == id);
-        if (!cb) return;
-        document.getElementById('conteudoDetalhes').innerHTML = `<b>Conta:</b> ${cb.nome || cb.banco || '—'}<br><b>Tipo:</b> ${cb.tipo || '—'}<br><b>Titularidade:</b> ${cb.titularidade || '—'}<br><b>Saldo:</b> ${formatBRL(cb.saldo_inicial)}`;
-        document.getElementById('modalDetalhes').classList.add('ativo');
-    }
-
-    function imprimirItemDiretoBanco(id) {
-        const cb = cacheBancos.find(x => x.id == id);
-        if (!cb) return;
-        const html = `<b>Conta:</b> ${cb.nome || cb.banco || '—'}<br><b>Tipo:</b> ${cb.tipo || '—'}<br><b>Titularidade:</b> ${cb.titularidade || '—'}<br><b>Saldo:</b> ${formatBRL(cb.saldo_inicial)}`;
-        dispararJanelaImpressaoItem(html);
-    }
-
-    function dispararJanelaImpressaoItem(conteudoHtml) {
-        const select = document.getElementById('selectEmpresa');
-        const nomeEmpresa = select && select.options[select.selectedIndex] ? select.options[select.selectedIndex].text : 'Empresa';
-        const agora = new Date().toLocaleString('pt-BR');
-
-        const janela = window.open('', '_blank', 'width=700,height=600');
-        janela.document.write(`
-            <html>
-            <head>
-                <title>Comprovativo / Detalhe — Sacramento ERP</title>
-                <style>
-                    body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
-                    h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
-                    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
-                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-                </style>
-            </head>
-            <body>
-                <h2>Comprovativo de Registo — ${nomeEmpresa}</h2>
-                <div class="info-box">${conteudoHtml}</div>
-                <div class="footer">Emitido em: ${agora} via Sacramento ERP</div>
-                <script>window.print();<\/script>
-            </body>
-            </html>
-        `);
-        janela.document.close();
-    }
-
-    function fecharDetalhes() { document.getElementById('modalDetalhes').classList.remove('ativo'); }
-
-    async function excluirDoc(id) {
-        if (!confirm('Excluir documento?')) return;
-        await sb.from('documentos_recebidos').delete().eq('id', id);
-        carregarDocumentosTabela(); carregarDadosDashboard();
-    }
-
-    async function excluirPagar(id) {
-        if (!confirm('Excluir conta a pagar?')) return;
-        await sb.from('contas_pagar').delete().eq('id', id);
-        carregarPagarTabela(); carregarDadosDashboard();
-    }
-
-    async function excluirReceber(id) {
-        if (!confirm('Excluir conta a receber?')) return;
-        await sb.from('contas_receber').delete().eq('id', id);
-        carregarReceberTabela(); carregarDadosDashboard();
     }
 
     window.onload = inicializar;
