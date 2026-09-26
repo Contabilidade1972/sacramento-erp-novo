@@ -23,7 +23,10 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; transition: transform 0.4s ease, opacity 0.4s ease; }
+
+        /* TRANSIÇÃO SUAVE DA PÁGINA AO CLICAR */
+        body.transicao-saida { transform: translateX(-50px); opacity: 0; }
 
         /* HEADER DO SITE */
         .site-header {
@@ -35,7 +38,18 @@
         .brand-info h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
         .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
-        .site-nav-right { display: flex; align-items: center; gap: 20px; }
+        /* BARRA DE PESQUISA INTELIGENTE NO HEADER */
+        .search-global-box { position: relative; flex: 1; max-width: 350px; margin: 0 20px; }
+        .search-global-box input { width: 100%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 8px 14px 8px 36px; color: #fff; font-size: 13px; outline: none; transition: 0.2s; }
+        .search-global-box input::placeholder { color: #cbd5e1; }
+        .search-global-box input:focus { background: rgba(255,255,255,0.2); border-color: #93c5fd; }
+        .search-global-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
+        
+        .search-results-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-top: 6px; display: none; z-index: 2000; overflow: hidden; border: 1px solid var(--border); }
+        .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; }
+        .search-item:hover { background: #eff6ff; color: var(--primary); }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
         .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
         .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
         .empresa-selector select option { color: #000; }
@@ -45,7 +59,7 @@
 
         /* CONTAINER DOS CARDS DINÂMICOS */
         .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; }
-        .welcome-box { margin-bottom: 32px; }
+        .welcome-box { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; }
         .welcome-box h2 { font-size: 24px; font-weight: 800; color: var(--secondary); margin-bottom: 6px; }
         .welcome-box p { font-size: 14px; color: var(--text-light); }
 
@@ -77,6 +91,13 @@
         .card-desc { font-size: 13px; color: var(--text-light); line-height: 1.5; flex: 1; }
         .card-footer { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
 
+        /* MASCOTE & ASSISTENTE VIRTUAL FLUTUANTE */
+        .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 3000; display: flex; flex-direction: column; align-items: flex-end; }
+        .assistant-bubble { background: #fff; border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 18px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 280px; margin-bottom: 12px; font-size: 13px; color: var(--text-main); position: relative; animation: fadeIn 0.3s ease; }
+        .assistant-bubble::after { content: ''; position: absolute; bottom: -8px; right: 24px; width: 14px; height: 14px; background: #fff; border-right: 1.5px solid var(--border); border-bottom: 1.5px solid var(--border); transform: rotate(45deg); }
+        .assistant-avatar { width: 56px; height: 56px; background: linear-gradient(135deg, #2563eb, #1e3a8a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 6px 20px rgba(37,99,235,0.3); cursor: pointer; transition: transform 0.2s; border: 3px solid #fff; }
+        .assistant-avatar:hover { transform: scale(1.08); }
+
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -90,6 +111,14 @@
             <span>Portal de Gestão Empresarial</span>
         </div>
     </div>
+
+    <!-- BARRA DE BUSCA GLOBAL INTELIGENTE -->
+    <div class="search-global-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="inputBuscaGlobal" placeholder="Pesquisar módulo, cliente, contas..." oninput="executarBuscaGlobal(this.value)">
+        <div class="search-results-dropdown" id="dropdownResultados"></div>
+    </div>
+
     <div class="site-nav-right">
         <div class="empresa-selector">
             <i class="fas fa-building" style="color: #93c5fd;"></i>
@@ -105,14 +134,17 @@
 
 <div class="container">
     <div class="welcome-box">
-        <h2>Painel Principal de Módulos</h2>
-        <p>Selecione abaixo o grande módulo desejado para abrir o painel operacional correspondente.</p>
+        <div>
+            <h2>Painel Principal de Módulos</h2>
+            <p>Selecione abaixo o grande módulo desejado ou use a pesquisa inteligente no topo.</p>
+        </div>
+        <button onclick="falarComAssistente()" style="background: #e0f2fe; border: 1px solid #3b82f6; color: #1d4ed8; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-robot"></i> Dica do Assistente</button>
     </div>
 
     <div class="cards-grid">
         
         <!-- DASHBOARD ANALÍTICO -->
-        <a href="dashboard.html" class="portal-card">
+        <a href="dashboard.html" class="portal-card" onclick="transicionarPagina(event, 'dashboard.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80');">
                 <span class="card-badge-cat" style="color: #2563eb;">Executivo</span>
             </div>
@@ -124,7 +156,7 @@
         </a>
 
         <!-- PARCEIROS -->
-        <a href="parceiros.html" class="portal-card">
+        <a href="parceiros.html" class="portal-card" onclick="transicionarPagina(event, 'parceiros.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80');">
                 <span class="card-badge-cat">Cadastros</span>
             </div>
@@ -136,7 +168,7 @@
         </a>
 
         <!-- CENTROS DE CUSTO -->
-        <a href="centros_custo.html" class="portal-card">
+        <a href="centros_custo.html" class="portal-card" onclick="transicionarPagina(event, 'centros_custo.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80');">
                 <span class="card-badge-cat" style="color: #d97706;">Estrutura</span>
             </div>
@@ -148,7 +180,7 @@
         </a>
 
         <!-- DOCUMENTOS XML -->
-        <a href="documentos.html" class="portal-card">
+        <a href="documentos.html" class="portal-card" onclick="transicionarPagina(event, 'documentos.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80');">
                 <span class="card-badge-cat" style="color: #b45309;">Fiscal</span>
             </div>
@@ -159,8 +191,8 @@
             </div>
         </a>
 
-        <!-- MÓDULO FINANCEIRO (NOVO CARD AGRUPADOR) -->
-        <a href="modulo_financeiro.html" class="portal-card" style="border: 2px solid var(--primary);">
+        <!-- MÓDULO FINANCEIRO -->
+        <a href="modulo_financeiro.html" class="portal-card" style="border: 2px solid var(--primary);" onclick="transicionarPagina(event, 'modulo_financeiro.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80');">
                 <span class="card-badge-cat" style="color: #dc2626;">Módulo Principal</span>
             </div>
@@ -174,12 +206,76 @@
     </div>
 </div>
 
+<!-- MASCOTE / ASSISTENTE VIRTUAL INTERATIVO -->
+<div class="assistant-widget">
+    <div class="assistant-bubble" id="assistantText">
+        Olá! Sou o seu assistente virtual do Sacramento ERP. Precisa de ajuda para encontrar algum relatório ou módulo? Digite na barra superior!
+    </div>
+    <div class="assistant-avatar" onclick="falarComAssistente()" title="Falar com o Assistente">
+        <i class="fas fa-robot"></i>
+    </div>
+</div>
+
 <footer>
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+    const rotasModulos = [
+        { nome: "Dashboard Analítico", url: "dashboard.html", keywords: ["dashboard", "grafico", "executivo", "relatorio"] },
+        { nome: "Parceiros & Clientes", url: "parceiros.html", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
+        { nome: "Centros de Custo", url: "centros_custo.html", keywords: ["centro", "custo", "projeto", "departamento"] },
+        { nome: "Documentos XML", url: "documentos.html", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
+        { nome: "Módulo Financeiro", url: "modulo_financeiro.html", keywords: ["financeiro", "pagar", "receber", "banco", "caixa", "dre", "fluxo"] }
+    ];
+
+    function executarBuscaGlobal(termo) {
+        const dropdown = document.getElementById('dropdownResultados');
+        const query = termo.toLowerCase().trim();
+        if(!query) {
+            dropdown.style.display = 'none';
+            return;
+        }
+
+        let encontrados = rotasModulos.filter(m => 
+            m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query))
+        );
+
+        if(encontrados.length === 0) {
+            dropdown.innerHTML = `<div class="search-item" style="color:var(--text-light);">Nenhum módulo encontrado.</div>`;
+        } else {
+            dropdown.innerHTML = encontrados.map(m => `
+                <a href="${m.url}" class="search-item" onclick="transicionarPagina(event, '${m.url}')">
+                    <i class="fas fa-arrow-right" style="color:var(--primary);"></i> ${m.nome}
+                </a>
+            `).join('');
+        }
+        dropdown.style.display = 'block';
+    }
+
+    // Animação elegante de transição empurrando a página
+    function transicionarPagina(event, url) {
+        event.preventDefault();
+        document.body.classList.add('transicao-saida');
+        setTimeout(() => {
+            window.location.href = url;
+        }, 350);
+    }
+
+    const dicasAssistente = [
+        "Dica: Utilize a barra de pesquisa no topo para encontrar qualquer módulo instantaneamente!",
+        "Dica: No módulo de Parceiros, você pode importar dados direto da Receita Federal digitando o CNPJ.",
+        "Dica: Todos os relatórios gerenciais possuem impressão otimizada em formato paisagem.",
+        "Dica: Selecione a empresa contratante no canto superior direito para alternar entre os contextos."
+    ];
+
+    function falarComAssistente() {
+        const txtEl = document.getElementById('assistantText');
+        const dicaAleatoria = dicasAssistente[Math.floor(Math.random() * dicasAssistente.length)];
+        txtEl.innerText = dicaAleatoria;
+    }
 
     function obterUsuarioAtual() {
         try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
