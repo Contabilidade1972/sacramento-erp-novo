@@ -35,9 +35,16 @@
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
-        .card-header h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--secondary)}
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+        
+        /* Sistema de Recolhimento Dinâmico */
+        .card-body { display: flex; flex-direction: column; gap: 14px; transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+        .card.recolhido .card-body { display: none; }
+        .card.recolhido { padding-bottom: 24px; }
+        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: transform 0.2s; }
+        .card.recolhido .btn-colapsar i { transform: rotate(-90deg); }
 
         .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:14px}
         label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
@@ -75,9 +82,9 @@
         .print-header { display: none; }
         @media print {
             body { background: #fff !important; }
-            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay { display: none !important; }
+            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay, .btn-colapsar { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; display: block !important; }
             .print-header { display: block !important; text-align: center; margin-bottom: 12px; border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
             table { width: 100% !important; border-collapse: collapse !important; }
             th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 11px !important; color: #000 !important; }
@@ -92,7 +99,7 @@
 <div class="modal-overlay" id="modalVisualizar">
     <div class="modal-card">
         <div class="modal-header">
-            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas id-card"></i> Ficha Detalhada do Parceiro</h3>
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-id-card"></i> Ficha Detalhada do Parceiro</h3>
             <button onclick="fecharModalVisualizar()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
         <div id="conteudoFichaDetalhada" style="font-size:13px; display:flex; flex-direction:column; gap:12px; line-height:1.6;">
@@ -129,166 +136,177 @@
 </header>
 
 <div class="container">
-    <!-- FORMULÁRIO DE CADASTRO -->
-    <div class="card">
-        <div class="card-header">
+    <!-- FORMULÁRIO DE CADASTRO (COM RECOLHIMENTO) -->
+    <div class="card recolhido" id="cardFormulario">
+        <div class="card-header" onclick="alternarPainel('cardFormulario')">
             <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
+            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
         </div>
-        <input type="hidden" id="edit_id">
-        <div class="form-grid">
-            <div>
-                <label>Tipo de Cadastro *</label>
-                <select id="tipo_cadastro" class="form-control">
-                    <option value="Cliente">Cliente</option>
-                    <option value="Fornecedor">Fornecedor</option>
-                    <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
-                </select>
+        <div class="card-body">
+            <input type="hidden" id="edit_id">
+            <div class="form-grid">
+                <div>
+                    <label>Tipo de Cadastro *</label>
+                    <select id="tipo_cadastro" class="form-control">
+                        <option value="Cliente">Cliente</option>
+                        <option value="Fornecedor">Fornecedor</option>
+                        <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
+                    </select>
+                </div>
+                <div>
+                    <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:normal;"></span></label>
+                    <input type="text" id="cnpj_cpf" class="form-control" placeholder="Apenas números..." onblur="consultarOuValidarDocumento()">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label id="label_nome">Razão Social / Nome Completo *</label>
+                    <input type="text" id="nome" class="form-control" placeholder="Nome oficial ou razão social">
+                </div>
             </div>
-            <div>
-                <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:normal;"></span></label>
-                <input type="text" id="cnpj_cpf" class="form-control" placeholder="Apenas números..." onblur="consultarOuValidarDocumento()">
+            <div class="form-grid">
+                <div>
+                    <label>Nome Fantasia / Social</label>
+                    <input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial">
+                </div>
+                <div>
+                    <label>Inscrição Estadual (IE) / RG</label>
+                    <input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números">
+                </div>
+                <div>
+                    <label>Inscrição Municipal (IM)</label>
+                    <input type="text" id="fiscal_2" class="form-control" placeholder="Número IM">
+                </div>
+                <div>
+                    <label>Nome do Contato</label>
+                    <input type="text" id="nome_contato" class="form-control" placeholder="Responsável">
+                </div>
             </div>
-            <div style="grid-column: span 2;">
-                <label id="label_nome">Razão Social / Nome Completo *</label>
-                <input type="text" id="nome" class="form-control" placeholder="Nome oficial ou razão social">
+            <div class="form-grid" style="grid-template-columns: 2fr 3fr;">
+                <div>
+                    <label>CNAE Principal</label>
+                    <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição...">
+                </div>
+                <div>
+                    <label>CNAE Secundários</label>
+                    <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
+                </div>
             </div>
-        </div>
-        <div class="form-grid">
-            <div>
-                <label>Nome Fantasia / Social</label>
-                <input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;">
+                <div>
+                    <label>Telefone / WhatsApp</label>
+                    <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
+                </div>
+                <div>
+                    <label>E-mail Principal</label>
+                    <input type="email" id="email" class="form-control" placeholder="contato@empresa.com">
+                </div>
+                <div>
+                    <label>E-mail NF-e</label>
+                    <input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com">
+                </div>
+                <div>
+                    <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo *</label>
+                    <select id="centro_custo" class="form-control" required>
+                        <option value="">Selecione o Projeto...</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Observações</label>
+                    <input type="text" id="observacoes" class="form-control" placeholder="Anotações...">
+                </div>
             </div>
-            <div>
-                <label>Inscrição Estadual (IE) / RG</label>
-                <input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números">
+            <div class="form-grid">
+                <div>
+                    <label>CEP <span id="status_cep" style="font-size:10px;"></span></label>
+                    <input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Logradouro (Endereço)</label>
+                    <input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida...">
+                </div>
+                <div>
+                    <label>Número</label>
+                    <input type="text" id="numero" class="form-control" placeholder="123">
+                </div>
             </div>
-            <div>
-                <label>Inscrição Municipal (IM)</label>
-                <input type="text" id="fiscal_2" class="form-control" placeholder="Número IM">
+            <div class="form-grid" style="grid-template-columns: 2fr 2fr 2fr;">
+                <div>
+                    <label>Complemento</label>
+                    <input type="text" id="complemento" class="form-control" placeholder="Bloco B...">
+                </div>
+                <div>
+                    <label>Bairro</label>
+                    <input type="text" id="bairro" class="form-control" placeholder="Centro">
+                </div>
+                <div>
+                    <label>Cidade / UF</label>
+                    <input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG">
+                </div>
             </div>
-            <div>
-                <label>Nome do Contato</label>
-                <input type="text" id="nome_contato" class="form-control" placeholder="Responsável">
+            <div style="margin-top: 15px; display:flex; gap:10px;">
+                <button class="btn btn-primary" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar Parceiro Completo</button>
+                <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
             </div>
-        </div>
-        <div class="form-grid" style="grid-template-columns: 2fr 3fr;">
-            <div>
-                <label>CNAE Principal</label>
-                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição...">
-            </div>
-            <div>
-                <label>CNAE Secundários</label>
-                <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
-            </div>
-        </div>
-        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;">
-            <div>
-                <label>Telefone / WhatsApp</label>
-                <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
-            </div>
-            <div>
-                <label>E-mail Principal</label>
-                <input type="email" id="email" class="form-control" placeholder="contato@empresa.com">
-            </div>
-            <div>
-                <label>E-mail NF-e</label>
-                <input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com">
-            </div>
-            <div>
-                <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo *</label>
-                <select id="centro_custo" class="form-control" required>
-                    <option value="">Selecione o Projeto...</option>
-                </select>
-            </div>
-            <div>
-                <label>Observações</label>
-                <input type="text" id="observacoes" class="form-control" placeholder="Anotações...">
-            </div>
-        </div>
-        <div class="form-grid">
-            <div>
-                <label>CEP <span id="status_cep" style="font-size:10px;"></span></label>
-                <input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()">
-            </div>
-            <div style="grid-column: span 2;">
-                <label>Logradouro (Endereço)</label>
-                <input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida...">
-            </div>
-            <div>
-                <label>Número</label>
-                <input type="text" id="numero" class="form-control" placeholder="123">
-            </div>
-        </div>
-        <div class="form-grid" style="grid-template-columns: 2fr 2fr 2fr;">
-            <div>
-                <label>Complemento</label>
-                <input type="text" id="complemento" class="form-control" placeholder="Bloco B...">
-            </div>
-            <div>
-                <label>Bairro</label>
-                <input type="text" id="bairro" class="form-control" placeholder="Centro">
-            </div>
-            <div>
-                <label>Cidade / UF</label>
-                <input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG">
-            </div>
-        </div>
-        <div style="margin-top: 15px; display:flex; gap:10px;">
-            <button class="btn btn-primary" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar Parceiro Completo</button>
-            <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
         </div>
     </div>
 
-    <!-- RELATÓRIO OPERACIONAL -->
+    <!-- RELATÓRIO OPERACIONAL (COM RECOLHIMENTO) -->
     <div class="card" id="cardRelatorioModo">
         <div class="print-header">
             <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
             <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
         </div>
-        <div class="card-header">
+        <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
-            <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
-        </div>
-        <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
-            <div>
-                <label>Filtrar por Tipo</label>
-                <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
-                    <option value="todos">Todos os Tipos</option>
-                    <option value="Cliente">Cliente</option>
-                    <option value="Fornecedor">Fornecedor</option>
-                    <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
-                </select>
-            </div>
-            <div>
-                <label>Buscar por Nome, Documento ou Cidade</label>
-                <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="aplicarFiltrosRelatorio()">
-            </div>
-            <div>
-                <button class="btn btn-outline" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir</button>
+                <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Contato & Fisco</th><th>Comunicação</th><th>Endereço Completo</th></tr>
-                </thead>
-                <tbody id="tbodyRelatorioModo"></tbody>
-            </table>
+        <div class="card-body">
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
+                <div>
+                    <label>Filtrar por Tipo</label>
+                    <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                        <option value="todos">Todos os Tipos</option>
+                        <option value="Cliente">Cliente</option>
+                        <option value="Fornecedor">Fornecedor</option>
+                        <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Buscar por Nome, Documento ou Cidade</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Contato & Fisco</th><th>Comunicação</th><th>Endereço Completo</th></tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- DIRETÓRIO AVANÇADO -->
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros</h3>
+    <!-- DIRETÓRIO AVANÇADO (COM RECOLHIMENTO) -->
+    <div class="card" id="cardDiretorioAvancado">
+        <div class="card-header" onclick="alternarPainel('cardDiretorioAvancado')">
+            <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros (Gerenciamento)</h3>
+            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
         </div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Fisco & Contato</th><th>Comunicação</th><th>Endereço Completo</th><th style="text-align:right;">Ações</th></tr>
-                </thead>
-                <tbody id="tbodyParceiros"></tbody>
-            </table>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Fisco & Contato</th><th>Comunicação</th><th>Endereço Completo</th><th style="text-align:right;">Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyParceiros"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -296,6 +314,11 @@
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let parceirosCache = [];
+
+function alternarPainel(idCard) {
+    const card = document.getElementById(idCard);
+    if(card) card.classList.toggle('recolhido');
+}
 
 function obterUsuarioAtual() {
     try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -619,6 +642,11 @@ window.editarParceiro = function(id) {
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-edit"></i> Editando Parceiro (#${p.id})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Parceiro';
     document.getElementById('btnCancelar').style.display = 'inline-block';
+    
+    // Abre automaticamente o painel de formulário ao editar para facilitar
+    const cardForm = document.getElementById('cardFormulario');
+    if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
+    
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
