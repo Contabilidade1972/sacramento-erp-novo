@@ -11,11 +11,11 @@
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
-        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:column;}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
 
         .site-header {
             background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
         }
         .site-brand { display: flex; align-items: center; gap: 14px; }
         .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
@@ -83,7 +83,6 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- HEADER DO PORTAL CORPORATIVO -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-address-book"></i></div>
@@ -107,7 +106,6 @@
 </header>
 
 <div class="container">
-    <!-- FORMULÁRIO DE CADASTRO -->
     <div class="card">
         <div class="card-header">
             <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
@@ -119,7 +117,7 @@
                 <select id="tipo_cadastro" class="form-control">
                     <option value="Cliente">Cliente</option>
                     <option value="Fornecedor">Fornecedor</option>
-                    <option value="Ambos">Cliente & Fornecedor</option>
+                    <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
                 </select>
             </div>
             <div>
@@ -232,9 +230,9 @@
                 <label>Filtrar por Tipo</label>
                 <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
                     <option value="todos">Todos os Tipos</option>
-                    <option value="cliente">Cliente</option>
-                    <option value="fornecedor">Fornecedor</option>
-                    <option value="ambos">Cliente & Fornecedor</option>
+                    <option value="Cliente">Cliente</option>
+                    <option value="Fornecedor">Fornecedor</option>
+                    <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
                 </select>
             </div>
             <div>
@@ -404,24 +402,20 @@ async function carregarParceiros() {
     aplicarFiltrosRelatorio();
 }
 
+function normalizarTipo(tipoStr) {
+    let t = (tipoStr || 'Cliente').toLowerCase().trim();
+    if (t.includes('ambos') || t.includes('&') || (t.includes('cliente') && t.includes('fornecedor'))) return 'Cliente & Fornecedor';
+    if (t.includes('fornecedor') || t.includes('forn')) return 'Fornecedor';
+    return 'Cliente';
+}
+
 function aplicarFiltrosRelatorio() {
-    let stFiltro = document.getElementById('filtroTipo').value.toLowerCase();
+    let stFiltro = document.getElementById('filtroTipo').value;
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
     
     let dadosFiltrados = parceirosCache.filter(p => {
-        let tipoParc = (p.tipo_cadastro || 'cliente').toLowerCase();
-        
-        // Filtro estrito por tipo para evitar sobreposições incorretas
-        if (stFiltro !== 'todos') {
-            if (stFiltro === 'cliente') {
-                if (!tipoParc.includes('cliente') || tipoParc.includes('ambos') || tipo.includes('&')) return false;
-            } else if (stFiltro === 'fornecedor') {
-                if (!tipoParc.includes('fornecedor') || tipoParc.includes('ambos') || tipo.includes('&')) return false;
-            } else if (stFiltro === 'ambos') {
-                if (!tipoParc.includes('ambos') && !tipoParc.includes('&') && !(tipoParc.includes('cliente') && tipoParc.includes('fornecedor'))) return false;
-            }
-        }
-
+        let tipoNormalizado = normalizarTipo(p.tipo_cadastro);
+        if (stFiltro !== 'todos' && tipoNormalizado !== stFiltro) return false;
         if (txtBusca) {
             let linha = (p.nome + ' ' + (p.cnpj_cpf || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || '')).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
@@ -437,11 +431,10 @@ function aplicarFiltrosRelatorio() {
     }
     
     dadosFiltrados.forEach(p => {
-        let badge = '';
-        let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
-        if(tipo.includes('fornecedor') && !tipo.includes('ambos') && !tipo.includes('&')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        else if(tipo.includes('ambos') || tipo.includes('&') || (tipo.includes('cliente') && tipo.includes('fornecedor'))) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
-        else badge = '<span class="badge badge-cliente">Cliente</span>';
+        let tipoNorm = normalizarTipo(p.tipo_cadastro);
+        let badge = '<span class="badge badge-cliente">Cliente</span>';
+        if(tipoNorm === 'Fornecedor') badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        if(tipoNorm === 'Cliente & Fornecedor') badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
 
         let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
         tbodyRel.innerHTML += `<tr>
@@ -466,11 +459,10 @@ function renderTabela() {
     const tbody = document.getElementById('tbodyParceiros');
     tbody.innerHTML = '';
     parceirosCache.forEach(p => {
-        let badge = '';
-        let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
-        if(tipo.includes('fornecedor') && !tipo.includes('ambos') && !tipo.includes('&')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        else if(tipo.includes('ambos') || tipo.includes('&') || (tipo.includes('cliente') && tipo.includes('fornecedor'))) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
-        else badge = '<span class="badge badge-cliente">Cliente</span>';
+        let tipoNorm = normalizarTipo(p.tipo_cadastro);
+        let badge = '<span class="badge badge-cliente">Cliente</span>';
+        if(tipoNorm === 'Fornecedor') badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        if(tipoNorm === 'Cliente & Fornecedor') badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
 
         let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
         tbody.innerHTML += `<tr>
@@ -565,7 +557,7 @@ function cancelarEdicao() {
     document.getElementById('numero').value = '';
     document.getElementById('bairro').value = '';
     document.getElementById('cidade_uf').value = '';
-    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Parceiro Completo';
     document.getElementById('btnCancelar').style.display = 'none';
 }
