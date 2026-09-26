@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão Substituição Forçada)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão com Dois Botões: Início + Módulo)
 
 (function() {
-    const styleId = 'erp-core-styles-v3';
+    const styleId = 'erp-core-styles-v4';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -22,42 +22,42 @@
 
             /* HEADER EXECUTIVO DE ELITE */
             .site-header {
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; padding: 14px 32px; display: flex; justify-content: space-between; align-items: center;
+                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 4px 20px rgba(15,23,42,0.15); position: sticky; top: 0; z-index: 1000; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.08);
             }
-            .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
-            .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-            .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
-            .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+            .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+            .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
+            .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+            .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
             /* BARRA DE PESQUISA GLOBAL ELITE */
-            .search-global-box { position: relative; flex: 1; max-width: 400px; margin: 0 24px; }
-            .search-global-box input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 16px 10px 42px; color: #fff; font-size: 13.5px; outline: none; transition: all 0.25s ease; }
+            .search-global-box { position: relative; flex: 1; max-width: 360px; margin: 0 20px; }
+            .search-global-box input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 14px 8px 38px; color: #fff; font-size: 13px; outline: none; transition: all 0.25s ease; }
             .search-global-box input::placeholder { color: #94a3b8; font-weight: 400; }
             .search-global-box input:focus { background: rgba(255,255,255,0.14); border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.25); }
-            .search-global-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 14px; }
+            .search-global-box i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
             
-            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 14px; box-shadow: 0 20px 40px rgba(15,23,42,0.2); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
-            .search-dropdown-header { padding: 10px 16px; font-size: 10.5px; font-weight: 800; text-transform: uppercase; color: var(--text-light); background: #f8fafc; border-bottom: 1px solid var(--border); letter-spacing: 0.8px; }
-            .search-item { padding: 12px 16px; font-size: 13.5px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); transition: 0.15s; font-weight: 500; }
+            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 40px rgba(15,23,42,0.2); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
+            .search-dropdown-header { padding: 10px 14px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-light); background: #f8fafc; border-bottom: 1px solid var(--border); letter-spacing: 0.8px; }
+            .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; font-weight: 500; }
             .search-item:last-child { border-bottom: none; }
-            .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 20px; }
-            .search-item i { width: 20px; color: var(--primary); font-size: 14px; text-align: center; }
+            .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 18px; }
+            .search-item i { width: 18px; color: var(--primary); font-size: 13px; text-align: center; }
 
-            .site-nav-right { display: flex; align-items: center; gap: 12px; }
-            .btn-topo-acao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; transition: 0.2s; }
+            .site-nav-right { display: flex; align-items: center; gap: 10px; }
+            .btn-topo-acao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15); padding: 7px 12px; border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
             .btn-topo-acao:hover { background: rgba(255,255,255,0.18); color: #fff; }
 
-            .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 6px 12px; }
-            .empresa-selector select { border: none; background: transparent; font-size: 12.5px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+            .empresa-selector { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 9px; padding: 5px 10px; }
+            .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
             .empresa-selector select option { color: #000; background: #fff; }
             
-            .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 6px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
+            .user-box { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.1); }
             
-            .btn-sair { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: 0.2s; }
+            .btn-sair { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); padding: 7px 12px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
             .btn-sair:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
 
-            /* PAINEL DE ASSISTENTE VIRTUAL INTERATIVO (CHAT MODERNO) */
+            /* PAINEL DE ASSISTENTE VIRTUAL INTERATIVO */
             .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 4000; font-family: 'Inter', sans-serif; }
             .assistant-trigger { width: 58px; height: 58px; background: linear-gradient(135deg, #2563eb, #1e3a8a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 10px 30px rgba(37,99,235,0.4); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid #fff; position: relative; }
             .assistant-trigger:hover { transform: scale(1.08); box-shadow: 0 15px 35px rgba(37,99,235,0.5); }
@@ -100,21 +100,17 @@
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
-        // Remove qualquer cabeçalho antigo existente na página para forçar a entrada do novo cabeçalho inteligente
         const headerAntigo = document.querySelector('header');
         if (headerAntigo) {
             headerAntigo.remove();
         }
 
         const pathAtual = window.location.pathname.toLowerCase();
-        let linkRetorno = "index.html";
-        let textoRetorno = "Início";
-        let iconeRetorno = "fa-home";
+        let botaoModuloHtml = "";
 
-        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("modulo_financeiro")) {
-            linkRetorno = "modulo_financeiro.html";
-            textoRetorno = "Módulo Financeiro";
-            iconeRetorno = "fa-wallet";
+        // Se estiver dentro de alguma página do Financeiro, exibe o botão específico para voltar ao Módulo Financeiro
+        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre")) {
+            botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
 
         const headerHtml = `
@@ -134,13 +130,14 @@
                 </div>
 
                 <div class="site-nav-right">
-                    <a href="${linkRetorno}" class="btn-topo-acao"><i class="fas ${iconeRetorno}"></i> ${textoRetorno}</a>
+                    <a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>
+                    ${botaoModuloHtml}
                     <div class="empresa-selector">
                         <i class="fas fa-building" style="color: #93c5fd;"></i>
                         <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
                     </div>
                     <div class="user-box">
-                        <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+                        <i class="fas fa-user-circle" style="font-size: 15px; color: #93c5fd;"></i>
                         <span id="userNameCore">Usuário</span>
                     </div>
                     <button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>
