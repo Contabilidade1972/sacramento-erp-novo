@@ -3,314 +3,665 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parceiros & Clientes — Sacramento ERP</title>
+    <title>Gestão de Parceiros — Sacramento ERP Gestão Empresarial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #1e3a8a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text-main: #0f172a;
-            --text-light: #64748b;
-            --border: #e2e8f0;
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
 
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 14px; }
-        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; }
-        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 16px; }
-        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
-        .btn-topo:hover { background: rgba(255,255,255,0.2); }
-        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
-        .btn-topo.sair:hover { background: #b91c1c; }
-
-        .container { max-width: 1350px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
-
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); text-decoration: none; }
-        .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
-        .btn-acao.sucesso:hover { background: #059669; }
-
-        .filter-bar {
-            background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
-            display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
-        }
-        .filter-group { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
-        .filter-group input, .filter-group select { height: 38px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
-
-        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
-
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tbody tr:hover { background: #f8fafc; }
-        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
-
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: #e0f2fe; color: #0369a1; }
-        .badge.fornecedor { background: #fef3c7; color: #b45309; }
-        .badge.ambos { background: #f3e8ff; color: #7e22ce; }
-
-        .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
-        .btn-icon:hover { background: rgba(37,99,235,0.1); color: var(--primary); border-color: var(--primary); }
-        .btn-icon.excluir:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-overlay.ativo { display: flex; }
-        .modal-card { background: var(--card); width: 100%; max-width: 650px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        /* MENU LATERAL PADRÃO */
+        .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;transition:width 0.3s ease, transform 0.3s ease;box-shadow:2px 0 12px rgba(15,23,42,0.15);}
+        .sidebar.collapsed { width: 70px !important; }
+        .sidebar.collapsed .logo-text-wrapper,
+        .sidebar.collapsed .logo-watermark,
+        .sidebar.collapsed .sidebar-logo img,
+        .sidebar.collapsed .nav-section,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .menu-busca,
+        .sidebar.collapsed .nav-seta { display: none !important; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+        .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;z-index:10;min-height:80px; gap:8px;}
+        .logo-watermark{position:absolute;right:-14px;top:50%;transform:translateY(-50%);font-size:110px;color:rgba(255,255,255,0.07);z-index:0;pointer-events:none;line-height:1;}
+        .logo-text-wrapper{display:flex;flex-direction:column;overflow:hidden;flex:1;position:relative;z-index:1;}
+        .sidebar-logo h1{font-size:12px;font-weight:700;line-height:1.25;color:#fff;}
+        .sidebar-logo span{font-size:9px;color:#93c5fd;margin-top:3px;display:block;text-transform:uppercase;font-weight:600;}
+        .btn-toggle-menu, .btn-tema { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; padding: 4px; transition: color 0.2s; }
+        .btn-toggle-menu:hover, .btn-tema:hover { color: #fff; }
         
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-        .form-group { display: flex; flex-direction: column; gap: 6px; grid-column: span 1; }
-        .form-group.full { grid-column: span 2; }
-        .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
-        .form-group input, .form-group select { height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); outline: none; }
+        .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;}
+        .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:.2s;border-left:3px solid transparent;}
+        .nav-item-left{display:flex;align-items:center;gap:12px;}
+        .sidebar.collapsed .nav-item-left { gap: 0; }
+        .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+        .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
+        
+        .menu-busca { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .busca-wrapper { position: relative; }
+        .busca-wrapper i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 12px; }
+        .busca-wrapper input { width: 100%; padding: 8px 10px 8px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; outline: none; }
+
+        .main{margin-left:260px;flex:1;display:flex;flex-direction:column;min-width:0;width:calc(100% - 260px);transition:margin-left 0.3s ease, width 0.3s ease;}
+        .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
+        
+        .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900}
+        .header-title-wrapper{display:flex;align-items:center;gap:12px;}
+        .btn-home{background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;text-decoration:none;box-shadow:0 2px 4px rgba(37,99,235,0.2);}
+        .btn-home:hover{transform:translateY(-1px);}
+        .btn-mobile-toggle { background: var(--primary); border: none; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+        .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
+        .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);font-weight:500;}
+        .date-time{color:var(--primary);font-weight:600;}
+        .empresa-selector{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+        .empresa-selector select{border:none;background:transparent;font-size:12px;font-weight:600;color:var(--secondary);cursor:pointer;outline:none;max-width:200px;}
+        .user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding-left:16px;border-left:1px solid var(--border);}
+        
+        .content{padding:24px;display:flex;flex-direction:column;gap:20px;}
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bg)}
+        .card-header h3{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--secondary)}
+        
+        .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--card);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15)}
+        
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
+        
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--bg);color:var(--text-main);vertical-align:middle}
+        
+        .badge{padding:4px 8px;border-radius:6px;font-weight:600;font-size:10px;text-transform:uppercase;display:inline-block;}
+        .badge-cliente{background:#dbeafe;color:#1e40af}
+        .badge-fornecedor{background:#fef3c7;color:#d97706}
+        .badge-ambos{background:#d1fae5;color:#065f46}
+        
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+        
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:500px;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,0.3);padding:24px;}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;}
+        
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 950; display: none; backdrop-filter: blur(2px); }
+        .print-header { display: none; }
+        
+        @media print {
+            @page { size: landscape; margin: 8mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .sidebar, .header, .card:not(#cardRelatorioModo), .toast-container, button { display: none !important; }
+            .main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 12px; border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 10px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+        @media(max-width:900px){
+            .sidebar { transform: translateX(-100%); width: 260px !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main { margin-left: 0 !important; width: 100% !important; }
+            .btn-mobile-toggle { display: flex !important; }
+        }
     </style>
 </head>
 <body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenuMobile()"></div>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-address-book"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Diretório de Parceiros & Clientes</span>
+<!-- MODAL ALTERAR SENHA -->
+<div class="modal-overlay" id="modalSenha" style="z-index: 3500;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
+            <button onclick="document.getElementById('modalSenha').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
-    </div>
-    <div class="site-nav-right">
-        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
-        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
-<div class="container">
-    <div class="page-toolbar">
-        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
-        <div style="display: flex; gap: 10px;">
-            <button class="btn-acao" onclick="abrirModalNovo()"><i class="fas fa-user-plus"></i> Novo Parceiro</button>
-            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        <div>
+            <label>Nova Senha</label>
+            <input type="password" id="novaSenha" class="form-control" placeholder="Digite a nova senha">
+            <label style="margin-top:10px;">Confirmar Nova Senha</label>
+            <input type="password" id="confirmaSenha" class="form-control" placeholder="Confirme a nova senha">
+            <button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="salvarNovaSenha()"><i class="fas fa-save"></i> Atualizar Senha</button>
         </div>
-    </div>
-
-    <div class="filter-bar">
-        <div class="filter-group">
-            <span>Filtrar por Tipo</span>
-            <select id="filtroTipo" onchange="aplicarFiltros()">
-                <option value="todos">Todos os Tipos</option>
-                <option value="Cliente">Cliente</option>
-                <option value="Fornecedor">Fornecedor</option>
-                <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
-            </select>
-        </div>
-        <div class="filter-group" style="flex:1;">
-            <span>Pesquisa Global (Nome ou CNPJ/CPF)</span>
-            <input type="text" id="filtroTexto" placeholder="Digite para filtrar..." oninput="aplicarFiltros()">
-        </div>
-        <button class="btn-acao" style="height:38px;" onclick="limparFiltros()">Limpar</button>
-    </div>
-
-    <div class="card-table">
-        <div class="table-header">
-            <div>
-                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Diretório Geral de Parceiros</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Listagem completa isolada por empresa contratante.</p>
-            </div>
-        </div>
-        <table>
-            <thead>
-                <tr><th>Nome / Razão Social</th><th>CNPJ / CPF</th><th>Tipo de Relacionamento</th><th>Contato & E-mail</th><th style="text-align:center;">Ações</th></tr>
-            </thead>
-            <tbody id="tbodyParceiros">
-                <tr><td colspan="5" class="vazio">A carregar parceiros do Supabase...</td></tr>
-            </tbody>
-        </table>
     </div>
 </div>
 
-<!-- MODAL NOVO PARCEIRO -->
-<div class="modal-overlay" id="modalParceiro">
-  <div class="modal-card">
-    <div class="modal-header">
-      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-user-plus"></i> Registar / Atualizar Parceiro</h3>
-      <button onclick="fecharModal()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
-    </div>
-    <form id="formParceiro" onsubmit="salvarParceiro(event)" class="form-grid">
-        <div class="form-group full">
-            <label>CNPJ / CPF (Consulta Automática)</label>
-            <div style="display:flex; gap:8px;">
-                <input type="text" id="cadCnpj" placeholder="00.000.000/0001-00" style="flex:1;">
-                <button type="button" class="btn-acao" style="height:40px; padding:0 14px;" onclick="consultarCnpjParceiro()"><i class="fas fa-search"></i></button>
+<!-- ===== MENU LATERAL ===== -->
+<aside class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+        <div class="logo-watermark"><i class="fas fa-dna"></i></div>
+        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
+            <div class="logo-text-wrapper">
+                <h1 id="sidebarAppName">Sacramento ERP Gestão Empresarial</h1>
+                <span id="sidebarSubName">ERP Financeiro</span>
             </div>
         </div>
-        <div class="form-group full">
-            <label>Nome / Razão Social</label>
-            <input type="text" id="cadNome" required placeholder="Nome completo ou razão social...">
+        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema"><i class="fas fa-moon"></i></button>
+        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher Menu"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="menu-busca">
+        <div class="busca-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="menuBuscaGlobal" placeholder="Buscar no menu...">
         </div>
-        <div class="form-group">
-            <label>Tipo de Relacionamento</label>
-            <select id="cadTipo">
-                <option value="Cliente">Cliente</option>
-                <option value="Fornecedor">Fornecedor</option>
-                <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
-            </select>
+    </div>
+    <div class="nav-section">Principal</div>
+    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-desktop"></i> <span>Dashboard</span></div></div>
+    <div class="nav-section">Cadastros</div>
+    <div class="nav-item active" onclick="location.href='parceiros.html'"><div class="nav-item-left"><i class="fas fa-address-book"></i> <span>Parceiros</span></div></div>
+    <div class="nav-item" onclick="location.href='centros_custo.html'"><div class="nav-item-left"><i class="fas fa-sitemap"></i> <span>Centros de Custo</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_bancarias.html'"><div class="nav-item-left"><i class="fas fa-university"></i> <span>Contas Bancárias</span></div></div>
+    <div class="nav-section">Financeiro</div>
+    <div class="nav-item" onclick="location.href='contas_pagar.html'"><div class="nav-item-left"><i class="fas fa-file-invoice-dollar" style="color:#ef4444"></i> <span>Contas a Pagar</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_receber.html'"><div class="nav-item-left"><i class="fas fa-hand-holding-usd" style="color:#10b981"></i> <span>Contas a Receber</span></div></div>
+    <div class="nav-item" onclick="location.href='fluxo_de_caixa.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Fluxo de Caixa</span></div></div>
+    <div class="nav-item" onclick="location.href='dre.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>DRE Gerencial</span></div></div>
+    <div class="nav-item menu-back-dashboard" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-home"></i> <span>Voltar ao Dashboard</span></div></div>
+    <div class="nav-item" onclick="sair()"><div class="nav-item-left"><i class="fas fa-sign-out-alt" style="color:#ef4444"></i> <span>Sair do Sistema</span></div></div>
+</aside>
+
+<!-- ===== ÁREA PRINCIPAL ===== -->
+<main class="main" id="appMain">
+    <header class="header">
+        <div class="header-title-wrapper">
+            <button class="btn-mobile-toggle" onclick="toggleMenuMobile()"><i class="fas fa-bars"></i></button>
+            <a href="index.html" class="btn-home"><i class="fas fa-home"></i> Home</a>
+            <div class="header-title">Gestão Inteligente de Parceiros (CPF / CNPJ)</div>
         </div>
-        <div class="form-group">
-            <label>Telefone / WhatsApp</label>
-            <input type="text" id="cadTelefone" placeholder="(31) 90000-0000">
+        <div class="header-right">
+            <div class="empresa-selector" id="empresaSelector">
+                <i class="fas fa-building"></i>
+                <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+            </div>
+            <div class="date-time" id="current_datetime">--/--/----, --:--</div>
+            <div class="user-menu" onclick="document.getElementById('modalSenha').style.display='flex'">
+                <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
+                <span id="userInfo">Administrador</span>
+            </div>
         </div>
-        <div class="form-group full">
-            <label>E-mail de Contato</label>
-            <input type="email" id="cadEmail" placeholder="parceiro@email.com">
+    </header>
+
+    <div class="content">
+        <div class="card">
+            <div class="card-header">
+                <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
+            </div>
+            <input type="hidden" id="edit_id">
+            <div class="form-grid">
+                <div>
+                    <label>Tipo de Cadastro *</label>
+                    <select id="tipo_cadastro" class="form-control">
+                        <option value="Cliente">Cliente</option>
+                        <option value="Fornecedor">Fornecedor</option>
+                        <option value="Ambos">Cliente & Fornecedor</option>
+                    </select>
+                </div>
+                <div>
+                    <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:normal;"></span></label>
+                    <input type="text" id="cnpj_cpf" class="form-control" placeholder="Apenas números..." onblur="consultarOuValidarDocumento()">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label id="label_nome">Razão Social / Nome Completo *</label>
+                    <input type="text" id="nome" class="form-control" placeholder="Nome oficial ou razão social">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div id="div_campo_alternativo">
+                    <label id="label_campo_alternativo">Nome Fantasia</label>
+                    <input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial">
+                </div>
+                <div>
+                    <label id="label_fiscal_1">Inscrição Estadual (IE)</label>
+                    <input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números">
+                </div>
+                <div>
+                    <label id="label_fiscal_2">Inscrição Municipal (IM)</label>
+                    <input type="text" id="fiscal_2" class="form-control" placeholder="Número IM">
+                </div>
+                <div>
+                    <label>Nome do Contato</label>
+                    <input type="text" id="nome_contato" class="form-control" placeholder="Responsável">
+                </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 2fr 3fr;">
+                <div>
+                    <label>CNAE Principal</label>
+                    <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição...">
+                </div>
+                <div>
+                    <label>CNAE Secundários</label>
+                    <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
+                </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;">
+                <div>
+                    <label>Telefone / WhatsApp</label>
+                    <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
+                </div>
+                <div>
+                    <label>E-mail Principal</label>
+                    <input type="email" id="email" class="form-control" placeholder="contato@empresa.com">
+                </div>
+                <div>
+                    <label>E-mail NF-e</label>
+                    <input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com">
+                </div>
+                <div>
+                    <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo *</label>
+                    <select id="centro_custo" class="form-control" required>
+                        <option value="">Selecione o Projeto...</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Observações</label>
+                    <input type="text" id="observacoes" class="form-control" placeholder="Anotações...">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div>
+                    <label>CEP <span id="status_cep" style="font-size:10px;"></span></label>
+                    <input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Logradouro (Endereço)</label>
+                    <input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida...">
+                </div>
+                <div>
+                    <label>Número</label>
+                    <input type="text" id="numero" class="form-control" placeholder="123">
+                </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 2fr 2fr 2fr;">
+                <div>
+                    <label>Complemento</label>
+                    <input type="text" id="complemento" class="form-control" placeholder="Bloco B...">
+                </div>
+                <div>
+                    <label>Bairro</label>
+                    <input type="text" id="bairro" class="form-control" placeholder="Centro">
+                </div>
+                <div>
+                    <label>Cidade / UF</label>
+                    <input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG">
+                </div>
+            </div>
+            <div style="margin-top: 15px; display:flex; gap:10px;">
+                <button class="btn btn-primary" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar Parceiro Completo</button>
+                <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
+            </div>
         </div>
-        <div class="form-group full" style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
-            <button type="button" onclick="fecharModal()" style="background:#e2e8f0; border:none; padding:10px 16px; border-radius:8px; font-weight:600; cursor:pointer;">Cancelar</button>
-            <button type="submit" class="btn-acao"><i class="fas fa-save"></i> Guardar Parceiro</button>
+
+        <!-- RELATÓRIO OPERACIONAL -->
+        <div class="card" id="cardRelatorioModo">
+            <div class="print-header">
+                <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
+                <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
+            </div>
+            <div class="card-header">
+                <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
+                <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+            </div>
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
+                <div>
+                    <label>Filtrar por Tipo</label>
+                    <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                        <option value="todos">Todos os Tipos</option>
+                        <option value="cliente">Cliente</option>
+                        <option value="fornecedor">Fornecedor</option>
+                        <option value="ambos">Cliente & Fornecedor</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Buscar por Nome, Documento ou Cidade</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Contato & Fisco</th><th>Comunicação</th><th>Endereço Completo</th></tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo"></tbody>
+                </table>
+            </div>
         </div>
-    </form>
-  </div>
-</div>
+
+        <!-- DIRETÓRIO AVANÇADO -->
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros</h3>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Fisco & Contato</th><th>Comunicação</th><th>Endereço Completo</th><th>Ações</th></tr>
+                    </thead>
+                    <tbody id="tbodyParceiros"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
 
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    let cacheParceiros = [];
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
 
-    function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
-        return 1;
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+function ehMasterGlobal() {
+    const u = obterUsuarioAtual();
+    return !!(u && (u.email || '').toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+if (!window.sb) {
+    window.sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+}
+const sb = window.sb;
+let parceirosCache = [];
+
+function alternarTemaGlobal() {
+    let atual = 'claro';
+    try { atual = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
+    const novo = atual === 'escuro' ? 'claro' : 'escuro';
+    try { localStorage.setItem('erp_tema', novo); } catch(e) {}
+    aplicarTemaSalvo();
+}
+function aplicarTemaSalvo() {
+    let tema = 'claro';
+    try { tema = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
+    document.documentElement.setAttribute('data-tema', tema);
+    const btn = document.getElementById('btnTemaGlobal');
+    if (btn) btn.innerHTML = tema === 'escuro' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
+function toggleRecolherMenuPC() {
+    const sidebar = document.getElementById('appSidebar');
+    const main = document.getElementById('appMain');
+    sidebar.classList.toggle('collapsed');
+    main.classList.toggle('expanded');
+}
+function toggleMenuMobile() {
+    const sidebar = document.getElementById('appSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('mobile-open');
+    overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+}
+function sair() {
+    if (confirm('Deseja realmente sair do sistema?')) { 
+        localStorage.removeItem('usuarioLogado'); 
+        localStorage.removeItem('empresaSelecionada'); 
+        location.href = 'login.html'; 
     }
+}
 
-    async function carregarParceiros() {
-        const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyParceiros');
-        
-        const { data, error } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('id', { ascending: false });
-        if (error || !data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum parceiro encontrado para esta empresa no Supabase.</td></tr>`;
-            return;
-        }
+setInterval(() => {
+    let now = new Date();
+    const dt = document.getElementById('current_datetime');
+    if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}, 1000);
 
-        cacheParceiros = data;
-        aplicarFiltros();
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
     }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
 
-    function renderizar(lista) {
-        const tbody = document.getElementById('tbodyParceiros');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum parceiro corresponde ao filtro.</td></tr>'; return; }
-
-        tbody.innerHTML = '';
-        lista.forEach(p => {
-            const tipo = p.tipo || 'Cliente';
-            let badgeClass = '';
-            if (tipo === 'Fornecedor') badgeClass = 'fornecedor';
-            if (tipo === 'Cliente & Fornecedor') badgeClass = 'ambos';
-
-            tbody.innerHTML += `
-                <tr>
-                    <td><strong>${p.nome || p.razao_social || '—'}</strong></td>
-                    <td>${p.cnpj_cpf || '—'}</td>
-                    <td><span class="badge ${badgeClass}">${tipo}</span></td>
-                    <td>${p.email || '—'} <br><small style="color:var(--text-light);">${p.telefone || ''}</small></td>
-                    <td style="text-align:center;">
-                        <button class="btn-icon excluir" title="Excluir" onclick="excluirParceiro('${p.id}')"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `;
+async function carregarSeletorEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    try {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        if(!data) return;
+        select.innerHTML = '';
+        data.forEach(emp => {
+            const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = nomeEmp;
+            select.appendChild(opt);
         });
-    }
-
-    function aplicarFiltros() {
-        const tipo = document.getElementById('filtroTipo').value;
-        const texto = document.getElementById('filtroTexto').value.toLowerCase();
-
-        const filtrados = cacheParceiros.filter(p => {
-            if (tipo !== 'todos' && (p.tipo || 'Cliente') !== tipo) return false;
-            if (texto && !(p.nome || p.razao_social || '').toLowerCase().includes(texto) && !(p.cnpj_cpf || '').includes(texto)) return false;
-            return true;
-        });
-
-        renderizar(filtrados);
-    }
-
-    function limparFiltros() {
-        document.getElementById('filtroTipo').value = 'todos';
-        document.getElementById('filtroTexto').value = '';
-        renderizar(cacheParceiros);
-    }
-
-    function abrirModalNovo() { document.getElementById('modalParceiro').classList.add('ativo'); }
-    function fecharModal() { document.getElementById('modalParceiro').classList.remove('ativo'); }
-
-    async function consultarCnpjParceiro() {
-        let cnpj = document.getElementById('cadCnpj').value.replace(/\D/g, '');
-        if (cnpj.length !== 14) return;
-        try {
-            const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-            if (!response.ok) throw new Error('Não encontrado');
-            const data = await response.json();
-            document.getElementById('cadNome').value = data.nome_fantasia || data.razao_social || '';
-            if (data.email) document.getElementById('cadEmail').value = data.email;
-            if (data.ddd_telefone_1) document.getElementById('cadTelefone').value = data.ddd_telefone_1;
-            alert('Dados obtidos com sucesso da Receita Federal!');
-        } catch(e) {
-            alert('Preencha os dados manualmente.');
-        }
-    }
-
-    async function salvarParceiro(event) {
-        event.preventDefault();
         const cid = clienteIdAtual();
-        const nome = document.getElementById('cadNome').value;
-        const cnpj = document.getElementById('cadCnpj').value;
-        const tipo = document.getElementById('cadTipo').value;
-        const telefone = document.getElementById('cadTelefone').value;
-        const email = document.getElementById('cadEmail').value;
+        if(cid) select.value = cid;
+    } catch(e) {}
+}
 
-        const { error } = await sb.from('parceiros').insert([{
-            cliente_id: cid,
-            nome: nome,
-            cnpj_cpf: cnpj,
-            tipo: tipo,
-            telefone: telefone,
-            email: email
-        }]);
+function trocarEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    location.reload();
+}
 
-        if (error) {
-            alert('Erro ao guardar parceiro: ' + error.message);
-            return;
+async function carregarCentrosCustoSelect() {
+    try {
+        const { data } = await sbFiltroLeitura('centros_custo');
+        let selectEl = document.getElementById('centro_custo');
+        if(!selectEl) return;
+        selectEl.innerHTML = '<option value="">Selecione o Projeto...</option>';
+        if(data) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                selectEl.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
+            });
         }
+    } catch(err) {}
+}
 
-        alert('Parceiro guardado com sucesso!');
-        fecharModal();
-        carregarParceiros();
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+async function carregarParceiros() {
+    const { data, error } = await sbFiltroLeitura('parceiros').order('id', { ascending: false });
+    if(error) return;
+    parceirosCache = data || [];
+    renderTabela();
+    aplicarFiltrosRelatorio();
+}
+
+function aplicarFiltrosRelatorio() {
+    let stFiltro = document.getElementById('filtroTipo').value.toLowerCase();
+    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+    let dadosFiltrados = parceirosCache.filter(p => {
+        let tipoParc = (p.tipo_cadastro || 'cliente').toLowerCase();
+        if (stFiltro !== 'todos' && !tipoParc.includes(stFiltro)) return false;
+        if (txtBusca) {
+            let linha = (p.nome + ' ' + (p.cnpj_cpf || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || '')).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
+        }
+        return true;
+    });
+
+    const tbodyRel = document.getElementById('tbodyRelatorioModo');
+    tbodyRel.innerHTML = '';
+    if(dadosFiltrados.length === 0) {
+        tbodyRel.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
+        return;
+    }
+    dadosFiltrados.forEach(p => {
+        let badge = '';
+        let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
+        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        else badge = '<span class="badge badge-cliente">Cliente</span>';
+
+        let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
+        tbodyRel.innerHTML += `<tr>
+            <td>${badge}</td>
+            <td>${p.cnpj_cpf || '-'}</td>
+            <td><strong>${p.nome || '-'}</strong></td>
+            <td>${p.centro_custo || '-'}</td>
+            <td><small><b>Contato:</b> ${p.nome_contato || '-'}<br>CNAE: ${p.cnae_principal || '-'}</small></td>
+            <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
+            <td><small>${enderecoCompleto}</small></td>
+        </tr>`;
+    });
+}
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroTipo').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyParceiros');
+    tbody.innerHTML = '';
+    parceirosCache.forEach(p => {
+        let badge = '';
+        let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
+        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        else badge = '<span class="badge badge-cliente">Cliente</span>';
+
+        let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
+        tbody.innerHTML += `<tr>
+            <td><strong>#${p.id}</strong></td>
+            <td>${badge}</td>
+            <td>${p.cnpj_cpf || '-'}</td>
+            <td><strong>${p.nome || '-'}</strong></td>
+            <td>${p.centro_custo || '-'}</td>
+            <td><small><b>Contato:</b> ${p.nome_contato || '-'}</small></td>
+            <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
+            <td><small>${enderecoCompleto}</small></td>
+            <td style="text-align:right;">
+                <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="editarParceiro(${p.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn" style="padding:4px 8px; font-size:11px; background:#fee2e2; color:#b91c1c;" onclick="excluirParceiro(${p.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function salvarParceiro() {
+    const id = document.getElementById('edit_id').value;
+    const tipo_cadastro = document.getElementById('tipo_cadastro').value;
+    const cnpj_cpf = document.getElementById('cnpj_cpf').value.trim();
+    const nome = document.getElementById('nome').value.trim();
+    const centro_custo = document.getElementById('centro_custo').value;
+
+    if(!nome || !cnpj_cpf || !centro_custo) {
+        toast("Preencha o documento, o nome e selecione o Centro de Custo!", "error");
+        return;
     }
 
-    async function excluirParceiro(id) {
-        if (!confirm('Deseja realmente excluir este parceiro?')) return;
+    let payload = {
+        tipo_cadastro, cnpj_cpf, nome, centro_custo,
+        cliente_id: clienteIdAtual(),
+        email: document.getElementById('email').value.trim(),
+        telefone: document.getElementById('telefone').value.trim(),
+        cep: document.getElementById('cep').value.trim(),
+        logradouro: document.getElementById('logradouro').value.trim(),
+        numero: document.getElementById('numero').value.trim(),
+        bairro: document.getElementById('bairro').value.trim(),
+        cidade_uf: document.getElementById('cidade_uf').value.trim()
+    };
+
+    let res;
+    if(id) {
+        res = await sb.from('parceiros').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('parceiros').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar parceiro: " + res.error.message, "error");
+        return;
+    }
+
+    toast(id ? "Parceiro atualizado com sucesso!" : "Parceiro cadastrado com sucesso!");
+    cancelarEdicao();
+    carregarParceiros();
+}
+
+window.editarParceiro = function(id) {
+    let p = parceirosCache.find(x => String(x.id) === String(id));
+    if(!p) return;
+    document.getElementById('edit_id').value = p.id;
+    document.getElementById('tipo_cadastro').value = p.tipo_cadastro || 'Cliente';
+    document.getElementById('cnpj_cpf').value = p.cnpj_cpf || '';
+    document.getElementById('nome').value = p.nome || '';
+    document.getElementById('centro_custo').value = p.centro_custo || '';
+    document.getElementById('email').value = p.email || '';
+    document.getElementById('telefone').value = p.telefone || '';
+    document.getElementById('cep').value = p.cep || '';
+    document.getElementById('logradouro').value = p.logradouro || '';
+    document.getElementById('numero').value = p.numero || '';
+    document.getElementById('bairro').value = p.bairro || '';
+    document.getElementById('cidade_uf').value = p.cidade_uf || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-edit"></i> Editando Parceiro (#${p.id})`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Parceiro';
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function cancelarEdicao() {
+    document.getElementById('edit_id').value = '';
+    document.getElementById('tipo_cadastro').value = 'Cliente';
+    document.getElementById('cnpj_cpf').value = '';
+    document.getElementById('nome').value = '';
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('telefone').value = '';
+    document.getElementById('cep').value = '';
+    document.getElementById('logradouro').value = '';
+    document.getElementById('numero').value = '';
+    document.getElementById('bairro').value = '';
+    document.getElementById('cidade_uf').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Parceiro Completo';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+window.excluirParceiro = async function(id) {
+    if(confirm("Deseja realmente excluir este parceiro?")) {
         const { error } = await sb.from('parceiros').delete().eq('id', id);
-        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        if(error) { toast("Erro ao excluir parceiro.", "error"); return; }
+        toast("Parceiro removido com sucesso!");
         carregarParceiros();
     }
+}
 
-    window.onload = carregarParceiros;
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarSeletorEmpresa();
+    aplicarTemaSalvo();
+    await carregarCentrosCustoSelect();
+    await carregarParceiros();
+}
+
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
