@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos XML — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+        .brand-info h1 { font-size: 16px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .btn-voltar {
+            background: #e2e8f0; color: var(--text-main); border: none; padding: 10px 16px; border-radius: 10px;
+            font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s;
+        }
+        .btn-voltar:hover { background: #cbd5e1; }
+
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; }
+        .btn-acao:hover { background: #1d4ed8; }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+
+        .search-input { padding: 9px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 13px; width: 300px; outline: none; background: var(--bg); color: var(--text-main); }
+        .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+        .num { text-align: right; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 500px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .search-input, .btn-acao, .col-acoes { display: none !important; }
+            body { background: #fff !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-file-invoice"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Módulo de Documentos XML</span>
+        </div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <div style="display:flex; gap:12px;">
+            <button class="btn-acao" onclick="abrirImportar()"><i class="fas fa-upload"></i> Importar XML</button>
+            <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        </div>
+    </div>
+
+    <div class="card-table">
+        <div class="print-header">
+            <h2>Relatório de Documentos Fiscais Recebidos</h2>
+            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
+        </div>
+        <div class="table-header">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Documentos Fiscais Recebidos</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gerencie notas fiscais e conhecimentos de transporte importados.</p>
+            </div>
+            <input type="text" id="filtroTexto" class="search-input" placeholder="Pesquisar por emitente ou número..." oninput="filtrarDocumentos()">
+        </div>
+        <table>
+            <thead>
+                <tr><th>Tipo</th><th>Número</th><th>Data Emissão</th><th class="num">Valor Total</th><th>Emitente</th></tr>
+            </thead>
+            <tbody id="tbodyDocs">
+                <tr><td colspan="5" class="vazio">A carregar documentos do Supabase...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL IMPORTAR XML -->
+<div class="modal-overlay" id="modalImportar">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-upload"></i> Importar Ficheiro XML</h3>
+      <button onclick="fecharImportar()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <input type="file" id="arquivoXml" accept=".xml" onchange="lerXml(event)" style="width:100%; padding:8px; border:1px solid var(--border); border-radius:8px; margin-bottom:14px; background:var(--bg);">
+    <div id="infoXml" style="display:none; font-size:12px; background:var(--bg); padding:12px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border);"></div>
+    <div style="display:flex; justify-content:flex-end; gap:10px;">
+      <button onclick="fecharImportar()" style="padding:9px 16px; border:1px solid var(--border); border-radius:8px; background:transparent; cursor:pointer; font-weight:600;">Cancelar</button>
+      <button onclick="salvarImportado()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Salvar no Supabase</button>
+    </div>
+  </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let cacheDocs = [];
+    let xmlLido = null;
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    function formatBRL(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    async function carregarDocumentos() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyDocs');
+        
+        const { data, error } = await sb.from('documentos_recebidos').select('*').eq('cliente_id', cid).order('data_emissao', { ascending: false });
+        if (error) { tbody.innerHTML = `<tr><td colspan="5" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+
+        cacheDocs = data || [];
+        renderizar(cacheDocs);
+        document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
+    }
+
+    function renderizar(lista) {
+        const tbody = document.getElementById('tbodyDocs');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="5" class="vazio">Nenhum documento encontrado.</td></tr>'; return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(d => {
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="badge" style="background:#dbeafe; color:#1d4ed8;">${d.tipo || 'NF-e'}</span></td>
+                    <td><strong>${d.numero || '—'}</strong></td>
+                    <td>${d.data_emissao ? d.data_emissao.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num">${formatBRL(d.valor_total)}</td>
+                    <td>${d.emitente_nome || '—'}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function filtrarDocumentos() {
+        const termo = document.getElementById('filtroTexto').value.toLowerCase();
+        const filtrados = cacheDocs.filter(d => 
+            (d.emitente_nome || '').toLowerCase().includes(termo) || 
+            (d.numero || '').toLowerCase().includes(termo)
+        );
+        renderizar(filtrados);
+    }
+
+    function abrirImportar() { document.getElementById('modalImportar').classList.add('ativo'); }
+    function fecharImportar() { document.getElementById('modalImportar').classList.remove('ativo'); }
+
+    function lerXml(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const parser = new DOMParser(), doc = parser.parseFromString(e.target.result, 'text/xml');
+                const raiz = doc.documentElement;
+                const tipo = raiz.nodeName.indexOf('CTe') > -1 ? 'CT-e' : 'NF-e';
+                const chave = (raiz.getElementsByTagName('chNFe')[0] || raiz.getElementsByTagName('chCTe')[0] || {}).textContent || '';
+                const numero = (raiz.getElementsByTagName('nNF')[0]|| raiz.getElementsByTagName('nCT')[0] || {}).textContent || '';
+                const data = (raiz.getElementsByTagName('dhEmi')[0] || {}).textContent || '';
+                const valor = (raiz.getElementsByTagName('vNF')[0] || raiz.getElementsByTagName('vTPrest')[0] || {}).textContent || '';
+                const emitNome = (raiz.getElementsByTagName('xNome')[0] || {}).textContent || '';
+                
+                xmlLido = { tipo, chave, numero, data: data ? data.substring(0, 10) : null, valor: Number(valor) || 0, emitNome };
+                document.getElementById('infoXml').style.display = 'block';
+                document.getElementById('infoXml').innerHTML = `<b>Lido com Sucesso:</b> ${tipo} nº ${numero} - R$ ${xmlLido.valor.toFixed(2)}`;
+            } catch(err) { alert('Erro ao ler XML: ' + err.message); xmlLido = null; }
+        };
+        reader.readAsText(file);
+    }
+
+    async function salvarImportado() {
+        const cid = clienteIdAtual();
+        if (!cid || !xmlLido) { alert('Selecione um XML válido.'); return; }
+        
+        const { error } = await sb.from('documentos_recebidos').insert([{
+            cliente_id: cid, tipo: xmlLido.tipo, chave_acesso: xmlLido.chave,
+            numero: xmlLido.numero, data_emissao: xmlLido.data,
+            valor_total: xmlLido.valor, emitente_nome: xmlLido.emitNome, status: 'recebido'
+        }]);
+        
+        if (error) { alert('Erro: ' + error.message); return; }
+        alert('Documento importado com sucesso!');
+        fecharImportar();
+        carregarDocumentos();
+    }
+
+    window.onload = carregarDocumentos;
+</script>
+</body>
+</html>
