@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Versão com Dois Botões: Início + Módulo)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Cor Padronizada)
 
 (function() {
-    const styleId = 'erp-core-styles-v4';
+    const styleId = 'erp-core-styles-v5';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -9,7 +9,7 @@
             :root {
                 --primary: #2563eb;
                 --primary-dark: #1d4ed8;
-                --secondary: #0f172a;
+                --secondary: #1e3a8a;
                 --success: #10b981;
                 --bg: #f8fafc;
                 --card: #ffffff;
@@ -20,42 +20,42 @@
 
             body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; margin: 0; padding: 0; }
 
-            /* HEADER EXECUTIVO DE ELITE */
+            /* HEADER CORPORATIVO PADRÃO UNIFICADO */
             .site-header {
-                background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
-                box-shadow: 0 4px 20px rgba(15,23,42,0.15); position: sticky; top: 0; z-index: 1000; width: 100%; border-bottom: 1px solid rgba(255,255,255,0.08);
+                background: var(--secondary); color: #fff; padding: 16px 32px; display: flex; justify-content: space-between; align-items: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
             }
-            .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
-            .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
-            .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
-            .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+            .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
+            .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+            .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+            .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
             /* BARRA DE PESQUISA GLOBAL ELITE */
             .search-global-box { position: relative; flex: 1; max-width: 360px; margin: 0 20px; }
-            .search-global-box input { width: 100%; background: rgba(255,255,255,0.08); border: 1.5px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 8px 14px 8px 38px; color: #fff; font-size: 13px; outline: none; transition: all 0.25s ease; }
-            .search-global-box input::placeholder { color: #94a3b8; font-weight: 400; }
-            .search-global-box input:focus { background: rgba(255,255,255,0.14); border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.25); }
-            .search-global-box i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
+            .search-global-box input { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 8px 14px 8px 36px; color: #fff; font-size: 13px; outline: none; transition: all 0.2s ease; }
+            .search-global-box input::placeholder { color: #cbd5e1; font-weight: 400; }
+            .search-global-box input:focus { background: rgba(255,255,255,0.18); border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2); }
+            .search-global-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
             
-            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 12px; box-shadow: 0 20px 40px rgba(15,23,42,0.2); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
+            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 10px; box-shadow: 0 10px 25px rgba(15,23,42,0.15); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
             .search-dropdown-header { padding: 10px 14px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-light); background: #f8fafc; border-bottom: 1px solid var(--border); letter-spacing: 0.8px; }
             .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; font-weight: 500; }
             .search-item:last-child { border-bottom: none; }
-            .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 18px; }
+            .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 16px; }
             .search-item i { width: 18px; color: var(--primary); font-size: 13px; text-align: center; }
 
             .site-nav-right { display: flex; align-items: center; gap: 10px; }
-            .btn-topo-acao { background: rgba(255,255,255,0.08); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15); padding: 7px 12px; border-radius: 9px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-            .btn-topo-acao:hover { background: rgba(255,255,255,0.18); color: #fff; }
+            .btn-topo-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+            .btn-topo-acao:hover { background: rgba(255,255,255,0.2); }
 
-            .empresa-selector { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 9px; padding: 5px 10px; }
+            .empresa-selector { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 5px 10px; }
             .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
             .empresa-selector select option { color: #000; background: #fff; }
             
-            .user-box { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #cbd5e1; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.1); }
+            .user-box { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.08); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
             
-            .btn-sair { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); padding: 7px 12px; border-radius: 9px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-            .btn-sair:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+            .btn-sair { background: #dc2626; color: #fff; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+            .btn-sair:hover { background: #b91c1c; }
 
             /* PAINEL DE ASSISTENTE VIRTUAL INTERATIVO */
             .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 4000; font-family: 'Inter', sans-serif; }
@@ -63,12 +63,12 @@
             .assistant-trigger:hover { transform: scale(1.08); box-shadow: 0 15px 35px rgba(37,99,235,0.5); }
             .assistant-badge { position: absolute; top: 0; right: 0; width: 16px; height: 16px; background: #10b981; border-radius: 50%; border: 2px solid #fff; }
 
-            .assistant-chat-box { position: absolute; bottom: 75px; right: 0; width: 340px; background: #fff; border-radius: 18px; box-shadow: 0 20px 50px rgba(15,23,42,0.2); border: 1px solid var(--border); display: none; flex-direction: column; overflow: hidden; animation: chatPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+            .assistant-chat-box { position: absolute; bottom: 75px; right: 0; width: 340px; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(15,23,42,0.2); border: 1px solid var(--border); display: none; flex-direction: column; overflow: hidden; animation: chatPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
             @keyframes chatPop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
-            .chat-header { background: #0f172a; color: #fff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
+            .chat-header { background: var(--secondary); color: #fff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
             .chat-header span { display: flex; align-items: center; gap: 8px; }
-            .chat-close { background: transparent; border: none; color: #94a3b8; font-size: 16px; cursor: pointer; transition: 0.15s; }
+            .chat-close { background: transparent; border: none; color: #cbd5e1; font-size: 16px; cursor: pointer; transition: 0.15s; }
             .chat-close:hover { color: #fff; }
 
             .chat-body { padding: 16px; height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; font-size: 13px; }
@@ -108,7 +108,6 @@
         const pathAtual = window.location.pathname.toLowerCase();
         let botaoModuloHtml = "";
 
-        // Se estiver dentro de alguma página do Financeiro, exibe o botão específico para voltar ao Módulo Financeiro
         if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre")) {
             botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
