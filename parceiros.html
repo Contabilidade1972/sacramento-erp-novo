@@ -81,9 +81,9 @@
         .print-header { display: none; }
 
         @media print {
-            @page { size: landscape; margin: 10mm; }
+            @page { size: landscape; margin: 15mm; }
             body { background: #fff !important; color: #000 !important; }
-            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay, .btn-colapsar { display: none !important; }
+            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay, .btn-colapsar, .filtro-container-print { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
             .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; display: block !important; }
             .print-header { display: block !important; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; }
@@ -254,7 +254,7 @@
     <div class="card" id="cardRelatorioModo">
         <div class="print-header">
             <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros aplicados: <span id="printFiltrosInfo">Todos os Tipos</span></p>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Emitido por: <span id="printUsuarioNome">Sistema</span> | Filtros aplicados: <span id="printFiltrosInfo">Todos os Tipos</span></p>
         </div>
         <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
@@ -264,7 +264,7 @@
             </div>
         </div>
         <div class="card-body">
-            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
+            <div class="filtro-container-print" style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
                 <div>
                     <label>Filtrar por Tipo</label>
                     <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
@@ -477,7 +477,6 @@ function aplicarFiltrosRelatorio() {
     let stFiltro = document.getElementById('filtroTipo').value;
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
     
-    // Atualiza dinamicamente o cabeçalho impresso com os filtros reais aplicados
     let descFiltroTipo = stFiltro === 'todos' ? 'Todos os Tipos' : stFiltro;
     let descBusca = txtBusca ? ` | Busca: "${txtBusca}"` : '';
     document.getElementById('printFiltrosInfo').innerText = `${descFiltroTipo}${descBusca}`;
@@ -690,7 +689,9 @@ async function inicializarPagina() {
     let u = obterUsuarioAtual();
     if(!u || !u.email) { location.href = 'login.html'; return; }
     var elUser = document.getElementById('userInfo');
-    if (elUser) elUser.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+    let nomeUsuario = u.nome || u.email || 'Usuário';
+    if (elUser) elUser.innerText = nomeUsuario.split(' ')[0];
+    document.getElementById('printUsuarioNome').innerText = nomeUsuario;
     await carregarSeletorEmpresa();
     await carregarCentrosCustoSelect();
     await carregarParceiros();
