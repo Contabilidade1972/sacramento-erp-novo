@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -26,25 +27,9 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* HEADER CORPORATIVO UNIFICADO */
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 14px; }
-        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #ef4444, #dc2626); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; }
-        .brand-info span { font-size: 10px; color: #fca5a5; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 16px; }
-        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
-        .btn-topo:hover { background: rgba(255,255,255,0.2); }
-        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
-        .btn-topo.sair:hover { background: #b91c1c; }
-
         .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .page-toolbar { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 16px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
@@ -80,7 +65,7 @@
         .badge.pago { background: #d1fae5; color: #065f46; }
 
         .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
-        .btn-icon:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+        .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
         .btn-icon.excluir:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
@@ -105,23 +90,8 @@
 </head>
 <body>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-file-invoice-dollar"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Módulo de Contas a Pagar</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
-        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
 <div class="container">
     <div class="page-toolbar">
-        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
         <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
     </div>
 
@@ -157,7 +127,7 @@
         <div class="table-header">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Controle de Contas a Pagar</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Acompanhe faturas, despesas e fornecedores registados.</p>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Acompanhe faturas, despesas e fornecedores registrados.</p>
             </div>
         </div>
         <table>
@@ -200,14 +170,6 @@
         return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
     }
 
-    function sairSistema() {
-        if (confirm('Deseja realmente encerrar a sessão?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
-        }
-    }
-
     async function carregarContasPagar() {
         const cid = clienteIdAtual();
         const tbody = document.getElementById('tbodyPagar');
@@ -238,7 +200,7 @@
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhes('${t.id}')"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="Imprimir Comprovativo" onclick="imprimirItemDireto('${t.id}')"><i class="fas fa-print"></i></button>
-                        <button class="btn-icon excluir" title="Excluir Registo" onclick="excluirConta('${t.id}')"><i class="fas fa-trash-alt"></i></button>
+                        <button class="btn-icon excluir" title="Excluir Registro" onclick="excluirConta('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
             `;
