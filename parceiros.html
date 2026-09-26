@@ -79,24 +79,50 @@
         .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
 
         .print-header { display: none; }
+        .print-ficha-container { display: none; }
 
         @media print {
             @page { size: landscape; margin: 15mm; }
             body { background: #fff !important; color: #000 !important; }
-            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .modal-overlay, .btn-colapsar, .filtro-container-print { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; display: block !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 15px; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; }
-            .print-header h2 { font-size: 16px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            
+            /* Se estiver imprimindo a ficha individual */
+            body.imprimindo-ficha .site-header,
+            body.imprimindo-ficha .container,
+            body.imprimindo-ficha .modal-overlay { display: none !important; }
+
+            body.imprimindo-ficha .print-ficha-container {
+                display: block !important;
+                padding: 20px;
+                font-family: 'Inter', sans-serif;
+            }
+
+            /* Se estiver imprimindo o relatório geral */
+            body:not(.imprimindo-ficha) .site-header, 
+            body:not(.imprimindo-ficha) .card:not(#cardRelatorioModo), 
+            body:not(.imprimindo-ficha) .toast-container, 
+            body:not(.imprimindo-ficha) button, 
+            body:not(.imprimindo-ficha) .modal-overlay, 
+            body:not(.imprimindo-ficha) .btn-colapsar, 
+            body:not(.imprimindo-ficha) .filtro-container-print { display: none !important; }
+
+            body:not(.imprimindo-ficha) .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            body:not(.imprimindo-ficha) .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
+            
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
             .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
+            
             table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 10px !important; color: #000 !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
             th { background: #1e3a8a !important; color: #fff !important; }
         }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- ÁREA EXCLUSIVA PARA IMPRESSÃO DA FICHA INDIVIDUAL -->
+<div class="print-ficha-container" id="printFichaArea"></div>
 
 <!-- MODAL DE VISUALIZAÇÃO E FICHA INDIVIDUAL -->
 <div class="modal-overlay" id="modalVisualizar">
@@ -107,7 +133,7 @@
         </div>
         <div id="conteudoFichaDetalhada" style="font-size:13px; display:flex; flex-direction:column; gap:12px; line-height:1.6;"></div>
         <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-            <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Ficha</button>
+            <button class="btn btn-success" onclick="imprimirFichaIndividual()"><i class="fas fa-print"></i> Imprimir Ficha</button>
             <button class="btn btn-outline" onclick="fecharModalVisualizar()">Fechar</button>
         </div>
     </div>
@@ -573,11 +599,36 @@ window.visualizarParceiro = function(id) {
         <div><b>Observações:</b> ${p.observacoes || '-'}</div>
     `;
     document.getElementById('conteudoFichaDetalhada').innerHTML = html;
+    
+    // Prepara também a área dedicada para impressão da ficha individual
+    let u = obterUsuarioAtual();
+    let nomeUsuario = (u ? (u.nome || u.email) : 'Sistema');
+    let fichaPrintHtml = `
+        <div style="border-bottom:3px solid #1e3a8a; padding-bottom:12px; margin-bottom:20px;">
+            <h2 style="color:#1e3a8a; font-size:20px; font-weight:800; text-transform:uppercase;">Sacramento ERP — Ficha Cadastral de Parceiro</h2>
+            <p style="font-size:11px; color:#334155; margin-top:4px;">Emitido em: ${new Date().toLocaleDateString('pt-BR')} | Emitido por: ${nomeUsuario}</p>
+        </div>
+        ${html}
+        <div style="margin-top:40px; border-top:1px solid #cbd5e1; pt:10px; font-size:10px; color:#64748b; text-align:center;">
+            Documento gerado eletronicamente via Sacramento ERP — Todos os direitos reservados.
+        </div>
+    `;
+    document.getElementById('printFichaArea').innerHTML = fichaPrintHtml;
+    
     document.getElementById('modalVisualizar').classList.add('ativo');
 }
 
 function fecharModalVisualizar() {
     document.getElementById('modalVisualizar').classList.remove('ativo');
+    document.body.classList.remove('imprimindo-ficha');
+}
+
+function imprimirFichaIndividual() {
+    document.body.classList.add('imprimindo-ficha');
+    window.print();
+    setTimeout(() => {
+        document.body.classList.remove('imprimindo-ficha');
+    }, 500);
 }
 
 async function salvarParceiro() {
