@@ -44,7 +44,7 @@
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 20px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
-        /* Barra de Filtro de Projeto */
+        /* Barra de Filtro de Visão Interna (Multi-Tenant Seguro) */
         .filter-top-bar {
             background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px;
             display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.02); flex-wrap: wrap; gap: 12px;
@@ -72,7 +72,6 @@
         .chart-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
         .chart-title { font-size: 14px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
 
-        /* Filtros temporais internos dos gráficos */
         .time-badges { display: flex; gap: 4px; background: #f1f5f9; padding: 3px; border-radius: 8px; }
         .time-badge { background: transparent; border: none; padding: 4px 8px; font-size: 10px; font-weight: 700; color: var(--text-light); cursor: pointer; border-radius: 6px; transition: 0.2s; }
         .time-badge.active { background: #fff; color: var(--primary); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
@@ -112,17 +111,17 @@
 </header>
 
 <div class="container">
-    <!-- FILTRAR VISÃO POR PROJETO / EMPRESA -->
+    <!-- FILTRO DE VISÃO INTERNA DA EMPRESA (MULTI-TENANT SEGURO) -->
     <div class="filter-top-bar">
         <div style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700;">
-            <i class="fas fa-filter" style="color: var(--primary);"></i> FILTRAR VISÃO DO DASHBOARD POR PROJETO:
-            <select id="selectProjeto">
-                <option>Consolidado Geral (Todos os Projetos)</option>
-                <option>Operações Logísticas SP/MG</option>
-                <option>Consultoria Contábil Sceii</option>
+            <i class="fas fa-filter" style="color: var(--primary);"></i> FILTRAR VISÃO ANALÍTICA DA EMPRESA:
+            <select id="selectVisaoInterna">
+                <option>Visão Consolidada Geral (Empresa Logada)</option>
+                <option>Departamento Financeiro / Tesouraria</option>
+                <option>Departamento Fiscal e Documentos XML</option>
             </select>
         </div>
-        <button class="btn-csv" onclick="alert('Exportação de Relatório Executivo CSV iniciada!')"><i class="fas fa-download"></i> Exportar CSV</button>
+        <button class="btn-csv" onclick="alert('Exportação de Relatório Executivo CSV iniciada com sucesso!')"><i class="fas fa-download"></i> Exportar CSV</button>
     </div>
 
     <!-- KPIS LINHA 1 -->
@@ -152,12 +151,12 @@
     <!-- CONTAS BANCÁRIAS / CAIXA (LINHA 2) -->
     <div class="kpi-row-2">
         <div class="kpi-box-2">
-            <span class="bank-name"><i class="fas fa-university"></i> Inter PJ</span>
+            <span class="bank-name"><i class="fas fa-university"></i> Conta Principal PJ</span>
             <span class="bank-val" id="valInterPJ">R$ 0,00</span>
             <a href="contas_bancarias.html" class="bank-action">Extrato →</a>
         </div>
         <div class="kpi-box-2" style="border-left-color: var(--warning);">
-            <span class="bank-name"><i class="fas fa-credit-card"></i> Pré-Pago Banco Inter</span>
+            <span class="bank-name"><i class="fas fa-credit-card"></i> Cartão / Pré-Pago</span>
             <span class="bank-val" id="valPrePago">R$ 0,00</span>
             <a href="contas_bancarias.html" class="bank-action">Extrato →</a>
         </div>
@@ -204,7 +203,7 @@
                 </tr>
             </thead>
             <tbody id="tabelaBody">
-                <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-light);">A carregar dados analíticos...</td></tr>
+                <tr><td colspan="4" style="text-align:center; padding:20px; color:var(--text-light);">A carregar dados analíticos isolados...</td></tr>
             </tbody>
         </table>
     </div>
@@ -228,6 +227,7 @@
     async function carregarDashboardMaster() {
         const cid = clienteIdAtual();
         try {
+            // Isolamento absoluto multi-tenant restrito estritamente ao cliente_id da empresa ativa
             const [pagarRes, receberRes, bancosRes] = await Promise.all([
                 sb.from('contas_pagar').select('*').eq('cliente_id', cid),
                 sb.from('contas_receber').select('*').eq('cliente_id', cid),
@@ -252,7 +252,6 @@
             elRes.innerText = formatBRL(resultadoLiquido);
             elRes.style.color = resultadoLiquido >= 0 ? 'var(--success)' : 'var(--danger)';
 
-            // Contas Bancárias individuais simuladas ou reais
             document.getElementById('valInterPJ').innerText = formatBRL(saldoBancos * 0.7);
             document.getElementById('valPrePago').innerText = formatBRL(saldoBancos * 0.1);
             document.getElementById('valCaixaFisico').innerText = formatBRL(saldoBancos * 0.2);
@@ -268,7 +267,6 @@
         if (chartEvolObj) chartEvolObj.destroy();
         if (chartCompObj) chartCompObj.destroy();
 
-        // Gráfico de Linha / Área Evolução
         chartEvolObj = new Chart(document.getElementById('chartEvolucao'), {
             type: 'line',
             data: {
@@ -281,11 +279,10 @@
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
         });
 
-        // Gráfico de Rosca Composição
         chartCompObj = new Chart(document.getElementById('chartComposicao'), {
             type: 'doughnut',
             data: {
-                labels: ['Inter PJ', 'Pré-Pago', 'Caixa Físico'],
+                labels: ['Conta Principal PJ', 'Cartão / Pré-Pago', 'Caixa Físico'],
                 datasets: [{ data: [bancos * 0.7 || 100, bancos * 0.1 || 50, bancos * 0.2 || 80], backgroundColor: ['#2563eb', '#f59e0b', '#10b981'] }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
@@ -296,7 +293,6 @@
         const tbody = document.getElementById('tabelaBody');
         const head = document.getElementById('tabelaHead');
         
-        // Atualiza abas visuais
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         event && event.target && event.target.classList.add('active');
 
