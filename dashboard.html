@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Analítico — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px; }
+        .chart-title { font-size: 16px; font-weight: 800; color: var(--secondary); }
+
+        @media(max-width: 900px) {
+            .kpi-grid { grid-template-columns: 1fr; }
+            .charts-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-chart-pie"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Dashboard Executivo Analítico</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <span style="font-size: 13px; font-weight: 600; color: var(--text-light);" id="infoEmpresaAtiva">Empresa Ativa</span>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-title">Total de Documentos XML</span>
+            <span class="kpi-value" id="kpiDocs">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Contas a Pagar (Em Aberto)</span>
+            <span class="kpi-value" id="kpiPagar" style="color: var(--danger);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Contas a Receber (Projeção)</span>
+            <span class="kpi-value" id="kpiReceber" style="color: var(--success);">R$ 0,00</span>
+        </div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-chart-line" style="color: var(--primary);"></i> Comparativo Financeiro (Pagar vs Receber)</div>
+            <div style="position: relative; height: 300px;"><canvas id="chartFinanceiro"></canvas></div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-wallet" style="color: #7c3aed;"></i> Distribuição de Títulos</div>
+            <div style="position: relative; height: 300px;"><canvas id="chartDistribuicao"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    function formatBRL(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    async function carregarDashboard() {
+        const cid = clienteIdAtual();
+        
+        try {
+            // Documentos
+            const { count: countDocs } = await sb.from('documentos_recebidos').select('*', { count: 'exact', head: true }).eq('cliente_id', cid);
+            document.getElementById('kpiDocs').innerText = countDocs || 0;
+
+            // Contas a Pagar
+            const { data: pagarData } = await sb.from('contas_pagar').select('valor, status').eq('cliente_id', cid);
+            let totalPagar = 0;
+            (pagarData || []).forEach(t => {
+                const st = (t.status || '').toLowerCase();
+                if (!st.includes('pago') && !st.includes('quitado')) totalPagar += parseFloat(t.valor) || 0;
+            });
+            document.getElementById('kpiPagar').innerText = formatBRL(totalPagar);
+
+            // Contas a Receber
+            const { data: receberData } = await sb.from('contas_receber').select('valor, status').eq('cliente_id', cid);
+            let totalReceber = 0;
+            (receberData || []).forEach(t => {
+                const st = (t.status || '').toLowerCase();
+                if (!st.includes('recebido') && !st.includes('pago')) totalReceber += parseFloat(t.valor) || 0;
+            });
+            document.getElementById('kpiReceber').innerText = formatBRL(totalReceber);
+
+            // Renderizar Gráficos Chart.js
+            renderizarGraficos(totalPagar, totalReceber, countDocs || 0);
+        } catch(err) {
+            console.error("Erro ao carregar dashboard:", err);
+        }
+    }
+
+    function renderizarGraficos(pagar, receber, docs) {
+        // Gráfico de Barras
+        const ctxBar = document.getElementById('chartFinanceiro').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Contas a Pagar', 'Contas a Receber'],
+                datasets: [{
+                    label: 'Valor em Reais (R$)',
+                    data: [pagar, receber],
+                    backgroundColor: ['#ef4444', '#10b981'],
+                    borderRadius: 8
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+
+        // Gráfico de Rosca
+        const ctxDoughnut = document.getElementById('chartDistribuicao').getContext('2d');
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pagar', 'Receber', 'Documentos XML'],
+                datasets: [{
+                    data: [pagar > 0 ? pagar : 10, receber > 0 ? receber : 10, docs > 0 ? docs * 100 : 100],
+                    backgroundColor: ['#ef4444', '#10b981', '#2563eb']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    window.onload = carregarDashboard;
+</script>
+</body>
+</html>
