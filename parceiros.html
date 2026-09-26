@@ -1,17 +1,436 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Parceiros — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER CORPORATIVO DO PORTAL (PADRÃO UNIFICADO) */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #2563eb, #1d4ed8); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1350px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+        .card-header h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--secondary)}
+
+        .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:14px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark);}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669;}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
+        .btn-outline:hover{background:var(--bg);}
+
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+
+        .badge{padding:4px 10px;border-radius:6px;font-weight:700;font-size:10px;text-transform:uppercase;display:inline-block;}
+        .badge-cliente{background:#dbeafe;color:#1e40af}
+        .badge-fornecedor{background:#fef3c7;color:#d97706}
+        .badge-ambos{background:#f3e8ff;color:#7e22ce}
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        .print-header { display: none; }
+        @media print {
+            body { background: #fff !important; }
+            .site-header, .card:not(#cardRelatorioModo), .toast-container, button { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 12px; border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- HEADER DO PORTAL CORPORATIVO -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-address-book"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Gestão Inteligente de Parceiros</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <div class="empresa-selector">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 18px; color: #93c5fd;"></i>
+            <span id="userInfo">Usuário</span>
+        </div>
+        <button class="btn-topo sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <!-- FORMULÁRIO DE CADASTRO -->
+    <div class="card">
+        <div class="card-header">
+            <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
+        </div>
+        <input type="hidden" id="edit_id">
+        <div class="form-grid">
+            <div>
+                <label>Tipo de Cadastro *</label>
+                <select id="tipo_cadastro" class="form-control">
+                    <option value="Cliente">Cliente</option>
+                    <option value="Fornecedor">Fornecedor</option>
+                    <option value="Ambos">Cliente & Fornecedor</option>
+                </select>
+            </div>
+            <div>
+                <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:normal;"></span></label>
+                <input type="text" id="cnpj_cpf" class="form-control" placeholder="Apenas números..." onblur="consultarOuValidarDocumento()">
+            </div>
+            <div style="grid-column: span 2;">
+                <label id="label_nome">Razão Social / Nome Completo *</label>
+                <input type="text" id="nome" class="form-control" placeholder="Nome oficial ou razão social">
+            </div>
+        </div>
+        <div class="form-grid">
+            <div>
+                <label>Nome Fantasia / Social</label>
+                <input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial">
+            </div>
+            <div>
+                <label>Inscrição Estadual (IE) / RG</label>
+                <input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números">
+            </div>
+            <div>
+                <label>Inscrição Municipal (IM)</label>
+                <input type="text" id="fiscal_2" class="form-control" placeholder="Número IM">
+            </div>
+            <div>
+                <label>Nome do Contato</label>
+                <input type="text" id="nome_contato" class="form-control" placeholder="Responsável">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 2fr 3fr;">
+            <div>
+                <label>CNAE Principal</label>
+                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição...">
+            </div>
+            <div>
+                <label>CNAE Secundários</label>
+                <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;">
+            <div>
+                <label>Telefone / WhatsApp</label>
+                <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
+            </div>
+            <div>
+                <label>E-mail Principal</label>
+                <input type="email" id="email" class="form-control" placeholder="contato@empresa.com">
+            </div>
+            <div>
+                <label>E-mail NF-e</label>
+                <input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com">
+            </div>
+            <div>
+                <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo *</label>
+                <select id="centro_custo" class="form-control" required>
+                    <option value="">Selecione o Projeto...</option>
+                </select>
+            </div>
+            <div>
+                <label>Observações</label>
+                <input type="text" id="observacoes" class="form-control" placeholder="Anotações...">
+            </div>
+        </div>
+        <div class="form-grid">
+            <div>
+                <label>CEP <span id="status_cep" style="font-size:10px;"></span></label>
+                <input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Logradouro (Endereço)</label>
+                <input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida...">
+            </div>
+            <div>
+                <label>Número</label>
+                <input type="text" id="numero" class="form-control" placeholder="123">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 2fr 2fr 2fr;">
+            <div>
+                <label>Complemento</label>
+                <input type="text" id="complemento" class="form-control" placeholder="Bloco B...">
+            </div>
+            <div>
+                <label>Bairro</label>
+                <input type="text" id="bairro" class="form-control" placeholder="Centro">
+            </div>
+            <div>
+                <label>Cidade / UF</label>
+                <input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG">
+            </div>
+        </div>
+        <div style="margin-top: 15px; display:flex; gap:10px;">
+            <button class="btn btn-primary" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar Parceiro Completo</button>
+            <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
+        </div>
+    </div>
+
+    <!-- RELATÓRIO OPERACIONAL -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
+        </div>
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
+            <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+        </div>
+        <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
+            <div>
+                <label>Filtrar por Tipo</label>
+                <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                    <option value="todos">Todos os Tipos</option>
+                    <option value="cliente">Cliente</option>
+                    <option value="fornecedor">Fornecedor</option>
+                    <option value="ambos">Cliente & Fornecedor</option>
+                </select>
+            </div>
+            <div>
+                <label>Buscar por Nome, Documento ou Cidade</label>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="aplicarFiltrosRelatorio()">
+            </div>
+            <div>
+                <button class="btn btn-outline" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Contato & Fisco</th><th>Comunicação</th><th>Endereço Completo</th></tr>
+                </thead>
+                <tbody id="tbodyRelatorioModo"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- DIRETÓRIO AVANÇADO -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Fisco & Contato</th><th>Comunicação</th><th>Endereço Completo</th><th style="text-align:right;">Ações</th></tr>
+                </thead>
+                <tbody id="tbodyParceiros"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let parceirosCache = [];
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+setInterval(() => {
+    let now = new Date();
+    const dt = document.getElementById('current_datetime');
+    if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}, 1000);
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarSeletorEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    try {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        if(!data) return;
+        select.innerHTML = '';
+        data.forEach(emp => {
+            const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+            const opt = document.createElement('option');
+            opt.value = emp.id;
+            opt.textContent = nomeEmp;
+            select.appendChild(opt);
+        });
+        const cid = clienteIdAtual();
+        if(cid) select.value = cid;
+    } catch(e) {}
+}
+
+function trocarEmpresa() {
+    const select = document.getElementById('selectEmpresa');
+    if(!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    location.reload();
+}
+
+function sair() {
+    if (confirm('Deseja realmente sair do sistema?')) { 
+        localStorage.removeItem('usuarioLogado'); 
+        localStorage.removeItem('empresaSelecionada'); 
+        location.href = 'login.html'; 
+    }
+}
+
+async function carregarCentrosCustoSelect() {
+    try {
+        const { data } = await sbFiltroLeitura('centros_custo');
+        let selectEl = document.getElementById('centro_custo');
+        if(!selectEl) return;
+        selectEl.innerHTML = '<option value="">Selecione o Projeto...</option>';
+        if(data) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                selectEl.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
+            });
+        }
+    } catch(err) {}
+}
+
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+async function buscarCep() {
+    let cep = document.getElementById('cep').value.replace(/\D/g, '');
+    let statusCep = document.getElementById('status_cep');
+    if(cep.length !== 8) return;
+    try {
+        let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        let data = await res.json();
+        if(!data.erro) {
+            document.getElementById('logradouro').value = data.logradouro || '';
+            document.getElementById('bairro').value = data.bairro || '';
+            document.getElementById('cidade_uf').value = `${data.localidade || ''} - ${data.uf || ''}`;
+            toast("Endereço preenchido pelo CEP.", "info");
+        }
+    } catch(e) {}
+}
+
+async function consultarOuValidarDocumento() {
+    let doc = document.getElementById('cnpj_cpf').value.trim();
+    let docLimpo = doc.replace(/\D/g, '');
+    if (docLimpo.length === 14) {
+        try {
+            let resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${docLimpo}`);
+            if (resposta.ok) {
+                let dados = await resposta.json();
+                document.getElementById('nome').value = dados.razao_social || '';
+                document.getElementById('campo_alternativo').value = dados.nome_fantasia || '';
+                document.getElementById('email').value = dados.email || '';
+                document.getElementById('telefone').value = dados.ddd_telefone_1 || '';
+                document.getElementById('cep').value = dados.cep || '';
+                document.getElementById('logradouro').value = dados.logradouro || '';
+                document.getElementById('numero').value = dados.numero || '';
+                document.getElementById('bairro').value = dados.bairro || '';
+                document.getElementById('cidade_uf').value = `${dados.municipio || ''} - ${dados.uf || ''}`;
+                toast("Dados importados da Receita Federal com sucesso!", "success");
+            }
+        } catch (err) {}
+    }
+}
+
+async function carregarParceiros() {
+    const { data, error } = await sbFiltroLeitura('parceiros').order('id', { ascending: false });
+    if(error) return;
+    parceirosCache = data || [];
+    renderTabela();
+    aplicarFiltrosRelatorio();
+}
+
 function aplicarFiltrosRelatorio() {
     let stFiltro = document.getElementById('filtroTipo').value.toLowerCase();
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
-    
     let dadosFiltrados = parceirosCache.filter(p => {
         let tipoParc = (p.tipo_cadastro || 'cliente').toLowerCase();
-        
-        // Filtro exato por tipo de relacionamento
-        if (stFiltro !== 'todos') {
-            if (stFiltro === 'cliente' && !tipoParc.includes('cliente')) return false;
-            if (stFiltro === 'fornecedor' && !tipoParc.includes('fornecedor')) return false;
-            if (stFiltro === 'ambos' && !tipoParc.includes('ambos') && !tipoParc.includes('&')) return false;
-        }
-
+        if (stFiltro !== 'todos' && !tipoParc.includes(stFiltro)) return false;
         if (txtBusca) {
             let linha = (p.nome + ' ' + (p.cnpj_cpf || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || '')).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
@@ -25,12 +444,11 @@ function aplicarFiltrosRelatorio() {
         tbodyRel.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
         return;
     }
-    
     dadosFiltrados.forEach(p => {
         let badge = '';
         let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
-        if(tipo.includes('fornecedor') && !tipo.includes('ambos') && !tipo.includes('&')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        else if(tipo.includes('ambos') || tipo.includes('&')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
         else badge = '<span class="badge badge-cliente">Cliente</span>';
 
         let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
@@ -45,3 +463,141 @@ function aplicarFiltrosRelatorio() {
         </tr>`;
     });
 }
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroTipo').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyParceiros');
+    tbody.innerHTML = '';
+    parceirosCache.forEach(p => {
+        let badge = '';
+        let tipo = (p.tipo_cadastro || 'Cliente').toLowerCase();
+        if(tipo.includes('fornecedor')) badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
+        else if(tipo.includes('ambos')) badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        else badge = '<span class="badge badge-cliente">Cliente</span>';
+
+        let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
+        tbody.innerHTML += `<tr>
+            <td><strong>#${p.id}</strong></td>
+            <td>${badge}</td>
+            <td>${p.cnpj_cpf || '-'}</td>
+            <td><strong>${p.nome || '-'}</strong></td>
+            <td>${p.centro_custo || '-'}</td>
+            <td><small><b>Contato:</b> ${p.nome_contato || '-'}</small></td>
+            <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
+            <td><small>${enderecoCompleto}</small></td>
+            <td style="text-align:right;">
+                <button class="btn" style="padding:4px 8px; font-size:11px;" onclick="editarParceiro(${p.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn" style="padding:4px 8px; font-size:11px; background:#fee2e2; color:#b91c1c;" onclick="excluirParceiro(${p.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function salvarParceiro() {
+    const id = document.getElementById('edit_id').value;
+    const tipo_cadastro = document.getElementById('tipo_cadastro').value;
+    const cnpj_cpf = document.getElementById('cnpj_cpf').value.trim();
+    const nome = document.getElementById('nome').value.trim();
+    const centro_custo = document.getElementById('centro_custo').value;
+
+    if(!nome || !cnpj_cpf || !centro_custo) {
+        toast("Preencha o documento, o nome e selecione o Centro de Custo!", "error");
+        return;
+    }
+
+    let payload = {
+        tipo_cadastro, cnpj_cpf, nome, centro_custo,
+        cliente_id: clienteIdAtual(),
+        email: document.getElementById('email').value.trim(),
+        telefone: document.getElementById('telefone').value.trim(),
+        cep: document.getElementById('cep').value.trim(),
+        logradouro: document.getElementById('logradouro').value.trim(),
+        numero: document.getElementById('numero').value.trim(),
+        bairro: document.getElementById('bairro').value.trim(),
+        cidade_uf: document.getElementById('cidade_uf').value.trim()
+    };
+
+    let res;
+    if(id) {
+        res = await sb.from('parceiros').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('parceiros').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar parceiro: " + res.error.message, "error");
+        return;
+    }
+
+    toast(id ? "Parceiro atualizado com sucesso!" : "Parceiro cadastrado com sucesso!");
+    cancelarEdicao();
+    carregarParceiros();
+}
+
+window.editarParceiro = function(id) {
+    let p = parceirosCache.find(x => String(x.id) === String(id));
+    if(!p) return;
+    document.getElementById('edit_id').value = p.id;
+    document.getElementById('tipo_cadastro').value = p.tipo_cadastro || 'Cliente';
+    document.getElementById('cnpj_cpf').value = p.cnpj_cpf || '';
+    document.getElementById('nome').value = p.nome || '';
+    document.getElementById('centro_custo').value = p.centro_custo || '';
+    document.getElementById('email').value = p.email || '';
+    document.getElementById('telefone').value = p.telefone || '';
+    document.getElementById('cep').value = p.cep || '';
+    document.getElementById('logradouro').value = p.logradouro || '';
+    document.getElementById('numero').value = p.numero || '';
+    document.getElementById('bairro').value = p.bairro || '';
+    document.getElementById('cidade_uf').value = p.cidade_uf || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-edit"></i> Editando Parceiro (#${p.id})`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Parceiro';
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function cancelarEdicao() {
+    document.getElementById('edit_id').value = '';
+    document.getElementById('tipo_cadastro').value = 'Cliente';
+    document.getElementById('cnpj_cpf').value = '';
+    document.getElementById('nome').value = '';
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('email').value = '';
+    document.getElementById('telefone').value = '';
+    document.getElementById('cep').value = '';
+    document.getElementById('logradouro').value = '';
+    document.getElementById('numero').value = '';
+    document.getElementById('bairro').value = '';
+    document.getElementById('cidade_uf').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Parceiro Completo';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+window.excluirParceiro = async function(id) {
+    if(confirm("Deseja realmente excluir este parceiro?")) {
+        const { error } = await sb.from('parceiros').delete().eq('id', id);
+        if(error) { toast("Erro ao excluir parceiro.", "error"); return; }
+        toast("Parceiro removido com sucesso!");
+        carregarParceiros();
+    }
+}
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    var elUser = document.getElementById('userInfo');
+    if (elUser) elUser.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+    await carregarSeletorEmpresa();
+    await carregarCentrosCustoSelect();
+    await carregarParceiros();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
