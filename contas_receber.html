@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contas a Receber — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER CORPORATIVO UNIFICADO */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #a7f3d0; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        /* KPIs Superiores */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+
+        /* Barra de Filtros Avançada */
+        .filter-bar {
+            background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
+            display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
+        .filter-group input { height: 38px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
+        .filter-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+        .num { text-align: right; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+        .badge.pendente { background: #fee2e2; color: #991b1b; }
+        .badge.recebido { background: #d1fae5; color: #065f46; }
+
+        .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+        .btn-icon.excluir:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .filter-bar, .btn-acao, .btn-icon, .modal-overlay, .col-acoes { display: none !important; }
+            body { background: #fff !important; }
+            .kpi-grid { display: none !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-hand-holding-usd"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Módulo de Contas a Receber</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+    </div>
+
+    <!-- KPIs SUPERIORES -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-title">Total de Títulos</span>
+            <span class="kpi-value" id="kpiTotalTitulos">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Projeção em Aberto</span>
+            <span class="kpi-value" id="kpiValorAberto" style="color: var(--warning);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Total Recebido</span>
+            <span class="kpi-value" id="kpiValorRecebido" style="color: var(--success);">R$ 0,00</span>
+        </div>
+    </div>
+
+    <!-- BARRA DE FILTROS AVANÇADA -->
+    <div class="filter-bar">
+        <div class="filter-group"><span>Vencimento De</span><input type="date" id="filtroDataInicio" onchange="aplicarFiltros()"></div>
+        <div class="filter-group"><span>Vencimento Até</span><input type="date" id="filtroDataFim" onchange="aplicarFiltros()"></div>
+        <div class="filter-group" style="flex:1;"><span>Pesquisa por Cliente ou Descrição</span><input type="text" id="filtroTexto" placeholder="Digite para filtrar..." oninput="aplicarFiltros()"></div>
+        <button class="btn-acao" style="height:38px;" onclick="limparFiltros()">Limpar</button>
+    </div>
+
+    <div class="card-table">
+        <div class="print-header">
+            <h2>Relatório de Contas a Receber</h2>
+            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
+        </div>
+        <div class="table-header">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Controle de Contas a Receber</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Acompanhe recebimentos, clientes e faturas em aberto.</p>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
+            </thead>
+            <tbody id="tbodyReceber">
+                <tr><td colspan="6" class="vazio">A carregar contas a receber do Supabase...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL DETALHES -->
+<div class="modal-overlay" id="modalDetalhes">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-size:16px; font-weight:700;"><i class="fas fa-info-circle"></i> Detalhes da Conta a Receber</h3>
+      <button onclick="fecharDetalhes()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+    </div>
+    <div id="conteudoDetalhes" style="font-size:13px; line-height:1.6; color:var(--text-main); margin-bottom:20px;"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <button onclick="imprimirModalItem()" class="btn-acao sucesso"><i class="fas fa-print"></i> Imprimir Comprovativo</button>
+      <button onclick="fecharDetalhes()" style="background:var(--primary); color:#fff; border:none; padding:9px 16px; border-radius:8px; cursor:pointer; font-weight:600;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    let cacheReceber = [];
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    function formatBRL(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    function sairSistema() {
+        if (confirm('Deseja realmente encerrar a sessão?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
+    }
+
+    async function carregarContasReceber() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyReceber');
+        
+        const { data, error } = await sb.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+
+        cacheReceber = data || [];
+        aplicarFiltros();
+        document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
+    }
+
+    function renderizar(lista) {
+        const tbody = document.getElementById('tbodyReceber');
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum recebimento encontrado.</td></tr>'; atualizarKpis([]); return; }
+
+        tbody.innerHTML = '';
+        lista.forEach(t => {
+            const st = (t.status || 'pendente').toLowerCase();
+            const badgeClass = st.includes('recebido') || st.includes('pago') ? 'recebido' : 'pendente';
+            tbody.innerHTML += `
+                <tr>
+                    <td><strong>${t.cliente_nome || t.cliente || 'Cliente'}</strong></td>
+                    <td>${t.descricao || '—'}</td>
+                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td class="num">${formatBRL(t.valor)}</td>
+                    <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
+                    <td style="text-align:center;" class="col-acoes">
+                        <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhes('${t.id}')"><i class="fas fa-eye"></i></button>
+                        <button class="btn-icon" title="Imprimir Comprovativo" onclick="imprimirItemDireto('${t.id}')"><i class="fas fa-print"></i></button>
+                        <button class="btn-icon excluir" title="Excluir Registo" onclick="excluirConta('${t.id}')"><i class="fas fa-trash-alt"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+        atualizarKpis(lista);
+    }
+
+    function atualizarKpis(lista) {
+        const totalTitulos = lista.length;
+        let valorAberto = 0;
+        let valorRecebido = 0;
+
+        lista.forEach(t => {
+            const st = (t.status || '').toLowerCase();
+            const val = parseFloat(t.valor) || 0;
+            if (st.includes('recebido') || st.includes('pago')) {
+                valorRecebido += val;
+            } else {
+                valorAberto += val;
+            }
+        });
+
+        document.getElementById('kpiTotalTitulos').innerText = totalTitulos;
+        document.getElementById('kpiValorAberto').innerText = formatBRL(valorAberto);
+        document.getElementById('kpiValorRecebido').innerText = formatBRL(valorRecebido);
+    }
+
+    function aplicarFiltros() {
+        const inicio = document.getElementById('filtroDataInicio').value;
+        const fim = document.getElementById('filtroDataFim').value;
+        const texto = document.getElementById('filtroTexto').value.toLowerCase();
+
+        const filtrados = cacheReceber.filter(t => {
+            if (inicio && t.vencimento && t.vencimento < inicio) return false;
+            if (fim && t.vencimento && t.vencimento > fim) return false;
+            if (texto && !(t.cliente_nome || t.cliente || '').toLowerCase().includes(texto) && !(t.descricao || '').toLowerCase().includes(texto)) return false;
+            return true;
+        });
+
+        renderizar(filtrados);
+    }
+
+    function limparFiltros() {
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
+        document.getElementById('filtroTexto').value = '';
+        renderizar(cacheReceber);
+    }
+
+    function verDetalhes(id) {
+        const t = cacheReceber.find(x => x.id == id);
+        if (!t) return;
+        document.getElementById('conteudoDetalhes').innerHTML = `
+            <b>Cliente:</b> ${t.cliente_nome || t.cliente || '—'}<br>
+            <b>Descrição:</b> ${t.descricao || '—'}<br>
+            <b>Data de Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
+            <b>Valor:</b> ${formatBRL(t.valor)}<br>
+            <b>Status:</b> ${t.status || 'Pendente'}
+        `;
+        document.getElementById('modalDetalhes').classList.add('ativo');
+    }
+
+    function fecharDetalhes() { document.getElementById('modalDetalhes').classList.remove('ativo'); }
+
+    function imprimirItemDireto(id) {
+        const t = cacheReceber.find(x => x.id == id);
+        if (!t) return;
+        const html = `<b>Cliente:</b> ${t.cliente_nome || t.cliente || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        dispararJanelaImpressaoItem(html);
+    }
+
+    function imprimirModalItem() {
+        const conteudo = document.getElementById('conteudoDetalhes').innerHTML;
+        dispararJanelaImpressaoItem(conteudo);
+    }
+
+    function dispararJanelaImpressaoItem(conteudoHtml) {
+        const agora = new Date().toLocaleString('pt-BR');
+        const janela = window.open('', '_blank', 'width=700,height=600');
+        janela.document.write(`
+            <html>
+            <head>
+                <title>Comprovativo de Conta a Receber — Sacramento ERP</title>
+                <style>
+                    body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
+                    h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
+                    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
+                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <h2>Comprovativo de Conta a Receber — Sacramento ERP</h2>
+                <div class="info-box">${conteudoHtml}</div>
+                <div class="footer">Emitido em: ${agora}</div>
+                <script>window.print();<\/script>
+            </body>
+            </html>
+        `);
+        janela.document.close();
+    }
+
+    async function excluirConta(id) {
+        if (!confirm('Deseja realmente excluir este registo?')) return;
+        const { error } = await sb.from('contas_receber').delete().eq('id', id);
+        if (error) { alert('Erro ao excluir: ' + error.message); return; }
+        carregarContasReceber();
+    }
+
+    window.onload = carregarContasReceber;
+</script>
+</body>
+</html>
