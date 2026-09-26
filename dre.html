@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRE Gerencial — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* HEADER CORPORATIVO UNIFICADO */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; }
+        .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #8b5cf6, #7c3aed); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; }
+        .brand-info span { font-size: 10px; color: #ddd6fe; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .btn-topo { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-topo.sair { background: #dc2626; border-color: #dc2626; }
+        .btn-topo.sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        /* KPIs Superiores */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th { background: var(--bg); text-align: left; padding: 14px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+        .num { text-align: right; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .btn-acao { display: none !important; }
+            body { background: #fff !important; }
+            .kpi-grid { display: none !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+        }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-file-invoice-dollar"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Módulo de DRE Gerencial</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <a href="index.html" class="btn-topo"><i class="fas fa-home"></i> Home</a>
+        <button class="btn-topo sair" onclick="sairSistema()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-topo" style="background:#e2e8f0; color:#0f172a; border:none;"><i class="fas fa-arrow-left"></i> Voltar ao Painel</a>
+        <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir DRE</button>
+    </div>
+
+    <!-- KPIs SUPERIORES -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-title">Receitas Totais</span>
+            <span class="kpi-value" id="kpiReceitas" style="color: var(--success);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Despesas Totais</span>
+            <span class="kpi-value" id="kpiDespesas" style="color: var(--danger);">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title">Resultado Líquido</span>
+            <span class="kpi-value" id="kpiResultado">R$ 0,00</span>
+        </div>
+    </div>
+
+    <div class="card-table">
+        <div class="print-header">
+            <h2>Demonstração do Resultado do Exercício (DRE Gerencial)</h2>
+            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
+        </div>
+        <div class="table-header">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">DRE Gerencial Consolidada</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Apuração gerencial automática de receitas, custos e despesas.</p>
+            </div>
+        </div>
+        <table>
+            <thead>
+                <tr><th>Indicador / Conta Operacional</th><th class="num">Valor Consolidado (R$)</th></tr>
+            </thead>
+            <tbody id="tbodyDre">
+                <tr><td colspan="2" class="vazio">A apurar DRE gerencial...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
+    }
+
+    function formatBRL(v) {
+        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    }
+
+    function sairSistema() {
+        if (confirm('Deseja realmente encerrar a sessão?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
+    }
+
+    async function carregarDre() {
+        const cid = clienteIdAtual();
+        const tbody = document.getElementById('tbodyDre');
+        
+        try {
+            const [recRes, pagRes] = await Promise.all([
+                sb.from('contas_receber').select('valor').eq('cliente_id', cid),
+                sb.from('contas_pagar').select('valor').eq('cliente_id', cid)
+            ]);
+
+            const totalReceitas = (recRes.data || []).reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
+            const totalDespesas = (pagRes.data || []).reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
+            const resultadoLiquido = totalReceitas - totalDespesas;
+
+            document.getElementById('kpiReceitas').innerText = formatBRL(totalReceitas);
+            document.getElementById('kpiDespesas').innerText = formatBRL(totalDespesas);
+            
+            const elRes = document.getElementById('kpiResultado');
+            elRes.innerText = formatBRL(resultadoLiquido);
+            elRes.style.color = resultadoLiquido >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            tbody.innerHTML = `
+                <tr>
+                    <td><strong>(+) Receitas Totais Operacionais / Previstas</strong></td>
+                    <td class="num" style="color: var(--success); font-weight: 700;">${formatBRL(totalReceitas)}</td>
+                </tr>
+                <tr>
+                    <td><strong>(-) Despesas Totais Operacionais / Previstas</strong></td>
+                    <td class="num" style="color: var(--danger); font-weight: 700;">${formatBRL(totalDespesas)}</td>
+                </tr>
+                <tr style="background: #f8fafc; font-size: 15px;">
+                    <td><strong>(=) Resultado Líquido Gerencial</strong></td>
+                    <td class="num" style="color: ${resultadoLiquido >= 0 ? 'var(--success)' : 'var(--danger)'}; font-weight: 800;">${formatBRL(resultadoLiquido)}</td>
+                </tr>
+            `;
+
+            document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="2" class="vazio">Erro ao calcular DRE: ${err.message}</td></tr>`;
+        }
+    }
+
+    window.onload = carregarDre;
+</script>
+</body>
+</html>
