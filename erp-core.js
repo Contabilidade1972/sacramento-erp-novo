@@ -96,6 +96,7 @@
         { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
         { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto", "departamento"] },
         { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo", "codigo de barras"] },
+        { nome: "Inventário & Estoque", url: "estoque.html", icon: "fa-warehouse", keywords: ["inventario", "estoque", "saldo", "auditoria", "fisico"] },
         { nome: "Documentos XML", url: "documentos.html", icon: "fa-file-code", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
@@ -125,7 +126,7 @@
 
                 <div class="search-global-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, cliente, contas..." autocomplete="off">
+                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, inventário..." autocomplete="off">
                     <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
                 </div>
 
@@ -234,16 +235,12 @@
         setTimeout(() => {
             let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
             const tLower = texto.toLowerCase();
-            if (tLower.includes('pagar') || tLower.includes('despesa')) {
-                resposta = "No módulo de Contas a Pagar, você pode registrar novos títulos, dar baixa em faturas e filtrar por fornecedor.";
-            } else if (tLower.includes('receber') || tLower.includes('cliente')) {
-                resposta = "Em Contas a Receber, o sistema controla os recebimentos pendentes e faturas emitidas aos clientes.";
-            } else if (tLower.includes('cnpj') || tLower.includes('parceiro')) {
-                resposta = "O cadastro de Parceiros possui busca automática integrada à Receita Federal via CNPJ.";
-            } else if (tLower.includes('produto') || tLower.includes('estoque')) {
-                resposta = "No catálogo de Produtos e Serviços, você pode gerenciar custos, preços de venda, estoque atual e gerar etiquetas de código de barras.";
-            } else if (tLower.includes('ajuda') || tLower.includes('como')) {
-                resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo para navegar rapidamente.";
+            if (tLower.includes('estoque') || tLower.includes('inventario')) {
+                resposta = "No módulo de Inventário e Estoque, você pode auditar saldos físicos e ajustar quantidades em tempo real.";
+            } else if (tLower.includes('produto')) {
+                resposta = "No catálogo de Produtos e Serviços, você cadastra novos itens e gera códigos de barras.";
+            } else {
+                resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo.";
             }
 
             body.innerHTML += `<div class="chat-msg bot">${resposta}</div>`;
