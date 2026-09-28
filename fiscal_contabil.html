@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiscal (EFD/DCTF) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        .tabs-header { display: flex; gap: 12px; border-bottom: 2px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
+        .tab-btn { background: none; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.2s; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+        
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { font-weight: 800; background: var(--bg); border-top: 2px solid var(--border); }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-entregue { background: #d1fae5; color: #065f46; }
+        .badge-pendente { background: #fef3c7; color: #d97706; }
+        .badge-vencida { background: #fee2e2; color: #991b1b; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-calculator" style="color:var(--primary);"></i> Fiscal (EFD/DCTF)</div>
+        <div class="page-subtitle">Apuração de impostos, controle de obrigações acessórias e parâmetros de alíquotas</div>
+    </div>
+
+    <div class="panel">
+        <div class="tabs-header">
+            <button class="tab-btn active" onclick="alternarAba(event,'tab_apuracao')"><i class="fas fa-calculator"></i> Apuração de Impostos</button>
+            <button class="tab-btn" onclick="alternarAba(event,'tab_obrigacoes')"><i class="fas fa-clipboard-check"></i> Obrigações Acessórias</button>
+            <button class="tab-btn" onclick="alternarAba(event,'tab_parametros')"><i class="fas fa-sliders-h"></i> Parâmetros (Alíquotas)</button>
+        </div>
+
+        <!-- ABA APURAÇÃO -->
+        <div id="tab_apuracao" class="tab-content">
+            <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Apuração do Período</span></div>
+                <div class="form-row">
+                    <div>
+                        <label>Competência (Mês/Ano)</label>
+                        <input type="month" id="compApuracao" class="form-control">
+                    </div>
+                    <div>
+                        <label>Regime Tributário</label>
+                        <select id="regimeApuracao" class="form-control">
+                            <option value="Lucro Presumido" selected>Lucro Presumido</option>
+                            <option value="Lucro Real">Lucro Real</option>
+                            <option value="Simples Nacional">Simples Nacional</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Receita Bruta do Período (R$)</label>
+                        <input type="number" id="receitaBruta" class="form-control" step="0.01" min="0" placeholder="0,00">
+                    </div>
+                    <div style="display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;">
+                        <button class="btn-primary" onclick="calcularImpostos()"><i class="fas fa-calculator"></i> Calcular</button>
+                        <button class="btn-secondary" onclick="salvarApuracao()"><i class="fas fa-save"></i> Salvar</button>
+                    </div>
+                </div>
+                <div id="previewImpostos" style="margin-top:12px;"></div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header"><span><i class="fas fa-history"></i> Histórico de Apurações</span></div>
+                <div id="listaApuracaoes" style="overflow-x:auto;">Carregando apurações...</div>
+            </div>
+        </div>
+
+        <!-- ABA OBRIGAÇÕES -->
+        <div id="tab_obrigacoes" class="tab-content" style="display:none;">
+            <div class="panel-header">
+                <span><i class="fas fa-clipboard-check" style="color:var(--primary)"></i> Obrigações Acessórias</span>
+                <span style="font-size:12px; color:var(--text-light); font-weight:600;">Marque como entregue conforme for realizando</span>
+            </div>
+            <div id="listaObrigacoes" style="overflow-x:auto;">Carregando obrigações...</div>
+        </div>
+
+        <!-- ABA PARÂMETROS -->
+        <div id="tab_parametros" class="tab-content" style="display:none;">
+            <div class="panel-header">
+                <span><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Alíquotas por Imposto</span>
+                <button class="btn-primary" onclick="salvarParametros()"><i class="fas fa-save"></i> Salvar Parâmetros</button>
+            </div>
+            <div id="listaParametros" style="overflow-x:auto;">Carregando parâmetros...</div>
+        </div>
+    </div>
+</div>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+var IMPOSTOS = ['ISS','PIS','COFINS','IRPJ','CSLL'];
+var paramMap = {};
+var apuracaoTemp = null;
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+function formatBRL(valor){
+    let num = parseFloat(valor) || 0;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+}
+function fmtData(d){
+    if(!d) return '-';
+    return String(d).split('-').reverse().join('/');
+}
+
+function alternarAba(evt, tabId){
+    document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+    evt.currentTarget.classList.add('active');
+}
+
+// ===== Parâmetros (Alíquotas) =====
+async function carregarParametros(){
+    const cid = clienteIdAtual();
+    try {
+        const { data } = await sbFiltroLeitura('parametros_fiscais');
+        paramMap = {};
+        (data || []).forEach(p => {
+            paramMap[p.imposto] = parseFloat(p.aliquota) || 0;
+        });
+        IMPOSTOS.forEach(imp => {
+            if(paramMap[imp] === undefined) paramMap[imp] = 0;
+        });
+        renderParametros();
+    } catch(e) {}
+}
+
+function renderParametros(){
+    const el = document.getElementById('listaParametros');
+    let html = '<table class="analitica-table"><thead><tr><th>Imposto</th><th style="text-align:right;">Alíquota (%)</th></tr></thead><tbody>';
+    IMPOSTOS.forEach(imp => {
+        html += `<tr><td><strong>${imp}</strong></td><td style="text-align:right;"><input type="number" step="0.001" min="0" max="100" id="alq_${imp}" class="form-control" style="width:160px; margin-bottom:0; text-align:right; display:inline-block;" value="${paramMap[imp]}"></td></tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function salvarParametros(){
+    const cid = clienteIdAtual();
+    if(!cid){ toast("Nenhuma empresa selecionada.", "error"); return; }
+    for(const imp of IMPOSTOS){
+        const v = parseFloat(document.getElementById('alq_'+imp).value);
+        if(isNaN(v)) { toast("Alíquota inválida para " + imp, "error"); return; }
+        let payload = { cliente_id: cid, imposto: imp, aliquota: v, updated_at: new Date().toISOString() };
+        const { error } = await sb.from('parametros_fiscais').upsert([payload], { onConflict: 'cliente_id,imposto' });
+        if(error) { toast("Erro ao salvar " + imp + ": " + error.message, "error"); return; }
+    }
+    toast("Parâmetros fiscais salvos com sucesso!");
+    carregarParametros();
+}
+
+// ===== Apuração =====
+function calcularImpostos(){
+    const receita = parseFloat(document.getElementById('receitaBruta').value);
+    if(isNaN(receita) || receita <= 0) { toast("Informe a receita bruta do período.", "error"); return; }
+    const linhas = [];
+    let total = 0;
+    IMPOSTOS.forEach(imp => {
+        const alq = paramMap[imp] || 0;
+        const val = receita * alq / 100;
+        linhas.push({ imp: imp, alq: alq, val: val });
+        total += val;
+    });
+    let html = '<table class="analitica-table"><thead><tr><th>Imposto</th><th style="text-align:right;">Alíquota (%)</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
+    linhas.forEach(l => {
+        html += `<tr><td><strong>${l.imp}</strong></td><td style="text-align:right;">${l.alq.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(l.val)}</td></tr>`;
+    });
+    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total de Impostos</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
+    document.getElementById('previewImpostos').innerHTML = html;
+    apuracaoTemp = { receita: receita, total: total, linhas: linhas };
+}
+
+async function salvarApuracao(){
+    const cid = clienteIdAtual();
+    const competencia = document.getElementById('compApuracao').value;
+    const regime = document.getElementById('regimeApuracao').value;
+    if(!competencia) { toast("Informe a competência (mês/ano).", "error"); return; }
+    if(!apuracaoTemp) { toast("Clique em Calcular antes de salvar.", "error"); return; }
+    const u = obterUsuarioAtual();
+    let row = { cliente_id: cid, competencia: competencia, regime: regime, receita_bruta: apuracaoTemp.receita, criado_por: (u && u.email) ? u.email : null };
+    const map = { ISS: 'iss', PIS: 'pis', COFINS: 'cofins', IRPJ: 'irpj', CSLL: 'csll' };
+    apuracaoTemp.linhas.forEach(l => { row[map[l.imp]] = l.val; });
+    row.total_impostos = apuracaoTemp.total;
+    const { error } = await sb.from('apuracoes_impostos').insert([row]);
+    if(error) { toast("Erro ao salvar apuração: " + error.message, "error"); return; }
+    toast("Apuração salva com sucesso!");
+    document.getElementById('previewImpostos').innerHTML = '';
+    document.getElementById('receitaBruta').value = '';
+    apuracaoTemp = null;
+    carregarApuracoes();
+}
+
+async function carregarApuracoes(){
+    const el = document.getElementById('listaApuracaoes');
+    try {
+        const { data } = await sbFiltroLeitura('apuracoes_impostos').order('competencia', { ascending: false }).order('id', { ascending: false }).limit(60);
+        if(!data || !data.length) { el.innerHTML = '<div class="empty-state">Nenhuma apuração salva ainda.</div>'; return; }
+        let html = '<table class="analitica-table"><thead><tr><th>Competência</th><th>Regime</th><th style="text-align:right;">Receita (R$)</th><th style="text-align:right;">ISS</th><th style="text-align:right;">PIS</th><th style="text-align:right;">COFINS</th><th style="text-align:right;">IRPJ</th><th style="text-align:right;">CSLL</th><th style="text-align:right;">Total</th></tr></thead><tbody>';
+        data.forEach(a => {
+            html += `<tr><td>${a.competencia}</td><td>${a.regime}</td><td style="text-align:right;">${formatBRL(a.receita_bruta)}</td><td style="text-align:right;">${formatBRL(a.iss)}</td><td style="text-align:right;">${formatBRL(a.pis)}</td><td style="text-align:right;">${formatBRL(a.cofins)}</td><td style="text-align:right;">${formatBRL(a.irpj)}</td><td style="text-align:right;">${formatBRL(a.csll)}</td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(a.total_impostos)}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div class="empty-state">Erro ao carregar apurações.</div>'; }
+}
+
+// ===== Obrigações Acessórias =====
+async function carregarObrigacoes(){
+    const el = document.getElementById('listaObrigacoes');
+    try {
+        const { data } = await sbFiltroLeitura('obrigacoes_acessorias').order('periodicidade', { ascending: true }).order('nome', { ascending: true });
+        if(!data || !data.length) { el.innerHTML = '<div class="empty-state">Nenhuma obrigação cadastrada.</div>'; return; }
+        let html = '<table class="analitica-table"><thead><tr><th>Obrigação</th><th>Periodicidade</th><th>Venc. (dia)</th><th>Status</th><th>Data Entrega</th><th style="text-align:center;">Ação</th></tr></thead><tbody>';
+        data.forEach(o => {
+            const st = (o.status || 'Pendente').toLowerCase();
+            const badge = st === 'entregue' ? '<span class="badge badge-entregue">Entregue</span>' : (st === 'vencida' ? '<span class="badge badge-vencida">Vencida</span>' : '<span class="badge badge-pendente">Pendente</span>');
+            const acao = st !== 'entregue' ? `<button class="btn-secondary" onclick="marcarEntregue(${o.id})"><i class="fas fa-check"></i> Entregue</button>` : '<i class="fas fa-check-circle" style="color:var(--success); font-size:16px;"></i>';
+            html += `<tr><td><strong>${o.nome}</strong></td><td>${o.periodicidade}</td><td>${o.dia_vencimento || '-'}</td><td>${badge}</td><td>${o.data_entrega ? fmtData(o.data_entrega) : '-'}</td><td style="text-align:center;">${acao}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div class="empty-state">Erro ao carregar obrigações.</div>'; }
+}
+
+async function marcarEntregue(id){
+    const cid = clienteIdAtual();
+    let upd = sb.from('obrigacoes_acessorias').update({ status: 'Entregue', data_entrega: new Date().toISOString().split('T')[0] }).eq('id', id);
+    if (cid) upd = upd.eq('cliente_id', cid);
+    const { error } = await upd;
+    if(error) { toast("Erro ao atualizar obrigação: " + error.message, "error"); return; }
+    toast("Obrigação marcada como entregue!");
+    carregarObrigacoes();
+}
+
+async function inicializarPagina(){
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    const hoje = new Date();
+    document.getElementById('compApuracao').value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    await carregarParametros();
+    await carregarApuracoes();
+    await carregarObrigacoes();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
