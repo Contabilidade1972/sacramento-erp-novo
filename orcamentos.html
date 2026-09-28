@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orçamentos Comerciais — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+
+        .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark);}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669;}
+        .btn-warning{background:var(--warning);color:#fff}
+        .btn-warning:hover{background:#d97706;}
+        .btn-danger{background:var(--danger);color:#fff}
+        .btn-danger:hover{background:#dc2626;}
+
+        .info-box{background:#eff6ff;border-left:4px solid var(--primary);padding:12px 16px;border-radius:8px;font-size:13px;color:var(--text-main);margin-bottom:16px;}
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+
+        .btn-icon{background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px}
+        .btn-icon:hover{color:var(--primary)}
+
+        .badge-pendente{background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:6px;font-weight:600;font-size:11px;display:inline-block;}
+        .badge-convertido{background:#d1fae5;color:#065f46;padding:4px 8px;border-radius:6px;font-weight:600;font-size:11px;display:inline-block;}
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h3 id="formTitle"><i class="fas fa-file-circle-plus"></i> Novo Orçamento / Proposta Comercial</h3>
+        </div>
+        <input type="hidden" id="editId">
+        <div class="info-box">
+            <i class="fas fa-info-circle"></i> <strong>Gestão de Propostas:</strong> Elabore o orçamento informando o CNPJ do cliente (busca automática) e clique em salvar. Posteriormente, você poderá convertê-lo em fatura com apenas um clique.
+        </div>
+        <div class="form-grid">
+            <div>
+                <label>CPF / CNPJ do Cliente *</label>
+                <input type="text" id="cliente_cnpj" class="form-control" placeholder="00.000.000/0001-00" onblur="buscarClientePorCnpj()">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Nome / Razão Social do Cliente *</label>
+                <input type="text" id="cliente_nome" class="form-control" placeholder="Preenchimento automático ou livre">
+            </div>
+            <div>
+                <label>Valor Total (R$) *</label>
+                <input type="number" step="0.01" id="valor_total" class="form-control" placeholder="0,00">
+            </div>
+        </div>
+        <div class="form-grid">
+            <div>
+                <label>Vencimento Previsto *</label>
+                <input type="date" id="vencimento" class="form-control">
+            </div>
+            <div style="grid-column: span 3;">
+                <label>Descrição dos Itens / Serviços / NCM *</label>
+                <input type="text" id="descricao" class="form-control" placeholder="Ex: Pesquisa e desenvolvimento experimental em ciências físicas - Ref. Proposta">
+            </div>
+        </div>
+        <div style="margin-top: 16px; display:flex; gap:10px;">
+            <button class="btn btn-primary" id="btnSalvar" onclick="salvarOrcamento()"><i class="fas fa-save"></i> Salvar Orçamento Comercial</button>
+            <button class="btn btn-warning" id="btnCancelar" onclick="limparForm()" style="display:none;"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-list"></i> Orçamentos Emitidos &amp; Conversão para Faturamento</h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Cliente / Documento</th>
+                        <th>Descrição</th>
+                        <th>Valor</th>
+                        <th>Vencimento</th>
+                        <th>Status</th>
+                        <th>Data Criação</th>
+                        <th>Última Alteração</th>
+                        <th style="text-align:right;">Ações da Esteira</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyOrcamentos">
+                    <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">Carregando orçamentos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let listaOrcamentosCache = [];
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function registrarLogAuditoria(acao, modulo, detalhes) {
+    try {
+        let u = obterUsuarioAtual();
+        let usuarioNome = u ? `${u.nome} (${u.perfil || 'Usuário'})` : "Sistema / Visitante";
+        let payloadLog = { acao: acao.toUpperCase(), modulo: modulo, usuario: usuarioNome, detalhes: detalhes };
+        const cidLog = clienteIdAtual();
+        if (cidLog) payloadLog.cliente_id = cidLog;
+        await sb.from('logs_auditoria').insert([payloadLog]);
+    } catch (err) {}
+}
+
+async function buscarClientePorCnpj() {
+    let docDigitado = document.getElementById('cliente_cnpj').value.trim();
+    if(!docDigitado) return;
+    let docLimpo = docDigitado.replace(/\D/g, '');
+    const { data, error } = await sbFiltroLeitura('parceiros');
+    if(error || !data) return;
+    let cliente = data.find(p => {
+        let doc = p.cnpj_cpf || '';
+        return doc.toString().replace(/\D/g, '') === docLimpo;
+    });
+    if(cliente) {
+        document.getElementById('cliente_nome').value = cliente.nome || cliente.razao_social || '';
+        toast(`Cliente "${cliente.nome || cliente.razao_social}" carregado com sucesso!`, "info");
+    }
+}
+
+async function carregarOrcamentos() {
+    const { data, error } = await sbFiltroLeitura('orcamentos').order('id', { ascending: false });
+    if(error) return;
+    listaOrcamentosCache = data || [];
+    const tbody = document.getElementById('tbodyOrcamentos');
+    tbody.innerHTML = '';
+    if(listaOrcamentosCache.length > 0) {
+        listaOrcamentosCache.forEach(o => {
+            let badgeClass = o.status === 'Convertido' ? 'badge-convertido' : 'badge-pendente';
+            let vencFmt = o.vencimento ? o.vencimento.split('-').reverse().join('/') : '-';
+            let dataReg = o.created_at ? o.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+            let dataAlt = '-';
+            if (o.updated_at) {
+                let partes = o.updated_at.split('T');
+                let dataPart = partes[0].split('-').reverse().join('/');
+                let horaPart = partes[1] ? partes[1].substring(0, 5) : '';
+                dataAlt = `${dataPart} às ${horaPart}`;
+            }
+            let btnAcoes = '';
+            if(o.status !== 'Convertido') {
+                btnAcoes = `
+                    <button class="btn btn-success" style="padding:6px 12px; font-size:11px;" onclick="converterParaFatura(${o.id}, '${(o.cliente_nome||'').replace(/'/g,"\\'")}', '${(o.cliente_cnpj||'').replace(/'/g,"\\'")}', '${(o.descricao||'').replace(/'/g,"\\'")}', ${o.valor_total}, '${o.vencimento || ''}')"><i class="fas fa-exchange-alt"></i> Gerar Fatura</button>
+                    <button class="btn btn-warning" style="padding:6px 10px; font-size:11px;" onclick="prepararEdicao(${o.id})"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-danger" style="padding:6px 10px; font-size:11px;" onclick="excluirOrcamento(${o.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                `;
+            } else {
+                btnAcoes = `<span style="font-size:11px; color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Faturado</span>`;
+            }
+            tbody.innerHTML += `<tr>
+                <td><strong>${o.cliente_nome || ''}</strong><br><small style="color:var(--text-light);">${o.cliente_cnpj || ''}</small></td>
+                <td>${o.descricao || ''}</td>
+                <td><strong>R$ ${Number(o.valor_total || 0).toFixed(2)}</strong></td>
+                <td>${vencFmt}</td>
+                <td><span class="${badgeClass}">${o.status || 'Pendente'}</span></td>
+                <td>${dataReg}</td>
+                <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
+                <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end;">${btnAcoes}</td>
+            </tr>`;
+        });
+    } else {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum orçamento cadastrado.</td></tr>';
+    }
+}
+
+async function salvarOrcamento() {
+    const id = document.getElementById('editId').value;
+    const cliente_cnpj = document.getElementById('cliente_cnpj').value.trim();
+    const cliente_nome = document.getElementById('cliente_nome').value.trim();
+    const valor_total = document.getElementById('valor_total').value;
+    const descricao = document.getElementById('descricao').value.trim();
+    const vencimento = document.getElementById('vencimento').value;
+    if(!cliente_cnpj || !cliente_nome || !valor_total || !descricao) {
+        toast("Preencha todos os campos obrigatórios do orçamento!", "error");
+        return;
+    }
+    const cidAtual = clienteIdAtual();
+    let payload = {
+        cliente_cnpj,
+        cliente_nome,
+        valor_total: Number(valor_total),
+        descricao,
+        vencimento: vencimento || null,
+        updated_at: new Date().toISOString()
+    };
+    let res;
+    if(id) {
+        let upd = sb.from('orcamentos').update(payload).eq('id', id);
+        if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+        res = await upd;
+        if(!res.error) await registrarLogAuditoria('UPDATE', 'orcamentos', `Atualização do Orçamento ID: ${id} (${cliente_nome} - R$ ${valor_total})`);
+    } else {
+        delete payload.updated_at;
+        payload.status = 'Pendente';
+        if (cidAtual) payload.cliente_id = cidAtual;
+        res = await sb.from('orcamentos').insert([payload]);
+        if(!res.error) await registrarLogAuditoria('INSERT', 'orcamentos', `Novo Orçamento Comercial para ${cliente_nome} (${cliente_cnpj}) - R$ ${valor_total}`);
+    }
+    if(res.error) {
+        toast("Erro ao salvar orçamento: " + res.error.message, "error");
+        return;
+    }
+    toast(id ? "Orçamento atualizado com sucesso!" : "Orçamento comercial salvo com sucesso!");
+    limparForm();
+    carregarOrcamentos();
+}
+
+function prepararEdicao(id) {
+    let o = listaOrcamentosCache.find(x => x.id == id);
+    if(!o) return;
+    document.getElementById('editId').value = o.id;
+    document.getElementById('cliente_cnpj').value = o.cliente_cnpj || '';
+    document.getElementById('cliente_nome').value = o.cliente_nome || '';
+    document.getElementById('valor_total').value = o.valor_total || '';
+    document.getElementById('descricao').value = o.descricao || '';
+    document.getElementById('vencimento').value = o.vencimento || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Orçamento #${o.id}`;
+    document.getElementById('btnSalvar').innerHTML = `<i class="fas fa-save"></i> Atualizar Orçamento`;
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function limparForm() {
+    document.getElementById('editId').value = '';
+    document.getElementById('cliente_cnpj').value = '';
+    document.getElementById('cliente_nome').value = '';
+    document.getElementById('valor_total').value = '';
+    document.getElementById('descricao').value = '';
+    document.getElementById('vencimento').value = '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-file-circle-plus"></i> Novo Orçamento / Proposta Comercial`;
+    document.getElementById('btnSalvar').innerHTML = `<i class="fas fa-save"></i> Salvar Orçamento Comercial`;
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+async function converterParaFatura(id, nome, cnpj, desc, valor, venc) {
+    const cidAtual = clienteIdAtual();
+    let payloadFatura = {
+        orcamento_id: id,
+        cliente_nome: nome,
+        cliente_cnpj: cnpj,
+        descricao: desc,
+        valor: valor,
+        vencimento: venc !== 'null' && venc ? venc : null,
+        tipo_operacao: 'Intermunicipal',
+        status: 'Pendente',
+        updated_at: new Date().toISOString()
+    };
+    if (cidAtual) payloadFatura.cliente_id = cidAtual;
+    const { error: errFat } = await sb.from('faturas').insert([payloadFatura]);
+    if(errFat) {
+        toast("Erro ao gerar fatura: " + errFat.message, "error");
+        return;
+    }
+    let updOrc = sb.from('orcamentos').update({ status: 'Convertido', updated_at: new Date().toISOString() }).eq('id', id);
+    if (cidAtual) updOrc = updOrc.eq('cliente_id', cidAtual);
+    await updOrc;
+    await registrarLogAuditoria('UPDATE', 'orcamentos', `Conversão do Orçamento ID: ${id} em Fatura (${nome} - R$ ${valor})`);
+    toast("Orçamento convertido em Fatura com sucesso!");
+    carregarOrcamentos();
+}
+
+window.excluirOrcamento = async function(id) {
+    if(confirm("Deseja realmente excluir este orçamento?")) {
+        let orcAlvo = listaOrcamentosCache.find(x => x.id == id);
+        let del = sb.from('orcamentos').delete().eq('id', id);
+        const cidDel = clienteIdAtual();
+        if (cidDel) del = del.eq('cliente_id', cidDel);
+        const { error } = await del;
+        if(error) { toast("Erro ao excluir", "error"); return; }
+        await registrarLogAuditoria('DELETE', 'orcamentos', `Exclusão do Orçamento ID: ${id} (${orcAlvo ? orcAlvo.cliente_nome : 'Registro'} - R$ ${orcAlvo ? orcAlvo.valor_total : ''})`);
+        toast("Orçamento removido!");
+        carregarOrcamentos();
+    }
+}
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarOrcamentos();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
