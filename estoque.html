@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Inventário & Serviços — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-light)}
+        .btn-outline:hover{background:var(--bg);color:var(--text-main)}
+
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        .print-header { display: none; }
+
+        @media print {
+            @page { size: landscape; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .card-header button, .filter-bar, .toast-container, button { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="card">
+        <div class="print-header">
+            <h2>Sacramento ERP — Relatório de Inventário &amp; Saldo de Serviços</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Geral</span></p>
+        </div>
+        <div class="card-header">
+            <h3><i class="fas fa-warehouse" style="color:var(--primary)"></i> Auditoria de Estoque Físico e Alocação de Serviços / Horas</h3>
+            <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+        </div>
+        
+        <!-- BARRA DE FILTROS DO INVENTÁRIO -->
+        <div class="filter-bar" style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:20px; display:grid; grid-template-columns: 2fr 3fr auto; gap:12px; align-items:flex-end; border:1px solid var(--border);">
+            <div>
+                <label>Filtrar por Tipo</label>
+                <select id="filtroTipo" class="form-control" onchange="aplicarFiltros()">
+                    <option value="todos">Todos os Tipos (Físicos e Serviços)</option>
+                    <option value="fisico">Apenas Estoque Físico (Produtos)</option>
+                    <option value="servico">Apenas Serviços / Horas / Pesquisa</option>
+                </select>
+            </div>
+            <div>
+                <label>Buscar por Código ou Descrição</label>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Digite para filtrar..." oninput="aplicarFiltros()">
+            </div>
+            <div>
+                <button class="btn btn-outline" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descrição do Item</th>
+                        <th>Tipo de Controle</th>
+                        <th>Centro de Custos</th>
+                        <th>Unid.</th>
+                        <th style="text-align:right;">Custo Unit. (R$)</th>
+                        <th style="text-align:right;">Preço Venda (R$)</th>
+                        <th style="text-align:center;">Saldo / Estoque</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyEstoque">
+                    <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">Carregando itens do banco de dados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let produtosCache = [];
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+    return 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarInventario() {
+    const cid = clienteIdAtual();
+    const { data, error } = await sb.from('produtos').select('*').eq('cliente_id', cid).order('id', { ascending: true });
+    if(error) {
+        toast("Erro ao carregar itens do estoque", "error");
+        return;
+    }
+    produtosCache = data || [];
+    aplicarFiltros();
+}
+
+function aplicarFiltros() {
+    let tipoFiltro = document.getElementById('filtroTipo').value;
+    let buscaTxt = document.getElementById('filtroBusca').value.trim().toLowerCase();
+    let filtrados = produtosCache.filter(p => {
+        let tipoItem = (p.tipo_item || p.tipo || '').toLowerCase();
+        let unidMedida = (p.unidade_medida || p.unidade || '').toLowerCase();
+        let ehServico = tipoItem.includes('serviço') || tipoItem.includes('servico') || tipoItem.includes('prestado') || unidMedida.includes('hr') || unidMedida.includes('hora');
+        if(tipoFiltro === 'fisico' && ehServico) return false;
+        if(tipoFiltro === 'servico' && !ehServico) return false;
+        if(buscaTxt) {
+            let codigoItem = (p.codigo_interno || p.codigo || '').toLowerCase();
+            let linha = (codigoItem + ' ' + (p.descricao || '') + ' ' + (p.centro_custo || '')).toLowerCase();
+            if(!linha.includes(buscaTxt)) return false;
+        }
+        return true;
+    });
+    let info = [];
+    if(tipoFiltro !== 'todos') info.push(`Filtro: ${tipoFiltro}`);
+    if(buscaTxt) info.push(`Busca: "${buscaTxt}"`);
+    document.getElementById('printFiltrosInfo').innerText = info.length > 0 ? info.join(' | ') : 'Geral (Sem Filtros)';
+    const tbody = document.getElementById('tbodyEstoque');
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum item encontrado com os filtros aplicados.</td></tr>`;
+        return;
+    }
+    filtrados.forEach(p => {
+        let codigoExibicao = p.codigo_interno || p.codigo || '-';
+        let tipoItemReal = p.tipo_item || p.tipo || 'Produto Acabado';
+        let unidMedida = (p.unidade_medida || p.unidade || '').toLowerCase();
+        let qtdAtual = parseFloat(p.estoque_atual || p.estoque || 0);
+        let ehServico = tipoItemReal.toLowerCase().includes('serviço') || tipoItemReal.toLowerCase().includes('servico') || tipoItemReal.toLowerCase().includes('prestado') || unidMedida.includes('hr') || unidMedida.includes('hora');
+        let badgeTipo = '';
+        let labelSaldo = '';
+        if(ehServico) {
+            badgeTipo = `<span style="font-size:10px; background:#e0f2fe; color:#0369a1; padding:3px 6px; border-radius:4px; font-weight:600;"><i class="fas fa-clock"></i> ${tipoItemReal.toUpperCase()}</span>`;
+            labelSaldo = `<span style="color:#0369a1; font-weight:bold;">${qtdAtual} hrs</span>`;
+        } else {
+            badgeTipo = `<span style="font-size:10px; background:var(--bg); color:var(--text-light); padding:3px 6px; border-radius:4px; font-weight:600;"><i class="fas fa-boxes"></i> ${tipoItemReal.toUpperCase()}</span>`;
+            labelSaldo = qtdAtual > 0 ? `<span style="color:var(--success); font-weight:bold;">${qtdAtual} un.</span>` : `<span style="color:var(--danger); font-weight:bold;">0 un.</span>`;
+        }
+        tbody.innerHTML += `<tr>
+            <td><strong>${codigoExibicao}</strong></td>
+            <td>${p.descricao || '-'}</td>
+            <td>${badgeTipo}</td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${p.centro_custo || 'Não informado'}</span></td>
+            <td>${p.unidade_medida || p.unidade || 'UN'}</td>
+            <td style="text-align:right;">R$ ${parseFloat(p.preco_custo || 0).toFixed(2)}</td>
+            <td style="text-align:right;">R$ ${parseFloat(p.preco_venda || 0).toFixed(2)}</td>
+            <td style="text-align:center;">${labelSaldo}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="ajustarEstoque(${p.id}, ${qtdAtual})"><i class="fas fa-edit"></i> Ajustar</button>
+            </td>
+        </tr>`;
+    });
+}
+
+function limparFiltros() {
+    document.getElementById('filtroTipo').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltros();
+}
+
+async function ajustarEstoque(id, atual) {
+    let promptVal = prompt(`Ajustar saldo / quantidade (Atual: ${atual}):`, atual);
+    if(promptVal === null) return;
+    let novoValor = parseFloat(promptVal);
+    if(isNaN(novoValor) || novoValor < 0) {
+        toast("Informe um valor numérico válido.", "error");
+        return;
+    }
+    const cidAtual = clienteIdAtual();
+    let upd = sb.from('produtos').update({ estoque_atual: novoValor }).eq('id', id).eq('cliente_id', cidAtual);
+    let res = await upd;
+    if(res.error) {
+        await sb.from('produtos').update({ estoque: novoValor }).eq('id', id).eq('cliente_id', cidAtual);
+    }
+    toast("Saldo atualizado com sucesso!");
+    carregarInventario();
+}
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarInventario();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
