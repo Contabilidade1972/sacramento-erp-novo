@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Produtos, Insumos e Serviços — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+        
+        .card.recolhido .card-body { display: none; }
+        .card.recolhido { padding-bottom: 24px; }
+        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: transform 0.2s; }
+        .card.recolhido .btn-colapsar i { transform: rotate(-90deg); }
+
+        .form-row{display:grid;grid-template-columns:1fr 2fr 2fr;gap:14px;margin-bottom:12px}
+        .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark);}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-success:hover{background:#059669;}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
+        .btn-outline:hover{background:var(--bg);}
+        .btn-sm{padding:6px 12px;font-size:12px;border-radius:6px;}
+        .btn-icon-add { background: var(--primary); color: #fff; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-icon-add:hover { background: var(--primary-dark); }
+
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+        .btn-icon{background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px}
+        .btn-icon:hover{color:var(--primary)}
+
+        .badge{padding:4px 8px;border-radius:6px;font-size:10px;font-weight:600;display:inline-block;text-transform:uppercase;}
+        .badge-prod{background:#dbeafe;color:#1e40af}
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay.ativo { display: flex; }
+        .modal-card { background: var(--card); width: 100%; max-width: 500px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 16px; }
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        .print-header { display: none; }
+
+        @media print {
+            @page { size: landscape; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .card:not(#cardRelatorioModo), .toast-container, button, .btn-colapsar, .filtro-container-print { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL DE CADASTRO RÁPIDO DE CENTRO DE CUSTO INLINE -->
+<div class="modal-overlay" id="modalCentroCustoRápido">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas fa-sitemap"></i> Novo Centro de Custo Rápido</h3>
+            <button onclick="fecharModalCcRapido()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <label>Código Automático / Sugerido</label>
+                <input type="text" id="novo_cc_codigo" class="form-control" placeholder="Ex: 1.05">
+            </div>
+            <div>
+                <label>Nome / Descrição do Projeto *</label>
+                <input type="text" id="novo_cc_nome" class="form-control" placeholder="Nome do centro de custo...">
+            </div>
+            <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-outline" onclick="fecharModalCcRapido()">Cancelar</button>
+                <button class="btn btn-primary" onclick="salvarCentroCustoRapido()"><i class="fas fa-save"></i> Criar e Selecionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- FORMULÁRIO DE CADASTRO -->
+    <div class="card recolhido" id="cardFormulario">
+        <div class="card-header" onclick="alternarPainel('cardFormulario')">
+            <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Cadastro / Edição de Item</h3>
+            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div class="card-body">
+            <input type="hidden" id="editId">
+            <div class="form-row">
+                <div>
+                    <label>Código Interno (Automático)</label>
+                    <input type="text" id="codigo" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
+                </div>
+                <div>
+                    <label>Código de Barras (EAN ou Gerado Interno)</label>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="codigo_barras" class="form-control" placeholder="Bipe ou digite o EAN..." onblur="consultarCodigoBarrasInteligente(this.value)">
+                        <button type="button" class="btn btn-outline btn-sm" onclick="gerarCodigoBarrasInterno()" title="Gerar Cód. Barras Interno"><i class="fas fa-barcode"></i></button>
+                        <button type="button" class="btn btn-outline btn-sm" onclick="pesquisarNoGoogle()" title="Pesquisar EAN no Google"><i class="fab fa-google"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label>Descrição do Item *</label>
+                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Matéria-Prima X, Peça Y, Serviço Z">
+                </div>
+            </div>
+            <div class="form-row-3">
+                <div>
+                    <label>Tipo de Item</label>
+                    <select id="tipo" class="form-control">
+                        <option value="Produto Acabado">Produto Acabado</option>
+                        <option value="Insumo / Matéria-Prima">Insumo / Matéria-Prima</option>
+                        <option value="Produto para Revenda">Produto para Revenda</option>
+                        <option value="Serviço Prestado">Serviço Prestado</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Unidade de Medida</label>
+                    <select id="unidade" class="form-control">
+                        <option value="UN">UN (Unidade)</option>
+                        <option value="PC">PÇ (Peça)</option>
+                        <option value="KG">KG (Quilograma)</option>
+                        <option value="M">M (Metro)</option>
+                        <option value="CX">CX (Caixa)</option>
+                        <option value="VOL">VOL (Volume)</option>
+                        <option value="L">L (Litro)</option>
+                        <option value="HR">HR (Hora - Serviço)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Preço de Custo (R$)</label>
+                    <input type="text" id="preco_custo" class="form-control" placeholder="0,00">
+                </div>
+                <div>
+                    <label>Preço de Venda (R$)</label>
+                    <input type="text" id="preco_venda" class="form-control" placeholder="0,00">
+                </div>
+            </div>
+            <div class="form-row-3" style="grid-template-columns: 1fr 2fr auto 2fr;">
+                <div>
+                    <label>Estoque Atual</label>
+                    <input type="text" id="estoque" class="form-control" placeholder="0">
+                </div>
+                <div>
+                    <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo / Projeto *</label>
+                    <select id="centro_custo" class="form-control" required>
+                        <option value="">Selecione o Centro de Custo / Projeto...</option>
+                    </select>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="button" class="btn-icon-add" onclick="abrirModalCcRapido()" title="Criar Novo Centro de Custo Rapidamente"><i class="fas fa-plus"></i></button>
+                </div>
+                <div>
+                    <label>Observação / Especificações</label>
+                    <input type="text" id="observacao" class="form-control" placeholder="Detalhes técnicos...">
+                </div>
+            </div>
+            <div style="margin-top: 15px;">
+                <button id="btnSalvar" class="btn btn-primary" onclick="salvarProduto()"><i class="fas fa-save"></i> Salvar Item</button>
+                <button id="btnCancelar" class="btn btn-outline" onclick="limparForm()" style="display:none; margin-left:10px;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- RELATÓRIO OPERACIONAL -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Sacramento ERP — Relatório Operacional: Catálogo de Produtos e Serviços</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros Aplicados: <span id="printFiltrosInfo">Todos</span></p>
+        </div>
+        <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Produtos</h3>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+                <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
+                <div>
+                    <label>Filtrar por Tipo</label>
+                    <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                        <option value="todos">Todos os Tipos</option>
+                        <option value="Produto Acabado">Produto Acabado</option>
+                        <option value="Insumo / Matéria-Prima">Insumo / Matéria-Prima</option>
+                        <option value="Produto para Revenda">Produto para Revenda</option>
+                        <option value="Serviço Prestado">Serviço Prestado</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Buscar por Código ou Descrição</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Código ou descrição..." oninput="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="limparFiltrosRelatorio()" title="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Descrição</th>
+                            <th>Tipo</th>
+                            <th>Centro de Custo</th>
+                            <th>Unid.</th>
+                            <th>Custo</th>
+                            <th>Venda</th>
+                            <th>Estoque</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DE GERENCIAMENTO COM CÓDIGO DE BARRAS -->
+    <div class="card" id="cardTabelaGerenciamento">
+        <div class="card-header" onclick="alternarPainel('cardTabelaGerenciamento')">
+            <h3><i class="fas fa-list"></i> Itens Cadastrados &amp; Código de Barras</h3>
+            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+        </div>
+        <div class="card-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Código de Barras (Gráfico)</th>
+                            <th>Descrição</th>
+                            <th>Tipo</th>
+                            <th>Centro de Custo</th>
+                            <th>Unid.</th>
+                            <th>Custo</th>
+                            <th>Venda</th>
+                            <th>Estoque</th>
+                            <th>Data Criação</th>
+                            <th>Última Alteração</th>
+                            <th style="text-align:right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let listaProdutosCache = [];
+
+function alternarPainel(idCard) {
+    const card = document.getElementById(idCard);
+    if(card) card.classList.toggle('recolhido');
+}
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+function obterDataHoraLocalISO() {
+    let agora = new Date();
+    agora.setMinutes(agora.getMinutes() - agora.getTimezoneOffset());
+    return agora.toISOString();
+}
+
+async function registrarLogAuditoria(acao, modulo, detalhes) {
+    try {
+        let u = obterUsuarioAtual();
+        let usuarioNome = u ? `${u.nome} (${u.perfil || 'Usuário'})` : "Sistema / Visitante";
+        let payloadLog = { acao: acao.toUpperCase(), modulo: modulo, usuario: usuarioNome, detalhes: detalhes };
+        const cidLog = clienteIdAtual();
+        if (cidLog) payloadLog.cliente_id = cidLog;
+        await sb.from('logs_auditoria').insert([payloadLog]);
+    } catch (err) {}
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarCentrosCustoSelect(selecionarCodigo = null) {
+    try {
+        const { data, error } = await sbFiltroLeitura('centros_custo');
+        let selectEl = document.getElementById('centro_custo');
+        if(!selectEl) return;
+        selectEl.innerHTML = '<option value="">Selecione o Centro de Custo / Projeto...</option>';
+        if(!error && data) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                let valOpt = `${codigoCC} - ${nomeCC}`;
+                let selected = (selecionarCodigo && valOpt === selecionarCodigo) ? 'selected' : '';
+                selectEl.innerHTML += `<option value="${valOpt}" ${selected}>${valOpt}</option>`;
+            });
+        }
+    } catch(err) {}
+}
+
+function abrirModalCcRapido() {
+    document.getElementById('novo_cc_codigo').value = 'CC-' + Math.floor(100 + Math.random() * 900);
+    document.getElementById('novo_cc_nome').value = '';
+    document.getElementById('modalCentroCustoRápido').classList.add('ativo');
+}
+
+function fecharModalCcRapido() {
+    document.getElementById('modalCentroCustoRápido').classList.remove('ativo');
+}
+
+async function salvarCentroCustoRapido() {
+    const codigo = document.getElementById('novo_cc_codigo').value.trim();
+    const nome = document.getElementById('novo_cc_nome').value.trim();
+    if(!nome) { toast("Digite o nome do Centro de Custo!", "error"); return; }
+
+    const payload = { codigo, nome, descricao: nome, cliente_id: clienteIdAtual() };
+    const { data, error } = await sb.from('centros_custo').insert([payload]).select();
+    if(error) { toast("Erro ao criar centro de custo: " + error.message, "error"); return; }
+
+    toast("Centro de Custo criado com sucesso!");
+    fecharModalCcRapido();
+    await carregarCentrosCustoSelect(`${codigo} - ${nome}`);
+}
+
+async function gerarCodigoAutomatico() {
+    let maiorNum = 0;
+    listaProdutosCache.forEach(i => {
+        if(i.codigo) {
+            let nums = i.codigo.replace(/\D/g, '');
+            if(nums) {
+                let n = parseInt(nums, 10);
+                if(n > maiorNum) maiorNum = n;
+            }
+        }
+    });
+    let proximoNum = maiorNum + 1;
+    let codGerado = 'PRD-' + String(proximoNum).padStart(3, '0');
+    document.getElementById('codigo').value = codGerado;
+}
+
+function gerarCodigoBarrasInterno() {
+    let codInterno = '789' + Math.floor(100000000 + Math.random() * 900000000);
+    document.getElementById('codigo_barras').value = codInterno;
+    toast("Código de barras interno gerado com sucesso!");
+}
+
+function pesquisarNoGoogle() {
+    let ean = document.getElementById('codigo_barras').value.trim();
+    if(!ean) { toast("Digite ou bipe um código de barras primeiro!", "error"); return; }
+    window.open(`https://www.google.com/search?q=qual+o+produto+desse+codigo+de+barras+${ean}`, '_blank');
+}
+
+async function consultarCodigoBarrasInteligente(ean) {
+    if(!ean || ean.trim().length < 8) return;
+    let codigoLimpo = ean.trim();
+    let editId = document.getElementById('editId').value;
+    let produtoLocal = listaProdutosCache.find(p => (p.codigo_barras || '').trim() === codigoLimpo);
+    if(produtoLocal) {
+        if(editId && String(produtoLocal.id) === String(editId)) return;
+        toast(`Produto já cadastrado localmente: "${produtoLocal.descricao}". Dados carregados para edição!`, "info");
+        prepararEdicao(produtoLocal.id, produtoLocal.codigo, produtoLocal.codigo_barras, produtoLocal.descricao, produtoLocal.tipo, produtoLocal.unidade, produtoLocal.preco_custo, produtoLocal.preco_venda, produtoLocal.estoque, produtoLocal.observacao, produtoLocal.centro_custo);
+        return;
+    }
+    if(!editId) {
+        document.getElementById('descricao').value = '';
+        document.getElementById('preco_custo').value = '';
+        document.getElementById('preco_venda').value = '';
+        document.getElementById('estoque').value = '';
+        document.getElementById('observacao').value = '';
+        document.getElementById('centro_custo').value = '';
+    }
+    toast("Consultando base de produtos...", "info");
+    try {
+        let response = await fetch(`https://world.openfoodfacts.org/api/v0/product/${codigoLimpo}.json`);
+        let data = await response.json();
+        if (data.status === 1 && data.product) {
+            let p = data.product;
+            let nomeProduto = p.product_name_pt || p.product_name || p.generic_name || '';
+            if(nomeProduto) {
+                document.getElementById('descricao').value = nomeProduto;
+                document.getElementById('tipo').value = 'Produto para Revenda';
+                toast("Produto encontrado e preenchido automaticamente!");
+                return;
+            }
+        }
+    } catch(e) {}
+    toast("Novo código informado. Preencha os dados para cadastrar!", "info");
+}
+
+async function carregar() {
+    const { data, error } = await sbFiltroLeitura('produtos').order('id', { ascending: false });
+    if(error) return;
+    listaProdutosCache = data || [];
+    renderTabela();
+    aplicarFiltrosRelatorio();
+    if(!document.getElementById('editId').value) {
+        gerarCodigoAutomatico();
+    }
+}
+
+function aplicarFiltrosRelatorio() {
+    let tipoFiltro = document.getElementById('filtroTipo').value;
+    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+    let dadosFiltrados = listaProdutosCache.filter(i => {
+        if (tipoFiltro !== 'todos' && i.tipo !== tipoFiltro) return false;
+        if (txtBusca) {
+            let linha = ((i.codigo || '') + ' ' + (i.descricao || '') + ' ' + (i.centro_custo || '')).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
+        }
+        return true;
+    });
+    let infoFiltros = [];
+    if(tipoFiltro !== 'todos') infoFiltros.push(`Tipo: ${tipoFiltro}`);
+    if(txtBusca) infoFiltros.push(`Busca: "${txtBusca}"`);
+    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+    const tbodyRel = document.getElementById('tbodyRelatorioModo');
+    tbodyRel.innerHTML = '';
+    if(dadosFiltrados.length === 0) {
+        tbodyRel.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum item encontrado para os filtros selecionados.</td></tr>`;
+        return;
+    }
+    dadosFiltrados.forEach(i => {
+        let ccFmt = i.centro_custo || 'Não informado';
+        tbodyRel.innerHTML += `<tr>
+            <td><strong>${i.codigo || ''}</strong></td>
+            <td>${i.descricao || ''}</td>
+            <td><span class="badge badge-prod">${i.tipo || 'Produto'}</span></td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
+            <td>${i.unidade || 'UN'}</td>
+            <td>R$ ${i.preco_custo || '0,00'}</td>
+            <td><strong>R$ ${i.preco_venda || '0,00'}</strong></td>
+            <td>${i.estoque || '0'}</td>
+        </tr>`;
+    });
+}
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroTipo').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    if(listaProdutosCache.length > 0) {
+        listaProdutosCache.forEach((i, index) => {
+            let svgId = `barcode_${index}`;
+            let codBarrasHtml = `<svg id="${svgId}"></svg>`;
+            let ccFmt = i.centro_custo || 'Não informado';
+            let dataReg = i.created_at ? i.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+            let dataAlt = '-';
+            if (i.updated_at) {
+                let partes = i.updated_at.split('T');
+                let dataPart = partes[0].split('-').reverse().join('/');
+                let horaPart = partes[1] ? partes[1].substring(0, 5) : '';
+                dataAlt = `${dataPart} às ${horaPart}`;
+            }
+            tbody.innerHTML += `<tr>
+                <td><strong>${i.codigo || ''}</strong></td>
+                <td>${codBarrasHtml}</td>
+                <td>${i.descricao || ''}</td>
+                <td><span class="badge badge-prod">${i.tipo || 'Produto'}</span></td>
+                <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
+                <td>${i.unidade || 'UN'}</td>
+                <td>R$ ${i.preco_custo || '0,00'}</td>
+                <td><strong>R$ ${i.preco_venda || '0,00'}</strong></td>
+                <td>${i.estoque || '0'}</td>
+                <td>${dataReg}</td>
+                <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
+                <td style="text-align:right;">
+                    <button class="btn-icon" onclick='prepararEdicao(${i.id}, ${JSON.stringify(i.codigo || "")}, ${JSON.stringify(i.codigo_barras || "")}, ${JSON.stringify(i.descricao || "")}, ${JSON.stringify(i.tipo || "")}, ${JSON.stringify(i.unidade || "")}, ${JSON.stringify(i.preco_custo || "")}, ${JSON.stringify(i.preco_venda || "")}, ${JSON.stringify(i.estoque || "")}, ${JSON.stringify(i.observacao || "")}, ${JSON.stringify(i.centro_custo || "")})' title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" onclick="apagar(${i.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        listaProdutosCache.forEach((i, index) => {
+            let barrasVal = i.codigo_barras ? i.codigo_barras : ('789000000' + i.id);
+            try {
+                JsBarcode(`#barcode_${index}`, barrasVal, {
+                    format: "CODE128", lineColor: "#1e293b", width: 1.4, height: 32, displayValue: true, fontSize: 10
+                });
+            } catch(err) {}
+        });
+    }
+}
+
+async function salvarProduto() {
+    const id = document.getElementById('editId').value;
+    const codigo = document.getElementById('codigo').value.trim();
+    let codigo_barras = document.getElementById('codigo_barras').value.trim();
+    const descricao = document.getElementById('descricao').value.trim();
+    const tipo = document.getElementById('tipo').value;
+    const unidade = document.getElementById('unidade').value;
+    const preco_custo = document.getElementById('preco_custo').value;
+    const preco_venda = document.getElementById('preco_venda').value;
+    const estoque = document.getElementById('estoque').value;
+    const observacao = document.getElementById('observacao').value;
+    const centro_custo = document.getElementById('centro_custo').value;
+
+    if(!codigo || !descricao || !centro_custo) { 
+        toast("Código Interno, Descrição e Centro de Custo são obrigatórios!", "error"); 
+        return; 
+    }
+    if(!codigo_barras) {
+        codigo_barras = '789' + Math.floor(100000000 + Math.random() * 900000000);
+    }
+    const cidAtual = clienteIdAtual();
+    let payload = { 
+        codigo, codigo_barras, descricao, tipo, unidade, preco_custo, preco_venda, estoque, observacao, centro_custo,
+        updated_at: obterDataHoraLocalISO()
+    };
+    let res;
+    if(id) {
+        let upd = sb.from('produtos').update(payload).eq('id', id);
+        if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+        res = await upd;
+        if(!res.error) await registrarLogAuditoria('UPDATE', 'produtos', `Atualização do item ID: ${id} (${descricao})`);
+    } else {
+        delete payload.updated_at;
+        if (cidAtual) payload.cliente_id = cidAtual;
+        res = await sb.from('produtos').insert([payload]);
+        if(!res.error) await registrarLogAuditoria('INSERT', 'produtos', `Novo item cadastrado: ${descricao} (${tipo})`);
+    }
+    if(res.error) {
+        toast("Erro ao salvar: " + res.error.message, "error");
+        return;
+    }
+    toast(id ? "Item atualizado com sucesso!" : "Item cadastrado com sucesso!");
+    limparForm();
+    carregar();
+}
+
+window.prepararEdicao = (id, codigo, codigo_barras, descricao, tipo, unidade, preco_custo, preco_venda, estoque, observacao, centro_custo) => {
+    document.getElementById('editId').value = id;
+    document.getElementById('codigo').value = codigo;
+    document.getElementById('codigo_barras').value = codigo_barras || '';
+    document.getElementById('descricao').value = descricao || '';
+    document.getElementById('tipo').value = tipo || 'Produto Acabado';
+    document.getElementById('unidade').value = unidade || 'UN';
+    document.getElementById('preco_custo').value = preco_custo || '';
+    document.getElementById('preco_venda').value = preco_venda || '';
+    document.getElementById('estoque').value = estoque || '';
+    document.getElementById('observacao').value = observacao || '';
+    document.getElementById('centro_custo').value = centro_custo || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Item (${codigo})`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Atualizar Item';
+    document.getElementById('btnCancelar').style.display = "inline-block";
+    
+    const cardForm = document.getElementById('cardFormulario');
+    if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
+    window.scrollTo({top: 0, behavior: 'smooth'});
+};
+
+function limparForm() {
+    document.getElementById('editId').value = '';
+    document.getElementById('codigo_barras').value = '';
+    document.getElementById('descricao').value = '';
+    document.getElementById('tipo').value = 'Produto Acabado';
+    document.getElementById('unidade').value = 'UN';
+    document.getElementById('preco_custo').value = '';
+    document.getElementById('preco_venda').value = '';
+    document.getElementById('estoque').value = '';
+    document.getElementById('observacao').value = '';
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cadastro / Edição de Item';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Item';
+    document.getElementById('btnCancelar').style.display = "none";
+    gerarCodigoAutomatico();
+}
+
+window.apagar = async (id) => {
+    if(confirm("Deseja realmente excluir este item?")) {
+        let itemAlvo = listaProdutosCache.find(x => String(x.id) === String(id));
+        let del = sb.from('produtos').delete().eq('id', id);
+        const cidDel = clienteIdAtual();
+        if (cidDel) del = del.eq('cliente_id', cidDel);
+        const { error } = await del;
+        if(error) { toast("Erro ao excluir", "error"); return; }
+        await registrarLogAuditoria('DELETE', 'produtos', `Exclusão do item ID: ${id} (${itemAlvo ? itemAlvo.descricao : 'Registro'})`);
+        toast("Excluído com sucesso!");
+        carregar();
+    }
+};
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarCentrosCustoSelect();
+    await carregar();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
