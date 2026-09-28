@@ -95,6 +95,7 @@
         { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
         { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
         { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto", "departamento"] },
+        { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo", "codigo de barras"] },
         { nome: "Documentos XML", url: "documentos.html", icon: "fa-file-code", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
@@ -124,7 +125,7 @@
 
                 <div class="search-global-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo ou rotina... (Ex: Pagar, Parceiros)" autocomplete="off">
+                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, cliente, contas..." autocomplete="off">
                     <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
                 </div>
 
@@ -239,6 +240,8 @@
                 resposta = "Em Contas a Receber, o sistema controla os recebimentos pendentes e faturas emitidas aos clientes.";
             } else if (tLower.includes('cnpj') || tLower.includes('parceiro')) {
                 resposta = "O cadastro de Parceiros possui busca automática integrada à Receita Federal via CNPJ.";
+            } else if (tLower.includes('produto') || tLower.includes('estoque')) {
+                resposta = "No catálogo de Produtos e Serviços, você pode gerenciar custos, preços de venda, estoque atual e gerar etiquetas de código de barras.";
             } else if (tLower.includes('ajuda') || tLower.includes('como')) {
                 resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo para navegar rapidamente.";
             }
