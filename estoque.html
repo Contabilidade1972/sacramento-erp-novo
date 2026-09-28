@@ -114,20 +114,35 @@
 </div>
 
 <script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let produtosCache = [];
 document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
 
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
 function clienteIdAtual() {
-    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-    try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
-    return 1;
+    const u = obterUsuarioAtual();
+    if (!u) return 1;
+    const ehAdmin = !!(u.email === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master'));
+    if (ehAdmin) {
+        try {
+            const sel = localStorage.getItem('empresaSelecionada');
+            if (sel) return parseInt(sel);
+        } catch(e) {}
+    }
+    return u.cliente_id || 1;
 }
 
 function sbFiltroLeitura(tabela) {
     let q = sb.from(tabela).select('*');
     const cid = clienteIdAtual();
-    if (cid) q = q.eq('cliente_id', cid);
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
     return q;
 }
 
@@ -145,8 +160,7 @@ function toast(msg, type='success'){
 }
 
 async function carregarInventario() {
-    const cid = clienteIdAtual();
-    const { data, error } = await sb.from('produtos').select('*').eq('cliente_id', cid).order('id', { ascending: true });
+    const { data, error } = await sbFiltroLeitura('produtos').order('id', { ascending: true });
     if(error) {
         toast("Erro ao carregar itens do estoque", "error");
         return;
