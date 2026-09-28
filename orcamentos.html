@@ -34,6 +34,8 @@
         .btn-warning:hover{background:#d97706;}
         .btn-danger{background:var(--danger);color:#fff}
         .btn-danger:hover{background:#dc2626;}
+        .btn-info{background:#0ea5e9;color:#fff}
+        .btn-info:hover{background:#0284c7;}
 
         .info-box{background:#eff6ff;border-left:4px solid var(--primary);padding:12px 16px;border-radius:8px;font-size:13px;color:var(--text-main);margin-bottom:16px;}
         .table-container{overflow-x:auto}
@@ -48,13 +50,45 @@
         .badge-pendente{background:#fef3c7;color:#d97706;padding:4px 8px;border-radius:6px;font-weight:600;font-size:11px;display:inline-block;}
         .badge-convertido{background:#d1fae5;color:#065f46;padding:4px 8px;border-radius:6px;font-weight:600;font-size:11px;display:inline-block;}
 
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:210mm;border-radius:14px;box-shadow:0 25px 50px rgba(15,23,42,0.3);padding:0;overflow:hidden;max-height:98vh;display:flex;flex-direction:column}
+        .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--secondary);color:#fff;border-bottom:1px solid var(--border)}
+        .modal-header h3{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+        .modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:#fff}
+
+        .proposta-print { font-family: 'Inter', sans-serif; padding: 20mm; color: var(--text-main); width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; box-sizing: border-box; }
+
         .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
         .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
         .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            body * { visibility: hidden !important; }
+            #conteudoProposta, #conteudoProposta * { visibility: visible !important; }
+            #conteudoProposta { position: absolute !important; left: 0 !important; top: 0 !important; width: 210mm !important; min-height: 297mm !important; padding: 15mm !important; margin: 0 !important; background: #fff !important; }
+            .modal-overlay { background: none !important; position: static !important; }
+            .modal-card { box-shadow: none !important; border: none !important; width: 100% !important; background: #fff !important; max-height: none !important; }
+            button, .modal-header { display: none !important; }
+        }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL VISUALIZAÇÃO / IMPRESSÃO DA PROPOSTA COMERCIAL -->
+<div class="modal-overlay" id="modalProposta">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-contract"></i> Visualizar Proposta Comercial</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Proposta</button>
+                <button class="modal-close" onclick="document.getElementById('modalProposta').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div style="padding:20px; overflow-y:auto; background:var(--bg); flex:1;" id="conteudoProposta"></div>
+    </div>
+</div>
 
 <div class="container">
     <div class="card">
@@ -63,7 +97,7 @@
         </div>
         <input type="hidden" id="editId">
         <div class="info-box">
-            <i class="fas fa-info-circle"></i> <strong>Gestão de Propostas:</strong> Elabore o orçamento informando o CNPJ do cliente (busca automática) e clique em salvar. Posteriormente, você poderá convertê-lo em fatura com apenas um clique.
+            <i class="fas fa-info-circle"></i> <strong>Gestão de Propostas:</strong> Elabore o orçamento informando o CNPJ do cliente (busca automática) e clique em salvar. Você pode gerar faturas, visualizar propostas, editar ou excluir a qualquer momento.
         </div>
         <div class="form-grid">
             <div>
@@ -127,6 +161,8 @@ var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa'
 
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let listaOrcamentosCache = [];
+let logoUniversalBase64 = "";
+let nomeEmpresaGlobal = "Sacramento ERP";
 
 function obterUsuarioAtual() {
     try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
@@ -170,6 +206,20 @@ async function registrarLogAuditoria(acao, modulo, detalhes) {
     } catch (err) {}
 }
 
+async function carregarMarcaSistema(clienteId) {
+    try {
+        const { data: clientes } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteId).maybeSingle();
+        if (clientes) {
+            const nomeEmp = clientes.nome_fantasia || clientes.razao_social;
+            if (nomeEmp) nomeEmpresaGlobal = nomeEmp;
+        }
+        const { data } = await sb.from('configuracoes_sistema').select('*').eq('cliente_id', clienteId).limit(1);
+        if (data && data.length > 0) {
+            if (data[0].app_logo_url) logoUniversalBase64 = data[0].app_logo_url;
+        }
+    } catch(e) {}
+}
+
 async function buscarClientePorCnpj() {
     let docDigitado = document.getElementById('cliente_cnpj').value.trim();
     if(!docDigitado) return;
@@ -187,6 +237,8 @@ async function buscarClientePorCnpj() {
 }
 
 async function carregarOrcamentos() {
+    const cid = clienteIdAtual();
+    await carregarMarcaSistema(cid);
     const { data, error } = await sbFiltroLeitura('orcamentos').order('id', { ascending: false });
     if(error) return;
     listaOrcamentosCache = data || [];
@@ -194,7 +246,9 @@ async function carregarOrcamentos() {
     tbody.innerHTML = '';
     if(listaOrcamentosCache.length > 0) {
         listaOrcamentosCache.forEach(o => {
-            let badgeClass = o.status === 'Convertido' ? 'badge-convertido' : 'badge-pendente';
+            let isConvertido = (o.status || '').toLowerCase().includes('convertido');
+            let badgeClass = isConvertido ? 'badge-convertido' : 'badge-pendente';
+            let statusTexto = isConvertido ? 'Convertido' : 'Pendente';
             let vencFmt = o.vencimento ? o.vencimento.split('-').reverse().join('/') : '-';
             let dataReg = o.created_at ? o.created_at.split('T')[0].split('-').reverse().join('/') : '-';
             let dataAlt = '-';
@@ -204,30 +258,103 @@ async function carregarOrcamentos() {
                 let horaPart = partes[1] ? partes[1].substring(0, 5) : '';
                 dataAlt = `${dataPart} às ${horaPart}`;
             }
-            let btnAcoes = '';
-            if(o.status !== 'Convertido') {
-                btnAcoes = `
-                    <button class="btn btn-success" style="padding:6px 12px; font-size:11px;" onclick="converterParaFatura(${o.id}, '${(o.cliente_nome||'').replace(/'/g,"\\'")}', '${(o.cliente_cnpj||'').replace(/'/g,"\\'")}', '${(o.descricao||'').replace(/'/g,"\\'")}', ${o.valor_total}, '${o.vencimento || ''}')"><i class="fas fa-exchange-alt"></i> Gerar Fatura</button>
-                    <button class="btn btn-warning" style="padding:6px 10px; font-size:11px;" onclick="prepararEdicao(${o.id})"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-danger" style="padding:6px 10px; font-size:11px;" onclick="excluirOrcamento(${o.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-                `;
-            } else {
-                btnAcoes = `<span style="font-size:11px; color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Faturado</span>`;
-            }
+
+            let btnGerarFatura = !isConvertido ? `
+                <button class="btn btn-success" style="padding:6px 10px; font-size:11px;" onclick="converterParaFatura(${o.id}, '${(o.cliente_nome||'').replace(/'/g,"\\'")}', '${(o.cliente_cnpj||'').replace(/'/g,"\\'")}', '${(o.descricao||'').replace(/'/g,"\\'")}', ${o.valor_total}, '${o.vencimento || ''}')" title="Gerar Fatura"><i class="fas fa-exchange-alt"></i></button>
+            ` : `<span style="font-size:11px; color:var(--success); font-weight:600; display:inline-flex; align-items:center; gap:4px;"><i class="fas fa-check-circle"></i> Faturado</span>`;
+
+            let btnAcoes = `
+                ${btnGerarFatura}
+                <button class="btn btn-info" style="padding:6px 10px; font-size:11px;" onclick="visualizarProposta(${o.id})" title="Visualizar Proposta"><i class="fas fa-file-contract"></i></button>
+                <button class="btn btn-warning" style="padding:6px 10px; font-size:11px;" onclick="prepararEdicao(${o.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger" style="padding:6px 10px; font-size:11px;" onclick="excluirOrcamento(${o.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+            `;
+
             tbody.innerHTML += `<tr>
                 <td><strong>${o.cliente_nome || ''}</strong><br><small style="color:var(--text-light);">${o.cliente_cnpj || ''}</small></td>
                 <td>${o.descricao || ''}</td>
                 <td><strong>R$ ${Number(o.valor_total || 0).toFixed(2)}</strong></td>
                 <td>${vencFmt}</td>
-                <td><span class="${badgeClass}">${o.status || 'Pendente'}</span></td>
+                <td><span class="${badgeClass}">${statusTexto}</span></td>
                 <td>${dataReg}</td>
                 <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
-                <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end;">${btnAcoes}</td>
+                <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">${btnAcoes}</td>
             </tr>`;
         });
     } else {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum orçamento cadastrado.</td></tr>';
     }
+}
+
+window.visualizarProposta = function(id) {
+    let o = listaOrcamentosCache.find(x => x.id == id);
+    if(!o) return;
+    let dataEmissao = o.created_at ? o.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+    let vencFmt = o.vencimento ? o.vencimento.split('-').reverse().join('/') : 'A combinar';
+    let valorFmt = Number(o.valor_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    let logoHtml = logoUniversalBase64 ? `<img src="${logoUniversalBase64}" style="width:48px; height:48px; object-fit:contain; border-radius:8px; background:#fff;">` : `<div style="width:48px; height:48px; background:var(--secondary); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px;"><i class="fas fa-dna"></i></div>`;
+    
+    let html = `
+    <div class="proposta-print" id="conteudoProposta">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--primary); padding-bottom:18px; margin-bottom:20px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                ${logoHtml}
+                <div>
+                    <h2 style="color:var(--primary); font-size:20px; font-weight:800;">${nomeEmpresaGlobal}</h2>
+                    <p style="font-size:11px; color:var(--text-light); margin-top:2px;">CNPJ: 61.926.954/0001-14 | Belo Horizonte - MG</p>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:16px; font-weight:800; color:var(--secondary);">PROPOSTA COMERCIAL</div>
+                <div style="font-size:13px; color:var(--primary); font-weight:600; margin-top:2px;">Orçamento Nº #${o.id}</div>
+                <div style="font-size:11px; color:var(--text-light); margin-top:2px;">Data: ${dataEmissao}</div>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+            <div style="background:var(--bg); padding:14px; border-radius:8px; border:1px solid var(--border); font-size:12px; line-height:1.5;">
+                <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Emitente:</strong>
+                <span style="font-size:13px; font-weight:700;">${nomeEmpresaGlobal}</span><br>
+                CNPJ: 61.926.954/0001-14 | Belo Horizonte - MG
+            </div>
+            <div style="background:var(--bg); padding:14px; border-radius:8px; border:1px solid var(--border); font-size:12px; line-height:1.5;">
+                <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Cliente / Tomador:</strong>
+                <span style="font-size:14px; font-weight:700;">${o.cliente_nome || ''}</span><br>
+                CNPJ / CPF: ${o.cliente_cnpj || ''}
+            </div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; margin-bottom:20px; font-size:12px;">
+            <thead>
+                <tr style="background:var(--primary); color:#fff;">
+                    <th style="padding:10px 14px; text-align:left;">Qtd</th>
+                    <th style="padding:10px 14px; text-align:left;">Descrição do Serviço / Produto / Escopo</th>
+                    <th style="padding:10px 14px; text-align:right;">Valor Total (R$)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding:10px 14px; border-bottom:1px solid var(--border);">1,00</td>
+                    <td style="padding:10px 14px; border-bottom:1px solid var(--border);"><strong>${o.descricao || ''}</strong></td>
+                    <td style="padding:10px 14px; border-bottom:1px solid var(--border); text-align:right; font-weight:700;">R$ ${valorFmt}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div style="display:flex; justify-content:flex-end; margin-bottom:24px;">
+            <div style="width:260px; background:var(--bg); padding:14px; border-radius:8px; border:1px solid var(--border); font-size:12.5px;">
+                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:800; color:var(--primary);">
+                    <span>Valor Total da Proposta:</span>
+                    <span>R$ ${valorFmt}</span>
+                </div>
+            </div>
+        </div>
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:14px; border-radius:8px; font-size:11.5px; color:#166534; margin-bottom:20px; line-height:1.6;">
+            <strong>Condições Comerciais:</strong> Validade da proposta: 15 dias. Prazo de execução / entrega: A combinar. Vencimento previsto: ${vencFmt}.
+        </div>
+        <div style="font-size:11px; color:var(--text-light); border-top:1px solid var(--border); padding-top:14px; line-height:1.4;">
+            Documento gerado eletronicamente via Sacramento ERP. Este orçamento está sujeito à aprovação de crédito e disponibilidade de agenda.
+        </div>
+    </div>`;
+    document.getElementById('conteudoProposta').innerHTML = html;
+    document.getElementById('modalProposta').style.display = 'flex';
 }
 
 async function salvarOrcamento() {
