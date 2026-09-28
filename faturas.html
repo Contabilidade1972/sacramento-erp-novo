@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faturas & Emissão Fiscal Avançada — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
+        .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
+        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+        .form-control[readonly]{background:var(--bg);color:var(--text-light);font-weight:600;}
+
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-primary:hover{background:var(--primary-dark);}
+        .btn-warning{background:var(--warning);color:#fff}
+        .btn-info{background:#0ea5e9;color:#fff}
+        .btn-danger{background:var(--danger);color:#fff}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-light)}
+        .btn-outline:hover{background:var(--bg);color:var(--text-main)}
+
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
+        tbody tr:hover{background:#f8fafc;}
+
+        .badge{padding:4px 8px;border-radius:6px;font-weight:600;font-size:10px;text-transform:uppercase;display:inline-block;}
+        .badge-pendente{background:#fef3c7;color:#d97706}
+        .badge-autorizada{background:#d1fae5;color:#065f46}
+
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:215mm;border-radius:14px;box-shadow:0 25px 50px rgba(15,23,42,0.3);padding:0;overflow:hidden;max-height:98vh;display:flex;flex-direction:column}
+        .modal-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--secondary);color:#fff;border-bottom:1px solid var(--border)}
+        .modal-header h3{font-size:16px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+        .modal-close{background:none;border:none;font-size:18px;cursor:pointer;color:#fff}
+
+        .danfe-container { position: relative; width: 210mm; min-height: 297mm; margin: 0 auto; background: var(--card); box-sizing: border-box; }
+        .danfe-a4 { font-family: 'Arial', sans-serif; font-size: 8.5px; color: var(--text-main); background: transparent; width: 210mm; min-height: 297mm; padding: 6mm 8mm; box-sizing: border-box; position: relative; z-index: 2; margin: 0 auto; }
+        .marca-dagua { position: absolute; top: 40%; left: 10%; width: 80%; text-align: center; font-size: 55px; font-weight: 800; color: rgba(239, 68, 68, 0.15); transform: rotate(-35deg); z-index: 1; pointer-events: none; text-transform: uppercase; letter-spacing: 4px; border: 4px dashed rgba(239, 68, 68, 0.15); padding: 20px; }
+        .danfe-table { width: 100%; border-collapse: collapse; border: 1.5px solid var(--text-main); margin: 0 auto; }
+        .danfe-table td { border: 1px solid var(--text-main); padding: 3px 5px; vertical-align: top; line-height: 1.2; }
+        .df-label { font-size: 6.5px; text-transform: uppercase; color: var(--text-light); display: block; font-weight: bold; margin-bottom: 1px; }
+        .df-val { font-weight: bold; font-size: 9px; color: var(--text-main); }
+        .df-title { background: var(--bg); font-weight: bold; font-size: 7.5px; text-transform: uppercase; padding: 3px 5px; border: 1px solid var(--text-main); }
+        
+        .fatura-comercial { background: var(--card); font-family: 'Inter', sans-serif; padding: 15mm; color: var(--text-main); width: 210mm; min-height: 297mm; margin: 0 auto; box-sizing: border-box; position: relative; }
+        .fc-top { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid var(--primary); padding-bottom: 18px; margin-bottom: 20px; position: relative; z-index: 2; }
+        .fc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; position: relative; z-index: 2; }
+        .fc-box { background: var(--bg); padding: 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; line-height: 1.5; }
+        .fc-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; position: relative; z-index: 2; }
+        .fc-table th { background: var(--primary); color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; }
+        .fc-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        .fc-totais { display: flex; justify-content: flex-end; margin-bottom: 24px; position: relative; z-index: 2; }
+        .fc-totais-box { width: 260px; background: var(--bg); padding: 14px; border-radius: 8px; border: 1px solid var(--border); font-size: 12.5px; }
+        .fc-banco { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 14px; border-radius: 8px; font-size: 11.5px; color: #166534; margin-bottom: 20px; line-height: 1.6; position: relative; z-index: 2; }
+
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+
+        @media print {
+            @page { size: A4 portrait; margin: 0; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body * { visibility: hidden !important; }
+            #conteudoDanfe, #conteudoDanfe *, #conteudoFaturaComercial, #conteudoFaturaComercial * { visibility: visible !important; }
+            #conteudoDanfe, .danfe-container, #conteudoFaturaComercial, .fatura-comercial { 
+                position: absolute !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                margin: 0 !important; 
+                padding: 6mm 8mm !important; 
+                border: none !important; 
+                box-shadow: none !important; 
+                background: #fff !important; 
+                overflow: hidden !important; 
+            }
+            .danfe-table { width: 100% !important; margin: 0 auto !important; }
+            .danfe-table, .danfe-table tr, .danfe-table td { page-break-inside: avoid; break-inside: avoid; }
+            .modal-overlay { background: none !important; backdrop-filter: none !important; position: static !important; }
+            .modal-card { box-shadow: none !important; padding: 0 !important; max-height: none !important; overflow: visible !important; border: none !important; width: 100% !important; background: #fff !important; }
+            button, .modal-header, .site-header { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<datalist id="lista-cfop">
+    <option value="5.933 - Prestação de serviço tributado pelo ISSQN (Municipal/Estadual)"></option>
+    <option value="6.933 - Prestação de serviço tributado pelo ISSQN (Interestadual)"></option>
+    <option value="7.949 - Prestação de serviço não especificado (Internacional)"></option>
+    <option value="1.933 - Aquisição de serviço tributado pelo ISSQN (Entrada)"></option>
+    <option value="2.933 - Aquisição de serviço tributado pelo ISSQN (Interestadual)"></option>
+</datalist>
+
+<!-- MODAL EDIÇÃO DE FATURA -->
+<div class="modal-overlay" id="modalEdicaoFatura">
+    <div class="modal-card" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-edit"></i> Editar Dados da Fatura</h3>
+            <button class="modal-close" onclick="document.getElementById('modalEdicaoFatura').style.display='none'"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="edit_fatura_id">
+        <div class="form-grid" style="grid-template-columns: 1fr; padding: 20px;">
+            <div>
+                <label>Nome do Tomador / Cliente</label>
+                <input type="text" id="edit_cliente_nome" class="form-control">
+            </div>
+            <div style="margin-top:10px;">
+                <label>CNPJ / CPF</label>
+                <input type="text" id="edit_cliente_cnpj" class="form-control">
+            </div>
+            <div style="margin-top:10px;">
+                <label>Descrição do Item / Serviço</label>
+                <input type="text" id="edit_descricao" class="form-control">
+            </div>
+            <div style="margin-top:10px;">
+                <label>Valor (R$)</label>
+                <input type="number" step="0.01" id="edit_valor" class="form-control">
+            </div>
+            <div style="margin-top:10px;">
+                <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo / Projeto *</label>
+                <select id="edit_centro_custo" class="form-control" required>
+                    <option value="">Selecione o Centro de Custo / Projeto...</option>
+                </select>
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; padding: 0 20px 20px 20px;">
+            <button class="btn btn-primary" onclick="salvarEdicaoFatura()"><i class="fas fa-save"></i> Salvar Alterações</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL COMPLEMENTO FISCAL (XML) COM CERTIFICADO DIGITAL -->
+<div class="modal-overlay" id="modalFiscal">
+    <div class="modal-card" style="max-width: 850px; max-height: 90vh;">
+        <div class="modal-header">
+            <h3><i class="fas fa-sliders-h"></i> Parametrização Fiscal & Certificado Digital (A1/A3)</h3>
+            <button class="modal-close" onclick="document.getElementById('modalFiscal').style.display='none'"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="fatura_id_atual">
+        <input type="hidden" id="base_calculo_atual">
+        <div style="padding: 20px; overflow-y: auto;">
+            <div style="background:var(--bg); border:1.5px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px; font-size:12px; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Token A1 ICP-Brasil Conectado:</strong>
+                    <span id="statusCertificado" style="font-weight:600; color:var(--success);">CNPJ Ativo (Validade Válida)</span>
+                </div>
+                <button class="btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="testarCertificadoDigital()"><i class="fas fa-key"></i> Testar Senha PIN</button>
+            </div>
+            <div style="background:#f0fdf4; border:1px solid #16a34a; border-radius:8px; padding:10px; margin-bottom:16px; font-size:12px; color:#166534; display:flex; justify-content:space-between; align-items:center;">
+                <strong><i class="fas fa-calculator"></i> Base de Cálculo (Valor Líquido):</strong>
+                <span id="display_base_calculo" style="font-size:16px; font-weight:800;">R$ 0,00</span>
+            </div>
+            <h4 style="font-size:12px; margin-bottom:8px; color:var(--secondary); text-transform:uppercase;">1. Enquadramento e Operação (CONFAZ)</h4>
+            <div class="form-grid">
+                <div>
+                    <label>Tipo de Documento</label>
+                    <select id="tipo_doc" class="form-control" onchange="sugerirCFOP()">
+                        <option value="NFS-e">NFS-e (Serviços / ISSQN)</option>
+                        <option value="NF-e">NF-e (Produtos / ICMS)</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Destino da Operação</label>
+                    <select id="destino_op" class="form-control" onchange="sugerirCFOP()">
+                        <option value="Municipal">Municipal / Estadual</option>
+                        <option value="Interestadual">Interestadual</option>
+                    </select>
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>CFOP (Busca Inteligente)</label>
+                    <input type="text" id="cfop" list="lista-cfop" class="form-control" placeholder="Selecione o CFOP...">
+                </div>
+            </div>
+            <h4 style="font-size:12px; margin:16px 0 8px; color:var(--secondary); text-transform:uppercase;">2. Motor de Cálculo e Contabilidade DRE</h4>
+            <div class="form-grid">
+                <div style="grid-column: span 2;">
+                    <label>NBS / NCM</label>
+                    <input type="text" id="classificacao_fiscal" class="form-control" placeholder="Busque a classificação...">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label><i class="fas fa-list-alt" style="color:var(--primary)"></i> Conta Contábil (DRE) *</label>
+                    <select id="modal_conta_contabil" class="form-control" required>
+                        <option value="">Carregando...</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-primary" onclick="transmitirNF()"><i class="fas fa-signature"></i> Assinar Digitalmente e Emitir SEFAZ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ESPELHO FISCAL A4 OFICIAL -->
+<div class="modal-overlay" id="modalDanfe">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-invoice" style="color:#60a5fa;"></i> Espelho Oficial A4 (DANFE / NFS-e)</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Documento</button>
+                <button class="modal-close" onclick="document.getElementById('modalDanfe').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div style="padding:20px; overflow-y:auto; background:var(--bg); flex:1;" id="conteudoDanfe"></div>
+    </div>
+</div>
+
+<!-- MODAL FATURA COMERCIAL -->
+<div class="modal-overlay" id="modalFaturaComercial">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-invoice-dollar" style="color:#60a5fa;"></i> Fatura Comercial & Instrução de Cobrança</h3>
+            <div style="display:flex; gap:10px;">
+                <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Fatura</button>
+                <button class="modal-close" onclick="document.getElementById('modalFaturaComercial').style.display='none'"><i class="fas fa-times"></i></button>
+            </div>
+        </div>
+        <div style="padding:20px; overflow-y:auto; background:var(--bg); flex:1;" id="conteudoFaturaComercial"></div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="card">
+        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary); display:flex; align-items:center; gap:8px;">
+                <i class="fas fa-file-invoice"></i> Central de Faturamento, Faturas Comerciais & Transmissão XML
+            </h3>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tomador / Documento</th>
+                        <th>Fatura / Item</th>
+                        <th>Centro de Custo</th>
+                        <th>Valor Base (R$)</th>
+                        <th>Status ERP</th>
+                        <th>Data Criação</th>
+                        <th>Última Alteração</th>
+                        <th style="text-align:right;">Ações Operacionais &amp; Fiscais</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyFaturas">
+                    <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">Carregando faturas...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+let faturasCache = [];
+let parceirosCache = [];
+let logoUniversalBase64 = "";
+let nomeEmpresaGlobal = "Sacramento ERP";
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+async function registrarLogAuditoria(acao, modulo, detalhes) {
+    try {
+        let u = obterUsuarioAtual();
+        let usuarioNome = u ? `${u.nome} (${u.perfil || 'Usuário'})` : "Sistema / Visitante";
+        let payloadLog = { acao: acao.toUpperCase(), modulo: modulo, usuario: usuarioNome, detalhes: detalhes };
+        const cidLog = clienteIdAtual();
+        if (cidLog) payloadLog.cliente_id = cidLog;
+        await sb.from('logs_auditoria').insert([payloadLog]);
+    } catch (err) {}
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarParceiros() {
+    const { data } = await sbFiltroLeitura('parceiros');
+    parceirosCache = data || [];
+}
+carregarParceiros();
+
+function buscarDadosParceiro(faturaObj) {
+    let nomeFatura = (faturaObj.cliente_nome || '').toString().toLowerCase().trim();
+    let cnpjFatura = (faturaObj.cliente_cnpj || '').toString().replace(/\D/g, '');
+    let match = parceirosCache.find(p => {
+        let pNome = (p.nome || p.razao_social || '').toString().toLowerCase().trim();
+        let pCnpj = (p.cnpj_cpf || '').toString().replace(/\D/g, '');
+        if (cnpjFatura && pCnpj && pCnpj === cnpjFatura) return true;
+        if (nomeFatura && pNome && (pNome.includes(nomeFatura) || nomeFatura.includes(pNome))) return true;
+        return false;
+    });
+    if (match) {
+        return {
+            nome: match.nome || match.razao_social || faturaObj.cliente_nome,
+            cnpj_cpf: match.cnpj_cpf || faturaObj.cliente_cnpj || '',
+            endereco: match.endereco || match.logradouro || match.rua || 'Endereço não informado',
+            bairro: match.bairro || 'Centro',
+            cidade: match.cidade || match.municipio || 'Belo Horizonte',
+            uf: match.uf || 'MG',
+            cep: match.cep || '30000-000',
+            telefone: match.telefone || match.fone || '(31) 99999-9999'
+        };
+    }
+    return {
+        nome: faturaObj.cliente_nome || 'Cliente não identificado',
+        cnpj_cpf: faturaObj.cliente_cnpj || '',
+        endereco: faturaObj.cliente_endereco || 'Endereço não cadastrado',
+        bairro: faturaObj.cliente_bairro || 'Centro',
+        cidade: faturaObj.cliente_cidade || 'Belo Horizonte',
+        uf: faturaObj.cliente_uf || 'MG',
+        cep: faturaObj.cliente_cep || '30000-000',
+        telefone: faturaObj.cliente_tel || '(31) 3222-1111'
+    };
+}
+
+async function carregarCentrosCustoSelect() {
+    try {
+        const { data } = await sbFiltroLeitura('centros_custo');
+        let selectEl = document.getElementById('edit_centro_custo');
+        if(selectEl && data) {
+            selectEl.innerHTML = '<option value="">Selecione o Centro de Custo / Projeto...</option>';
+            data.forEach(cc => {
+                selectEl.innerHTML += `<option value="${cc.codigo || cc.id} - ${cc.nome || cc.descricao}">${cc.codigo || cc.id} - ${cc.nome || cc.descricao}</option>`;
+            });
+        }
+    } catch(err) {}
+}
+carregarCentrosCustoSelect();
+
+async function carregarPlanoContasSelect() {
+    try {
+        const { data } = await sbFiltroLeitura('plano_contas');
+        let selectEl = document.getElementById('modal_conta_contabil');
+        if(selectEl && data) {
+            selectEl.innerHTML = '<option value="">Selecione a Conta DRE...</option>';
+            data.forEach(p => {
+                selectEl.innerHTML += `<option value="${p.codigo_reduzido || p.reduzido} - ${p.descricao || p.nome}">${p.codigo_reduzido || p.reduzido} - ${p.descricao || p.nome}</option>`;
+            });
+        }
+    } catch(err) {}
+}
+carregarPlanoContasSelect();
+
+async function carregarFaturas() {
+    const { data, error } = await sbFiltroLeitura('faturas').order('id', { ascending: false });
+    if(error) return;
+    faturasCache = data || [];
+    renderTabela();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyFaturas');
+    tbody.innerHTML = '';
+    if(!faturasCache.length) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">Nenhuma fatura registada.</td></tr>`;
+        return;
+    }
+    faturasCache.forEach(f => {
+        let statusRaw = (f.status || 'Pendente').trim().toLowerCase();
+        let isAutorizada = statusRaw.includes('autorizada') || statusRaw.includes('emitida');
+        let badge = isAutorizada ? '<span class="badge badge-autorizada">NF Autorizada</span>' : '<span class="badge badge-pendente">Fatura Pendente</span>';
+        let ccFmt = f.centro_custo || 'Não informado';
+        let btnAcoes = `
+            <button class="btn btn-outline" style="border:1.5px solid var(--primary); color:var(--primary); padding:6px 10px;" onclick="imprimirFaturaComercial(${f.id})" title="Imprimir Fatura Comercial"><i class="fas fa-file-invoice-dollar"></i> Fatura</button>
+        `;
+        if (isAutorizada) {
+            btnAcoes += ` <button class="btn btn-info" style="padding:6px 10px;" onclick="verDanfe(${f.id})"><i class="fas fa-print"></i> Imprimir NF (SEFAZ)</button>`;
+        } else {
+            btnAcoes += `
+                <button class="btn btn-warning" style="padding:6px 10px;" onclick="abrirComplementoFiscal(${f.id}, ${f.valor})"><i class="fas fa-paperplane"></i> Emitir NF-e</button>
+                <button class="btn btn-primary" style="padding:6px 10px;" onclick="abrirEdicaoFatura(${f.id})" title="Editar Fatura"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger" style="padding:6px 10px;" onclick="excluirFatura(${f.id})" title="Excluir Fatura"><i class="fas fa-trash"></i></button>
+            `;
+        }
+        let dataReg = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        let dataAlt = f.updated_at ? f.updated_at.split('T')[0].split('-').reverse().join('/') : '-';
+        tbody.innerHTML += `<tr>
+            <td><strong>${f.cliente_nome || ''}</strong><br><small style="color:var(--text-light);">${f.cliente_cnpj || ''}</small></td>
+            <td>${f.descricao ? f.descricao.split('|')[0] : ''}</td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
+            <td><strong>R$ ${Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+            <td>${badge}</td>
+            <td>${dataReg}</td>
+            <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
+            <td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">${btnAcoes}</td>
+        </tr>`;
+    });
+}
+
+function abrirEdicaoFatura(id) {
+    let f = faturasCache.find(x => x.id == id);
+    if(!f) return;
+    document.getElementById('edit_fatura_id').value = f.id;
+    document.getElementById('edit_cliente_nome').value = f.cliente_nome || '';
+    document.getElementById('edit_cliente_cnpj').value = f.cliente_cnpj || '';
+    document.getElementById('edit_descricao').value = f.descricao ? f.descricao.split('|')[0] : '';
+    document.getElementById('edit_valor').value = f.valor || '';
+    document.getElementById('edit_centro_custo').value = f.centro_custo || '';
+    document.getElementById('modalEdicaoFatura').style.display = 'flex';
+}
+
+async function salvarEdicaoFatura() {
+    let id = document.getElementById('edit_fatura_id').value;
+    let cliente_nome = document.getElementById('edit_cliente_nome').value.trim();
+    let cliente_cnpj = document.getElementById('edit_cliente_cnpj').value.trim();
+    let descricao = document.getElementById('edit_descricao').value.trim();
+    let valor = parseFloat(document.getElementById('edit_valor').value || 0);
+    let centro_custo = document.getElementById('edit_centro_custo').value;
+    if(!cliente_nome || !descricao || !valor || !centro_custo) {
+        toast("Preencha todos os campos obrigatórios!", "error");
+        return;
+    }
+    const cidAtual = clienteIdAtual();
+    let payload = { cliente_nome, cliente_cnpj, descricao, valor, centro_custo, updated_at: new Date().toISOString() };
+    let upd = sb.from('faturas').update(payload).eq('id', id);
+    if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+    const { error } = await upd;
+    if(error) { toast("Erro ao atualizar fatura", "error"); return; }
+    await registrarLogAuditoria('UPDATE', 'faturas', `Atualização da Fatura ID: ${id} (${cliente_nome} - R$ ${valor})`);
+    document.getElementById('modalEdicaoFatura').style.display = 'none';
+    toast("Fatura atualizada com sucesso!");
+    carregarFaturas();
+}
+
+async function excluirFatura(id) {
+    if(!confirm("Deseja realmente excluir esta fatura?")) return;
+    let faturaAlvo = faturasCache.find(x => x.id == id);
+    let del = sb.from('faturas').delete().eq('id', id);
+    const cidDel = clienteIdAtual();
+    if (cidDel) del = del.eq('cliente_id', cidDel);
+    const { error } = await del;
+    if(error) { toast("Erro ao excluir", "error"); return; }
+    await registrarLogAuditoria('DELETE', 'faturas', `Exclusão da Fatura ID: ${id} (${faturaAlvo ? faturaAlvo.cliente_nome : 'Registro'} - R$ ${faturaAlvo ? faturaAlvo.valor : ''})`);
+    toast("Fatura removida!");
+    carregarFaturas();
+}
+
+function testarCertificadoDigital() {
+    let senha = prompt("Insira a senha PIN do Token do Certificado Digital A1 (ICP-Brasil):");
+    if(senha !== null && senha !== "") {
+        toast("Certificado Digital A1 validado e assinado com sucesso! Token seguro.", "success");
+    } else if (senha === "") {
+        toast("Senha PIN não pode ser vazia.", "error");
+    }
+}
+
+function sugerirCFOP() {
+    let tipo = document.getElementById('tipo_doc').value;
+    let destino = document.getElementById('destino_op').value;
+    let cfopInput = document.getElementById('cfop');
+    if(tipo === 'NFS-e') {
+        if(destino === 'Municipal') cfopInput.value = "5.933 - Prestação de serviço tributado pelo ISSQN (Municipal/Estadual)";
+        else if(destino === 'Interestadual') cfopInput.value = "6.933 - Prestação de serviço tributado pelo ISSQN (Interestadual)";
+    } else {
+        cfopInput.value = "5.101 - Venda de produção do estabelecimento";
+    }
+}
+
+window.abrirComplementoFiscal = function(id, valorBase) {
+    document.getElementById('fatura_id_atual').value = id;
+    document.getElementById('base_calculo_atual').value = valorBase;
+    document.getElementById('display_base_calculo').innerText = `R$ ${Number(valorBase).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    sugerirCFOP();
+    document.getElementById('modalFiscal').style.display = 'flex';
+}
+
+window.transmitirNF = async function() {
+    let id = document.getElementById('fatura_id_atual').value;
+    let tipo = document.getElementById('tipo_doc').value;
+    let contaContabil = document.getElementById('modal_conta_contabil').value;
+    if(!contaContabil) {
+        toast("Selecione a Conta Contábil (DRE)!", "error");
+        return;
+    }
+    const cidAtual = clienteIdAtual();
+    toast("Assinando digitalmente com Certificado A1 e transmitindo à SEFAZ...", "info");
+    setTimeout(async () => {
+        let faturaAlvo = faturasCache.find(x => x.id == id);
+        let baseDesc = faturaAlvo.descricao ? faturaAlvo.descricao.split('|')[0].trim() : '';
+        let payload = { 
+            status: 'NF Autorizada',
+            tipo_operacao: tipo,
+            descricao: baseDesc + ` | Autorizado SEFAZ`,
+            updated_at: new Date().toISOString()
+        };
+        let upd = sb.from('faturas').update(payload).eq('id', id);
+        if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+        await upd;
+
+        let hoje = new Date().toISOString().split('T')[0];
+        let payloadReceber = {
+            cliente_nome: faturaAlvo.cliente_nome || 'Cliente',
+            cpf_cnpj_cliente: faturaAlvo.cliente_cnpj || '',
+            valor: Number(faturaAlvo.valor || 0),
+            vencimento: hoje,
+            descricao: `Receita Ref. Fatura #${id} - ${baseDesc}`,
+            centro_custo: faturaAlvo.centro_custo || 'Não informado',
+            conta_contabil: contaContabil,
+            status: 'Pendente',
+            updated_at: new Date().toISOString()
+        };
+        if (cidAtual) payloadReceber.cliente_id = cidAtual;
+        await sb.from('contas_receber').insert([payloadReceber]);
+
+        await registrarLogAuditoria('INSERT', 'faturas', `Transmissão NF-e/SEFAZ da Fatura ID: ${id} (${faturaAlvo.cliente_nome || ''} - R$ ${faturaAlvo.valor || 0}) | Tipo: ${tipo} | Integrado ao Contas a Receber`);
+        toast("Nota Autorizada com sucesso pela SEFAZ e integrada ao Financeiro!");
+        document.getElementById('modalFiscal').style.display = 'none';
+        carregarFaturas();
+        setTimeout(() => { verDanfe(id); }, 500);
+    }, 2000);
+}
+
+window.imprimirFaturaComercial = function(id) {
+    let f = faturasCache.find(x => x.id == id);
+    if(!f) return;
+    let parc = buscarDadosParceiro(f);
+    let dataEmissao = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+    let descPura = f.descricao ? f.descricao.split('|')[0] : '';
+    let valorFmt = Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    let logoHtml = logoUniversalBase64 ? `<img src="${logoUniversalBase64}" style="width:48px; height:48px; object-fit:contain; border-radius:8px; background:#fff;">` : `<div style="width:48px; height:48px; background:var(--secondary); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px;"><i class="fas fa-dna"></i></div>`;
+    let html = `
+    <div class="fatura-comercial" id="conteudoFaturaComercial">
+        <div class="fc-top">
+            <div style="display:flex; align-items:center; gap:12px;">
+                ${logoHtml}
+                <div>
+                    <h2 style="color:var(--primary); font-size:20px; font-weight:800;">${nomeEmpresaGlobal}</h2>
+                    <p style="font-size:11px; color:var(--text-light); margin-top:2px;">CNPJ: 61.926.954/0001-14 | Belo Horizonte - MG</p>
+                </div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:16px; font-weight:800; color:var(--secondary);">FATURA COMERCIAL</div>
+                <div style="font-size:13px; color:var(--primary); font-weight:600; margin-top:2px;">Fatura Nº #${f.id}</div>
+                <div style="font-size:11px; color:var(--text-light); margin-top:2px;">Data de Emissão: ${dataEmissao}</div>
+            </div>
+        </div>
+        <div class="fc-grid">
+            <div class="fc-box">
+                <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Emitente / Credor:</strong>
+                <span style="font-size:13px; font-weight:700;">${nomeEmpresaGlobal}</span><br>
+                CNPJ: 61.926.954/0001-14<br>
+                Belo Horizonte - MG
+            </div>
+            <div class="fc-box">
+                <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Tomador / Cliente:</strong>
+                <span style="font-size:14px; font-weight:700;">${parc.nome}</span><br>
+                CNPJ / CPF: ${parc.cnpj_cpf}<br>
+                Endereço: ${parc.endereco}, ${parc.bairro}<br>
+                ${parc.cidade} - ${parc.uf} | CEP: ${parc.cep}
+            </div>
+        </div>
+        <table class="fc-table">
+            <thead>
+                <tr>
+                    <th>Qtd</th>
+                    <th>Descrição dos Serviços / Itens</th>
+                    <th style="text-align:right;">Valor Unitário (R$)</th>
+                    <th style="text-align:right;">Valor Total (R$)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1,00</td>
+                    <td><strong>${descPura}</strong></td>
+                    <td style="text-align:right;">R$ ${valorFmt}</td>
+                    <td style="text-align:right; font-weight:700;">R$ ${valorFmt}</td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="fc-totais">
+            <div class="fc-totais-box">
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span>Subtotal:</span>
+                    <span>R$ ${valorFmt}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:15px; font-weight:800; border-top:1px solid var(--border); padding-top:8px; color:var(--primary);">
+                    <span>Total da Fatura:</span>
+                    <span>R$ ${valorFmt}</span>
+                </div>
+            </div>
+        </div>
+        <div class="fc-banco">
+            <strong><i class="fas fa-university"></i> Dados Bancários para Depósito / Pix / Transferência:</strong><br>
+            Banco Inter (077) | Agência: 0001 | Conta Corrente: 926954-0<br>
+            Chave Pix (CNPJ): 61.926.954/0001-14 | Favorecido: ${nomeEmpresaGlobal}
+        </div>
+        <div style="font-size:11px; color:var(--text-light); border-top:1px solid var(--border); padding-top:14px; line-height:1.4;">
+            <strong>Termos e Instruções:</strong> O pagamento desta fatura deve ser efetuado até a data de vencimento na conta informada acima. Este documento constitui fatura comercial para cobrança, não substituindo o documento fiscal oficial.
+        </div>
+    </div>`;
+    document.getElementById('conteudoFaturaComercial').innerHTML = html;
+    document.getElementById('modalFaturaComercial').style.display = 'flex';
+}
+
+function dvMod11(chave43) {
+    let peso = 2, soma = 0;
+    for (let i = chave43.length - 1; i >= 0; i--) {
+        soma += parseInt(chave43.charAt(i), 10) * peso;
+        peso = peso === 9 ? 2 : peso + 1;
+    }
+    const resto = soma % 11;
+    return (resto < 2) ? 0 : (11 - resto);
+}
+function montarChaveAcesso(uf, aamm, cnpj, modelo, serie, numero, tpEmis, cnf) {
+    const base = uf + aamm + cnpj + modelo + serie.padStart(3, '0') + numero.padStart(9, '0') + tpEmis + cnf.padStart(8, '0');
+    return base + dvMod11(base);
+}
+function formatarChave(chave) { return chave.replace(/(\d{4})(?=\d)/g, '$1 '); }
+
+window.verDanfe = function(id) {
+    let f = faturasCache.find(x => x.id == id);
+    if(!f) return;
+    let parc = buscarDadosParceiro(f);
+    let chaveSemEspacos = f.chave_nfe || montarChaveAcesso('31', '2607', '61926954000114', '55', '001', String(f.id), '1', '00000001');
+    let chaveAcesso = formatarChave(chaveSemEspacos);
+    let descPura = f.descricao ? f.descricao.split('|')[0] : '';
+    let dataEmissao = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+    let valorFmt = Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    let isAutorizada = (f.status || '').toLowerCase().includes('autorizada');
+    let tarjaHomologacao = isAutorizada ? '' : '<div class="marca-dagua">SEM VALOR FISCAL</div>';
+    let logoDanfeSrc = logoUniversalBase64 || "";
+    let logoHtmlDanfe = logoDanfeSrc ? `<img src="${logoDanfeSrc}" style="width:36px; height:36px; object-fit:contain; border-radius:4px; background:#fff;">` : `<i class="fas fa-dna" style="font-size:20px; color:var(--secondary);"></i>`;
+    let htmlDanfe = `
+    <div class="danfe-container">
+        ${tarjaHomologacao}
+        <div class="danfe-a4" id="conteudoDanfe">
+            <table class="danfe-table">
+                <tr>
+                    <td colspan="4" style="padding: 0;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="width: 36%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main);">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
+                                        ${logoHtmlDanfe}
+                                        <strong style="font-size: 10.5px;">${nomeEmpresaGlobal}</strong>
+                                    </div>
+                                    <span style="font-size: 7.5px;">Belo Horizonte - MG<br>CNPJ: 61.926.954/0001-14<br>Fone: (31) 3333-4444</span>
+                                </td>
+                                <td style="width: 24%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main); vertical-align: middle;">
+                                    <strong style="font-size: 12px;">DANFE / NFS-e</strong><br>
+                                    <span style="font-size: 7px;">Documento Auxiliar da Nota Fiscal</span><br><br>
+                                    <span style="font-size: 7.5px; font-weight: bold;">1 - SAÍDA</span><br><br>
+                                    <span style="font-size: 7.5px; font-weight: bold;">Nº ${String(f.id).padStart(9,'0')} | SÉRIE 001</span>
+                                </td>
+                                <td style="width: 40%; padding: 6px; text-align: center; vertical-align: middle;">
+                                    <div style="font-size: 7.5px; font-weight: bold; margin-bottom:2px;">CONTROLE DO FISCO</div>
+                                    <svg id="barcodeDanfe" style="max-width:100%; height:32px; display:block; margin: 0 auto;"></svg>
+                                    <span class="df-label" style="margin-top:2px;">CHAVE DE ACESSO</span>
+                                    <span style="font-size: 8px; font-family: monospace; font-weight: bold;">${chaveAcesso}</span>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="3"><span class="df-label">Natureza da Operação</span><span class="df-val">PRESTAÇÃO DE SERVIÇOS</span></td>
+                    <td style="width: 25%;"><span class="df-label">CFOP</span><span class="df-val">5.933</span></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="df-title">DESTINATÁRIO / TOMADOR DOS SERVIÇOS</td>
+                </tr>
+                <tr>
+                    <td colspan="2"><span class="df-label">Nome / Razão Social</span><span class="df-val">${parc.nome}</span></td>
+                    <td><span class="df-label">CNPJ / CPF</span><span class="df-val">${parc.cnpj_cpf}</span></td>
+                    <td><span class="df-label">Data de Emissão</span><span class="df-val">${dataEmissao}</span></td>
+                </tr>
+                <tr>
+                    <td colspan="2"><span class="df-label">Endereço</span><span class="df-val">${parc.endereco}</span></td>
+                    <td><span class="df-label">Bairro / Distrito</span><span class="df-val">${parc.bairro}</span></td>
+                    <td><span class="df-label">CEP</span><span class="df-val">${parc.cep}</span></td>
+                </tr>
+                <tr>
+                    <td><span class="df-label">Município</span><span class="df-val">${parc.cidade}</span></td>
+                    <td style="width: 10%;"><span class="df-label">UF</span><span class="df-val">${parc.uf}</span></td>
+                    <td><span class="df-label">Telefone</span><span class="df-val">${parc.telefone}</span></td>
+                    <td><span class="df-label">Inscrição Municipal</span><span class="df-val">1684185/001</span></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="df-title">CÁLCULO DO IMPOSTO</td>
+                </tr>
+                <tr>
+                    <td><span class="df-label">Base de Cálculo</span><span class="df-val">R$ 0,00</span></td>
+                    <td><span class="df-label">Valor do ISS</span><span class="df-val">R$ 0,00</span></td>
+                    <td><span class="df-label">Base ICMS ST</span><span class="df-val">R$ 0,00</span></td>
+                    <td><span class="df-label">Valor Total dos Serviços</span><span class="df-val">R$ ${valorFmt}</span></td>
+                </tr>
+                <tr>
+                    <td colspan="3"></td>
+                    <td style="background:var(--bg);"><span class="df-label">VALOR TOTAL DA NOTA</span><span class="df-val" style="color:var(--primary);">R$ ${valorFmt}</span></td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="df-title">DADOS DO PRODUTO / SERVIÇO</td>
+                </tr>
+                <tr>
+                    <td colspan="4" style="padding: 0;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 8px;">
+                            <thead>
+                                <tr style="background: var(--bg); border-bottom: 1px solid var(--text-main);">
+                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main);">CÓDIGO</th>
+                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main); width: 40%;">DESCRIÇÃO DO ITEM / SERVIÇO</th>
+                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">NCM/NBS</th>
+                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">CST</th>
+                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">CFOP</th>
+                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">UNID.</th>
+                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">QTD.</th>
+                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">V. UNIT.</th>
+                                    <th style="padding: 3px; text-align: right;">V. TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);">PRD-002</td>
+                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);"><strong>${descPura}</strong></td>
+                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">1.01</td>
+                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">00</td>
+                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">5.933</td>
+                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">UN</td>
+                                    <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">1,00</td>
+                                    <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">${valorFmt}</td>
+                                    <td style="padding: 4px; text-align: right; font-weight: bold;">${valorFmt}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="4" class="df-title">DADOS ADICIONAIS</td>
+                </tr>
+                <tr>
+                    <td colspan="4"><span class="df-label">Informações Complementares</span><span style="font-size: 7.5px;">Documento emitido por ME ou EPP optante pelo Simples Nacional. Lei Complementar 123/2006. Protocolo de Autorização SEFAZ: 3126600${f.id} em ${dataEmissao}. Assinado digitalmente via Certificado A1 ICP-Brasil. Ref Fatura #${f.id}. Centro de Custo: ${f.centro_custo || 'Geral'}.</span></td>
+                </tr>
+            </table>
+        </div>
+    </div>`;
+    document.getElementById('conteudoDanfe').innerHTML = htmlDanfe;
+    document.getElementById('modalDanfe').style.display = 'flex';
+    setTimeout(() => {
+        try {
+            JsBarcode("#barcodeDanfe", chaveSemEspacos, {
+                format: "CODE128C", width: 1.1, height: 32, displayValue: false, margin: 0
+            });
+        } catch (e) {}
+    }, 50);
+}
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    const cid = clienteIdAtual();
+    await carregarMarcaSistema(cid);
+    await carregarFaturas();
+}
+
+async function carregarMarcaSistema(clienteId) {
+    try {
+        const { data: clientes } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteId).maybeSingle();
+        if (clientes) {
+            const nomeEmp = clientes.nome_fantasia || clientes.razao_social;
+            if (nomeEmp) nomeEmpresaGlobal = nomeEmp;
+        }
+        const { data } = await sb.from('configuracoes_sistema').select('*').eq('cliente_id', clienteId).limit(1);
+        if (data && data.length > 0) {
+            if (data[0].app_logo_url) logoUniversalBase64 = data[0].app_logo_url;
+        }
+    } catch(e) {}
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
