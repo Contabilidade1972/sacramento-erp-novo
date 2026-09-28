@@ -90,13 +90,15 @@
         { nome: "Módulo Financeiro", url: "modulo_financeiro.html", icon: "fa-wallet", keywords: ["financeiro", "modulo"] },
         { nome: "Contas a Pagar", url: "contas_pagar.html", icon: "fa-file-invoice-dollar", keywords: ["pagar", "despesa", "fornecedor", "boleto"] },
         { nome: "Contas a Receber", url: "contas_receber.html", icon: "fa-hand-holding-usd", keywords: ["receber", "receita", "cliente", "fatura"] },
+        { nome: "Faturas & Emissão", url: "faturas.html", icon: "fa-file-invoice", keywords: ["fatura", "nota", "fiscal", "sefaz", "nfe"] },
+        { nome: "Orçamentos & Propostas", url: "orcamentos.html", icon: "fa-file-contract", keywords: ["orcamento", "proposta", "comercial", "venda"] },
         { nome: "Contas Bancárias / Caixa", url: "contas_bancarias.html", icon: "fa-university", keywords: ["banco", "caixa", "saldo", "conta"] },
         { nome: "Fluxo de Caixa", url: "fluxo_caixa.html", icon: "fa-chart-line", keywords: ["fluxo", "caixa", "projecao", "entrada", "saida"] },
         { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
         { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
         { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto", "departamento"] },
-        { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo", "codigo de barras"] },
-        { nome: "Inventário & Estoque", url: "estoque.html", icon: "fa-warehouse", keywords: ["inventario", "estoque", "saldo", "auditoria", "fisico"] },
+        { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo"] },
+        { nome: "Inventário & Estoque", url: "estoque.html", icon: "fa-warehouse", keywords: ["inventario", "estoque", "saldo", "auditoria"] },
         { nome: "Documentos XML", url: "documentos.html", icon: "fa-file-code", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
@@ -110,7 +112,7 @@
         const pathAtual = window.location.pathname.toLowerCase();
         let botaoModuloHtml = "";
 
-        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre")) {
+        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
             botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
 
@@ -126,7 +128,7 @@
 
                 <div class="search-global-box">
                     <i class="fas fa-search"></i>
-                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, inventário..." autocomplete="off">
+                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, orçamento..." autocomplete="off">
                     <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
                 </div>
 
@@ -235,10 +237,10 @@
         setTimeout(() => {
             let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
             const tLower = texto.toLowerCase();
-            if (tLower.includes('estoque') || tLower.includes('inventario')) {
-                resposta = "No módulo de Inventário e Estoque, você pode auditar saldos físicos e ajustar quantidades em tempo real.";
-            } else if (tLower.includes('produto')) {
-                resposta = "No catálogo de Produtos e Serviços, você cadastra novos itens e gera códigos de barras.";
+            if (tLower.includes('orcamento') || tLower.includes('proposta')) {
+                resposta = "No módulo de Orçamentos, você elabora propostas comerciais e as converte diretamente em faturas.";
+            } else if (tLower.includes('fatura') || tLower.includes('nota')) {
+                resposta = "Na central de Faturas, você gerencia emissões e transmissão fiscal SEFAZ.";
             } else {
                 resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo.";
             }
