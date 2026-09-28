@@ -36,18 +36,12 @@
         .tab-btn.ativo { background: var(--primary); color: #fff; box-shadow: 0 2px 5px rgba(37,99,235,0.2); }
 
         .filtro-mes { display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
-        .filtro-mes select { height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; cursor: pointer; }
+        .filtro-mes input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; cursor: pointer; }
 
-        .btn-acao { background: var(--success); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao { background: var(--success); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao:hover { background: #059669; }
 
-        /* KPIs Superiores */
-        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
-        .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
-        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
-
-        /* TABELA DRE ESTRUTURADA */
+        /* TABELA DRE CONTÁBIL ESTRUTURADA */
         .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .table-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
 
@@ -56,17 +50,18 @@
         tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
         tbody tr:hover { background: #f8fafc; }
         
-        .linha-total { background: #f8fafc; font-weight: 700; }
-        .linha-destaque { background: #d1fae5 !important; font-weight: 800; color: #065f46; }
-        .subconta { padding-left: 36px !important; color: var(--text-light); font-size: 13px; }
+        .row-grupo { background: var(--bg); font-weight: 700; color: var(--secondary); }
+        .row-sub { padding-left: 36px !important; color: var(--text-light); font-size: 13px; }
+        .row-total { font-weight: 800; background: #f1f5f9; color: var(--secondary); border-top: 2px solid var(--border); }
+        .row-lucro { font-weight: 800; background: #d1fae5 !important; color: #065f46; font-size: 15px; border-top: 2px solid var(--success); }
         
         .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
-        .num { text-align: right; font-weight: 600; }
+        .num { text-align: right; }
 
         .print-header { display: none; }
 
         @media print {
-            .site-header, .dre-toolbar, .kpi-grid, .btn-acao { display: none !important; }
+            .site-header, .dre-toolbar, .btn-acao { display: none !important; }
             body { background: #fff !important; }
             .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
             table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
@@ -81,51 +76,25 @@
 
 <div class="container">
     
-    <!-- BARRA DE FERRAMENTAS / ABAS -->
+    <!-- BARRA DE FERRAMENTAS / ABAS DE PERÍODO -->
     <div class="dre-toolbar">
         <div class="periodo-tabs">
-            <button class="tab-btn ativo" onclick="mudarPeriodo('mensal')">Mensal</button>
-            <button class="tab-btn" onclick="mudarPeriodo('acumulado')">Acumulado (Jan até Mês)</button>
-            <button class="tab-btn" onclick="mudarPeriodo('anual')">Anual</button>
+            <button class="tab-btn ativo" id="tabMensal" onclick="selecionarPeriodo('mensal')">Mensal</button>
+            <button class="tab-btn" id="tabAcumulado" onclick="selecionarPeriodo('acumulado')">Acumulado (Jan até Mês)</button>
+            <button class="tab-btn" id="tabAnual" onclick="selecionarPeriodo('anual')">Anual</button>
         </div>
         <div class="filtro-mes">
             <span>Mês de Referência:</span>
-            <select id="selectMesReferencia" onchange="carregarDre()">
-                <option value="2026-09">setembro de 2026</option>
-                <option value="2026-08">agosto de 2026</option>
-                <option value="2026-07">julho de 2026</option>
-                <option value="2026-06">junho de 2026</option>
-                <option value="2026-05">maio de 2026</option>
-                <option value="2026-04">abril de 2026</option>
-                <option value="2026-03">março de 2026</option>
-                <option value="2026-02">fevereiro de 2026</option>
-                <option value="2026-01">janeiro de 2026</option>
-            </select>
+            <input type="month" id="filtroMes" onchange="carregarDRE()">
         </div>
         <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir DRE</button>
-    </div>
-
-    <!-- KPIs SUPERIORES -->
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-title">Receita Líquida</span>
-            <span class="kpi-value" id="kpiReceitaLiq" style="color: var(--success);">R$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Lucro Bruto</span>
-            <span class="kpi-value" id="kpiLucroBruto" style="color: var(--primary);">R$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title">Lucro Líquido (LLE)</span>
-            <span class="kpi-value" id="kpiLucroLiquido">R$ 0,00</span>
-        </div>
     </div>
 
     <!-- TABELA DRE PRINCIPAL -->
     <div class="card-table">
         <div class="print-header">
             <h2>Demonstrativo do Resultado do Exercício (DRE Gerencial)</h2>
-            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
+            <p>Período: <span id="printPeriodo">--</span> | Emitido via Sacramento ERP</p>
         </div>
         <div class="table-header">
             <div>
@@ -140,8 +109,8 @@
                     <th class="num">Valor no Período (R$)</th>
                 </tr>
             </thead>
-            <tbody id="tbodyDre">
-                <tr><td colspan="2" class="vazio">A apurar dados contábeis do Supabase...</td></tr>
+            <tbody id="tbodyDRE">
+                <tr><td colspan="2" class="vazio">A carregar dados contábeis do Supabase...</td></tr>
             </tbody>
         </table>
     </div>
@@ -158,124 +127,140 @@
         return 1;
     }
 
-    function formatBRL(v) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    function formatarMoeda(valor) {
+        let num = parseFloat(valor) || 0;
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    function mudarPeriodo(tipo) {
+    function selecionarPeriodo(tipo) {
         periodoAtual = tipo;
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('ativo'));
-        event.target.classList.add('ativo');
-        carregarDre();
+        document.getElementById('tabMensal').classList.toggle('ativo', tipo === 'mensal');
+        document.getElementById('tabAcumulado').classList.toggle('ativo', tipo === 'acumulado');
+        document.getElementById('tabAnual').classList.toggle('ativo', tipo === 'anual');
+        carregarDRE();
     }
 
-    async function carregarDre() {
+    // Inicializa com o mês atual caso esteja vazio
+    if (!document.getElementById('filtroMes').value) {
+        document.getElementById('filtroMes').value = new Date().toISOString().slice(0, 7);
+    }
+
+    async function carregarDRE() {
         const cid = clienteIdAtual();
-        const tbody = document.getElementById('tbodyDre');
-        const mesRef = document.getElementById('selectMesReferencia').value;
+        let mesAno = document.getElementById('filtroMes').value;
+        if (!mesAno) return;
+
+        let ano = mesAno.split('-')[0];
+        let mes = mesAno.split('-')[1];
+        let prefixoVenc;
+        let labelPeriodo;
+
+        if (periodoAtual === 'mensal') {
+            prefixoVenc = `${mesAno}%`;
+            labelPeriodo = `Mês de ${mes}/${ano}`;
+        } else if (periodoAtual === 'acumulado') {
+            prefixoVenc = `${ano}%`;
+            labelPeriodo = `Acumulado de Jan/${ano} até ${mes}/${ano}`;
+        } else {
+            prefixoVenc = `${ano}%`;
+            labelPeriodo = `Exercício de ${ano} (Anual)`;
+        }
+
+        document.getElementById('printPeriodo').innerText = labelPeriodo;
 
         try {
             const [recRes, pagRes] = await Promise.all([
-                sb.from('contas_receber').select('*').eq('cliente_id', cid),
-                sb.from('contas_pagar').select('*').eq('cliente_id', cid)
+                sb.from('contas_receber').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc),
+                sb.from('contas_pagar').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc)
             ]);
 
-            const receitas = recRes.data || [];
-            const despesas = pagRes.data || [];
+            const recebimentos = recRes.data || [];
+            const pagamentos = pagRes.data || [];
 
-            // Filtragem por mês se for o modo mensal
-            let recFiltradas = receitas;
-            let despesasFiltradas = despesas;
+            let totalReceitaBruta = 0;
+            let totalDeducoes = 0;
+            let totalCPV = 0;
+            let totalDespesas = 0;
+            let detalheReceitas = {};
+            let detalheDeducoes = {};
+            let detalheCPV = {};
+            let detalheDespesas = {};
 
-            if (periodoAtual === 'mensal' && mesRef) {
-                recFiltradas = receitas.filter(r => (r.vencimento || '').startsWith(mesRef));
-                despesasFiltradas = despesas.filter(p => (p.vencimento || '').startsWith(mesRef));
-            } else if (periodoAtual === 'acumulado' && mesRef) {
-                const anoMesMax = mesRef;
-                recFiltradas = receitas.filter(r => (r.vencimento || '') <= (anoMesMax + '-31'));
-                despesasFiltradas = despesas.filter(p => (p.vencimento || '') <= (anoMesMax + '-31'));
+            recebimentos.forEach(r => {
+                if (periodoAtual === 'acumulado') {
+                    let vencMes = (r.vencimento || '').split('-')[1];
+                    if (vencMes && parseInt(vencMes) > parseInt(mes)) return;
+                }
+                let val = parseFloat(r.valor) || 0;
+                let conta = r.conta_contabil || '1.1.001 - Receita Bruta de Vendas';
+                if (conta.startsWith('1.2') || conta.toLowerCase().includes('simples') || conta.toLowerCase().includes('dedu')) {
+                    totalDeducoes += val;
+                    detalheDeducoes[conta] = (detalheDeducoes[conta] || 0) + val;
+                } else {
+                    totalReceitaBruta += val;
+                    detalheReceitas[conta] = (detalheReceitas[conta] || 0) + val;
+                }
+            });
+
+            pagamentos.forEach(p => {
+                if (periodoAtual === 'acumulado') {
+                    let vencMes = (p.vencimento || '').split('-')[1];
+                    if (vencMes && parseInt(vencMes) > parseInt(mes)) return;
+                }
+                let val = parseFloat(p.valor) || 0;
+                let conta = p.conta_contabil || '4.1.001 - Despesas Operacionais';
+                if (conta.startsWith('1.2') || conta.toLowerCase().includes('simples') || conta.toLowerCase().includes('das')) {
+                    totalDeducoes += val;
+                    detalheDeducoes[conta] = (detalheDeducoes[conta] || 0) + val;
+                } else if (conta.startsWith('3.1') || conta.toLowerCase().includes('cpv') || conta.toLowerCase().includes('insumos')) {
+                    totalCPV += val;
+                    detalheCPV[conta] = (detalheCPV[conta] || 0) + val;
+                } else {
+                    totalDespesas += val;
+                    detalheDespesas[conta] = (detalheDespesas[conta] || 0) + val;
+                }
+            });
+
+            let receitaLiquida = totalReceitaBruta - totalDeducoes;
+            let lucroBruto = receitaLiquida - totalCPV;
+            let resultadoOperacional = lucroBruto - totalDespesas;
+            let lucroLiquido = resultadoOperacional;
+
+            let html = '';
+            html += `<tr class="row-grupo"><td>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</td><td class="num">${formatarMoeda(totalReceitaBruta)}</td></tr>`;
+            for (let c in detalheReceitas) {
+                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheReceitas[c])}</td></tr>`;
             }
 
-            const totalReceitaBruta = recFiltradas.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            const deducoesImpostos = totalReceitaBruta * 0.06; // Estimativa padrão ou cálculo de impostos
-            const receitaLiquida = totalReceitaBruta - deducoesImpostos;
-            
-            const cpv = 0; // Custo dos Produtos Vendidos
-            const lucroBruto = receitaLiquida - cpv;
-
-            const totalDespesasOp = despesasFiltradas.reduce((acc, cur) => acc + (parseFloat(cur.valor) || 0), 0);
-            
-            // Resultado Operacional e Líquido
-            const resultadoOperacional = lucroBruto - totalDespesasOp;
-            const lucroLiquido = resultadoOperacional;
-
-            // Atualiza KPIs
-            document.getElementById('kpiReceitaLiq').innerText = formatBRL(receitaLiquida);
-            document.getElementById('kpiLucroBruto').innerText = formatBRL(lucroBruto);
-            
-            const elLucroLiq = document.getElementById('kpiLucroLiquido');
-            elLucroLiq.innerText = formatBRL(lucroLiquido);
-            elLucroLiq.style.color = lucroLiquido >= 0 ? 'var(--success)' : 'var(--danger)';
-
-            // Monta as subcontas de despesas dinamicamente se houver dados
-            let htmlSubcontas = '';
-            if (despesasFiltradas.length > 0) {
-                despesasFiltradas.slice(0, 5).forEach(d => {
-                    const nomeDesc = d.descricao || d.fornecedor_nome || 'Despesa Operacional';
-                    htmlSubcontas += `
-                        <tr>
-                            <td class="subconta">• ${nomeDesc}</td>
-                            <td class="num" style="color:var(--text-light);">${formatBRL(d.valor)}</td>
-                        </tr>
-                    `;
-                });
-            } else {
-                htmlSubcontas = `<tr><td class="subconta">• Nenhuma despesa registada no período</td><td class="num">R$ 0,00</td></tr>`;
+            html += `<tr class="row-grupo"><td>(-) DEDUÇÕES E ABATIMENTOS (Simples Nacional / DAS)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalDeducoes)}</td></tr>`;
+            for (let c in detalheDeducoes) {
+                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheDeducoes[c])}</td></tr>`;
             }
 
-            tbody.innerHTML = `
-                <tr class="linha-total">
-                    <td><strong>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</strong></td>
-                    <td class="num" style="color:var(--success);">${formatBRL(totalReceitaBruta)}</td>
-                </tr>
-                <tr class="linha-total">
-                    <td><strong>(-) DEDUÇÕES E ABATIMENTOS (Simples Nacional / DAS)</strong></td>
-                    <td class="num" style="color:var(--danger);">${formatBRL(deducoesImpostos)}</td>
-                </tr>
-                <tr class="linha-total" style="background:#f1f5f9;">
-                    <td><strong>(=) RECEITA LÍQUIDA</strong></td>
-                    <td class="num" style="font-weight:800;">${formatBRL(receitaLiquida)}</td>
-                </tr>
-                <tr class="linha-total">
-                    <td><strong>(-) CUSTOS DOS SERVIÇOS PRESTADOS OU PRODUTOS VENDIDOS (CPV)</strong></td>
-                    <td class="num" style="color:var(--danger);">${formatBRL(cpv)}</td>
-                </tr>
-                <tr class="linha-total" style="background:#f1f5f9;">
-                    <td><strong>(=) LUCRO BRUTO</strong></td>
-                    <td class="num" style="font-weight:800;">${formatBRL(lucroBruto)}</td>
-                </tr>
-                <tr class="linha-total">
-                    <td><strong>(-) DESPESAS OPERACIONAIS (Adm, P&D, Aluguel, Salários)</strong></td>
-                    <td class="num" style="color:var(--danger);">${formatBRL(totalDespesasOp)}</td>
-                </tr>
-                ${htmlSubcontas}
-                <tr class="linha-total" style="background:#f1f5f9;">
-                    <td><strong>(=) RESULTADO OPERACIONAL</strong></td>
-                    <td class="num" style="font-weight:800; color:${resultadoOperacional >= 0 ? 'var(--text-main)' : 'var(--danger)'};">${formatBRL(resultadoOperacional)}</td>
-                </tr>
-                <tr class="linha-destaque">
-                    <td><strong>(=) LUCRO LÍQUIDO DO EXERCÍCIO (LLE)</strong></td>
-                    <td class="num">${formatBRL(lucroLiquido)}</td>
-                </tr>
-            `;
+            html += `<tr class="row-total"><td>(=) RECEITA LÍQUIDA</td><td class="num">${formatarMoeda(receitaLiquida)}</td></tr>`;
 
-            document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
+            html += `<tr class="row-grupo"><td>(-) CUSTOS DOS SERVIÇOS PRESTADOS OU PRODUTOS VENDIDOS (CPV)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalCPV)}</td></tr>`;
+            for (let c in detalheCPV) {
+                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheCPV[c])}</td></tr>`;
+            }
+
+            html += `<tr class="row-total"><td>(=) LUCRO BRUTO</td><td class="num">${formatarMoeda(lucroBruto)}</td></tr>`;
+
+            html += `<tr class="row-grupo"><td>(-) DESPESAS OPERACIONAIS (Adm, P&amp;D, Aluguel, Salários)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalDespesas)}</td></tr>`;
+            for (let c in detalheDespesas) {
+                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheDespesas[c])}</td></tr>`;
+            }
+
+            html += `<tr class="row-total"><td>(=) RESULTADO OPERACIONAL</td><td class="num">${formatarMoeda(resultadoOperacional)}</td></tr>`;
+            html += `<tr class="row-lucro"><td>(=) LUCRO LÍQUIDO DO EXERCÍCIO (LLE)</td><td class="num">${formatarMoeda(lucroLiquido)}</td></tr>`;
+
+            document.getElementById('tbodyDRE').innerHTML = html;
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="2" class="vazio">Erro ao carregar DRE: ${err.message}</td></tr>`;
+            document.getElementById('tbodyDRE').innerHTML = `<tr><td colspan="2" class="vazio">Erro ao carregar DRE: ${err.message}</td></tr>`;
         }
     }
 
-    window.onload = carregarDre;
+    window.onload = carregarDRE;
 </script>
 </body>
 </html>
