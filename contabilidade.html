@@ -3,202 +3,420 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Escrituração Contábil — Sacramento ERP</title>
+    <title>Escrituração Contábil — Sacramento ERP Gestão Empresarial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #1e3a8a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text-main: #0f172a;
-            --text-light: #64748b;
-            --border: #e2e8f0;
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
+        
+        /* MENU LATERAL PADRÃO */
+        .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;transition:width 0.3s ease, transform 0.3s ease;box-shadow:2px 0 12px rgba(15,23,42,0.15);}
+        .sidebar.collapsed { width: 70px !important; }
+        .sidebar.collapsed .logo-text-wrapper,
+        .sidebar.collapsed .logo-watermark,
+        .sidebar.collapsed .sidebar-logo img,
+        .sidebar.collapsed .nav-section,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .menu-busca,
+        .sidebar.collapsed .nav-seta { display: none !important; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+        .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;z-index:10;min-height:80px; gap:8px;}
+        .logo-watermark{position:absolute;right:-14px;top:50%;transform:translateY(-50%);font-size:110px;color:rgba(255,255,255,0.07);z-index:0;pointer-events:none;line-height:1;}
+        .logo-watermark i{filter:drop-shadow(0 0 8px rgba(37,99,235,0.4));}
+        .logo-text-wrapper{display:flex;flex-direction:column;overflow:hidden;flex:1;position:relative;z-index:1;}
+        .sidebar-logo h1{font-size:12px;font-weight:700;line-height:1.25;color:#fff;letter-spacing:0;text-transform:none;word-wrap:break-word;}
+        .sidebar-logo span{font-size:9px;color:#93c5fd;margin-top:3px;display:block;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;}
+        .sidebar-logo img{max-height:36px;max-width:130px;object-fit:contain;display:block;}
+        .btn-toggle-menu { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
+        .btn-toggle-menu:hover { color: #fff; }
+        .btn-tema { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; padding: 4px; transition: color 0.2s; }
+        .btn-tema:hover { color: #fff; }
+        .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding-right:20px;}
+        .nav-seta { font-size: 9px; color: #64748b; transition: transform 0.2s; }
+        .nav-seta.fechada { transform: rotate(-90deg); }
+        .sidebar.collapsed .nav-section { display: none !important; }
+        .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:.2s;border-left:3px solid transparent;}
+        .nav-item-left{display:flex;align-items:center;gap:12px;}
+        .sidebar.collapsed .nav-item-left { gap: 0; }
+        .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+        .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
+        .menu-busca { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .menu-busca .busca-wrapper { position: relative; }
+        .menu-busca .busca-wrapper i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 12px; }
+        .menu-busca input { width: 100%; padding: 8px 10px 8px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; outline: none; box-sizing: border-box; }
+        .menu-busca input::placeholder { color: #64748b; }
+        .menu-back-dashboard { border-top: 1px solid rgba(255,255,255,0.08); }
+
+        /* ÁREA PRINCIPAL E CABEÇALHO PADRÃO */
+        .main{margin-left:260px;flex:1;display:flex;flex-direction:column;min-width:0;width:calc(100% - 260px);transition:margin-left 0.3s ease, width 0.3s ease;}
+        .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
+        .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900}
+        .header-title-wrapper{display:flex;align-items:center;gap:12px;}
+        .btn-home{background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 4px rgba(37,99,235,0.2);transition:.2s;}
+        .btn-home:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(37,99,235,0.3);}
+        .btn-mobile-toggle { background: var(--primary); border: none; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+        .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
+        .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);font-weight:500;}
+        .date-time{color:var(--primary);font-weight:600;}
+        .empresa-selector{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+        .empresa-selector i{color:var(--primary);font-size:13px;}
+        .empresa-selector select{border:none;background:transparent;font-size:12px;font-weight:600;color:var(--secondary);cursor:pointer;outline:none;max-width:200px;}
+        .user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding-left:16px;border-left:1px solid var(--border);}
+        .user-menu:hover{color:var(--primary);}
+
+        .content{padding:24px;display:flex;flex-direction:column;gap:20px;}
+        .page-title{font-size:18px;font-weight:800;color:var(--secondary);display:flex;align-items:center;gap:10px;}
+        .page-subtitle{font-size:12px;color:var(--text-light);}
+        .panel{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:20px;box-shadow:0 1px 2px rgba(0,0,0,0.03);overflow-x:auto;}
+        .panel-header{font-size:14px;font-weight:700;color:var(--text-main);margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+        .tabs-header{display:flex;gap:12px;border-bottom:1px solid var(--border);margin-bottom:16px;overflow-x:auto;}
+        .tab-btn{background:none;border:none;padding:8px 12px;font-size:13px;font-weight:600;color:var(--text-light);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+        .tab-btn.active{color:var(--primary);border-bottom-color:var(--primary);}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase;}
+        .form-control{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;margin-bottom:12px;background:var(--card);color:var(--text-main);}
+        .form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);}
+        .btn-primary{background:var(--primary);color:#fff;border:none;padding:10px 16px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;}
+        .btn-primary:hover{background:#1d4ed8;}
+        .btn-secondary{background:var(--bg);color:var(--text-main);border:1px solid var(--border);padding:9px 14px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;}
+        .btn-secondary:hover{background:var(--card);}
+        .form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+        .analitica-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px;}
+        .analitica-table th{background:var(--bg);padding:10px;text-align:left;font-weight:700;color:var(--text-light);border-bottom:1px solid var(--border);}
+        .analitica-table td{padding:10px;border-bottom:1px solid var(--bg);color:var(--text-main);}
+        .analitica-table tfoot td{font-weight:800;background:var(--bg);}
+        .toast-container{position:fixed;top:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+        .sidebar-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:950;display:none;backdrop-filter:blur(2px);}
+        .empty-state{font-size:12px;color:var(--text-light);padding:12px 0;}
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:500px;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,0.3);padding:24px;}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;}
+        [data-tema="escuro"] { --bg: #0f172a !important; --card: #1e293b !important; --text-main: #e2e8f0 !important; --text-light: #94a3b8 !important; --border: #334155 !important; background: #0f172a !important; color: #e2e8f0 !important; }
+        [data-tema="escuro"] body { background: #0f172a !important; color: #e2e8f0 !important; }
+        [data-tema="escuro"] .header { background: #1e293b !important; border-bottom-color: #334155 !important; }
+        [data-tema="escuro"] .header-title { color: #f1f5f9 !important; }
+        [data-tema="escuro"] .empresa-selector { background: #0f172a !important; border-color: #334155 !important; }
+        [data-tema="escuro"] .empresa-selector select { color: #f1f5f9 !important; }
+        @media(max-width:992px){
+            .sidebar { transform: translateX(-100%); width: 260px !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main { margin-left: 0 !important; width: 100% !important; }
+            .btn-mobile-toggle { display: flex !important; }
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
-
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-
-        .tabs-header { display: flex; gap: 12px; border-bottom: 2px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
-        .tab-btn { background: none; border: none; padding: 10px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; white-space: nowrap; transition: 0.2s; }
-        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
-
-        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        
-        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
-
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-        
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
-        .analitica-table tbody tr:hover { background: #f8fafc; }
-        .analitica-table tfoot td { font-weight: 800; background: var(--bg); border-top: 2px solid var(--border); }
-
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
-        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenuMobile()"></div>
 
-<div class="container">
-    <div>
-        <div class="page-title"><i class="fas fa-book" style="color:var(--primary);"></i> Escrituração Contábil (ECD / ECF)</div>
-        <div class="page-subtitle">Lançamentos em partidas dobradas, balancete de verificação, DRE gerencial e balanço patrimonial</div>
-    </div>
-
-    <div class="panel">
-        <div class="tabs-header">
-            <button class="tab-btn active" onclick="alternarAba(event,'tab_lancamentos')"><i class="fas fa-pen"></i> Lançamentos</button>
-            <button class="tab-btn" onclick="alternarAba(event,'tab_balancete')"><i class="fas fa-scale-balanced"></i> Balancete de Verificação</button>
-            <button class="tab-btn" onclick="alternarAba(event,'tab_dre')"><i class="fas fa-chart-line"></i> DRE</button>
-            <button class="tab-btn" onclick="alternarAba(event,'tab_balanco')"><i class="fas fa-landmark"></i> Balanço Patrimonial</button>
+<!-- MODAL ALTERAR SENHA -->
+<div class="modal-overlay" id="modalSenha" style="z-index: 3500;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
+            <button onclick="document.getElementById('modalSenha').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
         </div>
-
-        <!-- ABA LANÇAMENTOS -->
-        <div id="tab_lancamentos" class="tab-content">
-            <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
-                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Novo Lançamento (Partidas Dobradas)</span></div>
-                <div class="form-row">
-                    <div>
-                        <label>Data</label>
-                        <input type="date" id="lancData" class="form-control">
-                    </div>
-                    <div>
-                        <label>Conta Débito</label>
-                        <select id="contaDebito" class="form-control"><option value="">Carregando plano...</option></select>
-                    </div>
-                    <div>
-                        <label>Conta Crédito</label>
-                        <select id="contaCredito" class="form-control"><option value="">Carregando plano...</option></select>
-                    </div>
-                    <div>
-                        <label>Valor (R$)</label>
-                        <input type="number" id="lancValor" class="form-control" step="0.01" min="0.01" placeholder="0,00">
-                    </div>
-                    <div style="grid-column: 1 / -1;">
-                        <label>Histórico</label>
-                        <input type="text" id="lancHistorico" class="form-control" placeholder="Ex: Pagamento de fornecedor, Recebimento de cliente...">
-                    </div>
-                </div>
-                <button class="btn-primary" onclick="salvarLancamento()"><i class="fas fa-save"></i> Registrar Lançamento</button>
-            </div>
-
-            <div class="panel">
-                <div class="panel-header">
-                    <span><i class="fas fa-list"></i> Lançamentos do Período</span>
-                    <div class="form-row" style="grid-template-columns: auto auto auto; align-items:end; gap:8px;">
-                        <div><label>De</label><input type="date" id="filtroDataIni" class="form-control" style="margin-bottom:0;"></div>
-                        <div><label>Até</label><input type="date" id="filtroDataFim" class="form-control" style="margin-bottom:0;"></div>
-                        <button class="btn-secondary" onclick="carregarLancamentos()"><i class="fas fa-filter"></i> Filtrar</button>
-                    </div>
-                </div>
-                <div id="listaLancamentos" style="overflow-x:auto;">Carregando lançamentos...</div>
-            </div>
-        </div>
-
-        <!-- ABA BALANCETE -->
-        <div id="tab_balancete" class="tab-content" style="display:none;">
-            <div class="panel-header">
-                <span><i class="fas fa-scale-balanced" style="color:var(--primary)"></i> Balancete de Verificação</span>
-                <span style="font-size:12px; color:var(--text-light); font-weight:600;" id="periodoBalancete">—</span>
-            </div>
-            <div id="listaBalancete" style="overflow-x:auto;">Calculando balancete...</div>
-        </div>
-
-        <!-- ABA DRE -->
-        <div id="tab_dre" class="tab-content" style="display:none;">
-            <div class="panel-header">
-                <span><i class="fas fa-chart-line" style="color:var(--primary)"></i> DRE — Demonstração do Resultado do Período</span>
-                <span style="font-size:12px; color:var(--text-light); font-weight:600;" id="periodoDre">—</span>
-            </div>
-            <div id="listaDre" style="overflow-x:auto;">Calculando DRE...</div>
-        </div>
-
-        <!-- ABA BALANÇO -->
-        <div id="tab_balanco" class="tab-content" style="display:none;">
-            <div class="panel-header">
-                <span><i class="fas fa-landmark" style="color:var(--primary)"></i> Balanço Patrimonial</span>
-                <span style="font-size:12px; color:var(--text-light); font-weight:600;" id="periodoBalanco">—</span>
-            </div>
-            <div id="listaBalanco" style="overflow-x:auto;">Calculando balanço...</div>
+        <div>
+            <label>Nova Senha</label>
+            <input type="password" id="novaSenha" class="form-control" placeholder="Digite a nova senha">
+            <label style="margin-top:10px;">Confirmar Nova Senha</label>
+            <input type="password" id="confirmaSenha" class="form-control" placeholder="Confirme a nova senha">
+            <button class="btn-primary" style="width:100%; margin-top:14px;" onclick="salvarNovaSenha()"><i class="fas fa-save"></i> Atualizar Senha</button>
         </div>
     </div>
 </div>
+
+<!-- ===== MENU LATERAL ===== -->
+<aside class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+        <div class="logo-watermark"><i class="fas fa-dna"></i></div>
+        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
+            <div class="logo-text-wrapper">
+                <h1 id="sidebarAppName">Sacramento ERP Gestão Empresarial</h1>
+                <span id="sidebarSubName">ERP Financeiro</span>
+            </div>
+        </div>
+        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema claro/escuro"><i class="fas fa-moon"></i></button>
+        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher / Expandir Menu"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="menu-busca">
+        <div class="busca-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="menuBuscaGlobal" placeholder="Buscar no menu...">
+        </div>
+    </div>
+    <div class="nav-section">Principal <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-desktop"></i> <span>Dashboard</span></div></div>
+    <div class="nav-item" onclick="location.href='central_ajuda.html'"><div class="nav-item-left"><i class="fas fa-question-circle"></i> <span>Central de Ajuda</span></div></div>
+    <div class="nav-section">Cadastros <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='parceiros.html'"><div class="nav-item-left"><i class="fas fa-address-book"></i> <span>Parceiros</span></div></div>
+    <div class="nav-item" onclick="location.href='centros_custo.html'"><div class="nav-item-left"><i class="fas fa-sitemap"></i> <span>Centros de Custo</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_bancarias.html'"><div class="nav-item-left"><i class="fas fa-university"></i> <span>Contas Bancárias / Caixa</span></div></div>
+    <div class="nav-item" onclick="location.href='produtos.html'"><div class="nav-item-left"><i class="fas fa-boxes"></i> <span>Produtos e Serviços</span></div></div>
+    <div class="nav-item" onclick="location.href='plano_contas.html'"><div class="nav-item-left"><i class="fas fa-list-alt"></i> <span>Plano de Contas</span></div></div>
+    <div class="nav-item" data-modulo="13" onclick="location.href='estoque.html'"><div class="nav-item-left"><i class="fas fa-warehouse"></i> <span>Inventário / Estoque</span></div></div>
+    <div class="nav-section">Transporte &amp; Logística <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" data-modulo="14" onclick="location.href='cte.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>CT-e</span></div></div>
+    <div class="nav-item" data-modulo="15" onclick="location.href='mdfe.html'"><div class="nav-item-left"><i class="fas fa-route"></i> <span>MDF-e</span></div></div>
+    <div class="nav-item" data-modulo="16" onclick="location.href='antt.html'"><div class="nav-item-left"><i class="fas fa-shield-alt"></i> <span>Registro ANTT</span></div></div>
+    <div class="nav-item" data-modulo="17" onclick="location.href='frota.html'"><div class="nav-item-left"><i class="fas fa-truck"></i> <span>Frota / Veículos</span></div></div>
+    <div class="nav-section">Tecnologia &amp; P&amp;D <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" data-modulo="20" onclick="location.href='projetos_pd.html'"><div class="nav-item-left"><i class="fas fa-flask"></i> <span>Projetos &amp; P&amp;D</span></div></div>
+    <div class="nav-item" data-modulo="24" onclick="location.href='contratos_fomento.html'"><div class="nav-item-left"><i class="fas fa-file-signature"></i> <span>Contratos &amp; Aportes</span></div></div>
+    <div class="nav-item" data-modulo="25" onclick="location.href='aportes_pd.html'"><div class="nav-item-left"><i class="fas fa-money-bill-wave"></i> <span>Aportes Recebidos</span></div></div>
+    <div class="nav-item" data-modulo="26" onclick="location.href='custos_pd.html'"><div class="nav-item-left"><i class="fas fa-receipt"></i> <span>Gastos de P&amp;D</span></div></div>
+    <div class="nav-item" data-modulo="27" onclick="location.href='painel_saldos.html'"><div class="nav-item-left"><i class="fas fa-chart-pie"></i> <span>Painel de Saldos</span></div></div>
+    <div class="nav-item" data-modulo="21" onclick="location.href='ativos_equipamentos.html'"><div class="nav-item-left"><i class="fas fa-microscope"></i> <span>Ativos / Equipamentos</span></div></div>
+    <div class="nav-item" data-modulo="22" onclick="location.href='nfse_servicos.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturamento de Serviços (NFS-e)</span></div></div>
+    <div class="nav-item" data-modulo="23" onclick="location.href='relatorios_performance.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Relatórios de Performance</span></div></div>
+    <div class="nav-section">Contabilidade &amp; Escritório <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='certificados.html'"><div class="nav-item-left"><i class="fas fa-lock"></i> <span>Cofre de Certificados</span></div></div>
+    <div class="nav-item" onclick="location.href='calendario.html'"><div class="nav-item-left"><i class="fas fa-calendar-alt"></i> <span>Calendário Fiscal</span></div></div>
+    <div class="nav-item active" data-modulo="30" onclick="location.href='contabilidade.html'"><div class="nav-item-left"><i class="fas fa-book"></i> <span>Contabilidade (ECD/ECF)</span></div></div>
+    <div class="nav-item" data-modulo="31" onclick="location.href='fiscal_contabil.html'"><div class="nav-item-left"><i class="fas fa-calculator"></i> <span>Fiscal (EFD/DCTF)</span></div></div>
+    <div class="nav-item" data-modulo="32" onclick="location.href='folha_rh.html'"><div class="nav-item-left"><i class="fas fa-users"></i> <span>Folha / RH (eSocial)</span></div></div>
+    <div class="nav-item" data-modulo="33" onclick="location.href='gestao_escritorio.html'"><div class="nav-item-left"><i class="fas fa-briefcase"></i> <span>Gestão do Escritório</span></div></div>
+    <div class="nav-item" data-modulo="34" onclick="location.href='juridico_auditoria.html'"><div class="nav-item-left"><i class="fas fa-gavel"></i> <span>Jurídico &amp; Auditoria</span></div></div>
+    <div class="nav-section">Financeiro &amp; Fiscal <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='contas_pagar.html'"><div class="nav-item-left"><i class="fas fa-file-invoice-dollar" style="color:#ef4444"></i> <span>Contas a Pagar</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_receber.html'"><div class="nav-item-left"><i class="fas fa-hand-holding-usd" style="color:#10b981"></i> <span>Contas a Receber</span></div></div>
+    <div class="nav-item" onclick="location.href='transferencias.html'"><div class="nav-item-left"><i class="fas fa-exchange-alt"></i> <span>Transferências</span></div></div>
+    <div class="nav-item" onclick="location.href='extrato_bancario.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Extrato Bancário</span></div></div>
+    <div class="nav-item" onclick="location.href='conciliacao.html'"><div class="nav-item-left"><i class="fas fa-check-double"></i> <span>Conciliação OFX</span></div></div>
+    <div class="nav-item" onclick="location.href='fluxo_de_caixa.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Fluxo de Caixa</span></div></div>
+    <div class="nav-item" onclick="location.href='dre.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>DRE Gerencial</span></div></div>
+    <div class="nav-item" onclick="location.href='faturas.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturas &amp; Emissão</span></div></div>
+    <div class="nav-item" onclick="location.href='orcamentos.html'"><div class="nav-item-left"><i class="fas fa-file-contract"></i> <span>Orçamentos &amp; Propostas</span></div></div>
+    <div class="nav-section">Relatórios &amp; Auditoria <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='relatorios.html'"><div class="nav-item-left"><i class="fas fa-chart-bar"></i> <span>Relatórios Gerais</span></div></div>
+    <div class="nav-item" onclick="location.href='logs.html'"><div class="nav-item-left"><i class="fas fa-history"></i> <span>Logs de Auditoria</span></div></div>
+    <div class="nav-section">Controle &amp; Segurança <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='backup.html'"><div class="nav-item-left"><i class="fas fa-database"></i> <span>Backup de Dados</span></div></div>
+    <div class="nav-section">Sistema (Master) <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='configuracoes_fiscais.html'"><div class="nav-item-left"><i class="fas fa-sliders-h"></i> <span>Parâmetros Fiscais</span></div></div>
+    <div class="nav-item" onclick="location.href='configuracoes_sistema.html'"><div class="nav-item-left"><i class="fas fa-cog" style="color:#f59e0b"></i> <span>White-Label (Master)</span></div></div>
+    <div class="nav-item" onclick="location.href='clientes_contratantes.html'"><div class="nav-item-left"><i class="fas fa-building" style="color:#f59e0b"></i> <span>Gestão de Clientes (Master)</span></div></div>
+    <div class="nav-item menu-back-dashboard" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-home"></i> <span>Voltar ao Dashboard</span></div></div>
+    <div class="nav-item" onclick="sair()"><div class="nav-item-left"><i class="fas fa-sign-out-alt" style="color:#ef4444"></i> <span>Sair do Sistema</span></div></div>
+    <div style="padding-bottom:30px;"></div>
+</aside>
+
+<main class="main" id="appMain">
+    <header class="header">
+        <div class="header-title-wrapper" style="display:flex; align-items:center; gap:12px;">
+            <button class="btn-mobile-toggle" onclick="toggleMenuMobile()" title="Abrir Menu" style="background:var(--primary); border:none; color:#fff; width:36px; height:36px; border-radius:8px; display:none; align-items:center; justify-content:center; cursor:pointer;"><i class="fas fa-bars"></i></button>
+            <button class="btn-home" onclick="location.href='index.html'"><i class="fas fa-home"></i> Home</button>
+            <div class="header-title" style="font-size:16px; font-weight:700; color:var(--secondary)">Escrituração Contábil</div>
+        </div>
+        <div class="header-right" style="display:flex; align-items:center; gap:16px; font-size:12px; color:var(--text-light); font-weight:500;">
+            <div class="empresa-selector" id="empresaSelector" title="Alternar entre empresas">
+                <i class="fas fa-building"></i>
+                <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+            </div>
+            <div class="date-time" id="current_datetime" style="color:var(--primary); font-weight:600;">--/--/----, --:--</div>
+            <div class="user-menu" onclick="document.getElementById('modalSenha').style.display='flex'" title="Clique para alterar sua senha" style="display:flex; align-items:center; gap:10px; cursor:pointer; padding-left:16px; border-left:1px solid var(--border);">
+                <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
+                <span id="userInfo">Administrador</span>
+                <i class="fas fa-key" style="font-size:11px; color:#64748b; margin-left:4px;"></i>
+            </div>
+            <button class="btn-sair" onclick="sair()" title="Sair do sistema" style="background:#ef4444;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
+    </header>
+
+    <div class="content">
+        <div>
+            <div class="page-title"><i class="fas fa-book" style="color:var(--primary);"></i> Escrituração Contábil (ECD / ECF)</div>
+            <div class="page-subtitle">Lançamentos em partidas dobradas, balancete de verificação, DRE gerencial e balanço patrimonial</div>
+        </div>
+        
+        <div class="panel">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="alternarAba(event,'tab_lancamentos')"><i class="fas fa-pen"></i> Lançamentos</button>
+                <button class="tab-btn" onclick="alternarAba(event,'tab_balancete')"><i class="fas fa-scale-balanced"></i> Balancete de Verificação</button>
+                <button class="tab-btn" onclick="alternarAba(event,'tab_dre')"><i class="fas fa-chart-line"></i> DRE</button>
+                <button class="tab-btn" onclick="alternarAba(event,'tab_balanco')"><i class="fas fa-landmark"></i> Balanço Patrimonial</button>
+            </div>
+            
+            <div id="tab_lancamentos" class="tab-content">
+                <div class="panel" style="border:1px dashed var(--border);">
+                    <div class="panel-header"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Novo Lançamento (Partidas Dobradas)</span></div>
+                    <div class="form-row">
+                        <div>
+                            <label>Data</label>
+                            <input type="date" id="lancData" class="form-control">
+                        </div>
+                        <div>
+                            <label>Conta Débito</label>
+                            <select id="contaDebito" class="form-control"><option value="">Carregando plano...</option></select>
+                        </div>
+                        <div>
+                            <label>Conta Crédito</label>
+                            <select id="contaCredito" class="form-control"><option value="">Carregando plano...</option></select>
+                        </div>
+                        <div>
+                            <label>Valor (R$)</label>
+                            <input type="number" id="lancValor" class="form-control" step="0.01" min="0.01" placeholder="0,00">
+                        </div>
+                        <div style="grid-column:1/-1;">
+                            <label>Histórico</label>
+                            <input type="text" id="lancHistorico" class="form-control" placeholder="Ex: Pagamento de fornecedor, Recebimento de cliente...">
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="salvarLancamento()"><i class="fas fa-save"></i> Lançar</button>
+                </div>
+                
+                <div class="panel" style="margin-top:16px;">
+                    <div class="panel-header">
+                        <span><i class="fas fa-list"></i> Lançamentos do Período</span>
+                        <div class="form-row" style="grid-template-columns:auto auto auto auto;align-items:end;">
+                            <div><label>De</label><input type="date" id="filtroDataIni" class="form-control" style="margin-bottom:0;"></div>
+                            <div><label>Até</label><input type="date" id="filtroDataFim" class="form-control" style="margin-bottom:0;"></div>
+                            <button class="btn-secondary" onclick="carregarLancamentos()"><i class="fas fa-filter"></i> Filtrar</button>
+                        </div>
+                    </div>
+                    <div id="listaLancamentos" style="overflow-x:auto;">Carregando...</div>
+                </div>
+            </div>
+
+            <div id="tab_balancete" class="tab-content" style="display:none;">
+                <div class="panel-header"><span><i class="fas fa-scale-balanced" style="color:var(--primary)"></i> Balancete de Verificação do Período</span>
+                    <span style="font-size:11px;color:var(--text-light);" id="periodoBalancete">—</span>
+                </div>
+                <div id="listaBalancete" style="overflow-x:auto;">Carregando...</div>
+            </div>
+
+            <div id="tab_dre" class="tab-content" style="display:none;">
+                <div class="panel-header"><span><i class="fas fa-chart-line" style="color:var(--primary)"></i> DRE — Demonstração do Resultado do Período</span>
+                    <span style="font-size:11px;color:var(--text-light);" id="periodoDre">—</span>
+                </div>
+                <div id="listaDre" style="overflow-x:auto;">Carregando...</div>
+            </div>
+
+            <div id="tab_balanco" class="tab-content" style="display:none;">
+                <div class="panel-header"><span><i class="fas fa-landmark" style="color:var(--primary)"></i> Balanço Patrimonial</span>
+                    <span style="font-size:11px;color:var(--text-light);" id="periodoBalanco">—</span>
+                </div>
+                <div id="listaBalanco" style="overflow-x:auto;">Carregando...</div>
+            </div>
+        </div>
+    </div>
+</main>
 
 <script>
 var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
 
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:null;}
+function ehMasterGlobal(){const u=obterUsuarioAtual();return !!(u&&(u.email||'').toLowerCase().trim()===EMAIL_MASTER.toLowerCase().trim());}
+function sbFiltro(tabela){let q=sb.from(tabela).select('*');const cid=clienteIdAtual();if(TABELAS_SEM_CLIENTE.includes(tabela))return q;if(cid)q=q.eq('cliente_id',cid);return q;}
+
+if (!window.sb) {
+    window.sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+}
+const sb = window.sb;
+
 let planoContasMap = {};
 let lancamentosCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
-
-function sbFiltro(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
-    return q;
-}
-
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){
-        c=document.createElement('div');c.id='toastContainer';
-        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
-        document.body.appendChild(c);
-    }
-    x.className='toast '+type;
-    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
-    c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
-}
-
-function formatBRL(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0);}
+function toast(msg,type='success'){var c=document.getElementById('toastContainer'),x=document.createElement('div');if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);setTimeout(function(){x.remove();},3000);}
+function formatBRL(valor){let num=parseFloat(valor)||0;return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(num);}
 function fmtData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
 function campo(linha,nomes){for(const n of nomes){if(linha[n]!==undefined&&linha[n]!==null)return linha[n];}return '';}
 
-function alternarAba(evt,tabId){
-    document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');
-    document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));
-    document.getElementById(tabId).style.display='block';
-    evt.currentTarget.classList.add('active');
+function alternarTemaGlobal(){let atual='claro';try{atual=localStorage.getItem('erp_tema')||'claro';}catch(e){}const novo=atual==='escuro'?'claro':'escuro';try{localStorage.setItem('erp_tema',novo);}catch(e){}aplicarTemaSalvo();}
+function aplicarTemaSalvo(){let tema='claro';try{tema=localStorage.getItem('erp_tema')||'claro';}catch(e){}document.documentElement.setAttribute('data-tema',tema);const btn=document.getElementById('btnTemaGlobal');if(btn){btn.innerHTML=tema==='escuro'?'<i class="fas fa-sun"></i>':'<i class="fas fa-moon"></i>';}}
+
+function toggleRecolherMenuPC(){document.getElementById('appSidebar').classList.toggle('collapsed');document.getElementById('appMain').classList.toggle('expanded');}
+function toggleMenuMobile(){const s=document.getElementById('appSidebar');const o=document.getElementById('sidebarOverlay');s.classList.toggle('mobile-open');o.style.display=s.classList.contains('mobile-open')?'block':'none';}
+function sair(){if(confirm('Deseja realmente sair do sistema?')){localStorage.removeItem('usuarioLogado');localStorage.removeItem('empresaSelecionada');location.href='login.html';}}
+
+// Relógio estabilizado
+if (!window.__relogioIniciado) {
+    window.__relogioIniciado = true;
+    setInterval(() => {
+        let now = new Date();
+        const dt = document.getElementById('current_datetime');
+        if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }, 1000);
 }
 
-function periodoFiltro(){
-    let ini=document.getElementById('filtroDataIni').value;
-    let fim=document.getElementById('filtroDataFim').value;
-    if(!ini){const d=new Date();ini=d.getFullYear()+'-01-01';document.getElementById('filtroDataIni').value=ini;}
-    if(!fim){fim=new Date().toISOString().split('T')[0];document.getElementById('filtroDataFim').value=fim;}
-    return {ini:ini,fim:fim};
+function alternarAba(evt,tabId){document.querySelectorAll('.tab-content').forEach(el=>el.style.display='none');document.querySelectorAll('.tab-btn').forEach(el=>el.classList.remove('active'));document.getElementById(tabId).style.display='block';evt.currentTarget.classList.add('active');}
+
+async function salvarNovaSenha(){
+    let nova=document.getElementById('novaSenha').value.trim();
+    let conf=document.getElementById('confirmaSenha').value.trim();
+    if(!nova||!conf){toast("Preencha todos os campos da senha!","error");return;}
+    if(nova!==conf){toast("As senhas não coincidem!","error");return;}
+    let u=obterUsuarioAtual();
+    if(!u||!u.email){toast("Sessão expirada. Faça login novamente.","error");return;}
+    const {error}=await sb.auth.updateUser({ password: nova });
+    if(error){toast("Erro ao atualizar senha: "+error.message,"error");return;}
+    toast("Senha alterada com sucesso!");
+    document.getElementById('modalSenha').style.display='none';
+    document.getElementById('novaSenha').value='';
+    document.getElementById('confirmaSenha').value='';
+}
+
+async function carregarSeletorEmpresa(){
+    const select=document.getElementById('selectEmpresa');if(!select)return;
+    const isMaster=ehMasterGlobal();
+    const u = obterUsuarioAtual();
+    const perfil = ((u && u.perfil) || '').toLowerCase();
+    let portfolio = [];
+    try { portfolio = JSON.parse(localStorage.getItem('empresasPortfolio') || '[]'); } catch(e) {}
+    const isEscritorio = perfil.includes('contador') || perfil.includes('escritorio') || portfolio.length > 1;
+
+    try{
+        let empresasParaMostrar = [];
+        if(isMaster || isEscritorio) {
+            if(isMaster) {
+                const {data}=await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+                empresasParaMostrar = data || [];
+            } else {
+                let ids = portfolio.map(p => p.cliente_id).filter(Boolean);
+                if(ids.length === 0) { const cid = clienteIdAtual(); if(cid) ids = [cid]; }
+                if(ids.length > 0) {
+                    const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', ids).order('id');
+                    empresasParaMostrar = data || [];
+                }
+            }
+        } else {
+            const cid = clienteIdAtual();
+            if(cid) {
+                const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', cid);
+                empresasParaMostrar = data || [];
+            }
+        }
+        if(!empresasParaMostrar || empresasParaMostrar.length === 0) return;
+        select.innerHTML='';
+        empresasParaMostrar.forEach(emp=>{const nomeEmp=emp.nome_fantasia||emp.razao_social||('Empresa '+emp.id);const opt=document.createElement('option');opt.value=emp.id;opt.textContent=nomeEmp;select.appendChild(opt);});
+        
+        const empSelecionada = localStorage.getItem('empresaSelecionada');
+        if(empSelecionada && [...select.options].some(o => o.value === empSelecionada)) {
+            select.value = empSelecionada;
+        } else {
+            select.value = select.options[0].value;
+        }
+        aplicarEmpresaSelecionada(select.value);
+    }catch(e){console.error("Erro ao carregar seletor:",e);}
+}
+function aplicarEmpresaSelecionada(clienteId){const u=obterUsuarioAtual();if(!u)return;u.cliente_id=parseInt(clienteId);localStorage.setItem('usuarioLogado',JSON.stringify(u));localStorage.setItem('empresaSelecionada',String(clienteId));}
+function trocarEmpresa(){const select=document.getElementById('selectEmpresa');if(!select)return;aplicarEmpresaSelecionada(select.value);location.reload();}
+
+async function carregarMarcaSistema(clienteId){
+    try{
+        const {data:clientes}=await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id',clienteId).maybeSingle();
+        if(clientes){const nomeEmp=clientes.nome_fantasia||clientes.razao_social;if(nomeEmp){document.getElementById('sidebarAppName').innerText=nomeEmp;document.getElementById('sidebarSubName').innerText="ERP Financeiro";}}
+        let qCfg=sbFiltro('configuracoes_sistema').limit(1);if(clienteId)qCfg=qCfg.eq('cliente_id',clienteId);
+        const {data}=await qCfg;
+        if(data&&data.length>0){let cfg=data[0];if(cfg.app_name)document.getElementById('sidebarAppName').innerText=cfg.app_name;if(cfg.app_subtitle)document.getElementById('sidebarSubName').innerText=cfg.app_subtitle;if(cfg.app_logo_url){let c=document.getElementById('sidebarLogoContainer');c.innerHTML='<img src="'+cfg.app_logo_url+'" alt="Logo">';}}
+    }catch(e){console.error("Erro ao carregar marca:",e);}
 }
 
 async function carregarPlanoContas(){
@@ -206,11 +424,13 @@ async function carregarPlanoContas(){
     const selCred=document.getElementById('contaCredito');
     try{
         let q=sbFiltro('plano_contas');
+        const cid=clienteIdAtual();
+        if(cid)q=q.eq('cliente_id',cid);
         const {data,error}=await q.order('codigo_reduzido',{ascending:true});
-        if(error) return;
+        if(error){console.error("plano_contas:",error.message);}
         planoContasMap={};
-        selDeb.innerHTML='<option value="">Selecione a conta de débito...</option>';
-        selCred.innerHTML='<option value="">Selecione a conta de crédito...</option>';
+        selDeb.innerHTML='<option value="">Selecione a conta</option>';
+        selCred.innerHTML='<option value="">Selecione a conta</option>';
         if(data&&data.length>0){
             data.forEach(c=>{
                 const codigo=String(campo(c,['codigo_reduzido','codigo','codigo_conta','conta','numero'])).trim();
@@ -222,8 +442,11 @@ async function carregarPlanoContas(){
                 selDeb.innerHTML+='<option value="'+codigo+'">'+label+'</option>';
                 selCred.innerHTML+='<option value="'+codigo+'">'+label+'</option>';
             });
+        } else {
+            selDeb.innerHTML='<option value="">Nenhuma conta cadastrada</option>';
+            selCred.innerHTML='<option value="">Nenhuma conta cadastrada</option>';
         }
-    }catch(e){}
+    }catch(e){console.error("Erro plano de contas:",e);selDeb.innerHTML='<option value="">Erro ao carregar</option>';selCred.innerHTML='<option value="">Erro ao carregar</option>';}
 }
 
 function naturezaDaConta(codigo){
@@ -244,8 +467,15 @@ function naturezaDaConta(codigo){
     if(p==='5'||p==='6')return 'despesa';
     return 'outros';
 }
-
 function nomeDaConta(codigo){return (planoContasMap[codigo]&&planoContasMap[codigo].nome)?planoContasMap[codigo].nome:codigo;}
+
+function periodoFiltro(){
+    let ini=document.getElementById('filtroDataIni').value;
+    let fim=document.getElementById('filtroDataFim').value;
+    if(!ini){const d=new Date();ini=d.getFullYear()+'-01-01';document.getElementById('filtroDataIni').value=ini;}
+    if(!fim){fim=new Date().toISOString().split('T')[0];document.getElementById('filtroDataFim').value=fim;}
+    return {ini:ini,fim:fim};
+}
 
 async function salvarLancamento(){
     const u=obterUsuarioAtual();
@@ -261,6 +491,7 @@ async function salvarLancamento(){
     if(!valor||valor<=0){toast("Informe um valor válido (maior que zero).","error");return;}
     if(!historico){toast("Informe o histórico do lançamento.","error");return;}
     const cid=clienteIdAtual();
+    if(!cid){toast("Nenhuma empresa selecionada.","error");return;}
     const {error}=await sb.from('lancamentos_contabeis').insert({
         cliente_id:cid,
         data_lancamento:data,
@@ -283,7 +514,7 @@ async function carregarLancamentos(){
     const cid=clienteIdAtual();
     try{
         let q=sb.from('lancamentos_contabeis').select('*').gte('data_lancamento',p.ini).lte('data_lancamento',p.fim);
-        if(cid) q=q.eq('cliente_id',cid);
+        if(cid)q=q.eq('cliente_id',cid);
         const {data,error}=await q.order('data_lancamento',{ascending:false}).order('id',{ascending:false});
         if(error){document.getElementById('listaLancamentos').innerHTML='<div class="empty-state">Erro: '+error.message+'</div>';return;}
         lancamentosCache=data||[];
@@ -304,7 +535,7 @@ function renderizarTudo(p){
 
 function renderListaLancamentos(){
     const el=document.getElementById('listaLancamentos');
-    if(!lancamentosCache.length){el.innerHTML='<div class="empty-state">Nenhum lançamento contábil no período.</div>';return;}
+    if(!lancamentosCache.length){el.innerHTML='<div class="empty-state">Nenhum lançamento no período.</div>';return;}
     let html='<table class="analitica-table"><thead><tr><th>Data</th><th>Histórico</th><th>Débito</th><th>Crédito</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
     lancamentosCache.forEach(l=>{
         html+='<tr><td>'+fmtData(l.data_lancamento)+'</td><td>'+ (l.historico||'-') +'</td><td>'+nomeDaConta(l.conta_debito)+'</td><td>'+nomeDaConta(l.conta_credito)+'</td><td style="text-align:right;font-weight:bold;">'+formatBRL(l.valor)+'</td></tr>';
@@ -354,10 +585,10 @@ function renderDre(){
     let receitaBruta=0,deducoes=0,despesas=0;
     linhas.forEach(l=>{
         if(l.tipo==='receita'){
-            if(l.saldo<0) receitaBruta+=Math.abs(l.saldo);
-            else if(l.saldo>0) deducoes+=l.saldo;
+            if(l.saldo<0)receitaBruta+=Math.abs(l.saldo);
+            else if(l.saldo>0)deducoes+=l.saldo;
         } else if(l.tipo==='despesa'){
-            if(l.saldo>0) despesas+=l.saldo;
+            if(l.saldo>0)despesas+=l.saldo;
         }
     });
     const resultado=receitaBruta-deducoes-despesas;
@@ -380,11 +611,11 @@ function renderBalanco(){
     if(!linhas.length){el.innerHTML='<div class="empty-state">Sem lançamentos no período para gerar o balanço.</div>';return;}
     let ativo=0,passivo=0,plContas=0,resultado=0;
     linhas.forEach(l=>{
-        if(l.tipo==='ativo') ativo+=l.saldo;
-        else if(l.tipo==='passivo') passivo+=Math.abs(l.saldo);
-        else if(l.tipo==='pl') plContas+=l.saldo;
-        else if(l.tipo==='receita') resultado+=(l.saldo<0?Math.abs(l.saldo):-l.saldo);
-        else if(l.tipo==='despesa'){if(l.saldo>0) resultado-=l.saldo;}
+        if(l.tipo==='ativo')ativo+=l.saldo;
+        else if(l.tipo==='passivo')passivo+=Math.abs(l.saldo);
+        else if(l.tipo==='pl')plContas+=l.saldo;
+        else if(l.tipo==='receita')resultado+=(l.saldo<0?Math.abs(l.saldo):-l.saldo);
+        else if(l.tipo==='despesa'){if(l.saldo>0)resultado-=l.saldo;}
     });
     const plTotal=plContas+resultado;
     function secao(titulo,itens){
@@ -401,18 +632,23 @@ function renderBalanco(){
     el.innerHTML=html;
 }
 
-async function inicializarPagina(){
+(async function init(){
     const u=obterUsuarioAtual();
-    if(!u||!u.email){location.href='login.html';return;}
+    if(!u||!u.email){alert("Acesso restrito! Faça login novamente.");location.href='login.html';return;}
+    aplicarTemaSalvo();
+    const cid=clienteIdAtual();
+    var elUser = document.getElementById('userInfo');
+    if(elUser) elUser.innerText=(u.nome||u.email).split(' ')[0]+' ('+(u.perfil||'Usuário')+')';
     const hoje=new Date().toISOString().split('T')[0];
     document.getElementById('lancData').value=hoje;
     document.getElementById('filtroDataFim').value=hoje;
     const d=new Date();document.getElementById('filtroDataIni').value=d.getFullYear()+'-01-01';
+    await carregarSeletorEmpresa();
+    await carregarMarcaSistema(clienteIdAtual());
     await carregarPlanoContas();
     await carregarLancamentos();
-}
-
-window.onload = inicializarPagina;
+})();
 </script>
+<script src="menu_dinamico.js"></script>
 </body>
 </html>
