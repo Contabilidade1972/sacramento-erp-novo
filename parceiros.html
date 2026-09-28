@@ -38,6 +38,8 @@
         .btn-success:hover{background:#059669;}
         .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
         .btn-outline:hover{background:var(--bg);}
+        .btn-icon-add { background: var(--primary); color: #fff; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .btn-icon-add:hover { background: #1d4ed8; }
 
         .table-container{overflow-x:auto}
         table{width:100%;border-collapse:collapse;font-size:13px}
@@ -52,7 +54,7 @@
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-overlay.ativo { display: flex; }
-        .modal-card { background: var(--card); width: 100%; max-width: 750px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
 
         .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
@@ -116,6 +118,30 @@
     </div>
 </div>
 
+<!-- MODAL DE CADASTRO RÁPIDO DE CENTRO DE CUSTO INLINE -->
+<div class="modal-overlay" id="modalCentroCustoRápido">
+    <div class="modal-card" style="max-width: 450px;">
+        <div class="modal-header">
+            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas fa-sitemap"></i> Novo Centro de Custo Rápido</h3>
+            <button onclick="fecharModalCcRapido()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <div>
+                <label>Código Automático / Sugerido</label>
+                <input type="text" id="novo_cc_codigo" class="form-control" placeholder="Ex: 1.05">
+            </div>
+            <div>
+                <label>Nome / Descrição do Projeto *</label>
+                <input type="text" id="novo_cc_nome" class="form-control" placeholder="Nome do centro de custo...">
+            </div>
+            <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-outline" onclick="fecharModalCcRapido()">Cancelar</button>
+                <button class="btn btn-primary" onclick="salvarCentroCustoRapido()"><i class="fas fa-save"></i> Criar e Selecionar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <!-- FORMULÁRIO DE CADASTRO -->
     <div class="card recolhido" id="cardFormulario">
@@ -171,7 +197,7 @@
                     <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr 1fr;">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr auto 1fr;">
                 <div>
                     <label>Telefone / WhatsApp</label>
                     <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
@@ -189,6 +215,9 @@
                     <select id="centro_custo" class="form-control" required>
                         <option value="">Selecione o Projeto...</option>
                     </select>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                    <button type="button" class="btn-icon-add" onclick="abrirModalCcRapido()" title="Criar Novo Centro de Custo Rapidamente"><i class="fas fa-plus"></i></button>
                 </div>
                 <div>
                     <label>Observações</label>
@@ -332,7 +361,7 @@ function toast(msg, type='success'){
     setTimeout(function(){ x.remove(); }, 3000);
 }
 
-async function carregarCentrosCustoSelect() {
+async function carregarCentrosCustoSelect(selecionarCodigo = null) {
     try {
         const { data } = await sbFiltroLeitura('centros_custo');
         let selectEl = document.getElementById('centro_custo');
@@ -342,10 +371,36 @@ async function carregarCentrosCustoSelect() {
             data.forEach(cc => {
                 let codigoCC = cc.codigo || cc.id || '';
                 let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
-                selectEl.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
+                let valOpt = `${codigoCC} - ${nomeCC}`;
+                let selected = (selecionarCodigo && valOpt === selecionarCodigo) ? 'selected' : '';
+                selectEl.innerHTML += `<option value="${valOpt}" ${selected}>${valOpt}</option>`;
             });
         }
     } catch(err) {}
+}
+
+function abrirModalCcRapido() {
+    document.getElementById('novo_cc_codigo').value = 'CC-' + Math.floor(100 + Math.random() * 900);
+    document.getElementById('novo_cc_nome').value = '';
+    document.getElementById('modalCentroCustoRápido').classList.add('ativo');
+}
+
+function fecharModalCcRapido() {
+    document.getElementById('modalCentroCustoRápido').classList.remove('ativo');
+}
+
+async function salvarCentroCustoRapido() {
+    const codigo = document.getElementById('novo_cc_codigo').value.trim();
+    const nome = document.getElementById('novo_cc_nome').value.trim();
+    if(!nome) { toast("Digite o nome do Centro de Custo!", "error"); return; }
+
+    const payload = { codigo, nome, descricao: nome, cliente_id: clienteIdAtual() };
+    const { data, error } = await sb.from('centros_custo').insert([payload]).select();
+    if(error) { toast("Erro ao criar centro de custo: " + error.message, "error"); return; }
+
+    toast("Centro de Custo criado com sucesso!");
+    fecharModalCcRapido();
+    await carregarCentrosCustoSelect(`${codigo} - ${nome}`);
 }
 
 document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
@@ -658,7 +713,6 @@ window.excluirParceiro = async function(id) {
 async function inicializarPagina() {
     let u = obterUsuarioAtual();
     if(!u || !u.email) { location.href = 'login.html'; return; }
-    document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Sistema';
     await carregarCentrosCustoSelect();
     await carregarParceiros();
 }
