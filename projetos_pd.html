@@ -84,17 +84,17 @@
         <input type="hidden" id="edit_id">
         <div class="form-row">
             <div>
-                <label>Código / Sigla</label>
-                <input type="text" id="projCodigo" class="form-control" placeholder="Ex: PRJ-001">
+                <label>Código / Sigla (Automático)</label>
+                <input type="text" id="projCodigo" class="form-control" readonly style="background:var(--bg); font-weight:bold; color:var(--primary);">
             </div>
             <div style="grid-column: span 2;">
-                <label>Nome do Projeto</label>
+                <label>Nome do Projeto *</label>
                 <input type="text" id="projNome" class="form-control" placeholder="Ex: Nanossensores Avançados">
             </div>
             <div>
-                <label>Status</label>
+                <label>Status *</label>
                 <select id="projStatus" class="form-control">
-                    <option value="Em Andamento" selected>Em Andamento</option>
+                    <option value="Ativo" selected>Ativo</option>
                     <option value="Planejamento">Planejamento</option>
                     <option value="Concluído">Concluído</option>
                     <option value="Suspenso">Suspenso</option>
@@ -165,6 +165,17 @@ function toast(msg,type='success'){
 
 function formatData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
 
+function gerarProximoCodigo(){
+    let maxNum = 0;
+    projetosCache.forEach(p => {
+        if(p.codigo && p.codigo.startsWith('PD-')) {
+            let num = parseInt(p.codigo.replace('PD-', ''), 10);
+            if(!isNaN(num) && num > maxNum) maxNum = num;
+        }
+    });
+    return 'PD-' + String(maxNum + 1).padStart(3, '0');
+}
+
 async function carregarProjetos(){
     const el = document.getElementById('listaProjetos');
     try {
@@ -172,6 +183,11 @@ async function carregarProjetos(){
         const { data, error } = await q.order('id', { ascending: false });
         if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
         projetosCache = data || [];
+        
+        if(!document.getElementById('edit_id').value){
+            document.getElementById('projCodigo').value = gerarProximoCodigo();
+        }
+
         if(!projetosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum projeto de P&D cadastrado.</div>'; return; }
         
         let html = '<table class="analitica-table"><thead><tr><th>Código</th><th>Nome do Projeto</th><th>Status</th><th>Início</th><th>Término</th><th>Descrição</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
@@ -179,7 +195,7 @@ async function carregarProjetos(){
             html += `<tr>
                 <td><strong>${p.codigo || '-'}</strong></td>
                 <td><strong>${p.nome || '-'}</strong></td>
-                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#e0f2fe; color:#0369a1;">${p.status || 'Em Andamento'}</span></td>
+                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${p.status || 'Ativo'}</span></td>
                 <td>${formatData(p.data_inicio)}</td>
                 <td>${formatData(p.data_termino)}</td>
                 <td>${p.descricao || '-'}</td>
@@ -209,7 +225,7 @@ async function salvarProjeto(){
     const cid = clienteIdAtual();
     const payload = {
         cliente_id: cid,
-        codigo: codigo || 'PRJ-' + Math.floor(Math.random() * 900 + 100),
+        codigo: codigo || gerarProximoCodigo(),
         nome: nome,
         status: status,
         data_inicio: inicio || null,
@@ -236,7 +252,7 @@ function editarProjeto(id){
     document.getElementById('edit_id').value = p.id;
     document.getElementById('projCodigo').value = p.codigo || '';
     document.getElementById('projNome').value = p.nome || '';
-    document.getElementById('projStatus').value = p.status || 'Em Andamento';
+    document.getElementById('projStatus').value = p.status || 'Ativo';
     document.getElementById('projInicio').value = p.data_inicio || '';
     document.getElementById('projFim').value = p.data_termino || '';
     document.getElementById('projDesc').value = p.descricao || '';
@@ -246,9 +262,9 @@ function editarProjeto(id){
 
 function cancelarEdicao(){
     document.getElementById('edit_id').value = '';
-    document.getElementById('projCodigo').value = '';
+    document.getElementById('projCodigo').value = gerarProximoCodigo();
     document.getElementById('projNome').value = '';
-    document.getElementById('projStatus').value = 'Em Andamento';
+    document.getElementById('projStatus').value = 'Ativo';
     document.getElementById('projInicio').value = '';
     document.getElementById('projFim').value = '';
     document.getElementById('projDesc').value = '';
