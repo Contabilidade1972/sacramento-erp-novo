@@ -45,6 +45,12 @@
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 16px; align-items: flex-end; }
+
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
@@ -52,7 +58,17 @@
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-ativo { background: #dcfce7; color: #166534; }
+        .b-planejamento { background: #fef3c7; color: #92400e; }
         .b-concluido { background: #e0e7ff; color: #3730a3; }
+
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 8px 12px; border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        /* MODAL DE DETALHES */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); display: none; align-items: center; justify-content: center; z-index: 3000; padding: 20px; }
+        .modal-card { background: var(--card); border-radius: 16px; width: 100%; max-width: 700px; padding: 30px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 20px; max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .modal-title { font-size: 18px; font-weight: 800; color: var(--secondary); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
@@ -62,31 +78,84 @@
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
         @media print {
-            .page-toolbar, footer { display: none !important; }
-            body { background: #fff; }
+            @page { size: A4 landscape; margin: 12mm; }
+            body { background: #fff; color: #0f172a; font-size: 12px; }
+            .page-toolbar, .panel:has(.filtros-grid), footer, .btn-secondary { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 16px !important; }
             .panel, .kpi-card { border: 1px solid #cbd5e1 !important; box-shadow: none !important; page-break-inside: avoid; }
+            .analitica-table th, .analitica-table td { padding: 10px 12px !important; }
         }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- MODAL DE DETALHES DO PROJETO -->
+<div class="modal-overlay" id="modalDetalhes">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Dossier Executivo do Projeto</div>
+            <button class="btn-secondary" onclick="fecharModal()"><i class="fas fa-times"></i> Fechar</button>
+        </div>
+        <div id="conteudoModalDetalhes" style="font-size: 13px; line-height: 1.6;">A carregar detalhes...</div>
+        <div style="display:flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+            <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Dossier</button>
+        </div>
+    </div>
+</div>
+
 <div class="container">
     <div class="page-toolbar">
         <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
-        <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        <div>
+            <span style="font-size: 12px; color: var(--text-light); margin-right: 15px;"><i class="far fa-clock"></i> <span id="relogioTopo"></span></span>
+            <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório Executivo</button>
+        </div>
     </div>
 
     <div>
         <div class="page-title"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Relatórios de Performance — P&D</div>
-        <div class="page-subtitle">Indicadores analíticos de execução financeira, orçamentária e técnica dos projetos de inovação</div>
+        <div class="page-subtitle">Central executiva de indicadores analíticos, faturamento, custos e alocação de ativos em projetos de inovação</div>
     </div>
 
+    <!-- FILTROS AVANÇADOS -->
+    <div class="panel" style="padding: 18px 24px;">
+        <div class="filtros-grid">
+            <div>
+                <label>Projeto</label>
+                <select id="filtro_projeto" class="form-control" onchange="aplicarFiltros()">
+                    <option value="">— Todos os projetos —</option>
+                </select>
+            </div>
+            <div>
+                <label>Período Inicial</label>
+                <input id="filtro_inicio" class="form-control" type="date" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Período Final</label>
+                <input id="filtro_fim" class="form-control" type="date" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="filtro_status" class="form-control" onchange="aplicarFiltros()">
+                    <option value="">— Todos —</option>
+                    <option value="Ativo">Ativo</option>
+                    <option value="Planejamento">Planejamento</option>
+                    <option value="Concluído">Concluído</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn-secondary" onclick="limparFiltros()" style="width:100%; justify-content:center;"><i class="fas fa-undo"></i> Limpar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIS EXECUTIVOS -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <span class="kpi-label">Total de Projetos Monitorados</span>
+            <span class="kpi-label">Projetos Monitorados</span>
             <span class="kpi-value" id="kpiTotalProjetos">0</span>
-            <span class="kpi-sub">Iniciativas ativas de P&D</span>
+            <span class="kpi-sub">Iniciativas filtradas de P&D</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-label">Volume Total Faturado (NFS-e)</span>
@@ -100,16 +169,17 @@
         </div>
         <div class="kpi-card">
             <span class="kpi-label">Ativos Tecnológicos (Patrimônio)</span>
-            <span class="kpi-value" id="kpiTotalAtivos">R$ 0,00</span>
+            <span class="kpi-value" id="kpiTotalAtivos" style="color:var(--primary);">R$ 0,00</span>
             <span class="kpi-sub">Valor de aquisição de equipamentos</span>
         </div>
     </div>
 
+    <!-- MATRIZ ANALÍTICA -->
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-table"></i> Matriz Consolidada de Performance por Projeto</span>
         </div>
-        <div id="tabelaPerformance" style="overflow-x:auto;">A carregar matriz de performance...</div>
+        <div id="tabelaPerformance" style="overflow-x:auto;">A carregar matriz analítica...</div>
     </div>
 </div>
 
@@ -121,75 +191,196 @@
 var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 
+let projetosCache = [];
+let custosCache = [];
+let faturamentosCache = [];
+let ativosCache = [];
+
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
 
-async function carregarPerformance(){
+setInterval(function(){
+    var d = new Date();
+    document.getElementById('relogioTopo').textContent = d.toLocaleDateString('pt-BR') + ', ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+}, 1000);
+
+async function carregarDadosGerais(){
     try {
         var pRes = await sb.from('projetos_pd').select('*');
         var cRes = await sb.from('custos_pd').select('*');
         var fRes = await sb.from('faturamento_pd').select('*');
         var aRes = await sb.from('ativos_equipamentos').select('*');
 
-        var projetos = pRes.data || [];
-        var custos = cRes.data || [];
-        var faturamentos = fRes.data || [];
-        var ativos = aRes.data || [];
+        projetosCache = pRes.data || [];
+        custosCache = cRes.data || [];
+        faturamentosCache = fRes.data || [];
+        ativosCache = aRes.data || [];
 
-        document.getElementById('kpiTotalProjetos').textContent = projetos.length;
-
-        var totalFaturado = 0;
-        faturamentos.forEach(function(f){ totalFaturado += Number(f.valor_nf || 0); });
-        document.getElementById('kpiTotalFaturado').textContent = 'R$ ' + fmtBR(totalFaturado);
-
-        var totalCustos = 0;
-        custos.forEach(function(c){ totalCustos += Number(c.valor || 0); });
-        document.getElementById('kpiTotalCustos').textContent = 'R$ ' + fmtBR(totalCustos);
-
-        var totalAtivos = 0;
-        ativos.forEach(function(a){ totalAtivos += Number(a.valor_aquisicao || 0); });
-        document.getElementById('kpiTotalAtivos').textContent = 'R$ ' + fmtBR(totalAtivos);
-
-        if(!projetos.length){
-            document.getElementById('tabelaPerformance').innerHTML = '<div class="empty-state">Nenhum projeto registado para exibir performance.</div>';
-            return;
-        }
-
-        var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th>Status</th><th style="text-align:right;">Faturamento (NFS-e)</th><th style="text-align:right;">Custos / Despesas</th><th style="text-align:right;">Ativos (Equipamentos)</th><th style="text-align:right;">Resultado Líquido</th></tr></thead><tbody>';
-
-        projetos.forEach(function(proj){
-            var cProj = custos.filter(function(c){ return String(c.projeto_id) === String(proj.id); });
-            var fProj = faturamentos.filter(function(f){ return String(f.projeto_id) === String(proj.id); });
-            var aProj = ativos.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
-
-            var tC = 0; cProj.forEach(function(c){ tC += Number(c.valor || 0); });
-            var tF = 0; fProj.forEach(function(f){ tF += Number(f.valor_nf || 0); });
-            var tA = 0; aProj.forEach(function(a){ tA += Number(a.valor_aquisicao || 0); });
-            
-            var resultado = tF - tC;
-
-            html += '<tr>'+
-                '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
-                '<td><span class="badge b-ativo">' + (proj.status || 'Ativo') + '</span></td>'+
-                '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(tF) + '</td>'+
-                '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(tC) + '</td>'+
-                '<td style="text-align:right; color:var(--primary);">R$ ' + fmtBR(tA) + '</td>'+
-                '<td style="text-align:right; font-weight:bold; color:' + (resultado >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R$ ' + fmtBR(resultado) + '</td>'+
-            '</tr>';
+        var selProj = document.getElementById('filtro_projeto');
+        selProj.innerHTML = '<option value="">— Todos os projetos —</option>';
+        projetosCache.forEach(function(p){
+            selProj.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
         });
 
-        html += '</tbody></table>';
-        document.getElementById('tabelaPerformance').innerHTML = html;
-
+        aplicarFiltros();
     } catch(e) {
-        document.getElementById('tabelaPerformance').innerHTML = '<div class="empty-state">Erro ao carregar dados de performance.</div>';
+        document.getElementById('tabelaPerformance').innerHTML = '<div class="empty-state">Erro ao carregar dados do Supabase.</div>';
     }
+}
+
+function limparFiltros(){
+    document.getElementById('filtro_projeto').value = '';
+    document.getElementById('filtro_inicio').value = '';
+    document.getElementById('filtro_fim').value = '';
+    document.getElementById('filtro_status').value = '';
+    aplicarFiltros();
+}
+
+function aplicarFiltros(){
+    var fProj = document.getElementById('filtro_projeto').value;
+    var fInicio = document.getElementById('filtro_inicio').value;
+    var fFim = document.getElementById('filtro_fim').value;
+    var fStatus = document.getElementById('filtro_status').value;
+
+    var projetosFiltrados = projetosCache.filter(function(p){
+        if(fProj && String(p.id) !== String(fProj)) return false;
+        if(fStatus && (p.status || 'Ativo') !== fStatus) return false;
+        return true;
+    });
+
+    var custosFiltrados = custosCache.filter(function(c){
+        if(fProj && String(c.projeto_id) !== String(fProj)) return false;
+        if(fInicio && c.data_gasto < fInicio) return false;
+        if(fFim && c.data_gasto > fFim) return false;
+        return true;
+    });
+
+    var faturamentosFiltrados = faturamentosCache.filter(function(f){
+        if(fProj && String(f.projeto_id) !== String(fProj)) return false;
+        if(fInicio && f.data_emissao < fInicio) return false;
+        if(fFim && f.data_emissao > fFim) return false;
+        return true;
+    });
+
+    var ativosFiltrados = ativosCache.filter(function(a){
+        if(fProj && String(a.projeto_id) !== String(fProj)) return false;
+        if(fInicio && a.data_aquisicao < fInicio) return false;
+        if(fFim && a.data_aquisicao > fFim) return false;
+        return true;
+    });
+
+    atualizarKPIs(projetosFiltrados, custosFiltrados, faturamentosFiltrados, ativosFiltrados);
+    renderizarMatriz(projetosFiltrados, custosFiltrados, faturamentosFiltrados, ativosFiltrados);
+}
+
+function atualizarKPIs(projetos, custos, faturamentos, ativos){
+    document.getElementById('kpiTotalProjetos').textContent = projetos.length;
+
+    var totalF = 0; faturamentos.forEach(function(f){ totalF += Number(f.valor_nf || 0); });
+    document.getElementById('kpiTotalFaturado').textContent = 'R$ ' + fmtBR(totalF);
+
+    var totalC = 0; custos.forEach(function(c){ totalC += Number(c.valor || 0); });
+    document.getElementById('kpiTotalCustos').textContent = 'R$ ' + fmtBR(totalC);
+
+    var totalA = 0; ativos.forEach(function(a){ totalA += Number(a.valor_aquisicao || 0); });
+    document.getElementById('kpiTotalAtivos').textContent = 'R$ ' + fmtBR(totalA);
+}
+
+function renderizarMatriz(projetos, custos, faturamentos, ativos){
+    var el = document.getElementById('tabelaPerformance');
+    if(!projetos.length){
+        el.innerHTML = '<div class="empty-state">Nenhum projeto encontrado para os filtros selecionados.</div>';
+        return;
+    }
+
+    var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th>Status</th><th style="text-align:right;">Faturamento</th><th style="text-align:right;">Custos</th><th style="text-align:right;">Ativos</th><th style="text-align:right;">Resultado</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+
+    projetos.forEach(function(proj){
+        var cProj = custos.filter(function(c){ return String(c.projeto_id) === String(proj.id); });
+        var fProj = faturamentos.filter(function(f){ return String(f.projeto_id) === String(proj.id); });
+        var aProj = ativos.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
+
+        var tC = 0; cProj.forEach(function(c){ tC += Number(c.valor || 0); });
+        var tF = 0; fProj.forEach(function(f){ tF += Number(f.valor_nf || 0); });
+        var tA = 0; aProj.forEach(function(a){ tA += Number(a.valor_aquisicao || 0); });
+        
+        var resultado = tF - tC;
+        var stClasse = proj.status === 'Planejamento' ? 'b-planejamento' : (proj.status === 'Concluído' ? 'b-concluido' : 'b-ativo');
+
+        html += '<tr>'+
+            '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
+            '<td><span class="badge ' + stClasse + '">' + (proj.status || 'Ativo') + '</span></td>'+
+            '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(tF) + '</td>'+
+            '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(tC) + '</td>'+
+            '<td style="text-align:right; color:var(--primary);">R$ ' + fmtBR(tA) + '</td>'+
+            '<td style="text-align:right; font-weight:bold; color:' + (resultado >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R$ ' + fmtBR(resultado) + '</td>'+
+            '<td style="text-align:right; white-space:nowrap;">'+
+                '<button class="btn-secondary" onclick="verDetalhes(\'' + proj.id + '\')" title="Visualizar Dossier"><i class="fas fa-eye"></i> Detalhes</button>'+
+            '</td>'+
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function verDetalhes(projId){
+    var proj = null;
+    for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(projId)) proj = projetosCache[i]; }
+    if(!proj) return;
+
+    var cProj = custosCache.filter(function(c){ return String(c.projeto_id) === String(proj.id); });
+    var fProj = faturamentosCache.filter(function(f){ return String(f.projeto_id) === String(proj.id); });
+    var aProj = ativosCache.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
+
+    var tC = 0; cProj.forEach(function(c){ tC += Number(c.valor || 0); });
+    var tF = 0; fProj.forEach(function(f){ tF += Number(f.valor_nf || 0); });
+    var tA = 0; aProj.forEach(function(a){ tA += Number(a.valor_aquisicao || 0); });
+
+    var html = `
+        <h3 style="color:var(--secondary); margin-bottom:8px;">${proj.codigo ? proj.codigo + ' - ' : ''}${proj.nome}</h3>
+        <p style="color:var(--text-light); margin-bottom:16px;"><b>Descrição / Objetivo:</b> ${proj.descricao || proj.objetivo || 'Não informada'}</p>
+        
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:12px; margin-bottom:20px;">
+            <div style="background:var(--bg); padding:12px; border-radius:8px;">
+                <span style="font-size:11px; font-weight:700; color:var(--text-light)">FATURAMENTO</span>
+                <div style="font-size:16px; font-weight:800; color:var(--success);">R$ ${fmtBR(tF)}</div>
+            </div>
+            <div style="background:var(--bg); padding:12px; border-radius:8px;">
+                <span style="font-size:11px; font-weight:700; color:var(--text-light)">CUSTOS TOTAIS</span>
+                <div style="font-size:16px; font-weight:800; color:var(--warning);">R$ ${fmtBR(tC)}</div>
+            </div>
+            <div style="background:var(--bg); padding:12px; border-radius:8px;">
+                <span style="font-size:11px; font-weight:700; color:var(--text-light)">ATIVOS ALOCADOS</span>
+                <div style="font-size:16px; font-weight:800; color:var(--primary);">R$ ${fmtBR(tA)}</div>
+            </div>
+        </div>
+
+        <h4 style="font-size:14px; font-weight:700; color:var(--secondary); margin-bottom:8px;"><i class="fas fa-receipt"></i> Custos e Despesas do Projeto (${cProj.length})</h4>
+        <ul style="list-style:none; margin-bottom:16px; max-height:150px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:8px;">
+    `;
+    if(cProj.length){
+        cProj.forEach(function(c){
+            html += `<li style="padding:6px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between;"><span>${c.descricao} (${formatDataBR(c.data_gasto)})</span> <strong>R$ ${fmtBR(c.valor)}</strong></li>`;
+        });
+    } else {
+        html += '<li style="color:var(--text-light); padding:6px;">Nenhum custo registado para este projeto.</li>';
+    }
+    html += `</ul>`;
+
+    document.getElementById('conteudoModalDetalhes').innerHTML = html;
+    document.getElementById('modalDetalhes').style.display = 'flex';
+}
+
+function fecharModal(){
+    document.getElementById('modalDetalhes').style.display = 'none';
 }
 
 async function inicializarPagina(){
     let u = obterUsuarioAtual();
     if(!u || !u.email) { location.href = 'login.html'; return; }
-    await carregarPerformance();
+    await carregarDadosGerais();
 }
 
 window.onload = inicializarPagina;
