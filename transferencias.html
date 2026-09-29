@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transferências e Movimentações — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block; }
+        .b-interna { background: #dbeafe; color: #1e40af; }
+        .b-terceiro { background: #fef3c7; color: #92400e; }
+        .b-proprio { background: #fef9c3; color: #854d0e; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        @media print {
+            body { background: #fff; color: #000; }
+            header, nav, .page-toolbar, .panel:has(label), footer, button { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .panel { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Extrato</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-exchange-alt" style="color:var(--primary);"></i> Gestão de Transferências e Movimentações</div>
+        <div class="page-subtitle">Transferências entre contas, aportes de capital próprio / sócios e pagamentos externos</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registar Nova Movimentação</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Conta de Origem / Fonte *</label>
+                <select id="conta_origem" class="form-control" onchange="verificarOrigemPropria()">
+                    <option value="">— Selecione a origem —</option>
+                    <option value="CAPITAL_PROPRIO">Capital Próprio / Sócio (Empréstimo PJ)</option>
+                </select>
+            </div>
+            <div>
+                <label>Conta de Destino (Se transferência interna)</label>
+                <select id="conta_destino" class="form-control">
+                    <option value="">— Nenhuma (Conta externa / Terceiro) —</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Valor da Movimentação (R$) *</label>
+                <input id="valor" class="form-control" placeholder="Ex.: 15.000,00" onblur="formatarCampoMoeda(this)">
+            </div>
+            <div>
+                <label>Data da Movimentação *</label>
+                <input id="data_mov" class="form-control" type="date">
+            </div>
+        </div>
+
+        <div id="blocoFavorecido" style="display:none; background:var(--bg); padding:16px; border-radius:10px; border:1px dashed var(--border); margin-bottom:12px;">
+            <label style="color:var(--primary); margin-bottom:8px;"><i class="fas fa-info-circle"></i> Particularidade de Capital Próprio / Sócio</label>
+            <p style="font-size:12px; color:var(--text-light); margin-bottom:10px;">Quando a origem é Capital Próprio, o valor é contabilizado como empréstimo/suprimento de sócio (Passivo), não alterando o saldo operacional líquido da PJ.</p>
+            <input id="favorecido_detalhes" class="form-control" placeholder="Nome do sócio / Identificação do aporte...">
+        </div>
+
+        <div>
+            <label>Histórico / Descrição *</label>
+            <input id="descricao" class="form-control" placeholder="Ex.: Transferência entre contas correntes / Suprimento de caixa...">
+        </div>
+
+        <div style="margin-top:10px;">
+            <button class="btn-acao" onclick="salvarTransferencia()"><i class="fas fa-save"></i> Registar Movimentação</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-list"></i> Histórico de Transferências</span></div>
+        <div id="listaTransferencias" style="overflow-x:auto;">A carregar transferências...</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function parseValorBR(v){if(!v)return 0;var s=String(v).trim().replace(/[R$\s]/g,'');if(s.indexOf(',')>-1)s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
+function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.value=parseValorBR(el.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+async function carregarContasBancarias(){
+    var cid=clienteIdAtual();
+    if(!cid) return;
+    var r=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid);
+    if(!r.error){
+        var contas=r.data||[];
+        var selOrigem=document.getElementById('conta_origem');
+        var selDestino=document.getElementById('conta_destino');
+        
+        contas.forEach(function(c){
+            var opt1=document.createElement('option'); opt1.value=c.id; opt1.textContent=c.banco_nome+' - Ag: '+c.agencia+' Cc: '+c.conta; selOrigem.appendChild(opt1);
+            var opt2=document.createElement('option'); opt2.value=c.id; opt2.textContent=c.banco_nome+' - Ag: '+c.agencia+' Cc: '+c.conta; selDestino.appendChild(opt2);
+        });
+    }
+}
+
+function verificarOrigemPropria(){
+    var val=document.getElementById('conta_origem').value;
+    var bloco=document.getElementById('blocoFavorecido');
+    if(val==='CAPITAL_PROPRIO'){ bloco.style.display='block'; }
+    else { bloco.style.display='none'; }
+}
+
+async function salvarTransferencia(){
+    var cid=clienteIdAtual();
+    var origem=document.getElementById('conta_origem').value;
+    var destino=document.getElementById('conta_destino').value;
+    var valor=parseValorBR(document.getElementById('valor').value);
+    var data=document.getElementById('data_mov').value;
+    var desc=document.getElementById('descricao').value.trim();
+
+    if(!origem || !valor || !data || !desc){ toast('Preencha todos os campos obrigatórios.', 'error'); return; }
+
+    var tipo = destino ? 'interna' : (origem==='CAPITAL_PROPRIO' ? 'capital_proprio' : 'terceiro');
+
+    var dados={
+        cliente_id: cid,
+        conta_origem: origem,
+        conta_destino: destino || null,
+        valor: valor,
+        data_movimento: data,
+        tipo_movimento: tipo,
+        descricao: desc,
+        detalhes_socio: document.getElementById('favorecido_detalhes').value.trim() || null
+    };
+
+    var r=await sb.from('transferencias').insert([dados]);
+    if(r.error){ toast('Erro ao registar: '+r.error.message, 'error'); return; }
+
+    toast('Movimentação registada com sucesso!');
+    document.getElementById('valor').value='';
+    document.getElementById('descricao').value='';
+    document.getElementById('favorecido_detalhes').value='';
+    carregarTransferencias();
+}
+
+async function carregarTransferencias(){
+    var el=document.getElementById('listaTransferencias');
+    var cid=clienteIdAtual();
+    var r=await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data_movimento', {ascending:false});
+    if(r.error){ el.innerHTML='<div class="empty-state">Tabela em configuração.</div>'; return; }
+    var trans=r.data||[];
+    if(!trans.length){ el.innerHTML='<div class="empty-state">Nenhuma movimentação registada.</div>'; return; }
+
+    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Tipo</th><th>Origem / Destino</th><th>Descrição</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
+    trans.forEach(function(t){
+        var badge = t.tipo_movimento==='interna' ? '<span class="badge b-interna">Transferência Interna</span>' : (t.tipo_movimento==='capital_proprio' ? '<span class="badge b-proprio">Capital Próprio / Sócio</span>' : '<span class="badge b-terceiro">Pagamento Externo</span>');
+        html+='<tr>'+
+            '<td>'+t.data_movimento+'</td>'+
+            '<td>'+badge+'</td>'+
+            '<td>'+t.conta_origem+(t.conta_destino ? ' ➔ '+t.conta_destino : '')+'</td>'+
+            '<td>'+t.descricao+(t.detalhes_socio ? ' <small>('+t.detalhes_socio+')</small>' : '')+'</td>'+
+            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(t.valor)+'</td>'+
+        '</tr>';
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+}
+
+window.onload = function(){
+    carregarContasBancarias();
+    carregarTransferencias();
+    document.getElementById('data_mov').value = new Date().toISOString().split('T')[0];
+};
+</script>
+</body>
+</html>
