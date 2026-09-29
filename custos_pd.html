@@ -193,6 +193,7 @@ const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_
 let custosCache = [];
 let projetosCache = [];
 let contratosCache = [];
+let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
 
 var CATEGORIAS = {
@@ -279,38 +280,34 @@ function aoSelecionarProjeto(){
 
 function atualizarNomeArquivo(input){
     if(input.files && input.files[0]){
-        arquivoAnexadoNome = input.files[0].name;
-        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Arquivo anexado: <b>' + arquivoAnexadoNome + '</b>';
+        var file = input.files[0];
+        arquivoAnexadoNome = file.name;
+        arquivoAnexadoUrl = URL.createObjectURL(file);
+        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Ficheiro pronto: <b>' + arquivoAnexadoNome + '</b>';
     }
 }
 
-function verComprovante(nomeArquivo){
-    if(!nomeArquivo || nomeArquivo === '—') {
+function verComprovante(urlOuNome){
+    if(!urlOuNome || urlOuNome === '—') {
         toast('Nenhum comprovante anexado.', 'info');
         return;
     }
-    var janela = window.open('', '_blank');
-    janela.document.write(`
-        <html>
-        <head><title>Visualizar Comprovante — Sacramento ERP</title>
-        <style>
-            body { font-family: 'Inter', Arial, sans-serif; padding: 40px; color: #0f172a; background: #f8fafc; text-align: center; }
-            .box { background: #fff; border: 1px solid #e2e8f0; padding: 40px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-            h2 { color: #1e3a8a; margin-bottom: 15px; font-size: 20px; }
-            p { color: #64748b; margin-bottom: 25px; font-size: 14px; }
-            .btn { background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; }
-        </style>
-        </head>
-        <body>
-            <div class="box">
-                <h2>Comprovante Vinculado ao Gasto</h2>
-                <p><i class="fas fa-file-alt" style="font-size: 48px; color: #2563eb; margin-bottom: 15px;"></i><br><b>Ficheiro:</b> ${nomeArquivo}</p>
-                <a href="#" class="btn" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</a>
-            </div>
-        </body>
-        </html>
-    `);
-    janela.document.close();
+    // Se for uma URL blob gerada na sessão ou URL válida, abre diretamente
+    if(urlOuNome.startsWith('blob:') || urlOuNome.startsWith('http')) {
+        window.open(urlOuNome, '_blank');
+    } else {
+        // Fallback caso seja apenas o nome salvo
+        var janela = window.open('', '_blank');
+        janela.document.write(`
+            <html><head><title>Comprovante: ${urlOuNome}</title></head>
+            <body style="font-family:Arial; padding:30px; text-align:center;">
+                <h3>Comprovante do Gasto</h3>
+                <p><b>Ficheiro:</b> ${urlOuNome}</p>
+                <p style="color:#666;">Este documento foi registado no sistema.</p>
+            </body></html>
+        `);
+        janela.document.close();
+    }
 }
 
 function gerarReciboRPA(){
@@ -420,6 +417,7 @@ function editarCusto(id){
     document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_cpf').value=c.prestador_cpf||'';
     document.getElementById('descricao').value=c.descricao||'';
+    arquivoAnexadoUrl = c.comprovante || null;
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar gasto';
@@ -440,6 +438,7 @@ function cancelarEdicao(){
     document.getElementById('descricao').value='';
     document.getElementById('inputArquivo').value='';
     document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
+    arquivoAnexadoUrl = null;
     arquivoAnexadoNome = null;
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto';
@@ -479,7 +478,7 @@ async function salvarCusto(){
         documento_fiscal:doc,
         prestador_nome:document.getElementById('prestador_nome').value.trim()||null,
         prestador_cpf:document.getElementById('prestador_cpf').value.trim()||null,
-        comprovante: arquivoAnexadoNome || 'comprovante.pdf'
+        comprovante: arquivoAnexadoUrl || null
     };
 
     var editId=document.getElementById('edit_id').value;
