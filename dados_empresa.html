@@ -36,6 +36,9 @@
         .form-control:focus { border-color: var(--primary); background: #fff; }
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
 
+        .logo-preview-box { display: flex; align-items: center; gap: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
+        .logo-preview { width: 60px; height: 60px; border-radius: 8px; object-fit: contain; background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-light); }
+
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         .analitica-table th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
@@ -73,12 +76,12 @@
                 <button class="btn-acao" style="height:41px;" onclick="consultarCnpjReceita()"><i class="fas fa-cloud-download-alt"></i> Consultar CNPJ na Receita</button>
             </div>
         </div>
-        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, Capital Social, CNAEs e Endereço.</small>
+        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, CNAEs e Endereço.</small>
     </div>
 
     <!-- DADOS CADASTRAIS -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas id-card"></i> Informações Cadastrais & Fiscais</span></div>
+        <div class="panel-header"><span><i class="fas fa-id-card"></i> Informações Cadastrais & Fiscais</span></div>
         
         <div class="form-row">
             <div>
@@ -108,30 +111,35 @@
                 <input type="text" id="data_abertura" class="form-control" placeholder="DD/MM/AAAA" readonly style="background:#e2e8f0;">
             </div>
             <div>
-                <label>Capital Social (R$)</label>
-                <input type="text" id="capital_social" class="form-control" placeholder="R$ 0,00">
+                <label>CNAE Principal</label>
+                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição do CNAE principal">
             </div>
         </div>
 
         <div class="form-row">
-            <div>
-                <label>CNAE Principal</label>
-                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição do CNAE principal">
-            </div>
             <div>
                 <label>E-mail Corporativo</label>
                 <input type="email" id="email" class="form-control" placeholder="contato@empresa.com.br">
             </div>
-        </div>
-
-        <div class="form-row">
             <div>
                 <label>Telefone / WhatsApp</label>
                 <input type="text" id="telefone" class="form-control" placeholder="(31) 00000-0000">
             </div>
-            <div>
-                <label>URL do Logotipo (Identidade Visual)</label>
-                <input type="text" id="logo_url" class="form-control" placeholder="https://exemplo.com/logo.png">
+        </div>
+
+        <!-- CAMPO DE IMPORTAÇÃO DE LOGOTIPO -->
+        <div class="form-row">
+            <div style="grid-column: span 2;">
+                <label>Importar Logotipo da Empresa (Arquivo de Imagem)</label>
+                <div class="logo-preview-box">
+                    <img id="imgLogoPreview" class="logo-preview" src="" alt="Logo" style="display:none;">
+                    <div id="noLogoIcon" class="logo-preview"><i class="fas fa-image"></i></div>
+                    <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
+                        <input type="file" id="inputFileLogo" class="form-control" accept="image/*" onchange="converterLogoParaBase64(this)" style="padding:6px; background:#fff;">
+                        <small style="color:var(--text-light); font-size:11px;">Selecione um arquivo PNG ou JPG. A imagem será armazenada diretamente no cadastro da empresa.</small>
+                    </div>
+                </div>
+                <input type="hidden" id="logo_url">
             </div>
         </div>
 
@@ -164,6 +172,23 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+function converterLogoParaBase64(input){
+    if(input.files && input.files[0]){
+        let reader = new FileReader();
+        reader.onload = function(e){
+            let base64String = e.target.result;
+            document.getElementById('logo_url').value = base64String;
+            let imgPrev = document.getElementById('imgLogoPreview');
+            let noLogo = document.getElementById('noLogoIcon');
+            imgPrev.src = base64String;
+            imgPrev.style.display = 'block';
+            noLogo.style.display = 'none';
+            toast("Logotipo carregado com sucesso!");
+        }
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
 async function consultarCnpjReceita(){
     let cnpjInput = document.getElementById('inputCnpjBusca').value.replace(/\D/g, '');
     if(cnpjInput.length !== 14){
@@ -184,7 +209,6 @@ async function consultarCnpjReceita(){
         document.getElementById('cnpj_cpf').value = r.cnpj || '';
         document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
         document.getElementById('data_abertura').value = r.data_inicio_atividade ? r.data_inicio_atividade.split('-').reverse().join('/') : '';
-        document.getElementById('capital_social').value = r.capital_social ? Number(r.capital_social).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
         document.getElementById('cnae_principal').value = (r.cnae_fiscal ? r.cnae_fiscal + ' - ' : '') + (r.cnae_fiscal_descricao || '');
         document.getElementById('email').value = r.email || '';
         document.getElementById('telefone').value = r.ddd_telefone_1 || '';
@@ -217,11 +241,19 @@ async function carregarDadosEmpresa(){
         document.getElementById('cnpj_cpf').value = data.cnpj_cpf || '';
         document.getElementById('situacao').value = data.situacao || 'ATIVA';
         document.getElementById('data_abertura').value = data.data_abertura || '';
-        document.getElementById('capital_social').value = data.capital_social || '';
         document.getElementById('cnae_principal').value = data.cnae_principal || '';
         document.getElementById('email').value = data.email || '';
         document.getElementById('telefone').value = data.telefone || '';
         document.getElementById('logo_url').value = data.logo_url || '';
+        
+        if(data.logo_url){
+            let imgPrev = document.getElementById('imgLogoPreview');
+            let noLogo = document.getElementById('noLogoIcon');
+            imgPrev.src = data.logo_url;
+            imgPrev.style.display = 'block';
+            noLogo.style.display = 'none';
+        }
+
         if(data.cnpj_cpf){
             document.getElementById('inputCnpjBusca').value = data.cnpj_cpf;
         }
@@ -238,7 +270,6 @@ async function salvarDadosEmpresa(){
         cnpj_cpf: document.getElementById('cnpj_cpf').value.trim(),
         situacao: document.getElementById('situacao').value.trim(),
         data_abertura: document.getElementById('data_abertura').value.trim(),
-        capital_social: document.getElementById('capital_social').value.trim(),
         cnae_principal: document.getElementById('cnae_principal').value.trim(),
         email: document.getElementById('email').value.trim(),
         telefone: document.getElementById('telefone').value.trim(),
@@ -256,7 +287,7 @@ async function salvarDadosEmpresa(){
         return;
     }
 
-    toast("Dados da empresa salvos e disponibilizados para todo o ERP!");
+    toast("Dados da empresa salvos com sucesso!");
     setTimeout(() => { location.reload(); }, 1000);
 }
 
