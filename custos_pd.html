@@ -51,6 +51,11 @@
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
 
+        .upload-box { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; background: var(--bg); cursor: pointer; margin-bottom: 12px; transition: 0.2s; }
+        .upload-box:hover { border-color: var(--primary); background: #eff6ff; }
+
+        .rpa-alert { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-pesessoal { background: #e0e7ff; color: #3730a3; }
         .b-material { background: #fef3c7; color: #92400e; }
@@ -85,33 +90,35 @@
 
     <div class="panel">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
-            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar Gasto / Custo de P&D</span>
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto</span>
         </div>
         <input type="hidden" id="edit_id">
 
         <div class="form-row">
             <div>
-                <label>Projeto Vinculado *</label>
-                <select id="projeto_id" class="form-control">
+                <label>Projeto *</label>
+                <select id="projeto_id" class="form-control" onchange="filtrarContratosPorProjeto()">
                     <option value="">— Selecione o projeto —</option>
                 </select>
             </div>
             <div>
-                <label>Categoria do Gasto *</label>
-                <select id="categoria" class="form-control">
-                    <option value="pessoal">Pessoal / Pesquisadores (RH)</option>
-                    <option value="material_consumo">Material de Consumo / Insumos</option>
-                    <option value="servicos_terceiros">Serviços de Terceiros (PJ)</option>
-                    <option value="equipamentos">Equipamentos / Infraestrutura</option>
-                    <option value="outros">Outros Custos Operacionais</option>
+                <label>Contrato / Convênio *</label>
+                <select id="contrato_id" class="form-control">
+                    <option value="">— Selecione o contrato —</option>
                 </select>
             </div>
         </div>
 
         <div class="form-row">
             <div>
-                <label>Descrição da Despesa *</label>
-                <input id="descricao" class="form-control" placeholder="Ex.: Compra de reagentes químicos, bolsa de pesquisa...">
+                <label>Categoria do Gasto *</label>
+                <select id="categoria" class="form-control">
+                    <option value="pessoal">Pessoal / Pesquisadores (RH)</option>
+                    <option value="material_consumo">Material de Consumo / Insumos</option>
+                    <option value="servicos_terceiros">Serviços Técnicos de Terceiros</option>
+                    <option value="equipamentos">Equipamentos / Infraestrutura</option>
+                    <option value="outros">Outros Custos Operacionais</option>
+                </select>
             </div>
             <div>
                 <label>Valor do Gasto (R$) *</label>
@@ -125,14 +132,39 @@
                 <input id="data_gasto" class="form-control" type="date">
             </div>
             <div>
-                <label>Fornecedor / Favorecido</label>
-                <input id="fornecedor" class="form-control" placeholder="Nome do fornecedor ou colaborador">
+                <label>Documento Fiscal (NF-e / Recibo) *</label>
+                <input id="documento_fiscal" class="form-control" placeholder="Ex.: NF-e 1234 ou Recibo 587">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Nome do Prestador (para o recibo)</label>
+                <input id="prestador_nome" class="form-control" placeholder="Nome completo de quem vai assinar o recibo">
+            </div>
+            <div>
+                <label>CPF do Prestador (para o recibo)</label>
+                <input id="prestador_cpf" class="form-control" placeholder="000.000.000-00">
             </div>
         </div>
 
         <div>
-            <label>Observações</label>
-            <textarea id="observacoes" class="form-control" placeholder="Informações adicionais, nota fiscal vinculada..."></textarea>
+            <label>Descrição do Gasto *</label>
+            <input id="descricao" class="form-control" placeholder="Descreva o que foi comprado/contratado e para qual etapa do projeto serve...">
+        </div>
+
+        <div>
+            <label>Comprovante (Obrigatório)</label>
+            <div class="upload-box" onclick="document.getElementById('inputArquivo').click()">
+                <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--primary); margin-bottom: 6px;"></i>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para anexar o comprovante (PDF, JPG ou PNG)</div>
+            </div>
+            <input type="file" id="inputArquivo" style="display:none;" onchange="atualizarNomeArquivo(this)">
+        </div>
+
+        <div class="rpa-alert">
+            <span><i class="fas fa-exclamation-triangle"></i> Sem nota fiscal? Gerar modelo de recibo para o prestador assinar</span>
+            <button class="btn-secondary" onclick="gerarReciboRPA()" style="background:#fff; border-color:#f59e0b; color:#92400e;"><i class="fas fa-file-invoice"></i> Gerar RPA / Recibo</button>
         </div>
 
         <div style="display:flex; gap:10px; margin-top:4px;">
@@ -143,7 +175,7 @@
 
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Gastos de P&D Registrados</span>
+            <span><i class="fas fa-list"></i> Gastos registrados</span>
         </div>
         <div id="listaCustos" style="overflow-x:auto;">Carregando gastos...</div>
     </div>
@@ -159,12 +191,14 @@ var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa'
 
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let custosCache = [];
-let projetosMap = {};
+let projetosCache = [];
+let contratosCache = [];
+let arquivoAnexadoNome = null;
 
 var CATEGORIAS = {
     pessoal:            { rotulo: 'Pessoal (RH)',         classe: 'b-pesessoal' },
     material_consumo:   { rotulo: 'Material / Insumos',   classe: 'b-material' },
-    servicos_terceiros: { rotulo: 'Terceiros (PJ)',       classe: 'b-terceiro' },
+    servicos_terceiros: { rotulo: 'Serviços Terceiros',   classe: 'b-terceiro' },
     equipamentos:       { rotulo: 'Equipamentos',         classe: 'b-outro' },
     outros:             { rotulo: 'Outros Custos',        classe: 'b-outro' }
 };
@@ -206,27 +240,84 @@ function formatarCampoMoeda(el){
     el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function formatarData(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'-'+p[1]+'-'+p[0];return d;} // Ajustado para DD/MM/AAAA abaixo
-
-function formatDataBR(d){
-    if(!d)return '—';
-    var p=String(d).split('-');
-    if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];
-    return d;
-}
+function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
 
 async function carregarProjetosSelect(){
-    const sel = document.getElementById('projeto_id');
-    try {
-        let q = sbFiltro('projetos_pd');
-        const { data } = await q.order('nome');
+    var r = await sbFiltro('projetos_pd');
+    if(!r.error) {
+        projetosCache = r.data || [];
+        var sel = document.getElementById('projeto_id');
         sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
-        projetosMap = {};
-        (data || []).forEach(p => {
-            projetosMap[p.id] = p.nome || ('Projeto #' + p.id);
+        projetosCache.forEach(p => {
             sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
         });
-    } catch(e) {}
+    }
+}
+
+async function carregarContratosSelect(){
+    var r = await sbFiltro('contratos_fomento');
+    if(!r.error) {
+        contratosCache = r.data || [];
+        filtrarContratosPorProjeto();
+    }
+}
+
+function filtrarContratosPorProjeto(){
+    var projId = document.getElementById('projeto_id').value;
+    var sel = document.getElementById('contrato_id');
+    sel.innerHTML = '<option value="">— Selecione o contrato —</option>';
+    contratosCache.forEach(c => {
+        if(!projId || c.projeto_id == projId) {
+            sel.innerHTML += `<option value="${c.id}">${c.numero_contrato || 'Contrato'} · ${c.financiador || 'Fomento'}</option>`;
+        }
+    });
+}
+
+function atualizarNomeArquivo(input){
+    if(input.files && input.files[0]){
+        arquivoAnexadoNome = input.files[0].name;
+        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Arquivo anexado: <b>' + arquivoAnexadoNome + '</b>';
+    }
+}
+
+function gerarReciboRPA(){
+    var nome = document.getElementById('prestador_nome').value.trim() || 'Prestador de Serviços';
+    var cpf = document.getElementById('prestador_cpf').value.trim() || '000.000.000-00';
+    var valor = document.getElementById('valor').value.trim() || '0,00';
+    var desc = document.getElementById('descricao').value.trim() || 'Serviços técnicos prestados ao projeto de P&D';
+
+    var janela = window.open('', '_blank');
+    janela.document.write(`
+        <html>
+        <head><title>Recibo de Pagamento (RPA)</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 40px; color: #111; }
+            .recibo { border: 2px solid #333; padding: 30px; border-radius: 8px; max-width: 700px; margin: auto; }
+            h2 { text-align: center; text-transform: uppercase; margin-bottom: 20px; }
+            .valor { font-size: 22px; font-weight: bold; background: #eee; padding: 10px; display: inline-block; margin: 15px 0; }
+            .assinatura { margin-top: 60px; text-align: center; }
+            .linha { border-top: 1px solid #333; width: 300px; margin: 0 auto 10px auto; }
+        </style>
+        </head>
+        <body>
+            <div class="recibo">
+                <h2>Recibo de Pagamento (RPA / Autônomo)</h2>
+                <p><b>Valor:</b> <span class="valor">R$ ${valor}</span></p>
+                <p>Recebemos de <b>Sacramento ERP / Empresa Executora</b> a importância supra de <b>R$ ${valor}</b>, referente a:</p>
+                <p><b>Histórico:</b> ${desc}</p>
+                <br>
+                <p><b>Prestador:</b> ${nome}</p>
+                <p><b>CPF:</b> ${cpf}</p>
+                <div class="assinatura">
+                    <div class="linha"></div>
+                    <p>${nome}<br>CPF: ${cpf}</p>
+                </div>
+            </div>
+            <script>window.print();<\/script>
+        </body>
+        </html>
+    `);
+    janela.document.close();
 }
 
 async function carregarCustos(){
@@ -236,19 +327,24 @@ async function carregarCustos(){
     var r=await sbFiltro('custos_pd');
     if(r.error){el.innerHTML='<div class="empty-state">Erro: '+r.error.message+'</div>';return;}
     custosCache=r.data||[];
-    if(!custosCache.length){el.innerHTML='<div class="empty-state">Nenhum gasto de P&D registrado.</div>';return;}
+    if(!custosCache.length){el.innerHTML='<div class="empty-state">Nenhum gasto registrado.</div>';return;}
     
-    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Projeto</th><th>Categoria</th><th>Descrição</th><th>Fornecedor</th><th style="text-align:right;">Valor</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Projeto</th><th>Categoria</th><th>Descrição</th><th>Documento</th><th style="text-align:right;">Valor</th><th>Comprovante</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
     custosCache.forEach(function(c){
-        var nomeProj = projetosMap[c.projeto_id] || '—';
+        var proj = null;
+        for(var i=0; i<projetosCache.length; i++){ if(projetosCache[i].id == c.projeto_id) proj = projetosCache[i]; }
+        var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var catInfo = CATEGORIAS[c.categoria] || CATEGORIAS.outros;
+        var comprovanteHTML = c.comprovante ? '<a href="#" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>' : '<span style="color:var(--text-light)">—</span>';
+
         html+='<tr>'+
             '<td>'+formatDataBR(c.data_gasto)+'</td>'+
             '<td>'+nomeProj+'</td>'+
             '<td><span class="badge '+catInfo.classe+'">'+catInfo.rotulo+'</span></td>'+
             '<td><strong>'+(c.descricao||'—')+'</strong></td>'+
-            '<td>'+(c.fornecedor||'—')+'</td>'+
+            '<td>'+(c.documento_fiscal||'—')+'</td>'+
             '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(c.valor)+'</td>'+
+            '<td>'+comprovanteHTML+'</td>'+
             '<td style="text-align:right; white-space:nowrap;">'+
                 '<button class="btn-secondary" onclick="editarCusto('+c.id+')" title="Editar"><i class="fas fa-pen"></i></button>'+
                 '<button class="btn-secondary" onclick="excluirCusto('+c.id+')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
@@ -265,14 +361,17 @@ function editarCusto(id){
     if(!c)return;
     document.getElementById('edit_id').value=c.id;
     document.getElementById('projeto_id').value=c.projeto_id||'';
+    filtrarContratosPorProjeto();
+    document.getElementById('contrato_id').value=c.contrato_id||'';
     document.getElementById('categoria').value=c.categoria||'outros';
-    document.getElementById('descricao').value=c.descricao||'';
     document.getElementById('valor').value=c.valor?fmtBR(c.valor):'';
     document.getElementById('data_gasto').value=c.data_gasto||'';
-    document.getElementById('fornecedor').value=c.fornecedor||'';
-    document.getElementById('observacoes').value=c.observacoes||'';
+    document.getElementById('documento_fiscal').value=c.documento_fiscal||'';
+    document.getElementById('prestador_nome').value=c.prestador_nome||'';
+    document.getElementById('prestador_cpf').value=c.prestador_cpf||'';
+    document.getElementById('descricao').value=c.descricao||'';
 
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto de P&D';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar gasto';
     document.getElementById('btnCancelar').style.display='inline-flex';
     window.scrollTo({top:0,behavior:'smooth'});
@@ -281,14 +380,19 @@ function editarCusto(id){
 function cancelarEdicao(){
     document.getElementById('edit_id').value='';
     document.getElementById('projeto_id').value='';
+    document.getElementById('contrato_id').value='';
     document.getElementById('categoria').value='pessoal';
-    document.getElementById('descricao').value='';
     document.getElementById('valor').value='';
     document.getElementById('data_gasto').value='';
-    document.getElementById('fornecedor').value='';
-    document.getElementById('observacoes').value='';
+    document.getElementById('documento_fiscal').value='';
+    document.getElementById('prestador_nome').value='';
+    document.getElementById('prestador_cpf').value='';
+    document.getElementById('descricao').value='';
+    document.getElementById('inputArquivo').value='';
+    document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
+    arquivoAnexadoNome = null;
 
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar Gasto / Custo de P&D';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registrar gasto';
     document.getElementById('btnCancelar').style.display='none';
 }
@@ -300,6 +404,9 @@ async function salvarCusto(){
     var projetoId=document.getElementById('projeto_id').value;
     if(!projetoId){toast('Selecione o projeto vinculado.','error');return;}
 
+    var contratoId=document.getElementById('contrato_id').value;
+    if(!contratoId){toast('Selecione o contrato de fomento.','error');return;}
+
     var desc=document.getElementById('descricao').value.trim();
     if(!desc){toast('Informe a descrição do gasto.','error');return;}
 
@@ -309,15 +416,21 @@ async function salvarCusto(){
     var data=document.getElementById('data_gasto').value;
     if(!data){toast('Informe a data do gasto.','error');return;}
 
+    var doc=document.getElementById('documento_fiscal').value.trim();
+    if(!doc){toast('Informe o documento fiscal (NF-e ou Recibo).','error');return;}
+
     var dados={
         cliente_id:cid,
         projeto_id:parseInt(projetoId),
+        contrato_id:parseInt(contratoId),
         categoria:document.getElementById('categoria').value,
         descricao:desc,
         valor:valor,
         data_gasto:data,
-        fornecedor:document.getElementById('fornecedor').value.trim()||null,
-        observacoes:document.getElementById('observacoes').value.trim()||null
+        documento_fiscal:doc,
+        prestador_nome:document.getElementById('prestador_nome').value.trim()||null,
+        prestador_cpf:document.getElementById('prestador_cpf').value.trim()||null,
+        comprovante: arquivoAnexadoNome || 'comprovante.pdf'
     };
 
     var editId=document.getElementById('edit_id').value;
@@ -347,6 +460,7 @@ async function inicializarPagina(){
     let u=obterUsuarioAtual();
     if(!u||!u.email){location.href='login.html';return;}
     await carregarProjetosSelect();
+    await carregarContratosSelect();
     await carregarCustos();
 }
 
