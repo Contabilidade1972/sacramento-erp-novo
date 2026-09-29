@@ -168,6 +168,7 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let qsaCacheGlobal = [];
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -193,6 +194,24 @@ function converterLogoParaBase64(input){
             toast("Logotipo carregado com sucesso!");
         }
         reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function renderizarQuadroSocietario(qsaList){
+    if(qsaList && qsaList.length > 0){
+        let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio / Acionista</th><th>Qualificação</th><th>% Participação (Ratio)</th><th>País de Origem</th></tr></thead><tbody>';
+        qsaList.forEach(s => {
+            let nomeSocio = s.nome_socio || s.nome || 'Sócio';
+            let qualif = s.qualificacao_socio || s.qualificacao || 'Sócio';
+            let pais = s.pais_origem || 'Brasil';
+            let participacao = s.percentual_capital_social ? s.percentual_capital_social + '%' : '—';
+            
+            html += `<tr><td><strong>${nomeSocio}</strong></td><td>${qualif}</td><td><strong style="color:var(--primary);">${participacao}</strong></td><td>${pais}</td></tr>`;
+        });
+        html += '</tbody></table>';
+        document.getElementById('tabelaQuadroSocietario').innerHTML = html;
+    } else {
+        document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
     }
 }
 
@@ -232,20 +251,14 @@ async function consultarCnpjReceita(){
         document.getElementById('email').value = r.email || '';
         document.getElementById('telefone').value = r.ddd_telefone_1 || '';
 
-        // Renderizar Quadro Societário completo com participação
+        // Guardar QSA no cache local para persistir
         if(r.qsa && r.qsa.length > 0){
-            let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio / Acionista</th><th>Qualificação</th><th>% Participação (Ratio)</th><th>País de Origem</th></tr></thead><tbody>';
-            r.qsa.forEach(s => {
-                let nomeSocio = s.nome_socio || s.nome || 'Sócio';
-                let qualif = s.qualificacao_socio || s.qualificacao || 'Sócio';
-                let pais = s.pais_origem || 'Brasil';
-                let participacao = s.percentual_capital_social ? s.percentual_capital_social + '%' : '—';
-                
-                html += `<tr><td><strong>${nomeSocio}</strong></td><td>${qualif}</td><td><strong style="color:var(--primary);">${participacao}</strong></td><td>${pais}</td></tr>`;
-            });
-            html += '</tbody></table>';
-            document.getElementById('tabelaQuadroSocietario').innerHTML = html;
+            qsaCacheGlobal = r.qsa;
+            let cid = clienteIdAtual();
+            localStorage.setItem('qsa_empresa_' + cid, JSON.stringify(r.qsa));
+            renderizarQuadroSocietario(r.qsa);
         } else {
+            qsaCacheGlobal = [];
             document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
         }
 
@@ -283,6 +296,15 @@ async function carregarDadosEmpresa(){
             document.getElementById('inputCnpjBusca').value = cnpjAtual;
         }
     }
+
+    // Carregar QSA do armazenamento local
+    try {
+        let qsaSalvo = localStorage.getItem('qsa_empresa_' + cid);
+        if(qsaSalvo){
+            qsaCacheGlobal = JSON.parse(qsaSalvo);
+            renderizarQuadroSocietario(qsaCacheGlobal);
+        }
+    } catch(e){}
 }
 
 async function salvarDadosEmpresa(){
