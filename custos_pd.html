@@ -54,7 +54,7 @@
         .upload-box { border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center; background: var(--bg); cursor: pointer; margin-bottom: 12px; transition: 0.2s; }
         .upload-box:hover { border-color: var(--primary); background: #eff6ff; }
 
-        .rpa-alert { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .rpa-alert { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-pesessoal { background: #e0e7ff; color: #3730a3; }
@@ -163,8 +163,8 @@
         </div>
 
         <div class="rpa-alert">
-            <span><i class="fas fa-exclamation-triangle"></i> Sem nota fiscal? Gerar modelo de recibo para o prestador assinar</span>
-            <button class="btn-secondary" onclick="gerarReciboRPA()" style="background:#fff; border-color:#f59e0b; color:#92400e;"><i class="fas fa-file-invoice"></i> Gerar RPA / Recibo</button>
+            <span><i class="fas fa-exclamation-triangle"></i> Sem nota fiscal? Gerar modelo de recibo profissional para o prestador assinar</span>
+            <button class="btn-secondary" onclick="gerarReciboRPA()" style="background:#fff; border-color:#f59e0b; color:#92400e;"><i class="fas fa-file-invoice"></i> Gerar Recibo (RPA)</button>
         </div>
 
         <div style="display:flex; gap:10px; margin-top:4px;">
@@ -280,37 +280,62 @@ function atualizarNomeArquivo(input){
     }
 }
 
+function verComprovante(nomeArquivo){
+    if(!nomeArquivo || nomeArquivo === '—') {
+        toast('Nenhum comprovante anexado.', 'info');
+        return;
+    }
+    alert('Comprovante vinculado: ' + nomeArquivo);
+}
+
 function gerarReciboRPA(){
-    var nome = document.getElementById('prestador_nome').value.trim() || 'Prestador de Serviços';
+    var nome = document.getElementById('prestador_nome').value.trim() || 'Nome do Prestador / Autônomo';
     var cpf = document.getElementById('prestador_cpf').value.trim() || '000.000.000-00';
     var valor = document.getElementById('valor').value.trim() || '0,00';
-    var desc = document.getElementById('descricao').value.trim() || 'Serviços técnicos prestados ao projeto de P&D';
+    var desc = document.getElementById('descricao').value.trim() || 'Serviços técnicos especializados prestados ao projeto de P&D';
+    var doc = document.getElementById('documento_fiscal').value.trim() || 'Recibo Interno';
+    var hoje = new Date().toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
 
     var janela = window.open('', '_blank');
     janela.document.write(`
         <html>
-        <head><title>Recibo de Pagamento (RPA)</title>
+        <head><title>Recibo de Pagamento (RPA) — Sacramento ERP</title>
         <style>
-            body { font-family: Arial, sans-serif; padding: 40px; color: #111; }
-            .recibo { border: 2px solid #333; padding: 30px; border-radius: 8px; max-width: 700px; margin: auto; }
-            h2 { text-align: center; text-transform: uppercase; margin-bottom: 20px; }
-            .valor { font-size: 22px; font-weight: bold; background: #eee; padding: 10px; display: inline-block; margin: 15px 0; }
-            .assinatura { margin-top: 60px; text-align: center; }
-            .linha { border-top: 1px solid #333; width: 300px; margin: 0 auto 10px auto; }
+            body { font-family: 'Inter', Arial, sans-serif; padding: 40px; color: #0f172a; background: #fff; }
+            .recibo-container { border: 2px solid #1e3a8a; padding: 40px; border-radius: 12px; max-width: 800px; margin: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 25px; }
+            .header h1 { font-size: 18px; color: #1e3a8a; text-transform: uppercase; letter-spacing: 1px; }
+            .header span { font-size: 12px; color: #64748b; font-weight: bold; }
+            .valor-box { background: #f8fafc; border: 1.5px solid #cbd5e1; padding: 16px 20px; border-radius: 8px; font-size: 20px; font-weight: bold; color: #1e3a8a; margin: 20px 0; display: inline-block; }
+            .corpo { font-size: 14px; line-height: 1.6; color: #334155; margin-bottom: 30px; }
+            .detalhes { background: #f1f5f9; padding: 16px; border-radius: 8px; font-size: 13px; margin-bottom: 30px; }
+            .detalhes table { width: 100%; border-collapse: collapse; }
+            .detalhes td { padding: 6px 0; }
+            .assinatura { margin-top: 50px; text-align: center; }
+            .linha { border-top: 1.5px solid #1e3a8a; width: 350px; margin: 0 auto 10px auto; }
+            @media print { body { padding: 0; } .recibo-container { border: 1px solid #333; box-shadow: none; } }
         </style>
         </head>
         <body>
-            <div class="recibo">
-                <h2>Recibo de Pagamento (RPA / Autônomo)</h2>
-                <p><b>Valor:</b> <span class="valor">R$ ${valor}</span></p>
-                <p>Recebemos de <b>Sacramento ERP / Empresa Executora</b> a importância supra de <b>R$ ${valor}</b>, referente a:</p>
-                <p><b>Histórico:</b> ${desc}</p>
-                <br>
-                <p><b>Prestador:</b> ${nome}</p>
-                <p><b>CPF:</b> ${cpf}</p>
+            <div class="recibo-container">
+                <div class="header">
+                    <h1>Recibo de Pagamento de Autônomo (RPA)</h1>
+                    <span>Ref. Documento: ${doc}</span>
+                </div>
+                <div class="corpo">
+                    <p>Recebemos da empresa executora do projeto de Pesquisa e Desenvolvimento (P&D) a importância líquida abaixo especificada, dada a prestação de serviços técnicos:</p>
+                    <div class="valor-box">VALOR TOTAL: R$ ${valor}</div>
+                    <p><b>Histórico / Descrição dos Serviços:</b><br>${desc}</p>
+                </div>
+                <div class="detalhes">
+                    <table>
+                        <tr><td><b>Prestador / Favorecido:</b> ${nome}</td><td><b>CPF:</b> ${cpf}</td></tr>
+                        <tr><td colspan="2"><b>Local e Data:</b> Belo Horizonte, ${hoje}</td></tr>
+                    </table>
+                </div>
                 <div class="assinatura">
                     <div class="linha"></div>
-                    <p>${nome}<br>CPF: ${cpf}</p>
+                    <p><b>${nome}</b><br>CPF: ${cpf}</p>
                 </div>
             </div>
             <script>window.print();<\/script>
@@ -335,7 +360,7 @@ async function carregarCustos(){
         for(var i=0; i<projetosCache.length; i++){ if(projetosCache[i].id == c.projeto_id) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var catInfo = CATEGORIAS[c.categoria] || CATEGORIAS.outros;
-        var comprovanteHTML = c.comprovante ? '<a href="#" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>' : '<span style="color:var(--text-light)">—</span>';
+        var comprovanteHTML = c.comprovante ? `<a href="#" onclick="verComprovante('${c.comprovante}'); return false;" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>` : '<span style="color:var(--text-light)">—</span>';
 
         html+='<tr>'+
             '<td>'+formatDataBR(c.data_gasto)+'</td>'+
