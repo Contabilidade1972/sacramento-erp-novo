@@ -150,6 +150,24 @@ function sbFiltro(tabela){
     return q;
 }
 
+function traduzirErro(mensagemOriginal) {
+    if(!mensagemOriginal) return "Ocorreu um erro desconhecido ao processar a solicitação.";
+    let msg = mensagemOriginal.toLowerCase();
+    if(msg.includes("could not find the") && msg.includes("column")) {
+        return "Erro de estrutura no banco de dados: coluna não encontrada. Verifique os campos cadastrados.";
+    }
+    if(msg.includes("violates foreign key constraint")) {
+        return "Erro de integridade: o registro está vinculado a outros dados dependentes.";
+    }
+    if(msg.includes("duplicate key value") || msg.includes("already exists")) {
+        return "Erro: já existe um registro cadastrado com estes mesmos dados.";
+    }
+    if(msg.includes("null value in column") || msg.includes("violates not-null constraint")) {
+        return "Erro: preencha todos os campos obrigatórios solicitados.";
+    }
+    return "Erro ao salvar: " + mensagemOriginal;
+}
+
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){
@@ -160,7 +178,7 @@ function toast(msg,type='success'){
     x.className='toast '+type;
     x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
     c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+    setTimeout(function(){x.remove();},4000);
 }
 
 function formatData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
@@ -181,7 +199,7 @@ async function carregarProjetos(){
     try {
         let q = sbFiltro('projetos_pd');
         const { data, error } = await q.order('id', { ascending: false });
-        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
+        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+traduzirErro(error.message)+'</div>'; return; }
         projetosCache = data || [];
         
         if(!document.getElementById('edit_id').value){
@@ -192,12 +210,13 @@ async function carregarProjetos(){
         
         let html = '<table class="analitica-table"><thead><tr><th>Código</th><th>Nome do Projeto</th><th>Status</th><th>Início</th><th>Término</th><th>Descrição</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
         projetosCache.forEach(p => {
+            const dataTermino = p.termino || p.data_termino || '-';
             html += `<tr>
                 <td><strong>${p.codigo || '-'}</strong></td>
                 <td><strong>${p.nome || '-'}</strong></td>
                 <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${p.status || 'Ativo'}</span></td>
                 <td>${formatData(p.data_inicio)}</td>
-                <td>${formatData(p.termino)}</td>
+                <td>${formatData(dataTermino)}</td>
                 <td>${p.descricao || '-'}</td>
                 <td style="text-align:right; white-space:nowrap;">
                     <button class="btn-secondary" onclick="editarProjeto(${p.id})" title="Editar"><i class="fas fa-pen"></i></button>
@@ -230,6 +249,7 @@ async function salvarProjeto(){
         status: status,
         data_inicio: inicio || null,
         termino: termino || null,
+        data_termino: termino || null,
         descricao: desc || null
     };
 
@@ -240,7 +260,10 @@ async function salvarProjeto(){
         res = await sb.from('projetos_pd').insert([payload]);
     }
 
-    if(res.error) { toast("Erro ao salvar projeto: " + res.error.message, "error"); return; }
+    if(res.error) {
+        toast(traduzirErro(res.error.message), "error");
+        return;
+    }
     toast("Projeto salvo com sucesso!");
     cancelarEdicao();
     carregarProjetos();
@@ -254,7 +277,7 @@ function editarProjeto(id){
     document.getElementById('projNome').value = p.nome || '';
     document.getElementById('projStatus').value = p.status || 'Ativo';
     document.getElementById('projInicio').value = p.data_inicio || '';
-    document.getElementById('projFim').value = p.termino || '';
+    document.getElementById('projFim').value = p.termino || p.data_termino || '';
     document.getElementById('projDesc').value = p.descricao || '';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -274,7 +297,7 @@ function cancelarEdicao(){
 async function excluirProjeto(id){
     if(!confirm("Deseja realmente excluir este projeto de P&D?")) return;
     const { error } = await sb.from('projetos_pd').delete().eq('id', id);
-    if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
+    if(error) { toast(traduzirErro(error.message), "error"); return; }
     toast("Projeto excluído com sucesso!");
     carregarProjetos();
 }
