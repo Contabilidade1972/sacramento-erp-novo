@@ -31,11 +31,14 @@
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
         
-        .grid-relatorios { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .card-relatorio { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: 0.2s; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .card-relatorio:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(37,99,235,0.08); }
-        .card-relatorio h3 { font-size: 16px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
-        .card-relatorio p { font-size: 13px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -45,8 +48,9 @@
 
         @media print {
             body { background: #fff !important; }
-            .page-toolbar, footer, button, .toast-container { display: none !important; }
+            .page-toolbar, footer, button, .toast-container, .panel-filtros { display: none !important; }
             .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            @page { size: landscape; }
         }
     </style>
 </head>
@@ -57,58 +61,60 @@
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-chart-bar" style="color:var(--primary);"></i> Relatórios Gerais & Inteligência de Negócios</div>
-            <div class="page-subtitle">Central de extração e análise de relatórios gerenciais consolidados da empresa</div>
+            <div class="page-subtitle">Configure os filtros analíticos, visualize os dados consolidados e imprima ou exporte</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-folder-open"></i> Relatórios Disponíveis para Emissão</span></div>
+    <!-- PAINEL DE FILTROS PARA CONFECÇÃO DO RELATÓRIO -->
+    <div class="panel panel-filtros" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-filter"></i> Filtros de Emissão do Relatório</span></div>
         
-        <div class="grid-relatorios">
-            <!-- Relatório 1 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-file-invoice-dollar" style="color:var(--danger);"></i> Relatório de Contas a Pagar</h3>
-                <p>Extrato analítico e sintético de despesas por fornecedor, centro de custo e status de pagamento no período.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('Pagar')"><i class="fas fa-download"></i> Gerar Relatório</button>
+        <div class="form-row">
+            <div>
+                <label>Tipo de Relatório</label>
+                <select id="filtroTipo" class="form-control" style="background:#fff; font-weight:700;">
+                    <option value="pagar">Contas a Pagar</option>
+                    <option value="receber">Contas a Receber</option>
+                    <option value="socios">Quadro Societário</option>
+                    <option value="produtos">Produtos & Serviços</option>
+                    <option value="estoque">Inventário & Estoque</option>
+                </select>
             </div>
+            <div>
+                <label>Data Inicial</label>
+                <input type="date" id="filtroDataInicio" class="form-control" style="background:#fff;">
+            </div>
+            <div>
+                <label>Data Final</label>
+                <input type="date" id="filtroDataFim" class="form-control" style="background:#fff;">
+            </div>
+            <div>
+                <label>Status / Filtro Adicional</label>
+                <select id="filtroStatus" class="form-control" style="background:#fff;">
+                    <option value="TODOS">Todos os Registros</option>
+                    <option value="PENDENTE">Pendentes / Em Aberto</option>
+                    <option value="PAGO">Pagos / Recebidos / Ativos</option>
+                </select>
+            </div>
+        </div>
 
-            <!-- Relatório 2 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-hand-holding-usd" style="color:var(--success);"></i> Relatório de Contas a Receber</h3>
-                <p>Demonstrativo de receitas previstas e realizadas, faturas de clientes e inadimplência acumulada.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('Receber')"><i class="fas fa-download"></i> Gerar Relatório</button>
-            </div>
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn-acao" onclick="carregarRelatorioAnalitico()"><i class="fas fa-search"></i> Gerar e Exibir Relatório</button>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>
+        </div>
+    </div>
 
-            <!-- Relatório 3 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-chart-line" style="color:var(--primary);"></i> Fluxo de Caixa Consolidado</h3>
-                <p>Projeção detalhada de entradas, saídas diárias e saldo acumulado por banco ou caixa geral.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('Caixa')"><i class="fas fa-download"></i> Gerar Relatório</button>
-            </div>
-
-            <!-- Relatório 4 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-balance-scale" style="color:var(--warning);"></i> DRE Gerencial por Período</h3>
-                <p>Demonstração do Resultado do Exercício detalhando a margem de contribuição e o lucro líquido.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('DRE')"><i class="fas fa-download"></i> Gerar Relatório</button>
-            </div>
-
-            <!-- Relatório 5 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-boxes" style="color:#8b5cf6;"></i> Relatório de Inventário & Estoque</h3>
-                <p>Posição atual de estoque, valoração de insumos e histórico de movimentações físicas.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('Estoque')"><i class="fas fa-download"></i> Gerar Relatório</button>
-            </div>
-
-            <!-- Relatório 6 -->
-            <div class="card-relatorio">
-                <h3><i class="fas fa-users" style="color:#065f46;"></i> Relatório do Quadro Societário</h3>
-                <p>Demonstrativo completo de sócios, participações acionárias e cargos administrativos cadastrados.</p>
-                <button class="btn-acao" onclick="gerarRelatorio('Socios')"><i class="fas fa-download"></i> Gerar Relatório</button>
-            </div>
+    <!-- PAINEL DE RESULTADOS E DADOS ANALÍTICOS -->
+    <div class="panel">
+        <div class="panel-header">
+            <span id="tituloRelatorioExibido"><i class="fas fa-table"></i> Relatório Analítico Consolidado</span>
+            <span id="contadorRegistros" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 registros encontrados</span>
+        </div>
+        <div id="containerTabelaRelatorio" style="overflow-x:auto;">
+            <div style="text-align:center; padding:30px; color:var(--text-light);">Utilize os filtros acima e clique em "Gerar e Exibir Relatório" para visualizar os dados.</div>
         </div>
     </div>
 </div>
@@ -118,6 +124,9 @@
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
@@ -125,12 +134,81 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-function gerarRelatorio(tipo){
-    toast(`A processar a extração do relatório de ${tipo}...`, "info");
-    setTimeout(() => {
-        toast(`Relatório de ${tipo} gerado com sucesso! Pronto para impressão.`);
-        window.print();
-    }, 1200);
+async function carregarRelatorioAnalitico(){
+    var cid = clienteIdAtual();
+    var tipo = document.getElementById('filtroTipo').value;
+    var dataInicio = document.getElementById('filtroDataInicio').value;
+    var dataFim = document.getElementById('filtroDataFim').value;
+    var status = document.getElementById('filtroStatus').value;
+    var container = document.getElementById('containerTabelaRelatorio');
+    var tituloEl = document.getElementById('tituloRelatorioExibido');
+    var contadorEl = document.getElementById('contadorRegistros');
+
+    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">A carregar dados do relatório...</div>';
+
+    let tabelaSupabase = '';
+    let nomeRelatorio = '';
+
+    if(tipo === 'pagar') { tabelaSupabase = 'contas_pagar'; nomeRelatorio = 'Relatório de Contas a Pagar'; }
+    else if(tipo === 'receber') { tabelaSupabase = 'contas_receber'; nomeRelatorio = 'Relatório de Contas a Receber'; }
+    else if(tipo === 'socios') { tabelaSupabase = 'socios'; nomeRelatorio = 'Relatório do Quadro Societário'; }
+    else if(tipo === 'produtos') { tabelaSupabase = 'produtos'; nomeRelatorio = 'Relatório de Produtos & Serviços'; }
+    else if(tipo === 'estoque') { tabelaSupabase = 'estoque'; nomeRelatorio = 'Relatório de Inventário & Estoque'; }
+
+    tituloEl.innerHTML = `<i class="fas fa-table"></i> ${nomeRelatorio}`;
+
+    try {
+        let query = sb.from(tabelaSupabase).select('*').eq('cliente_id', cid);
+        
+        let { data, error } = await query;
+        if(error) throw error;
+
+        let registros = data || [];
+
+        // Aplicar filtros client-side se necessário
+        if(status !== 'TODOS' && registros.length > 0){
+            registros = registros.filter(r => {
+                let st = (r.status || r.situacao || '').toUpperCase();
+                return st.includes(status);
+            });
+        }
+
+        contadorEl.innerHTML = `${registros.length} registros encontrados`;
+
+        if(registros.length === 0){
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">Nenhum registo encontrado para os filtros selecionados.</div>';
+            return;
+        }
+
+        let html = '<table class="analitica-table"><thead><tr>';
+        
+        // Obter colunas dinâmicas baseadas no tipo
+        let chaves = Object.keys(registros[0]).filter(k => k !== 'cliente_id' && k !== 'id');
+        chaves.forEach(c => {
+            html += `<th>${c.replace(/_/g, ' ').toUpperCase()}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+
+        registros.forEach(row => {
+            html += '<tr>';
+            chaves.forEach(c => {
+                let val = row[c] !== null && row[c] !== undefined ? row[c] : '—';
+                if(typeof val === 'number' && (c.includes('valor') || c.includes('preco') || c.includes('custo'))) {
+                    val = 'R$ ' + Number(val).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+                }
+                html += `<td>${val}</td>`;
+            });
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        toast("Relatório gerado com sucesso!");
+
+    } catch(err) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">Erro ao gerar relatório: ${err.message}</div>`;
+        toast("Erro ao gerar relatório.", "error");
+    }
 }
 </script>
 </body>
