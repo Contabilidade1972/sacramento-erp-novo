@@ -222,7 +222,7 @@ async function carregarExtrato(){
     var cid=clienteIdAtual();
     var contaIdSel = document.getElementById('filtroConta').value;
     let contaObj = contasCache.find(c => String(c.id) === String(contaIdSel));
-    var nomeContaStr = contaObj ? (contaObj.nome || contaObj.banco) : '';
+    var nomeContaStr = contaObj ? (contaObj.nome || contaObj.banco || '').toLowerCase() : '';
 
     var el = document.getElementById('listaExtrato');
     if(!cid) return;
@@ -251,8 +251,10 @@ async function carregarExtrato(){
 
     if(!resTransf.error && resTransf.data){
         resTransf.data.forEach(t => {
-            if(!contaIdSel || t.conta_origem === nomeContaStr || t.conta_destino === nomeContaStr){
-                let tipoMov = t.conta_destino === nomeContaStr ? 'entrada' : 'saida';
+            let origemInf = (t.conta_origem || '').toLowerCase();
+            let destinoInf = (t.conta_destino || '').toLowerCase();
+            if(!contaIdSel || origemInf.includes(nomeContaStr) || destinoInf.includes(nomeContaStr)){
+                let tipoMov = destinoInf.includes(nomeContaStr) ? 'entrada' : 'saida';
                 movimentos.push({
                     data: t.data,
                     origem: t.conta_origem || 'Caixa Interno',
@@ -267,8 +269,9 @@ async function carregarExtrato(){
 
     if(!resReceber.error && resReceber.data){
         resReceber.data.forEach(r => {
-            if(r.status === 'recebido' || r.status === 'Pago' || r.status === 'recebida'){
-                if(!contaIdSel || r.conta_bancaria === nomeContaStr){
+            if(r.status === 'recebido' || r.status === 'Pago' || r.status === 'recebida' || r.status === 'pendente'){
+                let cBanc = (r.conta_bancaria || '').toLowerCase();
+                if(!contaIdSel || cBanc.includes(nomeContaStr) || !r.conta_bancaria){
                     movimentos.push({
                         data: r.vencimento || r.data_recebimento,
                         origem: r.conta_bancaria || 'Conta Principal',
@@ -284,8 +287,9 @@ async function carregarExtrato(){
 
     if(!resPagar.error && resPagar.data){
         resPagar.data.forEach(p => {
-            if(p.status === 'pago' || p.status === 'Pago'){
-                if(!contaIdSel || p.conta_bancaria === nomeContaStr){
+            if(p.status === 'pago' || p.status === 'Pago' || p.status === 'pendente'){
+                let cBanc = (p.conta_bancaria || '').toLowerCase();
+                if(!contaIdSel || cBanc.includes(nomeContaStr) || !p.conta_bancaria){
                     movimentos.push({
                         data: p.vencimento || p.data_pagamento,
                         origem: p.conta_bancaria || 'Conta Principal',
