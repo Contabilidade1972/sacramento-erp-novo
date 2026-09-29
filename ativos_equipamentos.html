@@ -219,7 +219,7 @@ async function carregarAtivos(){
     var el=document.getElementById('listaAtivos');
     var cid=clienteIdAtual();
     if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
-    var r=await sbFiltro('ativos_pd');
+    var r=await sbFiltro('ativos_equipamentos');
     if(r.error){el.innerHTML='<div class="empty-state">Tabela em configuração ou vazia.</div>';return;}
     ativosCache=r.data||[];
     if(!ativosCache.length){el.innerHTML='<div class="empty-state">Nenhum ativo ou equipamento registrado.</div>';return;}
@@ -311,14 +311,14 @@ async function salvarAtivo(){
 
     var editId=document.getElementById('edit_id').value;
     if(editId){
-        var ru=await sb.from('ativos_pd').update(dados).eq('id', editId);
+        var ru=await sb.from('ativos_equipamentos').update(dados).eq('id', editId);
         if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
         toast('Ativo atualizado com sucesso!');
         cancelarEdicao();
     }else{
-        var ri=await sb.from('ativos_pd').insert([dados]);
+        var ri=await sb.from('ativos_equipamentos').insert([dados]);
         if(ri.error){
-            toast('Erro ao salvar (verifique se a tabela ativos_pd existe no Supabase).', 'error');
+            toast('Erro ao salvar: ' + ri.error.message, 'error');
             return;
         }
         toast('Ativo cadastrado com sucesso!');
@@ -329,7 +329,7 @@ async function salvarAtivo(){
 
 async function excluirAtivo(id){
     if(!confirm('Tem certeza que deseja excluir este registro de ativo?'))return;
-    var r=await sb.from('ativos_pd').delete().eq('id', id);
+    var r=await sb.from('ativos_equipamentos').delete().eq('id', id);
     if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
     toast('Ativo excluído com sucesso!');
     carregarAtivos();
