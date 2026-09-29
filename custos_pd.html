@@ -111,6 +111,10 @@
 
         <div class="form-row">
             <div>
+                <label>Empresa Executora / Pagadora *</label>
+                <input id="empresa_pagadora" class="form-control" value="Sacramento ERP / NanoSignals Ltda">
+            </div>
+            <div>
                 <label>Categoria do Gasto *</label>
                 <select id="categoria" class="form-control">
                     <option value="pessoal">Pessoal / Pesquisadores (RH)</option>
@@ -120,31 +124,38 @@
                     <option value="outros" selected>Outros Custos Operacionais</option>
                 </select>
             </div>
+        </div>
+
+        <div class="form-row">
             <div>
                 <label>Valor do Gasto (R$) *</label>
                 <input id="valor" class="form-control" placeholder="Ex.: 12.500,00" onblur="formatarCampoMoeda(this)">
             </div>
-        </div>
-
-        <div class="form-row">
             <div>
                 <label>Data do Gasto *</label>
                 <input id="data_gasto" class="form-control" type="date">
             </div>
+        </div>
+
+        <div class="form-row">
             <div>
-                <label>Documento Fiscal (NF-e / Recibo) *</label>
-                <input id="documento_fiscal" class="form-control" placeholder="Ex.: NF-e 1234 ou Recibo 587">
+                <label>Documento Fiscal / Recibo Nº *</label>
+                <input id="documento_fiscal" class="form-control" placeholder="Automático em sequência ou NF-e 1234">
+            </div>
+            <div>
+                <label>Nome Completo do Prestador *</label>
+                <input id="prestador_nome" class="form-control" placeholder="Nome completo para o recibo/RPA">
             </div>
         </div>
 
         <div class="form-row">
             <div>
-                <label>Nome do Prestador (para o recibo)</label>
-                <input id="prestador_nome" class="form-control" placeholder="Nome completo de quem vai assinar o recibo">
+                <label>CPF / CNPJ do Prestador *</label>
+                <input id="prestador_cpf" class="form-control" placeholder="000.000.000-00">
             </div>
             <div>
-                <label>CPF do Prestador (para o recibo)</label>
-                <input id="prestador_cpf" class="form-control" placeholder="000.000.000-00">
+                <label>Endereço Completo do Prestador</label>
+                <input id="prestador_endereco" class="form-control" placeholder="Rua, Número, Bairro, Cidade - UF">
             </div>
         </div>
 
@@ -163,7 +174,7 @@
         </div>
 
         <div class="rpa-alert">
-            <span><i class="fas fa-exclamation-triangle"></i> Sem nota fiscal? Gerar modelo de recibo profissional para o prestador assinar</span>
+            <span><i class="fas fa-exclamation-triangle"></i> Sem nota fiscal? Gerar recibo RPA profissional completo com dados do prestador</span>
             <button class="btn-secondary" onclick="gerarReciboRPA()" style="background:#fff; border-color:#f59e0b; color:#92400e;"><i class="fas fa-file-invoice"></i> Gerar Recibo (RPA)</button>
         </div>
 
@@ -243,6 +254,17 @@ function formatarCampoMoeda(el){
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
 
+function gerarProximoNumeroDocumento(){
+    var maxNum = 500;
+    custosCache.forEach(function(c){
+        if(c.documento_fiscal && c.documento_fiscal.startsWith('RPA-')) {
+            var n = parseInt(c.documento_fiscal.replace('RPA-', ''), 10);
+            if(!isNaN(n) && n > maxNum) maxNum = n;
+        }
+    });
+    return 'RPA-' + String(maxNum + 1).padStart(3, '0');
+}
+
 async function carregarProjetosSelect(){
     var r = await sbFiltro('projetos_pd');
     if(!r.error) {
@@ -295,39 +317,30 @@ function verComprovante(urlOuNome){
     if(urlOuNome.startsWith('blob:') || urlOuNome.startsWith('http')) {
         window.open(urlOuNome, '_blank');
     } else {
-        // Se o utilizador anexar um ficheiro localmente na sessão atual, permite simular ou abrir seletor
         var janela = window.open('', '_blank');
         janela.document.write(`
-            <html>
-            <head><title>Visualizar Comprovante — Sacramento ERP</title>
-            <style>
-                body { font-family: 'Inter', Arial, sans-serif; padding: 40px; color: #0f172a; background: #f8fafc; text-align: center; }
-                .box { background: #fff; border: 1px solid #e2e8f0; padding: 40px; border-radius: 12px; max-width: 600px; margin: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
-                h2 { color: #1e3a8a; margin-bottom: 15px; font-size: 20px; }
-                p { color: #64748b; margin-bottom: 25px; font-size: 14px; }
-                .btn { background: #2563eb; color: #fff; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block; cursor: pointer; border: none; }
-            </style>
-            </head>
-            <body>
-                <div class="box">
-                    <h2><i class="fas fa-paperclip"></i> Comprovante do Gasto</h2>
-                    <p><b>Ficheiro Registado:</b> ${urlOuNome}</p>
-                    <p style="font-size:12px; color:#94a3b8;">Dica: Para visualizar um ficheiro do seu computador, selecione-o novamente no campo de anexo ao editar o registro.</p>
-                    <button class="btn" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>
-                </div>
-            </body>
-            </html>
+            <html><head><title>Comprovante: ${urlOuNome}</title></head>
+            <body style="font-family:Arial; padding:40px; text-align:center;">
+                <h3>Comprovante Anexado</h3>
+                <p><b>Ficheiro:</b> ${urlOuNome}</p>
+                <p style="color:#666;">Documento registado com sucesso no ERP.</p>
+            </body></html>
         `);
         janela.document.close();
     }
 }
 
 function gerarReciboRPA(){
+    var empresa = document.getElementById('empresa_pagadora').value.trim() || 'Sacramento ERP / Empresa Executora';
     var nome = document.getElementById('prestador_nome').value.trim() || 'Nome do Prestador / Autônomo';
     var cpf = document.getElementById('prestador_cpf').value.trim() || '000.000.000-00';
+    var endereco = document.getElementById('prestador_endereco').value.trim() || 'Endereço não informado';
     var valor = document.getElementById('valor').value.trim() || '0,00';
     var desc = document.getElementById('descricao').value.trim() || 'Serviços técnicos especializados prestados ao projeto de P&D';
-    var doc = document.getElementById('documento_fiscal').value.trim() || 'Recibo Interno';
+    var doc = document.getElementById('documento_fiscal').value.trim() || gerarProximoNumeroDocumento();
+    if(!document.getElementById('documento_fiscal').value.trim()) {
+        document.getElementById('documento_fiscal').value = doc;
+    }
     var hoje = new Date().toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
 
     var janela = window.open('', '_blank');
@@ -357,19 +370,20 @@ function gerarReciboRPA(){
                     <span>Ref. Documento: ${doc}</span>
                 </div>
                 <div class="corpo">
-                    <p>Recebemos da empresa executora do projeto de Pesquisa e Desenvolvimento (P&D) a importância líquida abaixo especificada, dada a prestação de serviços técnicos:</p>
+                    <p>Recebemos da empresa executora <b>${empresa}</b>, vinculada ao projeto de Pesquisa e Desenvolvimento (P&D), a importância líquida abaixo especificada, dada a prestação de serviços técnicos:</p>
                     <div class="valor-box">VALOR TOTAL: R$ ${valor}</div>
                     <p><b>Histórico / Descrição dos Serviços:</b><br>${desc}</p>
                 </div>
                 <div class="detalhes">
                     <table>
-                        <tr><td><b>Prestador / Favorecido:</b> ${nome}</td><td><b>CPF:</b> ${cpf}</td></tr>
+                        <tr><td><b>Prestador / Favorecido:</b> ${nome}</td><td><b>CPF / CNPJ:</b> ${cpf}</td></tr>
+                        <tr><td colspan="2"><b>Endereço:</b> ${endereco}</td></tr>
                         <tr><td colspan="2"><b>Local e Data:</b> Belo Horizonte, ${hoje}</td></tr>
                     </table>
                 </div>
                 <div class="assinatura">
                     <div class="linha"></div>
-                    <p><b>${nome}</b><br>CPF: ${cpf}</p>
+                    <p><b>${nome}</b><br>CPF/CNPJ: ${cpf}</p>
                 </div>
             </div>
             <script>window.print();<\/script>
@@ -394,7 +408,7 @@ async function carregarCustos(){
         for(var i=0; i<projetosCache.length; i++){ if(projetosCache[i].id == c.projeto_id) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var catInfo = CATEGORIAS[c.categoria] || CATEGORIAS.outros;
-        var comprovanteHTML = c.comprovante ? `<a href="#" onclick="verComprovante('${c.comprovante}'); return false;" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>` : '<span style="color:var(--text-light)">—</span>';
+        var comprovanteHTML = c.comprovante ? `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>` : '<span style="color:var(--text-light)">—</span>';
 
         html+='<tr>'+
             '<td>'+formatDataBR(c.data_gasto)+'</td>'+
@@ -428,6 +442,7 @@ function editarCusto(id){
     document.getElementById('documento_fiscal').value=c.documento_fiscal||'';
     document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_cpf').value=c.prestador_cpf||'';
+    document.getElementById('prestador_endereco').value=c.prestador_endereco||'';
     document.getElementById('descricao').value=c.descricao||'';
     arquivoAnexadoUrl = c.comprovante || null;
 
@@ -447,6 +462,7 @@ function cancelarEdicao(){
     document.getElementById('documento_fiscal').value='';
     document.getElementById('prestador_nome').value='';
     document.getElementById('prestador_cpf').value='';
+    document.getElementById('prestador_endereco').value='';
     document.getElementById('descricao').value='';
     document.getElementById('inputArquivo').value='';
     document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
@@ -477,7 +493,7 @@ async function salvarCusto(){
     if(!data){toast('Informe a data do gasto.','error');return;}
 
     var doc=document.getElementById('documento_fiscal').value.trim();
-    if(!doc){toast('Informe o documento fiscal (NF-e ou Recibo).','error');return;}
+    if(!doc){doc = gerarProximoNumeroDocumento();}
 
     var dados={
         cliente_id:cid,
@@ -490,6 +506,7 @@ async function salvarCusto(){
         documento_fiscal:doc,
         prestador_nome:document.getElementById('prestador_nome').value.trim()||null,
         prestador_cpf:document.getElementById('prestador_cpf').value.trim()||null,
+        prestador_endereco:document.getElementById('prestador_endereco').value.trim()||null,
         comprovante: arquivoAnexadoUrl || null
     };
 
