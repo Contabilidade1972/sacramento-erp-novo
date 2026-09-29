@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dados da Empresa & Logotipo — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-building" style="color:var(--primary);"></i> Dados da Empresa & Logotipo</div>
+            <div class="page-subtitle">Configure as informações corporativas, fiscais e identidade visual exibidas no sistema</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-sliders-h"></i> Informações Cadastrais</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Razão Social *</label>
+                <input type="text" id="razao_social" class="form-control" placeholder="Razão social completa">
+            </div>
+            <div>
+                <label>Nome Fantasia</label>
+                <input type="text" id="nome_fantasia" class="form-control" placeholder="Nome comercial">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>CNPJ / CPF *</label>
+                <input type="text" id="cnpj_cpf" class="form-control" placeholder="00.000.000/0001-00">
+            </div>
+            <div>
+                <label>E-mail Corporativo</label>
+                <input type="email" id="email" class="form-control" placeholder="contato@empresa.com.br">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Telefone / WhatsApp</label>
+                <input type="text" id="telefone" class="form-control" placeholder="(31) 00000-0000">
+            </div>
+            <div>
+                <label>URL do Logotipo (Imagem)</label>
+                <input type="text" id="logo_url" class="form-control" placeholder="https://exemplo.com/logo.png">
+            </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <button class="btn-acao" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarDadosEmpresa(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    if(data){
+        document.getElementById('razao_social').value = data.razao_social || '';
+        document.getElementById('nome_fantasia').value = data.nome_fantasia || '';
+        document.getElementById('cnpj_cpf').value = data.cnpj_cpf || '';
+        document.getElementById('email').value = data.email || '';
+        document.getElementById('telefone').value = data.telefone || '';
+        document.getElementById('logo_url').value = data.logo_url || '';
+    }
+}
+
+async function salvarDadosEmpresa(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+
+    var payload = {
+        razao_social: document.getElementById('razao_social').value.trim(),
+        nome_fantasia: document.getElementById('nome_fantasia').value.trim(),
+        cnpj_cpf: document.getElementById('cnpj_cpf').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        telefone: document.getElementById('telefone').value.trim(),
+        logo_url: document.getElementById('logo_url').value.trim()
+    };
+
+    if(!payload.razao_social || !payload.cnpj_cpf){
+        toast("Preencha a Razão Social e o CNPJ/CPF!", "error");
+        return;
+    }
+
+    var { error } = await sb.from('clientes_contratantes').update(payload).eq('id', cid);
+    if(error){
+        toast("Erro ao atualizar dados: " + error.message, "error");
+        return;
+    }
+
+    toast("Dados da empresa atualizados com sucesso!");
+    setTimeout(() => { location.reload(); }, 1000);
+}
+
+window.onload = function(){
+    carregarDadosEmpresa();
+};
+</script>
+</body>
+</html>
