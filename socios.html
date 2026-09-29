@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Sócios — Sacramento ERP</title>
+    <title>Cadastro de Sócios & Acionistas — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,6 +21,10 @@
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -31,13 +35,14 @@
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
 
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         
         .badge-ativo { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+        .badge-inativo { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -52,17 +57,27 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-users" style="color:var(--primary);"></i> Cadastro de Sócios & Acionistas</div>
-            <div class="page-subtitle">Gerencie o quadro societário, participações e funções administrativas da empresa</div>
+            <div class="page-title"><i class="fas fa-users" style="color:var(--primary);"></i> Gestão de Sócios & Acionistas</div>
+            <div class="page-subtitle">Gerencie o quadro societário, participações, histórico e funções administrativas da empresa</div>
         </div>
         <div>
-            <button class="btn-acao" onclick="location.href='index.html'" style="background:#64748b;"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- FORMULÁRIO DE CADASTRO -->
+    <!-- PAINEL DE CADASTRO -->
     <div class="panel">
-        <div class="panel-header"><span id="formTitle"><i class="fas fa-user-plus"></i> Novo Sócio / Acionista</span></div>
+        <div class="panel-header"><span id="formTitle"><i class="fas fa-user-plus"></i> Cadastro de Sócios</span></div>
+        
+        <!-- BUSCA AUTOMÁTICA -->
+        <div style="margin-bottom: 16px; background:var(--bg); padding:12px; border-radius:10px; border:1px solid var(--border);">
+            <label>Sócio (Busca Automática)</label>
+            <select id="selectBuscaSocio" class="form-control" onchange="selecionarSocioEdicao(this.value)">
+                <option value="">Selecione o sócio para editar...</option>
+            </select>
+            <small style="font-size:11px; color:var(--text-light); margin-top:4px; display:block;">Para retirar um sócio, marque como <strong>Inativo</strong> — o histórico é preservado. O botão <strong>Dividir Igualmente</strong> calcula 100% dividido pelo número de sócios ativos.</small>
+        </div>
+
         <input type="hidden" id="edit_id">
         <div class="form-row">
             <div>
@@ -74,23 +89,47 @@
                 <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00">
             </div>
             <div>
-                <label>Cargo / Função</label>
-                <input type="text" id="funcao" class="form-control" placeholder="Ex: Diretor Presidente, Sócio Administrador">
+                <label>Função</label>
+                <input type="text" id="funcao" class="form-control" placeholder="Ex: Financeiro, Sócio Administrador">
             </div>
             <div>
-                <label>Participação Societária (%)</label>
-                <input type="number" step="0.01" id="participacao" class="form-control" placeholder="Ex: 50.00">
+                <label>% Ratio (Participação)</label>
+                <input type="number" step="0.01" id="participacao" class="form-control" placeholder="Ex: 25">
             </div>
         </div>
-        <div style="display:flex; gap:10px;">
+        
+        <div class="form-row">
+            <div>
+                <label>Situação</label>
+                <select id="situacao" class="form-control">
+                    <option value="ATIVO">ATIVO</option>
+                    <option value="INATIVO">INATIVO</option>
+                </select>
+            </div>
+            <div>
+                <label>Data de Entrada</label>
+                <input type="date" id="data_entrada" class="form-control">
+            </div>
+            <div>
+                <label>Data de Saída</label>
+                <input type="date" id="data_saida" class="form-control">
+            </div>
+            <div>
+                <label>Observações</label>
+                <input type="text" id="observacoes" class="form-control" placeholder="Anotações livres">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
             <button class="btn-acao" onclick="salvarSocio()"><i class="fas fa-save"></i> Salvar Sócio</button>
-            <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;"><i class="fas fa-times"></i> Cancelar</button>
+            <button class="btn-acao sucesso" onclick="dividirIgualmente()"><i class="fas fa-percentage"></i> Dividir Igualmente</button>
+            <button class="btn-acao cinza" onclick="cancelarEdicao()"><i class="fas fa-eraser"></i> Limpar</button>
         </div>
     </div>
 
     <!-- LISTAGEM -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-list"></i> Quadro Societário Cadastrado</span></div>
+        <div class="panel-header"><span id="lblResumoSocios">Sócios Cadastrados</span></div>
         <div id="listaSocios" style="overflow-x:auto;">A carregar sócios...</div>
     </div>
 </div>
@@ -114,6 +153,7 @@ function toast(msg,type='success'){
 async function carregarSocios(){
     var cid = clienteIdAtual();
     var el = document.getElementById('listaSocios');
+    var selectBusca = document.getElementById('selectBuscaSocio');
     if(!cid) return;
 
     var { data, error } = await sb.from('socios').select('*').eq('cliente_id', cid).order('nome');
@@ -123,30 +163,64 @@ async function carregarSocios(){
     }
 
     sociosCache = data || [];
+    
+    // Atualizar select de busca automática
+    selectBusca.innerHTML = '<option value="">Selecione o sócio para editar...</option>';
+    sociosCache.forEach(s => {
+        let opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = s.nome + ' (CPF: ' + (s.cpf || '—') + ')';
+        selectBusca.appendChild(opt);
+    });
+
+    document.getElementById('lblResumoSocios').innerHTML = `<span><i class="fas fa-list"></i> Sócios Cadastrados</span> <small style="color:var(--text-light); font-weight:normal;">Empresa [cliente_id: ${cid}] | Sócios encontrados: ${sociosCache.length}</small>`;
+
     if(sociosCache.length === 0){
         el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Nenhum sócio cadastrado até o momento.</div>';
         return;
     }
 
     var html = '<table class="analitica-table"><thead><tr>'+
-        '<th>Nome Completo</th><th>CPF</th><th>Cargo / Função</th><th>Participação</th><th style="text-align:right;">Ações</th>'+
+        '<th>Sócio</th><th>CPF</th><th>Função</th><th>% Ratio</th><th>Situação</th><th>Entrada</th><th>Saída</th><th style="text-align:right;">Ações</th>'+
     '</tr></thead><tbody>';
 
     sociosCache.forEach(s => {
+        let sit = (s.situacao || 'ATIVO').toUpperCase();
+        let badgeSit = sit === 'ATIVO' ? '<span class="badge-ativo">ATIVO</span>' : '<span class="badge-inativo">INATIVO</span>';
+
         html += '<tr>'+
             '<td><strong>'+s.nome+'</strong></td>'+
             '<td>'+(s.cpf || '—')+'</td>'+
-            '<td>'+(s.funcao || 'Sócio')+'</td>'+
+            '<td>'+(s.funcao || '—')+'</td>'+
             '<td>'+(s.participacao ? s.participacao + '%' : '—')+'</td>'+
+            '<td>'+badgeSit+'</td>'+
+            '<td>'+(s.data_entrada ? s.data_entrada.split('-').reverse().join('/') : '—')+'</td>'+
+            '<td>'+(s.data_saida ? s.data_saida.split('-').reverse().join('/') : '—')+'</td>'+
             '<td style="text-align:right;">'+
-                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--primary);" onclick="editarSocio('+s.id+')"><i class="fas fa-edit"></i></button>'+
-                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--danger); margin-left:6px;" onclick="excluirSocio('+s.id+')"><i class="fas fa-trash"></i></button>'+
+                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--primary);" onclick="editarSocio('+s.id+')" title="Editar"><i class="fas fa-edit"></i></button>'+
+                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--danger); margin-left:6px;" onclick="excluirSocio('+s.id+')" title="Excluir"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
 
     html += '</tbody></table>';
     el.innerHTML = html;
+}
+
+function selecionarSocioEdicao(id){
+    if(!id) { cancelarEdicao(); return; }
+    editarSocio(id);
+}
+
+function dividirIgualmente(){
+    let ativos = sociosCache.filter(s => (s.situacao || 'ATIVO').toUpperCase() === 'ATIVO');
+    if(ativos.length === 0){
+        toast("Não há sócios ativos para dividir.", "error");
+        return;
+    }
+    let pct = (100 / ativos.length).toFixed(2);
+    document.getElementById('participacao').value = pct;
+    toast(`Participação calculada: ${pct}% para cada um dos ${ativos.length} sócios ativos.`);
 }
 
 async function salvarSocio(){
@@ -156,6 +230,10 @@ async function salvarSocio(){
     var cpf = document.getElementById('cpf').value.trim();
     var funcao = document.getElementById('funcao').value.trim();
     var participacao = parseFloat(document.getElementById('participacao').value) || 0;
+    var situacao = document.getElementById('situacao').value;
+    var data_entrada = document.getElementById('data_entrada').value || null;
+    var data_saida = document.getElementById('data_saida').value || null;
+    var observacoes = document.getElementById('observacoes').value.trim();
 
     if(!nome || !cpf){
         toast("Preencha o Nome e o CPF do sócio!", "error");
@@ -166,9 +244,12 @@ async function salvarSocio(){
         cliente_id: cid,
         nome: nome,
         cpf: cpf,
-        funcao: funcao || 'Sócio',
+        funcao: funcao,
         participacao: participacao,
-        situacao: 'Ativo'
+        situacao: situacao,
+        data_entrada: data_entrada,
+        data_saida: data_saida,
+        observacoes: observacoes
     };
 
     let res;
@@ -192,23 +273,31 @@ function editarSocio(id){
     let s = sociosCache.find(x => String(x.id) === String(id));
     if(!s) return;
     document.getElementById('edit_id').value = s.id;
+    document.getElementById('selectBuscaSocio').value = s.id;
     document.getElementById('nome').value = s.nome || '';
     document.getElementById('cpf').value = s.cpf || '';
     document.getElementById('funcao').value = s.funcao || '';
     document.getElementById('participacao').value = s.participacao || '';
+    document.getElementById('situacao').value = s.situacao || 'ATIVO';
+    document.getElementById('data_entrada').value = s.data_entrada || '';
+    document.getElementById('data_saida').value = s.data_saida || '';
+    document.getElementById('observacoes').value = s.observacoes || '';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Sócio (#${s.id})`;
-    document.getElementById('btnCancelar').style.display = 'inline-block';
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function cancelarEdicao(){
     document.getElementById('edit_id').value = '';
+    document.getElementById('selectBuscaSocio').value = '';
     document.getElementById('nome').value = '';
     document.getElementById('cpf').value = '';
     document.getElementById('funcao').value = '';
     document.getElementById('participacao').value = '';
-    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo Sócio / Acionista';
-    document.getElementById('btnCancelar').style.display = 'none';
+    document.getElementById('situacao').value = 'ATIVO';
+    document.getElementById('data_entrada').value = '';
+    document.getElementById('data_saida').value = '';
+    document.getElementById('observacoes').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Cadastro de Sócios';
 }
 
 async function excluirSocio(id){
