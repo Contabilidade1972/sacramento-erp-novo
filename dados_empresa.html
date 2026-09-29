@@ -97,7 +97,7 @@
         <div class="form-row">
             <div>
                 <label>CNPJ *</label>
-                <input type="text" id="cnpj_cpf" class="form-control" placeholder="00.000.000/0001-00">
+                <input type="text" id="cnpj" class="form-control" placeholder="00.000.000/0001-00">
             </div>
             <div>
                 <label>Situação Cadastral</label>
@@ -206,7 +206,7 @@ async function consultarCnpjReceita(){
         // Preencher campos cadastrais
         document.getElementById('razao_social').value = r.razao_social || '';
         document.getElementById('nome_fantasia').value = r.nome_fantasia || '';
-        document.getElementById('cnpj_cpf').value = r.cnpj || '';
+        document.getElementById('cnpj').value = r.cnpj || '';
         document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
         document.getElementById('data_abertura').value = r.data_inicio_atividade ? r.data_inicio_atividade.split('-').reverse().join('/') : '';
         document.getElementById('cnae_principal').value = (r.cnae_fiscal ? r.cnae_fiscal + ' - ' : '') + (r.cnae_fiscal_descricao || '');
@@ -238,7 +238,7 @@ async function carregarDadosEmpresa(){
     if(data){
         document.getElementById('razao_social').value = data.razao_social || '';
         document.getElementById('nome_fantasia').value = data.nome_fantasia || '';
-        document.getElementById('cnpj_cpf').value = data.cnpj_cpf || '';
+        document.getElementById('cnpj').value = data.cnpj || data.cnpj_cpf || '';
         document.getElementById('situacao').value = data.situacao || 'ATIVA';
         document.getElementById('data_abertura').value = data.data_abertura || '';
         document.getElementById('cnae_principal').value = data.cnae_principal || '';
@@ -254,8 +254,9 @@ async function carregarDadosEmpresa(){
             noLogo.style.display = 'none';
         }
 
-        if(data.cnpj_cpf){
-            document.getElementById('inputCnpjBusca').value = data.cnpj_cpf;
+        let cnpjAtual = data.cnpj || data.cnpj_cpf;
+        if(cnpjAtual){
+            document.getElementById('inputCnpjBusca').value = cnpjAtual;
         }
     }
 }
@@ -267,7 +268,7 @@ async function salvarDadosEmpresa(){
     var payload = {
         razao_social: document.getElementById('razao_social').value.trim(),
         nome_fantasia: document.getElementById('nome_fantasia').value.trim(),
-        cnpj_cpf: document.getElementById('cnpj_cpf').value.trim(),
+        cnpj: document.getElementById('cnpj').value.trim(),
         situacao: document.getElementById('situacao').value.trim(),
         data_abertura: document.getElementById('data_abertura').value.trim(),
         cnae_principal: document.getElementById('cnae_principal').value.trim(),
@@ -276,7 +277,7 @@ async function salvarDadosEmpresa(){
         logo_url: document.getElementById('logo_url').value.trim()
     };
 
-    if(!payload.razao_social || !payload.cnpj_cpf){
+    if(!payload.razao_social || !payload.cnpj){
         toast("Preencha a Razão Social e o CNPJ!", "error");
         return;
     }
