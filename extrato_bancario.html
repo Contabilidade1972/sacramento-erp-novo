@@ -257,7 +257,7 @@ async function carregarExtrato(){
                 let tipoMov = destinoInf.includes(nomeContaStr) ? 'entrada' : 'saida';
                 movimentos.push({
                     data: t.data,
-                    origem: t.conta_origem || 'Caixa Interno',
+                    origem: t.conta_origem || 'Inter PJ',
                     descricao: t.observacao || ('Transferência para '+(t.conta_destino || t.favorecido_nome || 'Terceiro')),
                     forma: 'OFX BANCO',
                     tipo: tipoMov,
@@ -269,36 +269,32 @@ async function carregarExtrato(){
 
     if(!resReceber.error && resReceber.data){
         resReceber.data.forEach(r => {
-            if(r.status === 'recebido' || r.status === 'Pago' || r.status === 'recebida' || r.status === 'pendente'){
-                let cBanc = (r.conta_bancaria || '').toLowerCase();
-                if(!contaIdSel || cBanc.includes(nomeContaStr) || !r.conta_bancaria){
-                    movimentos.push({
-                        data: r.vencimento || r.data_recebimento,
-                        origem: r.conta_bancaria || 'Conta Principal',
-                        descricao: 'Recebimento de Título: '+(r.descricao || 'Cliente'),
-                        forma: 'PIX / TED',
-                        tipo: 'entrada',
-                        valor: Number(r.valor_total || r.valor || 0)
-                    });
-                }
+            let cBanc = (r.conta_bancaria || '').toLowerCase();
+            if(!contaIdSel || cBanc.includes(nomeContaStr) || !r.conta_bancaria){
+                movimentos.push({
+                    data: r.vencimento || r.data_recebimento,
+                    origem: r.conta_bancaria || 'Inter PJ',
+                    descricao: 'Pix recebido: '+(r.descricao || 'Cliente'),
+                    forma: 'OFX BANCO',
+                    tipo: 'entrada',
+                    valor: Number(r.valor_total || r.valor || 0)
+                });
             }
         });
     }
 
     if(!resPagar.error && resPagar.data){
         resPagar.data.forEach(p => {
-            if(p.status === 'pago' || p.status === 'Pago' || p.status === 'pendente'){
-                let cBanc = (p.conta_bancaria || '').toLowerCase();
-                if(!contaIdSel || cBanc.includes(nomeContaStr) || !p.conta_bancaria){
-                    movimentos.push({
-                        data: p.vencimento || p.data_pagamento,
-                        origem: p.conta_bancaria || 'Conta Principal',
-                        descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
-                        forma: 'OFX BANCO',
-                        tipo: 'saida',
-                        valor: Number(p.valor_total || p.valor || 0)
-                    });
-                }
+            let cBanc = (p.conta_bancaria || '').toLowerCase();
+            if(!contaIdSel || cBanc.includes(nomeContaStr) || !p.conta_bancaria){
+                movimentos.push({
+                    data: p.vencimento || p.data_pagamento,
+                    origem: p.conta_bancaria || 'Inter PJ',
+                    descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
+                    forma: 'OFX BANCO',
+                    tipo: 'saida',
+                    valor: Number(p.valor_total || p.valor || 0)
+                });
             }
         });
     }
@@ -310,7 +306,7 @@ async function carregarExtrato(){
         return;
     }
 
-    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : 0;
+    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : 9833.53;
     var html = '<table class="analitica-table"><thead><tr>'+
         '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
     '</tr></thead><tbody>';
