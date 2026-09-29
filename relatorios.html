@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relatórios Gerais & Inteligência de Negócios — Sacramento ERP</title>
+    <title>Relatórios Gerais & BI — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js"></script>
     <style>
         :root {
@@ -34,11 +35,24 @@
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        /* KPI Cards */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+        .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
+        .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); }
+
+        /* Charts Grid */
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; height: 280px; display: flex; flex-direction: column; }
+        .chart-box h4 { font-size: 13px; font-weight: 700; color: var(--secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .chart-container { position: relative; flex: 1; width: 100%; }
 
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tr:hover { background: #f1f5f9; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -48,9 +62,9 @@
 
         @media print {
             body { background: #fff !important; }
-            .page-toolbar, footer, button, .toast-container, .panel-filtros { display: none !important; }
-            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            @page { size: landscape; }
+            .page-toolbar, footer, button, .toast-container, .panel-filtros, .charts-grid { display: none !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
+            @page { size: landscape; margin: 10mm; }
         }
     </style>
 </head>
@@ -60,27 +74,39 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-chart-bar" style="color:var(--primary);"></i> Relatórios Gerais & Inteligência de Negócios</div>
-            <div class="page-subtitle">Configure os filtros analíticos, visualize os dados consolidados e imprima ou exporte</div>
+            <div class="page-title"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Relatórios Executivos & BI</div>
+            <div class="page-subtitle">Central analítica com gráficos de desempenho, indicadores em tempo real e relatórios gerenciais</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- PAINEL DE FILTROS PARA CONFECÇÃO DO RELATÓRIO -->
+    <!-- PAINEL DE FILTROS AVANÇADOS -->
     <div class="panel panel-filtros" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-filter"></i> Filtros de Emissão do Relatório</span></div>
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-filter"></i> Critérios e Filtros de Relatório</span></div>
         
         <div class="form-row">
             <div>
-                <label>Tipo de Relatório</label>
+                <label>Módulo / Relatório</label>
                 <select id="filtroTipo" class="form-control" style="background:#fff; font-weight:700;">
                     <option value="pagar">Contas a Pagar</option>
                     <option value="receber">Contas a Receber</option>
-                    <option value="socios">Quadro Societário</option>
                     <option value="produtos">Produtos & Serviços</option>
                     <option value="estoque">Inventário & Estoque</option>
+                    <option value="socios">Quadro Societário</option>
+                </select>
+            </div>
+            <div>
+                <label>Pesquisa por Nome / Descrição</label>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Filtrar por texto..." style="background:#fff;">
+            </div>
+            <div>
+                <label>Status / Situação</label>
+                <select id="filtroStatus" class="form-control" style="background:#fff;">
+                    <option value="TODOS">Todos os Status</option>
+                    <option value="PENDENTE">Pendentes / Em Aberto</option>
+                    <option value="PAGO">Pagos / Recebidos / Ativos</option>
                 </select>
             </div>
             <div>
@@ -91,30 +117,54 @@
                 <label>Data Final</label>
                 <input type="date" id="filtroDataFim" class="form-control" style="background:#fff;">
             </div>
-            <div>
-                <label>Status / Filtro Adicional</label>
-                <select id="filtroStatus" class="form-control" style="background:#fff;">
-                    <option value="TODOS">Todos os Registros</option>
-                    <option value="PENDENTE">Pendentes / Em Aberto</option>
-                    <option value="PAGO">Pagos / Recebidos / Ativos</option>
-                </select>
-            </div>
         </div>
 
-        <div style="display:flex; gap:10px; margin-top:8px;">
-            <button class="btn-acao" onclick="carregarRelatorioAnalitico()"><i class="fas fa-search"></i> Gerar e Exibir Relatório</button>
-            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>
+        <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
+            <button class="btn-acao" onclick="carregarRelatorioBI()"><i class="fas fa-sync-alt"></i> Atualizar Dados & BI</button>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Oficial (PDF)</button>
         </div>
     </div>
 
-    <!-- PAINEL DE RESULTADOS E DADOS ANALÍTICOS -->
+    <!-- CARDS DE KPI (RESUMO EXECUTIVO) -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-title"><i class="fas fa-database"></i> Total de Registros</span>
+            <span class="kpi-value" id="kpiTotalRegistros">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title"><i class="fas fa-dollar-sign"></i> Montante Financeiro / Valor</span>
+            <span class="kpi-value" id="kpiMontante">R$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title"><i class="fas fa-check-circle"></i> Registros Concluídos / Pagos</span>
+            <span class="kpi-value" id="kpiConcluidos">0</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-title"><i class="fas fa-clock"></i> Pendentes / Em Aberto</span>
+            <span class="kpi-value" id="kpiPendentes">0</span>
+        </div>
+    </div>
+
+    <!-- DASHBOARD DE GRÁFICOS BI -->
+    <div class="charts-grid">
+        <div class="chart-box">
+            <h4><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Distribuição por Status</h4>
+            <div class="chart-container"><canvas id="chartStatus"></canvas></div>
+        </div>
+        <div class="chart-box">
+            <h4><i class="fas fa-chart-bar" style="color:var(--success);"></i> Volume por Categoria / Centro de Custo</h4>
+            <div class="chart-container"><canvas id="chartCategoria"></canvas></div>
+        </div>
+    </div>
+
+    <!-- TABELA ANALÍTICA DETALHADA -->
     <div class="panel">
         <div class="panel-header">
-            <span id="tituloRelatorioExibido"><i class="fas fa-table"></i> Relatório Analítico Consolidado</span>
-            <span id="contadorRegistros" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 registros encontrados</span>
+            <span id="tituloRelatorioExibido"><i class="fas fa-table"></i> Demonstrativo Analítico Consolidado</span>
+            <span id="contadorRegistros" style="font-size:12px; color:var(--text-light); font-weight:normal;">Nenhum dado carregado</span>
         </div>
         <div id="containerTabelaRelatorio" style="overflow-x:auto;">
-            <div style="text-align:center; padding:30px; color:var(--text-light);">Utilize os filtros acima e clique em "Gerar e Exibir Relatório" para visualizar os dados.</div>
+            <div style="text-align:center; padding:30px; color:var(--text-light);">Selecione os critérios acima e clique em "Atualizar Dados & BI" para gerar o relatório profissional.</div>
         </div>
     </div>
 </div>
@@ -123,6 +173,8 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let chartStatusInstancia = null;
+let chartCatInstancia = null;
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -134,56 +186,101 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-async function carregarRelatorioAnalitico(){
+async function carregarRelatorioBI(){
     var cid = clienteIdAtual();
     var tipo = document.getElementById('filtroTipo').value;
-    var dataInicio = document.getElementById('filtroDataInicio').value;
+    var busca = document.getElementById('filtroBusca').value.toLowerCase().trim();
+    var statusFiltro = document.getElementById('filtroStatus').value;
+    var dataIni = document.getElementById('filtroDataInicio').value;
     var dataFim = document.getElementById('filtroDataFim').value;
-    var status = document.getElementById('filtroStatus').value;
+    
     var container = document.getElementById('containerTabelaRelatorio');
     var tituloEl = document.getElementById('tituloRelatorioExibido');
     var contadorEl = document.getElementById('contadorRegistros');
 
-    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">A carregar dados do relatório...</div>';
+    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">Processando dados analíticos e calculando BI...</div>';
 
     let tabelaSupabase = '';
     let nomeRelatorio = '';
 
     if(tipo === 'pagar') { tabelaSupabase = 'contas_pagar'; nomeRelatorio = 'Relatório de Contas a Pagar'; }
     else if(tipo === 'receber') { tabelaSupabase = 'contas_receber'; nomeRelatorio = 'Relatório de Contas a Receber'; }
-    else if(tipo === 'socios') { tabelaSupabase = 'socios'; nomeRelatorio = 'Relatório do Quadro Societário'; }
     else if(tipo === 'produtos') { tabelaSupabase = 'produtos'; nomeRelatorio = 'Relatório de Produtos & Serviços'; }
     else if(tipo === 'estoque') { tabelaSupabase = 'estoque'; nomeRelatorio = 'Relatório de Inventário & Estoque'; }
+    else if(tipo === 'socios') { tabelaSupabase = 'socios'; nomeRelatorio = 'Relatório do Quadro Societário'; }
 
     tituloEl.innerHTML = `<i class="fas fa-table"></i> ${nomeRelatorio}`;
 
     try {
-        let query = sb.from(tabelaSupabase).select('*').eq('cliente_id', cid);
-        
-        let { data, error } = await query;
+        let { data, error } = await sb.from(tabelaSupabase).select('*').eq('cliente_id', cid);
         if(error) throw error;
 
         let registros = data || [];
 
-        // Aplicar filtros client-side se necessário
-        if(status !== 'TODOS' && registros.length > 0){
+        // Filtros avançados client-side
+        if(busca){
             registros = registros.filter(r => {
-                let st = (r.status || r.situacao || '').toUpperCase();
-                return st.includes(status);
+                let txt = JSON.stringify(r).toLowerCase();
+                return txt.includes(busca);
             });
         }
 
-        contadorEl.innerHTML = `${registros.length} registros encontrados`;
+        if(statusFiltro !== 'TODOS'){
+            registros = registros.filter(r => {
+                let st = (r.status || r.situacao || '').toUpperCase();
+                return st.includes(statusFiltro);
+            });
+        }
+
+        if(dataIni){
+            registros = registros.filter(r => {
+                let dt = r.vencimento || r.data_cadastro || r.created_at || '';
+                return dt >= dataIni;
+            });
+        }
+
+        if(dataFim){
+            registros = registros.filter(r => {
+                let dt = r.vencimento || r.data_cadastro || r.created_at || '';
+                return dt <= dataFim;
+            });
+        }
+
+        contadorEl.innerHTML = `${registros.length} registos encontrados`;
+
+        // Calcular KPIs
+        let totalReg = registros.length;
+        let montante = 0;
+        let concluidos = 0;
+        let pendentes = 0;
+
+        registros.forEach(r => {
+            let val = parseFloat(r.valor || r.preco_venda || r.participacao || 0);
+            if(!isNaN(val)) montante += val;
+
+            let st = (r.status || r.situacao || '').toUpperCase();
+            if(st.includes('PAGO') || st.includes('RECEBIDO') || st.includes('ATIVO')) concluidos++;
+            else if(st.includes('PENDENTE') || st.includes('ABERTO')) pendentes++;
+        });
+
+        document.getElementById('kpiTotalRegistros').innerText = totalReg;
+        document.getElementById('kpiMontante').innerText = 'R$ ' + montante.toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        document.getElementById('kpiConcluidos').innerText = concluidos;
+        document.getElementById('kpiPendentes').innerText = pendentes;
+
+        // Renderizar Gráficos BI
+        atualizarGraficosBI(registros);
 
         if(registros.length === 0){
-            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">Nenhum registo encontrado para os filtros selecionados.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">Nenhum registro encontrado com os filtros selecionados.</div>';
             return;
         }
 
+        // Tabela Analítica Limpa
+        let colunasIgnoradas = ['id', 'cliente_id', 'created_at', 'updated_at'];
+        let chaves = Object.keys(registros[0]).filter(k => !colunasIgnoradas.includes(k));
+
         let html = '<table class="analitica-table"><thead><tr>';
-        
-        // Obter colunas dinâmicas baseadas no tipo
-        let chaves = Object.keys(registros[0]).filter(k => k !== 'cliente_id' && k !== 'id');
         chaves.forEach(c => {
             html += `<th>${c.replace(/_/g, ' ').toUpperCase()}</th>`;
         });
@@ -203,13 +300,61 @@ async function carregarRelatorioAnalitico(){
 
         html += '</tbody></table>';
         container.innerHTML = html;
-        toast("Relatório gerado com sucesso!");
+        toast("Relatório e Dashboard atualizados com sucesso!");
 
     } catch(err) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">Erro ao gerar relatório: ${err.message}</div>`;
-        toast("Erro ao gerar relatório.", "error");
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">Erro ao carregar dados: ${err.message}</div>`;
+        toast("Erro ao carregar relatório.", "error");
     }
 }
+
+function atualizarGraficosBI(registros){
+    let statusCounts = {};
+    let catCounts = {};
+
+    registros.forEach(r => {
+        let st = r.status || r.situacao || 'Indefinido';
+        statusCounts[st] = (statusCounts[st] || 0) + 1;
+
+        let cat = r.centro_custo || r.tipo || r.categoria || 'Geral';
+        catCounts[cat] = (catCounts[cat] || 0) + 1;
+    });
+
+    // Gráfico de Status (Pie)
+    let ctxStatus = document.getElementById('chartStatus').getContext('2d');
+    if(chartStatusInstancia) chartStatusInstancia.destroy();
+    chartStatusInstancia = new Chart(ctxStatus, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(statusCounts),
+            datasets: [{
+                data: Object.values(statusCounts),
+                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Gráfico de Categoria (Bar)
+    let ctxCat = document.getElementById('chartCategoria').getContext('2d');
+    if(chartCatInstancia) chartCatInstancia.destroy();
+    chartCatInstancia = new Chart(ctxCat, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(catCounts).slice(0, 6),
+            datasets: [{
+                label: 'Volume',
+                data: Object.values(catCounts).slice(0, 6),
+                backgroundColor: '#3b82f6'
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
+}
+
+window.onload = function(){
+    carregarRelatorioBI();
+};
 </script>
 </body>
 </html>
