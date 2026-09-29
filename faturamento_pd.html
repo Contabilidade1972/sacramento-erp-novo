@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faturamento de Serviços (NFS-e) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
+        .b-emitida { background: #dcfce7; color: #166534; }
+        .b-pendente { background: #fef3c7; color: #92400e; }
+        .b-cancelada { background: #fee2e2; color: #991b1b; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Faturamento de Serviços (NFS-e) — P&D</div>
+        <div class="page-subtitle">Emissão, controle e vinculação de Notas Fiscais de Serviços Eletrônicas para clientes e parceiros de P&D</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header" style="border:none; margin-bottom:4px;">
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registar / Emitir NFS-e</span>
+        </div>
+        <input type="hidden" id="edit_id">
+
+        <div class="form-row">
+            <div>
+                <label>Projeto Vinculado *</label>
+                <select id="projeto_id" class="form-control">
+                    <option value="">— Selecione o projeto —</option>
+                </select>
+            </div>
+            <div>
+                <label>Tomador / Cliente (Parceiro) *</label>
+                <select id="cliente_tomador" class="form-control">
+                    <option value="">— Selecione o tomador —</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Número da NFS-e *</label>
+                <input id="numero_nf" class="form-control" placeholder="Ex.: 2026/0045">
+            </div>
+            <div>
+                <label>Valor da NFS-e (R$) *</label>
+                <input id="valor_nf" class="form-control" placeholder="Ex.: 25.000,00" onblur="formatarCampoMoeda(this)">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Data de Emissão *</label>
+                <input id="data_emissao" class="form-control" type="date">
+            </div>
+            <div>
+                <label>Status da NFS-e *</label>
+                <select id="status_nf" class="form-control">
+                    <option value="emitida">Emitida / Autorizada</option>
+                    <option value="pendente">Pendente de Emissão</option>
+                    <option value="cancelada">Cancelada</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label>Discriminação dos Serviços Prestados *</label>
+            <input id="discriminacao" class="form-control" placeholder="Descreva detalhadamente os serviços técnicos de P&D executados...">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:4px;">
+            <button class="btn-primary" id="btnSalvar" onclick="salvarNota()"><i class="fas fa-save"></i> Registar NFS-e</button>
+            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-list"></i> Notas Fiscais Emitidas (P&D)</span>
+        </div>
+        <div id="listaNotas" style="overflow-x:auto;">A carregar notas fiscais...</div>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let notasCache = [];
+let projetosCache = [];
+let parceirosCache = [];
+
+var STATUS_MAP = {
+    emitida:    { rotulo: 'Emitida',    classe: 'b-emitida' },
+    pendente:   { rotulo: 'Pendente',   classe: 'b-pendente' },
+    cancelada:  { rotulo: 'Cancelada',  classe: 'b-cancelada' }
+};
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function sbFiltro(tabela){
+    let q=sb.from(tabela).select('*');
+    const cid=clienteIdAtual();
+    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+    return q;
+}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){
+        c=document.createElement('div');c.id='toastContainer';
+        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className='toast '+type;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function parseValorBR(v){
+    if(v===null||v===undefined)return 0;
+    var s=String(v).trim().replace(/[R$\s]/g,'');
+    if(!s)return 0;
+    if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
+    var n=parseFloat(s);
+    return isNaN(n)?0:n;
+}
+function formatarCampoMoeda(el){
+    if(el.value.trim()===''){el.value='';return;}
+    var n=parseValorBR(el.value);
+    el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+
+async function carregarProjetosSelect(){
+    var r = await sbFiltro('projetos_pd');
+    if(!r.error) {
+        projetosCache = r.data || [];
+        var sel = document.getElementById('projeto_id');
+        sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
+        projetosCache.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+        });
+    }
+}
+
+async function carregarParceirosSelect(){
+    var r = await sbFiltro('parceiros');
+    if(!r.error) {
+        parceirosCache = r.data || [];
+        var sel = document.getElementById('cliente_tomador');
+        sel.innerHTML = '<option value="">— Selecione o tomador —</option>';
+        parceirosCache.forEach(p => {
+            sel.innerHTML += `<option value="${p.id}">${p.nome || p.razao_social || 'Cliente'} (${p.cnpj || p.cpf || 'Sem doc'})</option>`;
+        });
+    }
+}
+
+async function carregarNotas(){
+    var el=document.getElementById('listaNotas');
+    var cid=clienteIdAtual();
+    if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
+    var r=await sbFiltro('faturamento_pd');
+    if(r.error){el.innerHTML='<div class="empty-state">Tabela em configuração ou vazia.</div>';return;}
+    notasCache=r.data||[];
+    if(!notasCache.length){el.innerHTML='<div class="empty-state">Nenhuma NFS-e registrada.</div>';return;}
+    
+    var html='<table class="analitica-table"><thead><tr><th>NFS-e Nº</th><th>Emissão</th><th>Tomador / Cliente</th><th>Projeto</th><th>Status</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    notasCache.forEach(function(n){
+        var proj = null;
+        for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(n.projeto_id)) proj = projetosCache[i]; }
+        var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
+
+        var parc = null;
+        for(var j=0; j<parceirosCache.length; j++){ if(String(parceirosCache[j].id) === String(n.cliente_tomador)) parc = parceirosCache[j]; }
+        var nomeParc = parc ? (parc.nome || parc.razao_social) : '—';
+
+        var st = STATUS_MAP[n.status_nf] || STATUS_MAP.emitida;
+
+        html+='<tr>'+
+            '<td><strong>'+(n.numero_nf||'—')+'</strong><br><small style="color:var(--text-light)">'+(n.discriminacao||'')+'</small></td>'+
+            '<td>'+formatDataBR(n.data_emissao)+'</td>'+
+            '<td>'+nomeParc+'</td>'+
+            '<td>'+nomeProj+'</td>'+
+            '<td><span class="badge '+st.classe+'">'+st.rotulo+'</span></td>'+
+            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(n.valor_nf)+'</td>'+
+            '<td style="text-align:right; white-space:nowrap;">'+
+                '<button class="btn-secondary" onclick="editarNota(\''+n.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
+                '<button class="btn-secondary" onclick="excluirNota(\''+n.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>'+
+        '</tr>';
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+}
+
+function editarNota(id){
+    var n=null;
+    for(var i=0;i<notasCache.length;i++){if(String(notasCache[i].id)===String(id))n=notasCache[i];}
+    if(!n)return;
+    document.getElementById('edit_id').value=n.id;
+    document.getElementById('projeto_id').value=n.projeto_id||'';
+    document.getElementById('cliente_tomador').value=n.cliente_tomador||'';
+    document.getElementById('numero_nf').value=n.numero_nf||'';
+    document.getElementById('valor_nf').value=n.valor_nf?fmtBR(n.valor_nf):'';
+    document.getElementById('data_emissao').value=n.data_emissao||'';
+    document.getElementById('status_nf').value=n.status_nf||'emitida';
+    document.getElementById('discriminacao').value=n.discriminacao||'';
+
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando NFS-e';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar NFS-e';
+    document.getElementById('btnCancelar').style.display='inline-flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function cancelarEdicao(){
+    document.getElementById('edit_id').value='';
+    document.getElementById('projeto_id').value='';
+    document.getElementById('cliente_tomador').value='';
+    document.getElementById('numero_nf').value='';
+    document.getElementById('valor_nf').value='';
+    document.getElementById('data_emissao').value='';
+    document.getElementById('status_nf').value='emitida';
+    document.getElementById('discriminacao').value='';
+
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registar / Emitir NFS-e';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registar NFS-e';
+    document.getElementById('btnCancelar').style.display='none';
+}
+
+async function salvarNota(){
+    var cid=clienteIdAtual();
+    if(!cid){toast('Cliente não identificado.','error');return;}
+
+    var projetoId=document.getElementById('projeto_id').value;
+    if(!projetoId){toast('Selecione o projeto vinculado.','error');return;}
+
+    var tomador=document.getElementById('cliente_tomador').value;
+    if(!tomador){toast('Selecione o tomador/cliente.','error');return;}
+
+    var numNf=document.getElementById('numero_nf').value.trim();
+    if(!numNf){toast('Informe o número da NFS-e.','error');return;}
+
+    var valor=parseValorBR(document.getElementById('valor_nf').value);
+    if(!valor||valor<=0){toast('Informe o valor da NFS-e.','error');return;}
+
+    var data=document.getElementById('data_emissao').value;
+    if(!data){toast('Informe a data de emissão.','error');return;}
+
+    var dados={
+        cliente_id: cid,
+        projeto_id: projetoId,
+        cliente_tomador: tomador,
+        numero_nf: numNf,
+        valor_nf: valor,
+        data_emissao: data,
+        status_nf: document.getElementById('status_nf').value,
+        discriminacao: document.getElementById('discriminacao').value.trim()||null
+    };
+
+    var editId=document.getElementById('edit_id').value;
+    if(editId){
+        var ru=await sb.from('faturamento_pd').update(dados).eq('id', editId);
+        if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
+        toast('NFS-e atualizada com sucesso!');
+        cancelarEdicao();
+    }else{
+        var ri=await sb.from('faturamento_pd').insert([dados]);
+        if(ri.error){
+            toast('Erro ao salvar (verifique se a tabela faturamento_pd existe no Supabase).', 'error');
+            return;
+        }
+        toast('NFS-e registada com sucesso!');
+        cancelarEdicao();
+    }
+    carregarNotas();
+}
+
+async function excluirNota(id){
+    if(!confirm('Tem certeza que deseja excluir este registo de NFS-e?'))return;
+    var r=await sb.from('faturamento_pd').delete().eq('id', id);
+    if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
+    toast('NFS-e excluída com sucesso!');
+    carregarNotas();
+}
+
+async function inicializarPagina(){
+    let u=obterUsuarioAtual();
+    if(!u||!u.email){location.href='login.html';return;}
+    await carregarProjetosSelect();
+    await carregarParceirosSelect();
+    await carregarNotas();
+}
+
+window.onload=inicializarPagina;
+</script>
+</body>
+</html>
