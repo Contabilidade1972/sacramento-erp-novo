@@ -27,26 +27,22 @@
         
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         
-        /* BLOCO OFICIAL INSTITUIÇÃO */
         .info-banco-box { background: #fffbf0; border: 1px solid #fef08a; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
         .info-banco-title { font-size: 13px; font-weight: 800; color: #854d0e; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
         .info-banco-grid { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; gap: 16px; font-size: 13px; }
         .info-banco-grid div span { display: block; font-size: 11px; color: var(--text-light); font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
         .info-banco-grid div strong { color: var(--secondary); font-size: 14px; }
 
-        /* KPIS DE SALDO */
         .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
         .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px; }
         .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
         .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); }
 
-        /* FILTROS */
         .filtros-box { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end; background: var(--bg); padding: 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); }
 
-        /* TABELA DE EXTRATO */
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 11px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
@@ -74,7 +70,7 @@
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Extrato de Conta Bancária e Caixa</div>
-            <div class="page-subtitle">Acompanhe o extrato oficial consolidadado e as movimentações por instituição financeira</div>
+            <div class="page-subtitle">Acompanhe o extrato oficial consolidado e as movimentações por instituição financeira</div>
         </div>
         <div style="display:flex; gap:10px;">
             <button class="btn-acao" onclick="location.href='modulo_financeiro.html'" style="background:#64748b;"><i class="fas fa-arrow-left"></i> Módulo Financeiro</button>
@@ -82,7 +78,6 @@
         </div>
     </div>
 
-    <!-- BLOCO DE CABEÇALHO OFICIAL INSTITUIÇÃO -->
     <div class="info-banco-box">
         <div class="info-banco-title"><i class="fas fa-university"></i> Extrato Oficial — Instituição Financeira</div>
         <div class="info-banco-grid">
@@ -101,7 +96,6 @@
         </div>
     </div>
 
-    <!-- KPIS DE SALDO -->
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-title">Saldo Total</div>
@@ -117,7 +111,6 @@
         </div>
     </div>
 
-    <!-- FILTROS DE PERÍODO E CONTA -->
     <div class="panel">
         <div style="font-size:13px; font-weight:700; color:var(--secondary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
             <i class="fas fa-filter" style="color:var(--primary);"></i> Filtrar Período e Movimentações
@@ -142,7 +135,6 @@
             </div>
         </div>
 
-        <!-- TABELA DE EXTRATO -->
         <div id="listaExtrato" style="overflow-x:auto;">A carregar extrato bancário...</div>
     </div>
 </div>
@@ -233,7 +225,7 @@ async function carregarExtrato(){
                     descricao: t.observacao || ('Transferência para '+(t.conta_destino || t.favorecido_nome || 'Terceiro')),
                     forma: 'OFX BANCO',
                     tipo: tipoMov,
-                    valor: Number(t.valor)||0
+                    valor: Number(t.valor || t.valor_total || 0)
                 });
             }
         });
@@ -241,9 +233,9 @@ async function carregarExtrato(){
 
     if(!resReceber.error && resReceber.data){
         resReceber.data.forEach(r => {
-            if(r.status === 'recebido' || r.status === 'Pago'){
+            if(r.status === 'recebido' || r.status === 'Pago' || r.status === 'recebida'){
                 movimentos.push({
-                    data: r.vencimento,
+                    data: r.vencimento || r.data_recebimento,
                     origem: r.conta_bancaria || 'Conta Principal',
                     descricao: 'Recebimento de Título: '+(r.descricao || 'Cliente'),
                     forma: 'PIX / TED',
@@ -258,7 +250,7 @@ async function carregarExtrato(){
         resPagar.data.forEach(p => {
             if(p.status === 'pago' || p.status === 'Pago'){
                 movimentos.push({
-                    data: p.vencimento,
+                    data: p.vencimento || p.data_pagamento,
                     origem: p.conta_bancaria || 'Conta Principal',
                     descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
                     forma: 'OFX BANCO',
