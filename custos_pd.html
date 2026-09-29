@@ -307,7 +307,7 @@ function buscarPrestadorPorCpfCnpj(val){
     if(!v) return;
     var encontrado = null;
     parceirosCache.forEach(function(p){
-        var doc = (p.cpf_cnpj || p.cnpj || p.cpf || '').replace(/\D/g, '');
+        var doc = String(p.cpf_cnpj || p.cnpj || p.cpf || '').replace(/\D/g, '');
         if(doc === v) encontrado = p;
     });
 
@@ -366,8 +366,19 @@ async function salvarPreCadastroParceiro(){
 
     var r = await sb.from('parceiros').insert([payload]);
     if(r.error) {
-        toast('Erro ao salvar parceiro: ' + r.error.message, 'error');
-        return;
+        // Tenta inserir adaptando colunas caso cpf_cnpj não exista na tabela física
+        var payloadAlt = {
+            cliente_id: cid,
+            nome: nome,
+            cnpj: cpfCnpj.length > 11 ? cpfCnpj : null,
+            cpf: cpfCnpj.length <= 11 ? cpfCnpj : null,
+            endereco: endereco + ' (' + numComp + ')'
+        };
+        var r2 = await sb.from('parceiros').insert([payloadAlt]);
+        if(r2.error) {
+            toast('Erro ao salvar parceiro: ' + r2.error.message, 'error');
+            return;
+        }
     }
 
     toast('Pré-cadastro realizado com sucesso!');
@@ -535,6 +546,7 @@ function editarCusto(id){
     document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_endereco').value=c.prestador_endereco||'';
     document.getElementById('descricao').value=c.descricao||'';
+    document.getElementById('painelPreCadastro').style.display='none';
     arquivoAnexadoUrl = c.comprovante || null;
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto do projeto';
