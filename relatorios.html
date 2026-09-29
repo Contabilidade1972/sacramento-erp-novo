@@ -49,11 +49,11 @@
         .chart-box h4 { font-size: 13px; font-weight: 700; color: var(--secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
         .chart-container { position: relative; flex: 1; width: 100%; }
 
-        /* Tabela Otimizada para evitar overflow */
+        /* Tabela Otimizada e Elegante */
         .table-responsive { width: 100%; overflow-x: auto; }
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 11px; table-layout: fixed; }
-        .analitica-table th { background: var(--bg); padding: 10px 8px; text-align: left; font-weight: 700; font-size: 10px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); word-break: break-word; }
-        .analitica-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
         .analitica-table tr:hover { background: #f1f5f9; }
 
         /* Cabeçalho de Impressão Oficial */
@@ -70,9 +70,9 @@
             .page-toolbar, footer, button, .toast-container, .panel-filtros, .charts-grid { display: none !important; }
             .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
             .print-header { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .analitica-table { font-size: 9px !important; }
-            .analitica-table th, .analitica-table td { padding: 4px 6px !important; }
-            @page { size: landscape; margin: 8mm; }
+            .analitica-table { font-size: 10px !important; }
+            .analitica-table th, .analitica-table td { padding: 6px 8px !important; }
+            @page { size: landscape; margin: 10mm; }
         }
     </style>
 </head>
@@ -212,6 +212,22 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+// Mapa de colunas essenciais e amigáveis para cada tipo de relatório (evita poluição e quebras de layout)
+const colunasMap = {
+    'pagar': ['descricao', 'fornecedor_nome', 'valor', 'vencimento', 'centro_custo', 'status'],
+    'receber': ['descricao', 'cliente_nome', 'valor', 'vencimento', 'status'],
+    'transferencias': ['banco_origem', 'banco_destino', 'valor', 'data', 'observacao'],
+    'extrato': ['descricao', 'tipo', 'valor', 'data', 'banco'],
+    'parceiros': ['nome', 'tipo', 'cnpj_cpf', 'telefone', 'cidade', 'email'],
+    'socios': ['nome', 'cpf', 'funcao', 'participacao', 'situacao'],
+    'produtos': ['codigo', 'descricao', 'tipo', 'unidade', 'preco_venda', 'estoque'],
+    'estoque': ['codigo', 'descricao', 'quantidade', 'unidade', 'localizacao'],
+    'centros_custo': ['codigo', 'nome', 'departamento', 'orcamento'],
+    'projetos_pd': ['nome_projeto', 'codigo', 'coordenador', 'status', 'orcamento'],
+    'aportes_pd': ['titulo', 'fonte_fomento', 'valor_captado', 'status'],
+    'documentos': ['numero_nota', 'emitente', 'valor_total', 'data_emissao', 'status']
+};
+
 async function carregarRelatorioOficial(){
     var cid = clienteIdAtual();
     var tipo = document.getElementById('filtroTipo').value;
@@ -238,14 +254,12 @@ async function carregarRelatorioOficial(){
         'centros_custo': { nome: 'Relatório de Centros de Custo', tabela: 'centros_custo' },
         'projetos_pd': { nome: 'Relatório de Projetos de P&D', tabela: 'projetos_pd' },
         'aportes_pd': { nome: 'Relatório de Aportes & Fomento', tabela: 'aportes_pd' },
-        'documentos': { nome: 'Relatório de Documentos Fiscais XML', tabela: 'documentos' }
+        'documentos': { nome: 'Relatório de Documentos Fiscais XML', tabela: 'documentos_xml' }
     };
 
     let config = tabelasMapeadas[tipo] || { nome: 'Relatório Geral', tabela: 'contas_pagar' };
     tituloEl.innerHTML = `<i class="fas fa-table"></i> ${config.nome}`;
-
-    // Atualizar cabeçalho de impressão
-    document.getElementById('printInfoMeta').innerText = `Emitido em: ${new Date().toLocaleString('pt-BR')} | Filtro: ${tipo.toUpperCase()}`;
+    document.getElementById('printInfoMeta').innerText = `Emitido em: ${new Date().toLocaleString('pt-BR')} | Filtro: ${config.nome}`;
 
     try {
         let { data, error } = await sb.from(config.tabela).select('*').eq('cliente_id', cid);
@@ -288,7 +302,7 @@ async function carregarRelatorioOficial(){
         let pendentes = 0;
 
         registros.forEach(r => {
-            let val = parseFloat(r.valor || r.preco_venda || r.participacao || r.montante || 0);
+            let val = parseFloat(r.valor || r.preco_venda || r.participacao || r.montante || r.orcamento || 0);
             if(!isNaN(val)) montante += val;
 
             let st = (r.status || r.situacao || '').toUpperCase();
@@ -308,9 +322,13 @@ async function carregarRelatorioOficial(){
             return;
         }
 
-        // Tabela compacta e otimizada para caber perfeitamente na página A4 Paisagem
-        let colunasIgnoradas = ['id', 'cliente_id', 'created_at', 'updated_at'];
-        let chaves = Object.keys(registros[0]).filter(k => !colunasIgnoradas.includes(k));
+        // Definir colunas amigáveis baseadas no mapa, ou fallback para as chaves reais caso venham vazias
+        let chavesPermitidas = colunasMap[tipo] || [];
+        let chavesDisponiveis = Object.keys(registros[0]);
+        let chaves = chavesPermitidas.filter(c => chavesDisponiveis.includes(c));
+        if(chaves.length === 0) {
+            chaves = chavesDisponiveis.filter(k => !['id', 'cliente_id', 'created_at', 'updated_at'].includes(k)).slice(0, 6);
+        }
 
         let html = '<table class="analitica-table"><thead><tr>';
         chaves.forEach(c => {
@@ -322,10 +340,10 @@ async function carregarRelatorioOficial(){
             html += '<tr>';
             chaves.forEach(c => {
                 let val = row[c] !== null && row[c] !== undefined ? row[c] : '—';
-                if(typeof val === 'number' && (c.includes('valor') || c.includes('preco') || c.includes('custo') || c.includes('montante'))) {
+                if(typeof val === 'number' && (c.includes('valor') || c.includes('preco') || c.includes('custo') || c.includes('montante') || c.includes('orcamento'))) {
                     val = 'R$ ' + Number(val).toLocaleString('pt-BR', {minimumFractionDigits: 2});
                 }
-                html += `<td title="${val}">${val}</td>`;
+                html += `<td>${val}</td>`;
             });
             html += '</tr>';
         });
@@ -348,7 +366,7 @@ function atualizarGraficosBI(registros){
         let st = r.status || r.situacao || 'Indefinido';
         statusCounts[st] = (statusCounts[st] || 0) + 1;
 
-        let cat = r.centro_custo || r.tipo || r.categoria || r.funcao || 'Geral';
+        let cat = r.centro_custo || r.tipo || r.categoria || r.funcao || r.departamento || 'Geral';
         catCounts[cat] = (catCounts[cat] || 0) + 1;
     });
 
