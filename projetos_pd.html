@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projetos & P&D — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-flask" style="color:var(--primary);"></i> Projetos & P&D</div>
+        <div class="page-subtitle">Gerenciamento de iniciativas de pesquisa, desenvolvimento e inovação tecnológica</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header" style="border:none; margin-bottom:4px;">
+            <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Novo Projeto de P&D</span>
+        </div>
+        <input type="hidden" id="edit_id">
+        <div class="form-row">
+            <div>
+                <label>Código / Sigla</label>
+                <input type="text" id="projCodigo" class="form-control" placeholder="Ex: PRJ-001">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Nome do Projeto</label>
+                <input type="text" id="projNome" class="form-control" placeholder="Ex: Nanossensores Avançados">
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="projStatus" class="form-control">
+                    <option value="Em Andamento" selected>Em Andamento</option>
+                    <option value="Planejamento">Planejamento</option>
+                    <option value="Concluído">Concluído</option>
+                    <option value="Suspenso">Suspenso</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div>
+                <label>Data de Início</label>
+                <input type="date" id="projInicio" class="form-control">
+            </div>
+            <div>
+                <label>Data de Término (Previsão)</label>
+                <input type="date" id="projFim" class="form-control">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Descrição / Escopo</label>
+                <input type="text" id="projDesc" class="form-control" placeholder="Resumo dos objetivos científicos e tecnológicos...">
+            </div>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:4px;">
+            <button class="btn-primary" onclick="salvarProjeto()"><i class="fas fa-save"></i> Salvar Projeto</button>
+            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-list"></i> Projetos Cadastrados</span>
+        </div>
+        <div id="listaProjetos" style="overflow-x:auto;">Carregando projetos...</div>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let projetosCache = [];
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function sbFiltro(tabela){
+    let q=sb.from(tabela).select('*');
+    const cid=clienteIdAtual();
+    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+    return q;
+}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){
+        c=document.createElement('div');c.id='toastContainer';
+        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className='toast '+type;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function formatData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
+
+async function carregarProjetos(){
+    const el = document.getElementById('listaProjetos');
+    try {
+        let q = sbFiltro('projetos_pd');
+        const { data, error } = await q.order('id', { ascending: false });
+        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
+        projetosCache = data || [];
+        if(!projetosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum projeto de P&D cadastrado.</div>'; return; }
+        
+        let html = '<table class="analitica-table"><thead><tr><th>Código</th><th>Nome do Projeto</th><th>Status</th><th>Início</th><th>Término</th><th>Descrição</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        projetosCache.forEach(p => {
+            html += `<tr>
+                <td><strong>${p.codigo || '-'}</strong></td>
+                <td><strong>${p.nome || '-'}</strong></td>
+                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#e0f2fe; color:#0369a1;">${p.status || 'Em Andamento'}</span></td>
+                <td>${formatData(p.data_inicio)}</td>
+                <td>${formatData(p.data_termino)}</td>
+                <td>${p.descricao || '-'}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                    <button class="btn-secondary" onclick="editarProjeto(${p.id})" title="Editar"><i class="fas fa-pen"></i></button>
+                    <button class="btn-secondary" onclick="excluirProjeto(${p.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state">Erro ao carregar projetos.</div>';
+    }
+}
+
+async function salvarProjeto(){
+    const id = document.getElementById('edit_id').value;
+    const codigo = document.getElementById('projCodigo').value.trim();
+    const nome = document.getElementById('projNome').value.trim();
+    const status = document.getElementById('projStatus').value;
+    const inicio = document.getElementById('projInicio').value;
+    const termino = document.getElementById('projFim').value;
+    const desc = document.getElementById('projDesc').value.trim();
+
+    if(!nome) { toast("Informe o nome do projeto.", "error"); return; }
+    const cid = clienteIdAtual();
+    const payload = {
+        cliente_id: cid,
+        codigo: codigo || 'PRJ-' + Math.floor(Math.random() * 900 + 100),
+        nome: nome,
+        status: status,
+        data_inicio: inicio || null,
+        data_termino: termino || null,
+        descricao: desc || null
+    };
+
+    let res;
+    if(id) {
+        res = await sb.from('projetos_pd').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('projetos_pd').insert([payload]);
+    }
+
+    if(res.error) { toast("Erro ao salvar projeto: " + res.error.message, "error"); return; }
+    toast("Projeto salvo com sucesso!");
+    cancelarEdicao();
+    carregarProjetos();
+}
+
+function editarProjeto(id){
+    const p = projetosCache.find(x => x.id === id);
+    if(!p) return;
+    document.getElementById('edit_id').value = p.id;
+    document.getElementById('projCodigo').value = p.codigo || '';
+    document.getElementById('projNome').value = p.nome || '';
+    document.getElementById('projStatus').value = p.status || 'Em Andamento';
+    document.getElementById('projInicio').value = p.data_inicio || '';
+    document.getElementById('projFim').value = p.data_termino || '';
+    document.getElementById('projDesc').value = p.descricao || '';
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelarEdicao(){
+    document.getElementById('edit_id').value = '';
+    document.getElementById('projCodigo').value = '';
+    document.getElementById('projNome').value = '';
+    document.getElementById('projStatus').value = 'Em Andamento';
+    document.getElementById('projInicio').value = '';
+    document.getElementById('projFim').value = '';
+    document.getElementById('projDesc').value = '';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+async function excluirProjeto(id){
+    if(!confirm("Deseja realmente excluir este projeto de P&D?")) return;
+    const { error } = await sb.from('projetos_pd').delete().eq('id', id);
+    if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
+    toast("Projeto excluído com sucesso!");
+    carregarProjetos();
+}
+
+async function inicializarPagina(){
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarProjetos();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
