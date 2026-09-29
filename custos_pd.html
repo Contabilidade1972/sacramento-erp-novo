@@ -366,7 +366,6 @@ async function salvarPreCadastroParceiro(){
 
     var r = await sb.from('parceiros').insert([payload]);
     if(r.error) {
-        // Tenta inserir adaptando colunas caso cpf_cnpj não exista na tabela física
         var payloadAlt = {
             cliente_id: cid,
             nome: nome,
@@ -520,8 +519,8 @@ async function carregarCustos(){
             '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(c.valor)+'</td>'+
             '<td>'+comprovanteHTML+'</td>'+
             '<td style="text-align:right; white-space:nowrap;">'+
-                '<button class="btn-secondary" onclick="editarCusto('+c.id+')" title="Editar"><i class="fas fa-pen"></i></button>'+
-                '<button class="btn-secondary" onclick="excluirCusto('+c.id+')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+                '<button class="btn-secondary" onclick="editarCusto(\''+c.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
+                '<button class="btn-secondary" onclick="excluirCusto(\''+c.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
@@ -531,7 +530,7 @@ async function carregarCustos(){
 
 function editarCusto(id){
     var c=null;
-    for(var i=0;i<custosCache.length;i++){if(custosCache[i].id==id)c=custosCache[i];}
+    for(var i=0;i<custosCache.length;i++){if(String(custosCache[i].id)===String(id))c=custosCache[i];}
     if(!c)return;
     document.getElementById('edit_id').value=c.id;
     document.getElementById('projeto_id').value=c.projeto_id||'';
@@ -604,24 +603,24 @@ async function salvarCusto(){
     if(!doc){doc = gerarProximoNumeroDocumento();}
 
     var dados={
-        cliente_id:cid,
-        projeto_id:parseInt(projetoId),
-        contrato_id:contratoId ? parseInt(contratoId) : null,
-        empresa_pagadora:document.getElementById('empresa_pagadora').value.trim(),
-        categoria:document.getElementById('categoria').value,
-        descricao:desc,
-        valor:valor,
-        data_gasto:data,
-        documento_fiscal:doc,
-        prestador_cpf:prestadorCpf,
-        prestador_nome:prestadorNome,
-        prestador_endereco:document.getElementById('prestador_endereco').value.trim()||null,
+        cliente_id: cid,
+        projeto_id: isNaN(projetoId) ? projetoId : String(projetoId),
+        contrato_id: contratoId ? (isNaN(contratoId) ? contratoId : String(contratoId)) : null,
+        empresa_pagadora: document.getElementById('empresa_pagadora').value.trim(),
+        categoria: document.getElementById('categoria').value,
+        descricao: desc,
+        valor: valor,
+        data_gasto: data,
+        documento_fiscal: doc,
+        prestador_cpf: prestadorCpf,
+        prestador_nome: prestadorNome,
+        prestador_endereco: document.getElementById('prestador_endereco').value.trim()||null,
         comprovante: arquivoAnexadoUrl || null
     };
 
     var editId=document.getElementById('edit_id').value;
     if(editId){
-        var ru=await sb.from('custos_pd').update(dados).eq('id',editId);
+        var ru=await sb.from('custos_pd').update(dados).eq('id', editId);
         if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
         toast('Gasto atualizado com sucesso!');
         cancelarEdicao();
@@ -636,7 +635,7 @@ async function salvarCusto(){
 
 async function excluirCusto(id){
     if(!confirm('Tem certeza que deseja excluir este registro de gasto?'))return;
-    var r=await sb.from('custos_pd').delete().eq('id',id);
+    var r=await sb.from('custos_pd').delete().eq('id', id);
     if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
     toast('Gasto excluído com sucesso!');
     carregarCustos();
