@@ -3,311 +3,1039 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Transferências e Pagamentos a Terceiros — Sacramento ERP</title>
+    <title>Transferências e Pagamentos a Terceiros — Sacramento ERP Gestão Empresarial</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
+    <script src="filtro_cliente.js"></script>
     <style>
-        :root {
-            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
-            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-        
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
-        .btn-acao:hover { background: var(--primary-dark); }
-        
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
-        
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { outline: none; border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-        
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
-        
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
-        
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
 
+        /* MENU LATERAL PADRÃO DO ERP */
+        .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;transition:width 0.3s ease, transform 0.3s ease;box-shadow:2px 0 12px rgba(15,23,42,0.15);}
+        .sidebar.collapsed { width: 70px !important; }
+        .sidebar.collapsed .logo-text-wrapper,
+        .sidebar.collapsed .logo-watermark,
+        .sidebar.collapsed .sidebar-logo img,
+        .sidebar.collapsed .nav-section,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .menu-busca,
+        .sidebar.collapsed .nav-seta { display: none !important; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+        .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;z-index:10;min-height:80px; gap:8px;}
+        .logo-watermark{position:absolute;right:-14px;top:50%;transform:translateY(-50%);font-size:110px;color:rgba(255,255,255,0.07);z-index:0;pointer-events:none;line-height:1;}
+        .logo-watermark i{filter:drop-shadow(0 0 8px rgba(37,99,235,0.4));}
+        .logo-text-wrapper{display:flex;flex-direction:column;overflow:hidden;flex:1;position:relative;z-index:1;}
+        .sidebar-logo h1{font-size:12px;font-weight:700;line-height:1.25;color:#fff;letter-spacing:0;text-transform:none;word-wrap:break-word;}
+        .sidebar-logo span{font-size:9px;color:#93c5fd;margin-top:3px;display:block;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;}
+        .btn-toggle-menu { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
+        .btn-toggle-menu:hover { color: #fff; }
+        .btn-tema { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; padding: 4px; transition: color 0.2s; }
+        .btn-tema:hover { color: #fff; }
+        .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding-right:20px;}
+        .nav-seta { font-size: 9px; color: #64748b; transition: transform 0.2s; }
+        .sidebar.collapsed .nav-section { display: none !important; }
+        .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:.2s;border-left:3px solid transparent;}
+        .nav-item-left{display:flex;align-items:center;gap:12px;}
+        .sidebar.collapsed .nav-item-left { gap: 0; }
+        .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+        .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
+        .menu-busca { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .menu-busca .busca-wrapper { position: relative; }
+        .menu-busca .busca-wrapper i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 12px; }
+        .menu-busca input { width: 100%; padding: 8px 10px 8px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; outline: none; box-sizing: border-box; }
+        .menu-busca input::placeholder { color: #64748b; }
+        .menu-back-dashboard { border-top: 1px solid rgba(255,255,255,0.08); }
+
+        /* ÁREA PRINCIPAL E CABEÇALHO PADRÃO */
+        .main{margin-left:260px;flex:1;display:flex;flex-direction:column;min-width:0;width:calc(100% - 260px);transition:margin-left 0.3s ease, width 0.3s ease;}
+        .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
+        .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900}
+        .header-title-wrapper{display:flex;align-items:center;gap:12px;}
+        .btn-home{background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 4px rgba(37,99,235,0.2);transition:.2s;}
+        .btn-home:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(37,99,235,0.3);}
+        .btn-mobile-toggle { background: var(--primary); border: none; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+        .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
+        .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);font-weight:500;}
+        .date-time{color:var(--primary);font-weight:600;}
+        .empresa-selector{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+        .empresa-selector i{color:var(--primary);font-size:13px;}
+        .empresa-selector select{border:none;background:transparent;font-size:12px;font-weight:600;color:var(--secondary);cursor:pointer;outline:none;max-width:200px;}
+        .user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding-left:16px;border-left:1px solid var(--border);}
+        .user-menu:hover{color:var(--primary);}
+
+        .content{padding:24px;display:flex;flex-direction:column;gap:20px;}
+        .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bg)}
+        .card-header h3{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--secondary)}
+        .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:12px}
+        .form-row-fav{display:grid;grid-template-columns:2fr 1.2fr 1.5fr 1fr 0.5fr 1fr 0.5fr;gap:10px;margin-bottom:12px}
+        .form-row-2{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--card);color:var(--text-main);}
+        .form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15)}
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-outline{background:transparent;color:var(--text-main);border:1.5px solid var(--border)}
+        .btn-outline:hover{background:var(--bg)}
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:12px 14px;border-bottom:1px solid var(--bg);color:var(--text-main);vertical-align:middle}
+        .btn-icon{background:none;border:none;cursor:pointer;color:var(--text-light);padding:4px}
+        .btn-icon:hover{color:var(--primary)}
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+        .print-header { display: none; }
+        .tooltip-card {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 12.5px;
+            color: #1e40af;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }
+        .tooltip-card i { font-size: 15px; margin-top: 1px; color: #2563eb; flex-shrink: 0; }
+        .campo-com-mais { display: flex; gap: 6px; align-items: flex-start; }
+        .campo-com-mais .form-control { flex: 1; }
+        .btn-mais {
+            background: var(--success); color: #fff; border: none; width: 38px; height: 38px;
+            border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center; transition: .2s;
+        }
+        .btn-mais:hover { background: #059669; transform: scale(1.05); }
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:4000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:420px;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,0.3);padding:24px;}
+        .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 950; display: none; backdrop-filter: blur(2px); }
+        [data-tema="escuro"] { --bg: #0f172a !important; --card: #1e293b !important; --text-main: #e2e8f0 !important; --text-light: #94a3b8 !important; --border: #334155 !important; background: #0f172a !important; color: #e2e8f0 !important; }
+        [data-tema="escuro"] body { background: #0f172a !important; color: #e2e8f0 !important; }
+        [data-tema="escuro"] .header { background: #1e293b !important; border-bottom-color: #334155 !important; }
+        [data-tema="escuro"] .header-title { color: #f1f5f9 !important; }
+        [data-tema="escuro"] .empresa-selector { background: #0f172a !important; border-color: #334155 !important; }
+        [data-tema="escuro"] .empresa-selector select { color: #f1f5f9 !important; }
         @media print {
-            body { background: #fff; color: #000; }
-            header, nav, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            .panel { border: none !important; box-shadow: none !important; }
+            @page { size: landscape; margin: 8mm; }
+            body { background: #fff !important; color: #000 !important; }
+            .sidebar, .header, .card:not(#cardRelatorioModo), .toast-container, button { display: none !important; }
+            .main { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 12px; border-bottom: 2px solid var(--secondary); padding-bottom: 6px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 6px 8px !important; font-size: 10px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; -webkit-print-color-adjust: exact; }
+        }
+        @media(max-width:900px){
+            .sidebar { transform: translateX(-100%); width: 260px !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main { margin-left: 0 !important; width: 100% !important; }
+            .btn-mobile-toggle { display: flex !important; }
         }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenuMobile()"></div>
 
-<div class="container">
-    <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_financeiro.html'"><i class="fas fa-arrow-left"></i> Módulo Financeiro</button>
-    </div>
-
-    <div>
-        <div class="page-title"><i class="fas fa-exchange-alt" style="color:var(--primary);"></i> Gestão de Transferências e Movimentações</div>
-        <div class="page-subtitle">Transferências entre contas, pagamentos a terceiros e aportes de capital próprio / sócios</div>
-    </div>
-
-    <!-- PAINEL DE CADASTRO / MOVIMENTAÇÃO -->
-    <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Movimentação Financeira</span></div>
-        
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; border-radius:8px; padding:12px 14px; margin-bottom:16px; font-size:12px; line-height:1.5;">
-            <i class="fas fa-info-circle"></i> <strong>Aviso Contábil:</strong> Se a Conta de Origem for uma conta PF ou "Capital Próprio / Recurso Externo", o sistema gera um empréstimo de terceiros (passivo), registrando a entrada estritamente isolada no cadastro da empresa ativa.
+<!-- MODAL ALTERAR SENHA -->
+<div class="modal-overlay" id="modalSenha" style="z-index: 3500;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
+            <button onclick="document.getElementById('modalSenha').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
         </div>
-
-        <div class="form-row">
-            <div>
-                <label>Conta de Origem (Sai o dinheiro) *</label>
-                <select id="conta_origem" class="form-control" onchange="verificarOrigemPropria()">
-                    <option value="">— Selecione a conta de origem —</option>
-                    <option value="CAPITAL_PROPRIO">Capital Próprio / Recurso Externo (Sócio)</option>
-                </select>
-            </div>
-            <div>
-                <label>Conta de Destino (Opcional - Se Interna)</label>
-                <select id="conta_destino" class="form-control">
-                    <option value="">— Nenhuma (Pagamento externo / Terceiro) —</option>
-                </select>
-            </div>
-            <div>
-                <label>Valor da Movimentação (R$) *</label>
-                <input id="valor" class="form-control" placeholder="0,00" onblur="formatarCampoMoeda(this)">
-            </div>
-            <div>
-                <label>Data *</label>
-                <input id="data_mov" class="form-control" type="date">
-            </div>
+        <div>
+            <label>Nova Senha</label>
+            <input type="password" id="novaSenha" class="form-control" placeholder="Digite a nova senha">
+            <label style="margin-top:10px;">Confirmar Nova Senha</label>
+            <input type="password" id="confirmaSenha" class="form-control" placeholder="Confirme a nova senha">
+            <button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="salvarNovaSenha()"><i class="fas fa-save"></i> Atualizar Senha</button>
         </div>
-
-        <div id="blocoFavorecido" style="display:none; background:var(--bg); padding:16px; border-radius:10px; border:1px dashed var(--border); margin-bottom:12px;">
-            <label style="color:var(--primary); margin-bottom:8px;"><i class="fas fa-address-card"></i> Dados Bancários do Favorecido / Terceiro Externo</label>
-            <div class="form-row">
-                <div><label>CPF / CNPJ</label><input id="fav_doc" class="form-control" placeholder="000.000.000-00"></div>
-                <div><label>Nome do Favorecido</label><input id="fav_nome" class="form-control" placeholder="Nome completo / Razão social"></div>
-                <div><label>Banco</label><input id="fav_banco" class="form-control" placeholder="Ex.: 341 - Itaú"></div>
-                <div><label>Agência</label><input id="fav_agencia" class="form-control" placeholder="0000"></div>
-                <div><label>Conta</label><input id="fav_conta" class="form-control" placeholder="00000-0"></div>
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div>
-                <label>Observação / Motivo *</label>
-                <input id="descricao" class="form-control" placeholder="Informações adicionais sobre a transferência...">
-            </div>
-            <div>
-                <label>Centro de Custo / Projeto</label>
-                <select id="centro_custo_id" class="form-control">
-                    <option value="">— Selecione o centro de custo —</option>
-                </select>
-            </div>
-        </div>
-
-        <div style="margin-top:10px;">
-            <button class="btn-acao" onclick="salvarTransferencia()"><i class="fas fa-check"></i> Efetuar Lançamento</button>
-        </div>
-    </div>
-
-    <!-- PAINEL DE FILTROS PARA RELATÓRIO -->
-    <div class="panel" style="padding: 18px 24px;">
-        <div class="panel-header" style="border:none; margin-bottom:8px;"><span><i class="fas fa-filter"></i> Relatório Operacional de Transferências</span></div>
-        <div class="form-row" style="align-items:flex-end;">
-            <div>
-                <label>Data Início</label>
-                <input id="filtro_inicio" class="form-control" type="date" onchange="aplicarFiltros()">
-            </div>
-            <div>
-                <label>Data Fim</label>
-                <input id="filtro_fim" class="form-control" type="date" onchange="aplicarFiltros()">
-            </div>
-            <div>
-                <label>Buscar por Origem, Destino ou Favorecido</label>
-                <input id="filtro_busca" class="form-control" placeholder="Conta ou nome..." oninput="aplicarFiltros()">
-            </div>
-            <div>
-                <button class="btn-acao" onclick="limparFiltros()" style="background:#64748b; width:100%; justify-content:center;"><i class="fas fa-eraser"></i> Limpar</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- TABELA DE HISTÓRICO -->
-    <div class="panel">
-        <div class="panel-header">
-            <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
-            <button class="btn-acao" onclick="window.print()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
-        </div>
-        <div id="listaTransferencias" style="overflow-x:auto;">A carregar transferências...</div>
     </div>
 </div>
 
-<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+<!-- MODAL CADASTRO RÁPIDO: CENTRO DE CUSTO -->
+<div class="modal-overlay" id="modalNovoCentroCusto" style="z-index: 4000;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);display:flex;align-items:center;gap:8px;"><i class="fas fa-tags" style="color:var(--primary)"></i> Novo Centro de Custo</h3>
+            <button onclick="document.getElementById('modalNovoCentroCusto').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Nome / Descrição *</label>
+            <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Transporte, Manutenção, Combustível...">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Código (automático)</label>
+            <input type="text" id="cc_codigo" class="form-control" placeholder="Gerado automaticamente" readonly style="background:var(--bg);">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn btn-outline" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
+            <button class="btn btn-primary" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== MENU LATERAL COMPLETO E PADRÃO ===== -->
+<aside class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+        <div class="logo-watermark"><i class="fas fa-dna"></i></div>
+        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
+            <div class="logo-text-wrapper">
+                <h1 id="sidebarAppName">Sacramento ERP Gestão Empresarial</h1>
+                <span id="sidebarSubName">ERP Financeiro</span>
+            </div>
+        </div>
+        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema claro/escuro"><i class="fas fa-moon"></i></button>
+        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher / Expandir Menu"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="menu-busca">
+        <div class="busca-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="menuBuscaGlobal" placeholder="Buscar no menu...">
+        </div>
+    </div>
+    <div class="nav-section">Principal <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-desktop"></i> <span>Dashboard</span></div></div>
+    <div class="nav-item" onclick="location.href='central_ajuda.html'"><div class="nav-item-left"><i class="fas fa-question-circle"></i> <span>Central de Ajuda</span></div></div>
+    
+    <div class="nav-section">Cadastros <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='parceiros.html'"><div class="nav-item-left"><i class="fas fa-address-book"></i> <span>Parceiros</span></div></div>
+    <div class="nav-item" onclick="location.href='centros_custo.html'"><div class="nav-item-left"><i class="fas fa-sitemap"></i> <span>Centros de Custo</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_bancarias.html'"><div class="nav-item-left"><i class="fas fa-university"></i> <span>Contas Bancárias / Caixa</span></div></div>
+    <div class="nav-item" onclick="location.href='produtos.html'"><div class="nav-item-left"><i class="fas fa-boxes"></i> <span>Produtos e Serviços</span></div></div>
+    <div class="nav-item" onclick="location.href='plano_contas.html'"><div class="nav-item-left"><i class="fas fa-list-alt"></i> <span>Plano de Contas</span></div></div>
+    <div class="nav-item" data-modulo="13" onclick="location.href='estoque.html'"><div class="nav-item-left"><i class="fas fa-warehouse"></i> <span>Inventário / Estoque</span></div></div>
+    
+    <div class="nav-section">Transporte &amp; Logística <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" data-modulo="14" onclick="location.href='cte.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>CT-e</span></div></div>
+    <div class="nav-item" data-modulo="15" onclick="location.href='mdfe.html'"><div class="nav-item-left"><i class="fas fa-route"></i> <span>MDF-e</span></div></div>
+    <div class="nav-item" data-modulo="16" onclick="location.href='antt.html'"><div class="nav-item-left"><i class="fas fa-shield-alt"></i> <span>Registro ANTT</span></div></div>
+    <div class="nav-item" data-modulo="17" onclick="location.href='tms_frota.html'"><div class="nav-item-left"><i class="fas fa-truck"></i> <span>Frota / Veículos</span></div></div>
+    
+    <div class="nav-section">Tecnologia &amp; P&amp;D <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" data-modulo="20" onclick="location.href='projetos_pd.html'"><div class="nav-item-left"><i class="fas fa-flask"></i> <span>Projetos &amp; P&amp;D</span></div></div>
+    <div class="nav-item" data-modulo="24" onclick="location.href='contratos_fomento.html'"><div class="nav-item-left"><i class="fas fa-file-signature"></i> <span>Contratos &amp; Aportes</span></div></div>
+    <div class="nav-item" data-modulo="25" onclick="location.href='aportes_pd.html'"><div class="nav-item-left"><i class="fas fa-money-bill-wave"></i> <span>Aportes Recebidos</span></div></div>
+    <div class="nav-item" data-modulo="26" onclick="location.href='custos_pd.html'"><div class="nav-item-left"><i class="fas fa-receipt"></i> <span>Gastos de P&amp;D</span></div></div>
+    <div class="nav-item" data-modulo="27" onclick="location.href='painel_saldos.html'"><div class="nav-item-left"><i class="fas fa-chart-pie"></i> <span>Painel de Saldos</span></div></div>
+    <div class="nav-item" data-modulo="21" onclick="location.href='ativos_equipamentos.html'"><div class="nav-item-left"><i class="fas fa-microscope"></i> <span>Ativos / Equipamentos</span></div></div>
+    <div class="nav-item" data-modulo="22" onclick="location.href='nfse_servicos.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturamento de Serviços (NFS-e)</span></div></div>
+    <div class="nav-item" data-modulo="23" onclick="location.href='relatorios_performance.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Relatórios de Performance</span></div></div>
+    
+    <div class="nav-section">Contabilidade &amp; Escritório <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='certificados.html'"><div class="nav-item-left"><i class="fas fa-lock"></i> <span>Cofre de Certificados</span></div></div>
+    <div class="nav-item" onclick="location.href='calendario.html'"><div class="nav-item-left"><i class="fas fa-calendar-alt"></i> <span>Calendário Fiscal</span></div></div>
+    <div class="nav-item" data-modulo="30" onclick="location.href='contabilidade.html'"><div class="nav-item-left"><i class="fas fa-book"></i> <span>Contabilidade (ECD/ECF)</span></div></div>
+    <div class="nav-item" data-modulo="31" onclick="location.href='fiscal_contabil.html'"><div class="nav-item-left"><i class="fas fa-calculator"></i> <span>Fiscal (EFD/DCTF)</span></div></div>
+    <div class="nav-item" data-modulo="32" onclick="location.href='folha_rh.html'"><div class="nav-item-left"><i class="fas fa-users"></i> <span>Folha / RH (eSocial)</span></div></div>
+    <div class="nav-item" data-modulo="33" onclick="location.href='gestao_escritorio.html'"><div class="nav-item-left"><i class="fas fa-briefcase"></i> <span>Gestão do Escritório</span></div></div>
+    <div class="nav-item" data-modulo="34" onclick="location.href='juridico_auditoria.html'"><div class="nav-item-left"><i class="fas fa-gavel"></i> <span>Jurídico &amp; Auditoria</span></div></div>
+    
+    <div class="nav-section">Financeiro &amp; Fiscal <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='contas_pagar.html'"><div class="nav-item-left"><i class="fas fa-file-invoice-dollar" style="color:#ef4444"></i> <span>Contas a Pagar</span></div></div>
+    <div class="nav-item" onclick="location.href='contas_receber.html'"><div class="nav-item-left"><i class="fas fa-hand-holding-usd" style="color:#10b981"></i> <span>Contas a Receber</span></div></div>
+    <div class="nav-item active" onclick="location.href='transferencias.html'"><div class="nav-item-left"><i class="fas fa-exchange-alt"></i> <span>Transferências</span></div></div>
+    <div class="nav-item" onclick="location.href='extrato_bancario.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Extrato Bancário</span></div></div>
+    <div class="nav-item" onclick="location.href='conciliacao.html'"><div class="nav-item-left"><i class="fas fa-check-double"></i> <span>Conciliação OFX</span></div></div>
+    <div class="nav-item" onclick="location.href='documentos_recebidos.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Documentos Recebidos</span></div></div>
+    <div class="nav-item" onclick="location.href='fluxo_de_caixa.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Fluxo de Caixa</span></div></div>
+    <div class="nav-item" onclick="location.href='dre.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>DRE Gerencial</span></div></div>
+    <div class="nav-item" onclick="location.href='faturas.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturas &amp; Emissão</span></div></div>
+    <div class="nav-item" onclick="location.href='orcamentos.html'"><div class="nav-item-left"><i class="fas fa-file-contract"></i> <span>Orçamentos &amp; Propostas</span></div></div>
+    
+    <div class="nav-section">Relatórios &amp; Auditoria <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='relatorios.html'"><div class="nav-item-left"><i class="fas fa-chart-bar"></i> <span>Relatórios Gerais</span></div></div>
+    <div class="nav-item" onclick="location.href='logs.html'"><div class="nav-item-left"><i class="fas fa-history"></i> <span>Logs de Auditoria</span></div></div>
+    
+    <div class="nav-section">Controle &amp; Segurança <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='backup.html'"><div class="nav-item-left"><i class="fas fa-database"></i> <span>Backup de Dados</span></div></div>
+    <div class="nav-item" onclick="location.href='termo_de_uso.html'"><div class="nav-item-left"><i class="fas fa-file-contract"></i> <span>Termos de Uso</span></div></div>
+    
+    <div class="nav-section">Sistema (Master) <i class="fas fa-chevron-down nav-seta"></i></div>
+    <div class="nav-item" onclick="location.href='configuracoes_fiscais.html'"><div class="nav-item-left"><i class="fas fa-sliders-h"></i> <span>Parâmetros Fiscais</span></div></div>
+    <div class="nav-item" id="menuMasterWhiteLabel" style="display:none;" onclick="location.href='configuracoes_sistema.html'"><div class="nav-item-left"><i class="fas fa-cog" style="color:#f59e0b"></i> <span>White-Label (Master)</span></div></div>
+    <div class="nav-item" onclick="location.href='clientes_contratantes.html'"><div class="nav-item-left"><i class="fas fa-building" style="color:#f59e0b"></i> <span>Gestão de Clientes (Master)</span></div></div>
+    
+    <div class="nav-item menu-back-dashboard" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-home"></i> <span>Voltar ao Dashboard</span></div></div>
+    <div class="nav-item" onclick="sair()"><div class="nav-item-left"><i class="fas fa-sign-out-alt" style="color:#ef4444"></i> <span>Sair do Sistema</span></div></div>
+    <div style="padding-bottom: 30px;"></div>
+</aside>
+
+<!-- ===== ÁREA PRINCIPAL ===== -->
+<main class="main" id="appMain">
+    <header class="header">
+        <div class="header-title-wrapper">
+            <button class="btn-mobile-toggle" onclick="toggleMenuMobile()" title="Abrir Menu"><i class="fas fa-bars"></i></button>
+            <button class="btn-home" onclick="location.href='index.html'"><i class="fas fa-home"></i> Home</button>
+            <div class="header-title">Transferências e Pagamentos a Terceiros</div>
+        </div>
+        <div class="header-right">
+            <div class="empresa-selector" id="empresaSelector" title="Alternar entre empresas" style="display:none;">
+                <i class="fas fa-building"></i>
+                <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+            </div>
+            <div class="date-time" id="current_datetime">--/--/----, --:--</div>
+            <div class="user-menu" onclick="document.getElementById('modalSenha').style.display='flex'" title="Clique para alterar sua senha">
+                <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
+                <span id="userInfo">Administrador</span>
+                <i class="fas fa-key" style="font-size:11px; color:#64748b; margin-left:4px;"></i>
+            </div>
+            <button class="btn btn-primary" onclick="sair()" style="padding:8px 14px;font-size:12px;font-weight:700;background:var(--danger);"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        </div>
+    </header>
+
+    <div class="content">
+        <div class="card">
+            <div class="card-header">
+                <h3 id="formTitle"><i class="fas fa-edit"></i> Nova Movimentação Financeira</h3>
+            </div>
+            <input type="hidden" id="editId">
+            <div class="tooltip-card">
+                <i class="fas fa-info-circle"></i>
+                <div><strong>Empréstimo de terceiros:</strong> se a <strong>Conta de Origem</strong> for uma conta PF ou "Capital Próprio / Recurso Externo" usada para quitar débito da PJ, isso gera um <strong>empréstimo de terceiros</strong> (passivo) — o valor <strong>não</strong> sai do saldo consolidado da PJ, mas fica registrado como movimentação estritamente isolada da empresa.</div>
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>Conta de Origem (Sai o Dinheiro) *</label>
+                    <input type="text" id="conta_origem" class="form-control" placeholder="Selecione ou digite..." list="listaContas">
+                </div>
+                <div>
+                    <label>Conta de Destino (Opcional - se interna)</label>
+                    <input type="text" id="conta_destino" class="form-control" placeholder="Selecione conta interna..." list="listaContas">
+                </div>
+                <div>
+                    <label>Valor da Movimentação (R$) *</label>
+                    <input type="text" id="valor" class="form-control" placeholder="0,00">
+                </div>
+                <div>
+                    <label>Data *</label>
+                    <input type="date" id="data" class="form-control">
+                </div>
+            </div>
+            <datalist id="listaContas"></datalist>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top: 10px; margin-bottom: 10px;">
+                <div style="font-weight:700; font-size:11px; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px;">
+                    <i class="fas fa-university"></i> Dados Bancários do Favorecido / Terceiro Externo
+                </div>
+                <div id="divCadastrarRapido" style="display:none;">
+                    <button class="btn btn-success" style="padding:4px 10px; font-size:11px;" onclick="cadastrarFavorecidoRapido()"><i class="fas fa-user-plus"></i> Cadastrar este Favorecido</button>
+                </div>
+            </div>
+            <div class="form-row-fav">
+                <div>
+                    <label>CPF / CNPJ</label>
+                    <input type="text" id="favorecido_documento" class="form-control" placeholder="Digite CPF/CNPJ..." onblur="buscarPorDocumento(this.value)">
+                </div>
+                <div>
+                    <label>Nome do Favorecido</label>
+                    <input type="text" id="favorecido_nome" class="form-control" placeholder="Digite o nome..." list="listaParceiros" onblur="buscarPorNome(this.value)">
+                    <datalist id="listaParceiros"></datalist>
+                </div>
+                <div>
+                    <label>Banco</label>
+                    <input type="text" id="favorecido_banco" class="form-control" placeholder="Ex: 341 - Itaú" list="listaBancos">
+                    <datalist id="listaBancos">
+                        <option value="001 - Banco do Brasil S.A.">
+                        <option value="033 - Banco Santander (Brasil) S.A.">
+                        <option value="104 - Caixa Econômica Federal">
+                        <option value="237 - Banco Bradesco S.A.">
+                        <option value="341 - Itaú Unibanco S.A.">
+                        <option value="260 - Nu Pagamentos S.A. (Nubank)">
+                        <option value="077 - Banco Inter S.A.">
+                        <option value="336 - Banco C6 S.A.">
+                        <option value="756 - Sicoob">
+                        <option value="748 - Sicredi">
+                    </datalist>
+                </div>
+                <div>
+                    <label>Agência</label>
+                    <input type="text" id="favorecido_agencia" class="form-control" placeholder="0000">
+                </div>
+                <div>
+                    <label>Díg. Ag.</label>
+                    <input type="text" id="favorecido_digito_agencia" class="form-control" placeholder="0">
+                </div>
+                <div>
+                    <label>Conta</label>
+                    <input type="text" id="favorecido_conta" class="form-control" placeholder="00000">
+                </div>
+                <div>
+                    <label>Díg. Conta</label>
+                    <input type="text" id="favorecido_digito_conta" class="form-control" placeholder="0">
+                </div>
+            </div>
+            <div class="form-row-2" style="grid-template-columns: 2fr 1fr; margin-bottom: 12px;">
+                <div>
+                    <label>Observação / Motivo</label>
+                    <input type="text" id="observacao" class="form-control" placeholder="Informações adicionais...">
+                </div>
+                <div>
+                    <label><i class="fas fa-tags" style="color:var(--primary)"></i> Centro de Custo / Projeto *</label>
+                    <div class="campo-com-mais">
+                        <select id="centro_custo" class="form-control" required>
+                            <option value="">Carregando Centros de Custo...</option>
+                        </select>
+                        <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Cadastrar novo centro de custo"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 10px;">
+                <button id="btnSalvar" class="btn btn-primary" onclick="salvarTransferencia()"><i class="fas fa-save"></i> Efetuar Lançamento</button>
+                <button id="btnCancelar" class="btn btn-outline" onclick="limparForm()" style="display:none;">Cancelar</button>
+            </div>
+        </div>
+
+        <!-- RELATÓRIO OPERACIONAL -->
+        <div class="card" id="cardRelatorioModo">
+            <div class="print-header">
+                <h2>Sacramento ERP Gestão Empresarial - Relatório Operacional: Transferências e Movimentações</h2>
+                <p>Emitido em: <span id="printDataEmissao"></span> | Filtros Aplicados: <span id="printFiltrosInfo">Todos</span></p>
+            </div>
+            <div class="card-header">
+                <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Transferências</h3>
+                <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+            </div>
+            <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: repeat(3, 1fr) auto; gap:10px; align-items:flex-end;">
+                <div>
+                    <label>Data Início</label>
+                    <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <label>Data Fim</label>
+                    <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <label>Buscar por Origem, Destino ou Favorecido</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Conta ou nome..." oninput="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <button class="btn btn-outline" onclick="limparFiltrosRelatorio()" title="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Origem -> Destino / Favorecido</th>
+                            <th>Centro de Custo</th>
+                            <th>Dados Bancários do Favorecido</th>
+                            <th>Valor (R$)</th>
+                            <th>Observação</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-list"></i> Histórico de Movimentações</h3></div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Origem -> Destino / Favorecido</th>
+                            <th>Centro de Custo</th>
+                            <th>Dados Bancários do Favorecido</th>
+                            <th>Valor</th>
+                            <th>Observação</th>
+                            <th>Data Criação</th>
+                            <th>Última Alteração</th>
+                            <th style="text-align:right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="toast-container" id="toastContainer"></div>
 
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+}
+function clienteIdAtual() {
+    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : null;
+}
+function ehMasterGlobal() {
+    const u = obterUsuarioAtual();
+    return !!(u && (u.email || '').toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+function sbfiltro(tabela) {
+    return sb.from(tabela);
+}
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+if (!window.sb) {
+    window.sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+}
+const sb = window.sb;
+
+let listaParceirosCache = [];
 let transferenciasCache = [];
-
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
-
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
-    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+let contasBancariasCache = [];
+if(document.getElementById('printDataEmissao')) {
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
 }
 
-function parseValorBR(v){if(!v)return 0;var s=String(v).trim().replace(/[R$\s]/g,'');if(s.indexOf(',')>-1)s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
-function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.value=parseValorBR(el.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-
-async function carregarSelects(){
-    var cid=clienteIdAtual();
-    if(!cid) return;
-    
-    // FILTRAGEM ESTRITA POR CLIENTE ID PARA EVITAR QUALQUER VAZAMENTO DE OUTROS CLIENTES
-    var r1=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid);
-    if(!r1.error){
-        var contas=r1.data||[];
-        var selOrigem=document.getElementById('conta_origem');
-        var selDestino=document.getElementById('conta_destino');
-        contas.forEach(function(c){
-            var nome = c.banco_nome+' - Ag: '+c.agencia+' Cc: '+c.conta;
-            var opt1=document.createElement('option'); opt1.value=nome; opt1.textContent=nome; selOrigem.appendChild(opt1);
-            var opt2=document.createElement('option'); opt2.value=nome; opt2.textContent=nome; selDestino.appendChild(opt2);
-        });
+function alternarTemaGlobal() {
+    let atual = 'claro';
+    try { atual = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
+    const novo = atual === 'escuro' ? 'claro' : 'escuro';
+    try { localStorage.setItem('erp_tema', novo); } catch(e) {}
+    aplicarTemaSalvo();
+}
+function aplicarTemaSalvo() {
+    let tema = 'claro';
+    try { tema = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
+    document.documentElement.setAttribute('data-tema', tema);
+    const btn = document.getElementById('btnTemaGlobal');
+    if (btn) {
+        btn.innerHTML = tema === 'escuro' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     }
-
-    // FILTRAGEM ESTRITA POR CLIENTE ID DOS CENTROS DE CUSTO DA EMPRESA ATIVA
-    var r2=await sb.from('centros_custo').select('*').eq('cliente_id', cid);
-    if(!r2.error){
-        var centros=r2.data||[];
-        var selCC=document.getElementById('centro_custo_id');
-        centros.forEach(function(cc){
-            var opt=document.createElement('option'); opt.value=cc.id; opt.textContent=(cc.codigo ? cc.codigo+' · ' : '')+cc.nome; selCC.appendChild(opt);
-        });
+}
+function toggleRecolherMenuPC() {
+    const sidebar = document.getElementById('appSidebar');
+    const main = document.getElementById('appMain');
+    sidebar.classList.toggle('collapsed');
+    main.classList.toggle('expanded');
+}
+function toggleMenuMobile() {
+    const sidebar = document.getElementById('appSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sidebar.classList.toggle('mobile-open');
+    overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+}
+function sair() {
+    if (confirm('Deseja realmente sair do sistema?')) { 
+        localStorage.removeItem('usuarioLogado'); 
+        localStorage.removeItem('empresaSelecionada'); 
+        location.href = 'login.html'; 
     }
 }
 
-function verificarOrigemPropria(){
-    var val=document.getElementById('conta_origem').value;
-    var bloco=document.getElementById('blocoFavorecido');
-    if(val==='CAPITAL_PROPRIO'){ bloco.style.display='block'; }
-    else { bloco.style.display='none'; }
+if (!window.__relogioIniciado) {
+    window.__relogioIniciado = true;
+    function atualizarRelogio() {
+        let now = new Date();
+        const dt = document.getElementById('current_datetime');
+        if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }
+    setInterval(atualizarRelogio, 1000);
+    setTimeout(atualizarRelogio, 50);
 }
 
-async function salvarTransferencia(){
-    var cid=clienteIdAtual();
-    var origem=document.getElementById('conta_origem').value;
-    var destino=document.getElementById('conta_destino').value;
-    var valor=parseValorBR(document.getElementById('valor').value);
-    var data=document.getElementById('data_mov').value;
-    var desc=document.getElementById('descricao').value.trim();
+function contaDisponivelEmpresa(r) {
+    let tipo = (r.tipo || '').toLowerCase();
+    let titularidade = (r.titularidade || '').toLowerCase();
+    if (tipo.includes('conta corrente pf') || tipo.includes(' pf') || tipo.includes('pf')) return false;
+    if (titularidade.includes('particular') || titularidade.includes('pf')) return false;
+    if (tipo.includes('pré-pago') || tipo.includes('pre-pago')) return true;
+    if (tipo.includes('crédito') || tipo.includes('credito')) return false;
+    if (r.classificacao_saldo) return r.classificacao_saldo === 'disponivel';
+    return true;
+}
 
-    if(!origem || !valor || !data || !desc){ toast('Preencha os campos obrigatórios.', 'error'); return; }
+function ehRecursoExterno(nomeConta) {
+    if(!nomeConta) return true;
+    let n = nomeConta.toLowerCase();
+    if (n.includes('capital') || n.includes('externo') || n.includes('pessoa física') || n.includes('recurso externo')) return true;
+    let ct = contasBancariasCache.find(c => {
+        let nomeC = (c.nome || '').trim().toLowerCase();
+        let bancoC = (c.banco || '').trim().toLowerCase();
+        let limpo = nomeConta.split('(')[0].trim().toLowerCase();
+        return nomeC.includes(limpo) || bancoC.includes(limpo) || limpo.includes(nomeC);
+    });
+    if (ct && !contaDisponivelEmpresa(ct)) return true;
+    return false;
+}
 
-    var tipo = destino ? 'interna' : (origem==='CAPITAL_PROPRIO' ? 'capital_proprio' : 'terceiro');
+async function registrarLogAuditoria(acao, modulo, detalhes) {
+    try {
+        let sessao = localStorage.getItem('usuarioLogado');
+        let usuarioNome = "Sistema / Visitante";
+        if(sessao) {
+            let u = JSON.parse(sessao);
+            usuarioNome = `${u.nome} (${u.perfil || 'Usuário'})`;
+        }
+        let payloadLog = {
+            acao: acao.toUpperCase(),
+            modulo: modulo,
+            usuario: usuarioNome,
+            detalhes: detalhes
+        };
+        const cidLog = clienteIdAtual();
+        if (cidLog) payloadLog.cliente_id = cidLog;
+        await sbfiltro('logs_auditoria').insert([payloadLog]);
+    } catch (err) { console.error("Erro ao registrar log de auditoria:", err); }
+}
 
-    var dados={
-        cliente_id: cid,
-        conta_origem: origem,
-        conta_destino: destino || null,
-        valor: valor,
-        data_movimento: data,
-        tipo_movimento: tipo,
-        descricao: desc,
-        fav_doc: document.getElementById('fav_doc').value.trim() || null,
-        fav_nome: document.getElementById('fav_nome').value.trim() || null,
-        fav_banco: document.getElementById('fav_banco').value.trim() || null,
-        fav_agencia: document.getElementById('fav_agencia').value.trim() || null,
-        fav_conta: document.getElementById('fav_conta').value.trim() || null,
-        centro_custo_id: document.getElementById('centro_custo_id').value || null
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) {
+        c = document.createElement('div'); c.id = 'toastContainer';
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className = 'toast '+type;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+async function carregarCentrosCustoSelect() {
+    try {
+        const { data, error } = await sbFiltroLeitura('centros_custo');
+        let selectEl = document.getElementById('centro_custo');
+        if(!selectEl) return;
+        selectEl.innerHTML = '<option value="">Selecione o Centro de Custo / Projeto...</option>';
+        if(!error && data) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                selectEl.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
+            });
+        }
+    } catch(err) {
+        console.error("Erro ao carregar centros de custo:", err);
+    }
+}
+
+async function carregarCombosEParceiros() {
+    const { data: contas } = await sbFiltroLeitura('contas_bancarias').order('nome');
+    contasBancariasCache = contas || [];
+    let lista = document.getElementById('listaContas');
+    if(lista) {
+        lista.innerHTML = '';
+        lista.innerHTML += `<option value="Capital Próprio / Recurso Externo">`;
+        contasBancariasCache.forEach(ct => {
+            let nomeB = ct.nome || ct.banco || 'Conta';
+            let tipoB = ct.tipo || 'PJ';
+            let ehPF = !contaDisponivelEmpresa(ct);
+            let rotulo = `${nomeB} (${tipoB})`;
+            if (ehPF) rotulo += ' [PF]';
+            lista.innerHTML += `<option value="${rotulo}">`;
+        });
+    }
+    const { data: parceiros } = await sbFiltroLeitura('parceiros').order('nome');
+    listaParceirosCache = parceiros || [];
+    let listaParc = document.getElementById('listaParceiros');
+    if(listaParc) {
+        listaParc.innerHTML = '';
+        listaParceirosCache.forEach(p => {
+            listaParc.innerHTML += `<option value="${p.nome}">`;
+        });
+    }
+}
+
+function buscarPorDocumento(docDigitado) {
+    let busca = docDigitado.trim().replace(/\D/g, '');
+    if(busca.length < 3) return;
+    let achado = listaParceirosCache.find(p => {
+        let doc = (p.cnpj_cpf || p.documento || '').toString().replace(/\D/g, '');
+        return doc === busca;
+    });
+    if(achado) {
+        preencherCamposFavorecido(achado);
+        toast("Dados do favorecido carregados do cadastro!", "success");
+        document.getElementById('divCadastrarRapido').style.display = 'none';
+    } else {
+        toast("Favorecido não encontrado. Você pode cadastrá-lo abaixo.", "info");
+        document.getElementById('divCadastrarRapido').style.display = 'block';
+    }
+}
+
+function buscarPorNome(nomeDigitado) {
+    let busca = nomeDigitado.trim().toLowerCase();
+    if(!busca) return;
+    let achado = listaParceirosCache.find(p => p.nome && p.nome.toLowerCase().includes(busca));
+    if(achado) {
+        preencherCamposFavorecido(achado);
+        toast("Dados do favorecido carregados do cadastro!", "success");
+        document.getElementById('divCadastrarRapido').style.display = 'none';
+    } else {
+        document.getElementById('divCadastrarRapido').style.display = 'block';
+    }
+}
+
+function preencherCamposFavorecido(p) {
+    document.getElementById('favorecido_nome').value = p.nome || '';
+    document.getElementById('favorecido_documento').value = p.cnpj_cpf || p.documento || '';
+    document.getElementById('favorecido_banco').value = p.banco || '';
+    document.getElementById('favorecido_agencia').value = p.agencia || '';
+    document.getElementById('favorecido_digito_agencia').value = p.agencia_dv || '';
+    document.getElementById('favorecido_conta').value = p.conta_corrente || '';
+    document.getElementById('favorecido_digito_conta').value = p.conta_dv || '';
+}
+
+async function cadastrarFavorecidoRapido() {
+    let nome = document.getElementById('favorecido_nome').value.trim();
+    let cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
+    if(!nome || !cnpj_cpf) {
+        toast("Informe pelo menos o Nome e o CPF/CNPJ para cadastrar o favorecido!", "error");
+        return;
+    }
+    const cidAtual = clienteIdAtual();
+    let payloadParceiro = {
+        nome: nome,
+        tipo_cadastro: 'Fornecedor',
+        cnpj_cpf: cnpj_cpf,
+        banco: document.getElementById('favorecido_banco').value.trim(),
+        agencia: document.getElementById('favorecido_agencia').value.trim(),
+        agencia_dv: document.getElementById('favorecido_digito_agencia').value.trim(),
+        conta_corrente: document.getElementById('favorecido_conta').value.trim(),
+        conta_dv: document.getElementById('favorecido_digito_conta').value.trim()
     };
-
-    var r=await sb.from('transferencias').insert([dados]);
-    if(r.error){ toast('Erro ao registar: '+r.error.message, 'error'); return; }
-
-    toast('Movimentação registada com sucesso!');
-    document.getElementById('valor').value='';
-    document.getElementById('descricao').value='';
-    document.getElementById('fav_doc').value='';
-    document.getElementById('fav_nome').value='';
-    document.getElementById('fav_banco').value='';
-    document.getElementById('fav_agencia').value='';
-    document.getElementById('fav_conta').value='';
-    carregarTransferencias();
+    if (cidAtual) payloadParceiro.cliente_id = cidAtual;
+    const { error } = await sbfiltro('parceiros').insert([payloadParceiro]);
+    if(error) {
+        toast("Erro ao cadastrar favorecido: " + error.message, "error");
+        return;
+    }
+    await registrarLogAuditoria('INSERT', 'parceiros', `Cadastro rápido de Favorecido via Transferências: ${nome} (${cnpj_cpf})`);
+    toast("Favorecido cadastrado com sucesso na base de Parceiros!");
+    document.getElementById('divCadastrarRapido').style.display = 'none';
+    carregarCombosEParceiros();
 }
 
-async function carregarTransferencias(){
-    var cid=clienteIdAtual();
-    // BUSCA EXCLUSIVA DOS DADOS DA EMPRESA ATIVA (ISOLAMENTO MULTI-TENANT RIGOROSO)
-    var r=await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data_movimento', {ascending:false});
-    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state">Tabela em configuração.</div>'; return; }
-    transferenciasCache = r.data||[];
-    aplicarFiltros();
+function parseNumeroBR(v) {
+    if (v === null || v === undefined) return 0;
+    let s = String(v).trim().replace(/[R$\s]/g, '');
+    if (s === '') return 0;
+    if (s.indexOf(',') !== -1) {
+        return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
+    }
+    return parseFloat(s) || 0;
 }
 
-function aplicarFiltros(){
-    var inicio = document.getElementById('filtro_inicio').value;
-    var fim = document.getElementById('filtro_fim').value;
-    var busca = document.getElementById('filtro_busca').value.toLowerCase().trim();
+async function atualizarSaldoConta(nomeConta, valorStr, operacao) {
+    if(!nomeConta) return;
+    let limpo = nomeConta.split('(')[0].trim().toLowerCase();
+    let ct = contasBancariasCache.find(c => {
+        let nomeC = (c.nome || '').trim().toLowerCase();
+        let bancoC = (c.banco || '').trim().toLowerCase();
+        return nomeC.includes(limpo) || bancoC.includes(limpo) || limpo.includes(nomeC);
+    });
+    if(ct) {
+        let atual = parseNumeroBR(ct.saldo_inicial);
+        let valMov = parseNumeroBR(valorStr);
+        let novoSaldo = operacao === 'subtrair' ? (atual - valMov) : (atual + valMov);
+        let novoSaldoStr = novoSaldo.toFixed(2);
+        let upd = sbfiltro('contas_bancarias').update({ saldo_inicial: novoSaldoStr }).eq('id', ct.id);
+        const cidAtual = clienteIdAtual();
+        if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+        await upd;
+    }
+}
 
-    var filtradas = transferenciasCache.filter(function(t){
-        if(inicio && t.data_movimento < inicio) return false;
-        if(fim && t.data_movimento > fim) return false;
-        if(busca){
-            var linha = (t.conta_origem + ' ' + (t.conta_destino||'') + ' ' + (t.fav_nome||'') + ' ' + t.descricao).toLowerCase();
-            if(linha.indexOf(busca) === -1) return false;
+async function carregar() {
+    const { data, error } = await sbFiltroLeitura('transferencias').order('id', { ascending: false });
+    if(error) { console.error(error); return; }
+    transferenciasCache = data || [];
+    renderTabela();
+    aplicarFiltrosRelatorio();
+}
+
+function aplicarFiltrosRelatorio() {
+    let dtIni = document.getElementById('filtroDataInicio').value;
+    let dtFim = document.getElementById('filtroDataFim').value;
+    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+    let dadosFiltrados = transferenciasCache.filter(i => {
+        if (dtIni && i.data < dtIni) return false;
+        if (dtFim && i.data > dtFim) return false;
+        if (txtBusca) {
+            let linha = (i.conta_origem + ' ' + (i.conta_destino || '') + ' ' + (i.favorecido_nome || '') + ' ' + (i.centro_custo || '')).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
         }
         return true;
     });
-
-    var el=document.getElementById('listaTransferencias');
-    if(!filtradas.length){ el.innerHTML='<div class="empty-state">Nenhuma movimentação encontrada.</div>'; return; }
-
-    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Descrição</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
-    filtradas.forEach(function(t){
-        var favorecidoTxt = t.fav_nome ? ' <small style="color:var(--primary)">('+t.fav_nome+')</small>' : '';
-        html+='<tr>'+
-            '<td>'+t.data_movimento+'</td>'+
-            '<td><strong>'+t.conta_origem+'</strong>'+(t.conta_destino ? ' ➔ '+t.conta_destino : ' (Externo)')+favorecidoTxt+'</td>'+
-            '<td>'+t.descricao+'</td>'+
-            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(t.valor)+'</td>'+
-        '</tr>';
+    let infoFiltros = [];
+    if(dtIni) infoFiltros.push(`Início: ${dtIni.split('-').reverse().join('/')}`);
+    if(dtFim) infoFiltros.push(`Fim: ${dtFim.split('-').reverse().join('/')}`);
+    if(txtBusca) infoFiltros.push(`Busca: "${txtBusca}"`);
+    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+    const tbodyRel = document.getElementById('tbodyRelatorioModo');
+    tbodyRel.innerHTML = '';
+    if(dadosFiltrados.length === 0) {
+        tbodyRel.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado para os filtros selecionados.</td></tr>`;
+        return;
+    }
+    dadosFiltrados.forEach(i => {
+        let dataFormatada = i.data ? i.data.split('-').reverse().join('/') : '-';
+        let destinoOuFav = '';
+        if(i.conta_destino) {
+            destinoOuFav = `<span style="color:var(--success);"><i class="fas fa-arrow-down"></i> ${i.conta_destino}</span>`;
+        } else if(i.favorecido_nome) {
+            destinoOuFav = `<strong>${i.favorecido_nome}</strong> (${i.favorecido_documento || 'Sem doc'})`;
+        } else {
+            destinoOuFav = '-';
+        }
+        let ccFmt = i.centro_custo || 'Não informado';
+        let dadosFav = i.favorecido_nome ? `Banco: ${i.favorecido_banco || '-'} | Ag: ${i.favorecido_agencia || '-'}-${i.favorecido_digito_agencia || ''} | CC: ${i.favorecido_conta || '-'}-${i.favorecido_digito_conta || ''}` : 'Transferência Interna';
+        tbodyRel.innerHTML += `<tr>
+            <td>${dataFormatada}</td>
+            <td><strong>De:</strong> ${i.conta_origem}<br><strong>Para:</strong> ${destinoOuFav}</td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
+            <td><span style="font-size:11px;">${dadosFav}</span></td>
+            <td><strong>R$ ${i.valor || '0,00'}</strong></td>
+            <td>${i.observacao || '-'}</td>
+        </tr>`;
     });
-    html+='</tbody></table>';
-    el.innerHTML=html;
 }
 
-function limparFiltros(){
-    document.getElementById('filtro_inicio').value='';
-    document.getElementById('filtro_fim').value='';
-    document.getElementById('filtro_busca').value='';
-    aplicarFiltros();
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
 }
 
-window.onload = function(){
-    carregarSelects();
-    carregarTransferencias();
-    document.getElementById('data_mov').value = new Date().toISOString().split('T')[0];
+function renderTabela() {
+    const tbody = document.getElementById('tbody');
+    tbody.innerHTML = '';
+    transferenciasCache.forEach(i => {
+        let dataFormatada = i.data ? i.data.split('-').reverse().join('/') : '-';
+        let destinoOuFav = '';
+        if(i.conta_destino) {
+            destinoOuFav = `<span style="color:var(--success);"><i class="fas fa-arrow-down"></i> ${i.conta_destino}</span>`;
+        } else if(i.favorecido_nome) {
+            destinoOuFav = `<strong>${i.favorecido_nome}</strong> (${i.favorecido_documento || 'Sem doc'})`;
+        } else {
+            destinoOuFav = '-';
+        }
+        let ccFmt = i.centro_custo || 'Não informado';
+        let dadosFav = i.favorecido_nome ? `<span style="font-size:11px; color:var(--text-light);">Banco: ${i.favorecido_banco || '-'} | Ag: ${i.favorecido_agencia || '-'}-${i.favorecido_digito_agencia || ''} | CC: ${i.favorecido_conta || '-'}-${i.favorecido_digito_conta || ''}</span>` : 'Transferência Interna';
+        let dataReg = i.created_at ? i.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        let dataAlt = i.updated_at ? new Date(i.updated_at).toLocaleString('pt-BR') : '-';
+        tbody.innerHTML += `<tr>
+            <td>${dataFormatada}</td>
+            <td><span style="color:var(--danger);"><i class="fas fa-arrow-up"></i> ${i.conta_origem}</span><br>${destinoOuFav}</td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
+            <td>${dadosFav}</td>
+            <td><strong>R$ ${i.valor || '0,00'}</strong></td>
+            <td>${i.observacao || '-'}</td>
+            <td>${dataReg}</td>
+            <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
+            <td style="text-align:right;">
+                <button class="btn-icon" onclick='prepararEdicao(${i.id}, ${JSON.stringify(i.conta_origem || "")}, ${JSON.stringify(i.conta_destino || "")}, ${JSON.stringify(i.valor || "")}, ${JSON.stringify(i.data || "")}, ${JSON.stringify(i.favorecido_nome || "")}, ${JSON.stringify(i.favorecido_documento || "")}, ${JSON.stringify(i.favorecido_banco || "")}, ${JSON.stringify(i.favorecido_agencia || "")}, ${JSON.stringify(i.favorecido_digito_agencia || "")}, ${JSON.stringify(i.favorecido_conta || "")}, ${JSON.stringify(i.favorecido_digito_conta || "")}, ${JSON.stringify(i.observacao || "")}, ${JSON.stringify(i.centro_custo || "")})' title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon" onclick="apagarRegistro(${i.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function salvarTransferencia() {
+    const id = document.getElementById('editId').value;
+    const conta_origem = document.getElementById('conta_origem').value.trim();
+    const conta_destino = document.getElementById('conta_destino').value.trim();
+    const valor = document.getElementById('valor').value;
+    const data = document.getElementById('data').value;
+    const favorecido_nome = document.getElementById('favorecido_nome').value.trim();
+    const favorecido_documento = document.getElementById('favorecido_documento').value.trim();
+    const favorecido_banco = document.getElementById('favorecido_banco').value.trim();
+    const favorecido_agencia = document.getElementById('favorecido_agencia').value.trim();
+    const favorecido_digito_agencia = document.getElementById('favorecido_digito_agencia').value.trim();
+    const favorecido_conta = document.getElementById('favorecido_conta').value.trim();
+    const favorecido_digito_conta = document.getElementById('favorecido_digito_conta').value.trim();
+    const observacao = document.getElementById('observacao').value.trim();
+    const centro_custo = document.getElementById('centro_custo').value;
+    if(!conta_origem || !valor || !data || !centro_custo || (!conta_destino && !favorecido_nome)) { 
+        toast("Preencha a Conta de Origem, Valor, Data, Centro de Custo e informe o Destino!", "error"); 
+        return; 
+    }
+    const cidAtual = clienteIdAtual();
+    let payload = { 
+        conta_origem, conta_destino, valor, data, 
+        favorecido_nome, favorecido_documento, favorecido_banco, 
+        favorecido_agencia, favorecido_digito_agencia, 
+        favorecido_conta, favorecido_digito_conta, 
+        observacao,
+        centro_custo,
+        updated_at: new Date().toISOString()
+    };
+    if(id) {
+        let qAntigo = sbfiltro('transferencias').select('*').eq('id', id);
+        if (cidAtual) qAntigo = qAntigo.eq('cliente_id', cidAtual);
+        const { data: antigo } = await qAntigo.single();
+        if(antigo) {
+            if(antigo.conta_destino) await atualizarSaldoConta(antigo.conta_destino, antigo.valor, 'subtrair');
+            if(!ehRecursoExterno(antigo.conta_origem)) await atualizarSaldoConta(antigo.conta_origem, antigo.valor, 'somar');
+        }
+        let upd = sbfiltro('transferencias').update(payload).eq('id', id);
+        if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
+        let res = await upd;
+        if(res.error) {
+            delete payload.updated_at;
+            let upd2 = sbfiltro('transferencias').update(payload).eq('id', id);
+            if (cidAtual) upd2 = upd2.eq('cliente_id', cidAtual);
+            res = await upd2;
+        }
+        if(!res.error) {
+            await registrarLogAuditoria('UPDATE', 'transferencias', `Atualização da Movimentação ID: ${id} (${conta_origem} -> ${conta_destino || favorecido_nome} - R$ ${valor})`);
+        }
+    } else {
+        delete payload.updated_at;
+        if (cidAtual) payload.cliente_id = cidAtual;
+        let res = await sbfiltro('transferencias').insert([payload]);
+        if(!res.error) {
+            await registrarLogAuditoria('INSERT', 'transferencias', `Nova Movimentação: ${conta_origem} -> ${conta_destino || favorecido_nome} - R$ ${valor} em ${data}`);
+        }
+    }
+    if(conta_destino) {
+        await atualizarSaldoConta(conta_destino, valor, 'somar');
+    }
+    if(!ehRecursoExterno(conta_origem)) {
+        await atualizarSaldoConta(conta_origem, valor, 'subtrair');
+    }
+    toast("Movimentação efetuada e saldos atualizados com sucesso!");
+    limparForm();
+    carregarCombosEParceiros().then(() => carregar());
+}
+
+window.prepararEdicao = (id, conta_origem, conta_destino, valor, data, favorecido_nome, favorecido_documento, favorecido_banco, favorecido_agencia, favorecido_digito_agencia, favorecido_conta, favorecido_digito_conta, observacao, centro_custo) => {
+    document.getElementById('editId').value = id;
+    document.getElementById('conta_origem').value = conta_origem;
+    document.getElementById('conta_destino').value = conta_destino;
+    document.getElementById('valor').value = valor;
+    document.getElementById('data').value = data;
+    document.getElementById('favorecido_nome').value = favorecido_nome;
+    document.getElementById('favorecido_documento').value = favorecido_documento;
+    document.getElementById('favorecido_banco').value = favorecido_banco;
+    document.getElementById('favorecido_agencia').value = favorecido_agencia;
+    document.getElementById('favorecido_digito_agencia').value = favorecido_digito_agencia;
+    document.getElementById('favorecido_conta').value = favorecido_conta;
+    document.getElementById('favorecido_digito_conta').value = favorecido_digito_conta;
+    document.getElementById('observacao').value = observacao;
+    document.getElementById('centro_custo').value = centro_custo || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Movimentação #${id}`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Atualizar Movimentação';
+    document.getElementById('btnCancelar').style.display = "inline-block";
+    window.scrollTo({top: 0, behavior: 'smooth'});
 };
+
+function limparForm() {
+    document.getElementById('editId').value = '';
+    document.getElementById('conta_origem').value = '';
+    document.getElementById('conta_destino').value = '';
+    document.getElementById('valor').value = '';
+    document.getElementById('data').value = '';
+    document.getElementById('favorecido_nome').value = '';
+    document.getElementById('favorecido_documento').value = '';
+    document.getElementById('favorecido_banco').value = '';
+    document.getElementById('favorecido_agencia').value = '';
+    document.getElementById('favorecido_digito_agencia').value = '';
+    document.getElementById('favorecido_conta').value = '';
+    document.getElementById('favorecido_digito_conta').value = '';
+    document.getElementById('observacao').value = '';
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('divCadastrarRapido').style.display = 'none';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Nova Movimentação Financeira`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Efetuar Lançamento';
+    document.getElementById('btnCancelar').style.display = "none";
+}
+
+window.apagarRegistro = async function(id) {
+    if(confirm("Deseja excluir este registro e estornar os saldos nas contas?")) {
+        const cidAtual = clienteIdAtual();
+        let qItem = sbfiltro('transferencias').select('*').eq('id', id);
+        if (cidAtual) qItem = qItem.eq('cliente_id', cidAtual);
+        const { data: item } = await qItem.single();
+        if(item) {
+            if(item.conta_destino) await atualizarSaldoConta(item.conta_destino, item.valor, 'subtrair');
+            if(!ehRecursoExterno(item.conta_origem)) await atualizarSaldoConta(item.conta_origem, item.valor, 'somar');
+        }
+        let del = sbfiltro('transferencias').delete().eq('id', id);
+        if (cidAtual) del = del.eq('cliente_id', cidAtual);
+        const { error } = await del;
+        if(error) { toast("Erro ao excluir", "error"); return; }
+        await registrarLogAuditoria('DELETE', 'transferencias', `Exclusão da Movimentação ID: ${id} (${item ? item.conta_origem : 'Registro'} - R$ ${item ? item.valor : ''})`);
+        toast("Excluído e saldos estornados com sucesso!");
+        carregarCombosEParceiros().then(() => carregar());
+    }
+};
+
+function gerarProximoCodigoCentro(centrosExistentes) {
+    let maior = 0;
+    (centrosExistentes || []).forEach(c => {
+        let cod = (c.codigo || '').toString();
+        let num = parseInt(cod.replace(/\D/g, ''), 10);
+        if (!isNaN(num) && num > maior) maior = num;
+    });
+    return 'CC-' + String(maior + 1).padStart(3, '0');
+}
+
+window.abrirModalCentroCusto = function() {
+    document.getElementById('cc_nome').value = '';
+    document.getElementById('cc_codigo').value = '';
+    document.getElementById('modalNovoCentroCusto').style.display = 'flex';
+    setTimeout(function(){ document.getElementById('cc_nome').focus(); }, 100);
+};
+
+window.salvarNovoCentroCusto = async function() {
+    const nome = document.getElementById('cc_nome').value.trim();
+    if(!nome) { toast("Informe o nome do centro de custo.", "error"); return; }
+    const cid = clienteIdAtual();
+    const { data: existentes } = await sbFiltroLeitura('centros_custo');
+    const codigoAuto = gerarProximoCodigoCentro(existentes);
+    let payload = { nome: nome, descricao: nome, status: 'Ativo', codigo: codigoAuto };
+    if (cid) payload.cliente_id = cid;
+    const { data, error } = await sbfiltro('centros_custo').insert([payload]).select();
+    if(error) { toast("Erro ao salvar centro de custo: " + error.message, "error"); return; }
+    document.getElementById('modalNovoCentroCusto').style.display = 'none';
+    await carregarCentrosCustoSelect();
+    const novo = data && data[0];
+    if (novo) {
+        let codigoCC = novo.codigo || novo.id || '';
+        let nomeCC = novo.nome || novo.descricao || '';
+        document.getElementById('centro_custo').value = `${codigoCC} - ${nomeCC}`;
+    }
+    await registrarLogAuditoria('INSERT', 'centros_custo', `Cadastro rápido de Centro de Custo: ${nome} (${codigoAuto})`);
+    toast("Centro de custo criado com código automático e selecionado!");
+};
+
+async function inicializarPagina() {
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) {
+        location.href = 'login.html';
+        return;
+    }
+    var elUser = document.getElementById('userInfo');
+    if (elUser) elUser.innerText = (u.nome || u.email).split(' ')[0] + ' (' + (u.perfil || 'Usuário') + ')';
+    await carregarSeletorEmpresa();
+    aplicarTemaSalvo();
+    const cid = clienteIdAtual();
+    await carregarMarcaSistema(cid);
+    carregarCentrosCustoSelect();
+    carregarCombosEParceiros().then(() => carregar());
+}
+
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
