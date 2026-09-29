@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiscal (EFD/DCTF) — Sacramento ERP</title>
+    <title>Fiscal (EFD/DCTF / Reforma Tributária) — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -81,21 +81,22 @@
     </div>
 
     <div>
-        <div class="page-title"><i class="fas fa-calculator" style="color:var(--primary);"></i> Fiscal (EFD / DCTF)</div>
-        <div class="page-subtitle">Apuração de impostos, controle de obrigações acessórias e parâmetros de alíquotas</div>
+        <div class="page-title"><i class="fas fa-calculator" style="color:var(--primary);"></i> Fiscal (EFD / DCTF / Reforma Tributária)</div>
+        <div class="page-subtitle">Apuração de impostos tradicionais e do novo IVA Dual (CBS, IBS e Imposto Seletivo)</div>
     </div>
 
     <div class="panel">
         <div class="tabs-header">
-            <button class="tab-btn active" onclick="alternarAba(event,'tab_apuracao')"><i class="fas fa-calculator"></i> Apuração de Impostos</button>
+            <button class="tab-btn active" onclick="alternarAba(event,'tab_apuracao')"><i class="fas fa-calculator"></i> Apuração Tradicional</button>
+            <button class="tab-btn" onclick="alternarAba(event,'tab_reforma')"><i class="fas fa-globe"></i> Reforma Tributária (IVA Dual)</button>
             <button class="tab-btn" onclick="alternarAba(event,'tab_obrigacoes')"><i class="fas fa-clipboard-check"></i> Obrigações Acessórias</button>
             <button class="tab-btn" onclick="alternarAba(event,'tab_parametros')"><i class="fas fa-sliders-h"></i> Parâmetros (Alíquotas)</button>
         </div>
 
-        <!-- ABA APURAÇÃO -->
+        <!-- ABA APURAÇÃO TRADICIONAL -->
         <div id="tab_apuracao" class="tab-content">
             <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
-                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Apuração do Período</span></div>
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Apuração Tradicional (ISS, PIS, COFINS, IRPJ, CSLL)</span></div>
                 <div class="form-row">
                     <div>
                         <label>Competência (Mês/Ano)</label>
@@ -122,8 +123,37 @@
             </div>
 
             <div class="panel">
-                <div class="panel-header"><span><i class="fas fa-history"></i> Histórico de Apurações</span></div>
+                <div class="panel-header"><span><i class="fas fa-history"></i> Histórico de Apurações Tradicionais</span></div>
                 <div id="listaApuracaoes" style="overflow-x:auto;">Carregando apurações...</div>
+            </div>
+        </div>
+
+        <!-- ABA REFORMA TRIBUTÁRIA (NOVO IVA DUAL) -->
+        <div id="tab_reforma" class="tab-content" style="display:none;">
+            <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-bolt" style="color:var(--warning)"></i> Apuração do IVA Dual (CBS 0,9% + IBS 0,1% Fase de Testes / Plena)</span></div>
+                <div class="form-row">
+                    <div>
+                        <label>Competência (Mês/Ano)</label>
+                        <input type="month" id="compReforma" class="form-control">
+                    </div>
+                    <div>
+                        <label>Base de Cálculo / Faturamento (R$)</label>
+                        <input type="number" id="baseReforma" class="form-control" step="0.01" min="0" placeholder="0,00">
+                    </div>
+                    <div style="display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;">
+                        <button class="btn-primary" onclick="calcularReforma()"><i class="fas fa-calculator"></i> Simular IVA Dual</button>
+                    </div>
+                </div>
+                <div id="previewReforma" style="margin-top:12px;"></div>
+            </div>
+            <div class="panel">
+                <div class="panel-header"><span><i class="fas fa-info-circle"></i> Diretrizes da Reforma Tributária (EC 132/2023)</span></div>
+                <p style="font-size:13px; color:var(--text-light); line-height: 1.6;">
+                    • <strong>CBS (Federal):</strong> Unifica PIS e COFINS com alíquota de teste padrão de 0,9%.<br>
+                    • <strong>IBS (Estadual/Municipal):</strong> Unifica ICMS e ISS com alíquota de teste padrão de 0,1%.<br>
+                    • <strong>Princípio do Destino:</strong> Os tributos sobre o consumo passam a ser devidos no local de consumo do bem ou serviço.
+                </p>
             </div>
         </div>
 
@@ -136,10 +166,10 @@
             <div id="listaObrigacoes" style="overflow-x:auto;">Carregando obrigações...</div>
         </div>
 
-        <!-- ABA PARÂMETROS (ALÍQUOTAS) -->
+        <!-- ABA PARÂMETROS -->
         <div id="tab_parametros" class="tab-content" style="display:none;">
             <div class="panel-header">
-                <span><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Alíquotas por Imposto</span>
+                <span><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Alíquotas por Imposto (Tradicionais + Reforma)</span>
                 <button class="btn-primary" onclick="salvarParametros()"><i class="fas fa-save"></i> Salvar Parâmetros</button>
             </div>
             <div id="listaParametros" style="overflow-x:auto;">Carregando parâmetros...</div>
@@ -152,7 +182,7 @@ var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
 
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-var IMPOSTOS = ['ISS','PIS','COFINS','IRPJ','CSLL'];
+var IMPOSTOS = ['ISS','PIS','COFINS','IRPJ','CSLL','CBS (Reforma)','IBS (Reforma)'];
 var paramMap = {};
 var apuracaoTemp = null;
 
@@ -212,6 +242,10 @@ async function carregarParametros(){
         (data || []).forEach(p => {
             paramMap[p.imposto] = parseFloat(p.aliquota) || 0;
         });
+        // Padrões iniciais para a Reforma (Fase de Testes: CBS 0.9%, IBS 0.1%)
+        if(paramMap['CBS (Reforma)'] === undefined) paramMap['CBS (Reforma)'] = 0.900;
+        if(paramMap['IBS (Reforma)'] === undefined) paramMap['IBS (Reforma)'] = 0.100;
+
         IMPOSTOS.forEach(imp => {
             if(paramMap[imp] === undefined) paramMap[imp] = 0;
         });
@@ -221,7 +255,7 @@ async function carregarParametros(){
 
 function renderParametros(){
     const el = document.getElementById('listaParametros');
-    let html = '<table class="analitica-table"><thead><tr><th>Imposto</th><th style="text-align:right;">Alíquota (%)</th></tr></thead><tbody>';
+    let html = '<table class="analitica-table"><thead><tr><th>Imposto / Contribuição</th><th style="text-align:right;">Alíquota (%)</th></tr></thead><tbody>';
     IMPOSTOS.forEach(imp => {
         html += `<tr><td><strong>${imp}</strong></td><td style="text-align:right;"><input type="number" step="0.001" min="0" max="100" id="alq_${imp}" class="form-control" style="width:160px; margin-bottom:0; text-align:right; display:inline-block;" value="${paramMap[imp]}"></td></tr>`;
     });
@@ -233,7 +267,9 @@ async function salvarParametros(){
     const cid = clienteIdAtual();
     if(!cid){ toast("Nenhuma empresa selecionada.", "error"); return; }
     for(const imp of IMPOSTOS){
-        const v = parseFloat(document.getElementById('alq_'+imp).value);
+        const elVal = document.getElementById('alq_'+imp);
+        if(!elVal) continue;
+        const v = parseFloat(elVal.value);
         if(isNaN(v)) { toast("Alíquota inválida para " + imp, "error"); return; }
         let payload = { cliente_id: cid, imposto: imp, aliquota: v, updated_at: new Date().toISOString() };
         const { error } = await sb.from('parametros_fiscais').upsert([payload], { onConflict: 'cliente_id,imposto' });
@@ -243,13 +279,13 @@ async function salvarParametros(){
     carregarParametros();
 }
 
-// ===== Apuração =====
+// ===== Apuração Tradicional =====
 function calcularImpostos(){
     const receita = parseFloat(document.getElementById('receitaBruta').value);
     if(isNaN(receita) || receita <= 0) { toast("Informe a receita bruta do período.", "error"); return; }
     const linhas = [];
     let total = 0;
-    IMPOSTOS.forEach(imp => {
+    ['ISS','PIS','COFINS','IRPJ','CSLL'].forEach(imp => {
         const alq = paramMap[imp] || 0;
         const val = receita * alq / 100;
         linhas.push({ imp: imp, alq: alq, val: val });
@@ -262,6 +298,23 @@ function calcularImpostos(){
     html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total de Impostos</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
     document.getElementById('previewImpostos').innerHTML = html;
     apuracaoTemp = { receita: receita, total: total, linhas: linhas };
+}
+
+// ===== Simulação Reforma Tributária (IVA Dual) =====
+function calcularReforma(){
+    const base = parseFloat(document.getElementById('baseReforma').value);
+    if(isNaN(base) || base <= 0) { toast("Informe a base de cálculo para a reforma.", "error"); return; }
+    const alqCbs = paramMap['CBS (Reforma)'] !== undefined ? paramMap['CBS (Reforma)'] : 0.9;
+    const alqIbs = paramMap['IBS (Reforma)'] !== undefined ? paramMap['IBS (Reforma)'] : 0.1;
+    const valCbs = base * alqCbs / 100;
+    const valIbs = base * alqIbs / 100;
+    const totalIva = valCbs + valIbs;
+
+    let html = `<table class="analitica-table"><thead><tr><th>Tributo (Reforma)</th><th style="text-align:right;">Alíquota (%)</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
+    html += `<tr><td><strong>CBS (Federal - Substitui PIS/COFINS)</strong></td><td style="text-align:right;">${alqCbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valCbs)}</td></tr>`;
+    html += `<tr><td><strong>IBS (Est./Mun. - Substitui ICMS/ISS)</strong></td><td style="text-align:right;">${alqIbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valIbs)}</td></tr>`;
+    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total IVA Dual</strong></td><td style="text-align:right; font-weight:800; color:var(--warning);">${formatBRL(totalIva)}</td></tr></tbody></table>`;
+    document.getElementById('previewReforma').innerHTML = html;
 }
 
 async function salvarApuracao(){
@@ -331,6 +384,7 @@ async function inicializarPagina(){
     if(!u || !u.email) { location.href = 'login.html'; return; }
     const hoje = new Date();
     document.getElementById('compApuracao').value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+    document.getElementById('compReforma').value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
     await carregarParametros();
     await carregarApuracoes();
     await carregarObrigacoes();
