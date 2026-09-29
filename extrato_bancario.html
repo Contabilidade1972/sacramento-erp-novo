@@ -78,6 +78,7 @@
         </div>
     </div>
 
+    <!-- BLOCO DE CABEÇALHO OFICIAL INSTITUIÇÃO -->
     <div class="info-banco-box">
         <div class="info-banco-title"><i class="fas fa-university"></i> Extrato Oficial — Instituição Financeira</div>
         <div class="info-banco-grid">
@@ -96,6 +97,7 @@
         </div>
     </div>
 
+    <!-- KPIS DE SALDO -->
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-title">Saldo Total</div>
@@ -111,6 +113,7 @@
         </div>
     </div>
 
+    <!-- FILTROS DE PERÍODO E CONTA -->
     <div class="panel">
         <div style="font-size:13px; font-weight:700; color:var(--secondary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
             <i class="fas fa-filter" style="color:var(--primary);"></i> Filtrar Período e Movimentações
@@ -118,7 +121,7 @@
         <div class="filtros-box">
             <div>
                 <label>Conta Bancária / Origem</label>
-                <select id="filtroConta" class="form-control" onchange="carregarExtrato()">
+                <select id="filtroConta" class="form-control" onchange="atualizarDadosContaSelecionada(); carregarExtrato();">
                     <option value="">Todas as Contas (Consolidado)</option>
                 </select>
             </div>
@@ -135,6 +138,7 @@
             </div>
         </div>
 
+        <!-- TABELA DE EXTRATO -->
         <div id="listaExtrato" style="overflow-x:auto;">A carregar extrato bancário...</div>
     </div>
 </div>
@@ -143,6 +147,7 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let contasCache = [];
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -172,14 +177,18 @@ async function carregarContasBancarias(){
     if(!cid) return;
     var r=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
-        var contas=r.data||[];
+        contasCache = r.data || [];
         var sel=document.getElementById('filtroConta');
         sel.innerHTML='<option value="">Todas as Contas (Consolidado)</option>';
         let saldoTotalAcumulado = 0;
-        contas.forEach(function(c){
-            var nome = (c.nome || c.banco || 'Conta');
-            saldoTotalAcumulado += Number(c.saldo_inicial || c.saldo || 0);
-            var opt=document.createElement('option'); opt.value=nome; opt.textContent=nome+' - Saldo: R$ '+fmtBR(c.saldo_inicial || c.saldo || 0); sel.appendChild(opt);
+        contasCache.forEach(function(c){
+            var nomeConta = (c.nome || c.banco || 'Conta');
+            let saldoConta = Number(c.saldo_inicial || c.saldo || 0);
+            saldoTotalAcumulado += saldoConta;
+            var opt=document.createElement('option'); 
+            opt.value = c.id; 
+            opt.textContent = nomeConta + ' - Saldo: R$ ' + fmtBR(saldoConta); 
+            sel.appendChild(opt);
         });
         document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(saldoTotalAcumulado);
         document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(saldoTotalAcumulado);
@@ -187,9 +196,34 @@ async function carregarContasBancarias(){
     }
 }
 
+function atualizarDadosContaSelecionada(){
+    var contaId = document.getElementById('filtroConta').value;
+    if(!contaId){
+        document.getElementById('lblInstituicao').innerText = "Consolidado / Multi-bancos";
+        document.getElementById('lblAgenciaConta').innerText = "Todas as contas da empresa";
+        let total = 0;
+        contasCache.forEach(c => total += Number(c.saldo_inicial || c.saldo || 0));
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(total);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(total);
+        return;
+    }
+
+    let encontrada = contasCache.find(c => String(c.id) === String(contaId));
+    if(encontrada){
+        document.getElementById('lblInstituicao').innerText = encontrada.banco || encontrada.nome || 'Instituição Financeira';
+        document.getElementById('lblAgenciaConta').innerText = 'Ag: ' + (encontrada.agencia || '0001') + ' CC: ' + (encontrada.conta || encontrada.conta_corrente || '00000');
+        let saldoC = Number(encontrada.saldo_inicial || encontrada.saldo || 0);
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(saldoC);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(saldoC);
+    }
+}
+
 async function carregarExtrato(){
     var cid=clienteIdAtual();
-    var contaSel = document.getElementById('filtroConta').value;
+    var contaIdSel = document.getElementById('filtroConta').value;
+    let contaObj = contasCache.find(c => String(c.id) === String(contaIdSel));
+    var nomeContaStr = contaObj ? (contaObj.nome || contaObj.banco) : '';
+
     var el = document.getElementById('listaExtrato');
     if(!cid) return;
 
@@ -217,8 +251,8 @@ async function carregarExtrato(){
 
     if(!resTransf.error && resTransf.data){
         resTransf.data.forEach(t => {
-            if(!contaSel || t.conta_origem === contaSel || t.conta_destino === contaSel){
-                let tipoMov = t.conta_destino === contaSel ? 'entrada' : 'saida';
+            if(!contaIdSel || t.conta_origem === nomeContaStr || t.conta_destino === nomeContaStr){
+                let tipoMov = t.conta_destino === nomeContaStr ? 'entrada' : 'saida';
                 movimentos.push({
                     data: t.data,
                     origem: t.conta_origem || 'Caixa Interno',
@@ -234,14 +268,16 @@ async function carregarExtrato(){
     if(!resReceber.error && resReceber.data){
         resReceber.data.forEach(r => {
             if(r.status === 'recebido' || r.status === 'Pago' || r.status === 'recebida'){
-                movimentos.push({
-                    data: r.vencimento || r.data_recebimento,
-                    origem: r.conta_bancaria || 'Conta Principal',
-                    descricao: 'Recebimento de Título: '+(r.descricao || 'Cliente'),
-                    forma: 'PIX / TED',
-                    tipo: 'entrada',
-                    valor: Number(r.valor_total || r.valor || 0)
-                });
+                if(!contaIdSel || r.conta_bancaria === nomeContaStr){
+                    movimentos.push({
+                        data: r.vencimento || r.data_recebimento,
+                        origem: r.conta_bancaria || 'Conta Principal',
+                        descricao: 'Recebimento de Título: '+(r.descricao || 'Cliente'),
+                        forma: 'PIX / TED',
+                        tipo: 'entrada',
+                        valor: Number(r.valor_total || r.valor || 0)
+                    });
+                }
             }
         });
     }
@@ -249,14 +285,16 @@ async function carregarExtrato(){
     if(!resPagar.error && resPagar.data){
         resPagar.data.forEach(p => {
             if(p.status === 'pago' || p.status === 'Pago'){
-                movimentos.push({
-                    data: p.vencimento || p.data_pagamento,
-                    origem: p.conta_bancaria || 'Conta Principal',
-                    descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
-                    forma: 'OFX BANCO',
-                    tipo: 'saida',
-                    valor: Number(p.valor_total || p.valor || 0)
-                });
+                if(!contaIdSel || p.conta_bancaria === nomeContaStr){
+                    movimentos.push({
+                        data: p.vencimento || p.data_pagamento,
+                        origem: p.conta_bancaria || 'Conta Principal',
+                        descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
+                        forma: 'OFX BANCO',
+                        tipo: 'saida',
+                        valor: Number(p.valor_total || p.valor || 0)
+                    });
+                }
             }
         });
     }
@@ -268,7 +306,7 @@ async function carregarExtrato(){
         return;
     }
 
-    let saldoAcumulado = 0;
+    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : 0;
     var html = '<table class="analitica-table"><thead><tr>'+
         '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
     '</tr></thead><tbody>';
@@ -298,13 +336,14 @@ function limparFiltros(){
     document.getElementById('filtroConta').value = '';
     document.getElementById('filtroInicio').value = '';
     document.getElementById('filtroFim').value = '';
+    atualizarDadosContaSelecionada();
     carregarExtrato();
 }
 
-window.onload = function(){
-    carregarDadosEmpresa();
-    carregarContasBancarias();
-    carregarExtrato();
+window.onload = async function(){
+    await carregarDadosEmpresa();
+    await carregarContasBancarias();
+    await carregarExtrato();
 };
 </script>
 </body>
