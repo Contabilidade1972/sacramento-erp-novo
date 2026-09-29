@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrato Bancário & Tesouraria — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 6px; }
+        .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
+        .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); }
+        
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        
+        .badge-entrada { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+        .badge-saida { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        @media print {
+            body { background: #fff; color: #000; }
+            header, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .panel { border: none !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Extrato Bancário & Tesouraria</div>
+            <div class="page-subtitle">Acompanhe o saldo consolidado, entradas, saídas e histórico de movimentações por conta</div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-acao" onclick="location.href='modulo_financeiro.html'" style="background:#64748b;"><i class="fas fa-arrow-left"></i> Módulo Financeiro</button>
+            <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Extrato</button>
+        </div>
+    </div>
+
+    <!-- PAINEL DE FILTROS -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-filter"></i> Filtros do Extrato</span></div>
+        <div class="form-row">
+            <div>
+                <label>Conta Bancária / Caixa *</label>
+                <select id="filtroConta" class="form-control" onchange="carregarExtrato()">
+                    <option value="">— Selecione a conta —</option>
+                </select>
+            </div>
+            <div>
+                <label>Data Início</label>
+                <input type="date" id="filtroInicio" class="form-control" onchange="carregarExtrato()">
+            </div>
+            <div>
+                <label>Data Fim</label>
+                <input type="date" id="filtroFim" class="form-control" onchange="carregarExtrato()">
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIS DE SALDO -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Saldo Inicial do Período</div>
+            <div class="kpi-value" id="kpiSaldoInicial">R$ 0,00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Total de Entradas (+)</div>
+            <div class="kpi-value" style="color:var(--success);" id="kpiEntradas">R$ 0,00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Total de Saídas (-)</div>
+            <div class="kpi-value" style="color:var(--danger);" id="kpiSaidas">R$ 0,00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Saldo Final Consolidado</div>
+            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoFinal">R$ 0,00</div>
+        </div>
+    </div>
+
+    <!-- TABELA DO EXTRATO -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-list"></i> Movimentações da Conta</span></div>
+        <div id="listaExtrato" style="overflow-x:auto;">Selecione uma conta bancária para visualizar o extrato.</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+async function carregarContasBancarias(){
+    var cid=clienteIdAtual();
+    if(!cid) return;
+    var r=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
+    if(!r.error){
+        var contas=r.data||[];
+        var sel=document.getElementById('filtroConta');
+        sel.innerHTML='<option value="">— Selecione a conta —</option>';
+        contas.forEach(function(c){
+            var nome = (c.nome || c.banco_nome || 'Conta')+' - Ag: '+(c.agencia||'-')+' Cc: '+(c.conta||'-');
+            var opt=document.createElement('option'); opt.value=nome; opt.textContent=nome; sel.appendChild(opt);
+        });
+    }
+}
+
+async function carregarExtrato(){
+    var cid=clienteIdAtual();
+    var contaSel = document.getElementById('filtroConta').value;
+    var el = document.getElementById('listaExtrato');
+    
+    if(!cid || !contaSel){
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Selecione uma conta bancária para carregar o extrato.</div>';
+        return;
+    }
+
+    var inicio = document.getElementById('filtroInicio').value;
+    var fim = document.getElementById('filtroFim').value;
+
+    // Busca transferências e recebimentos/pagamentos vinculados à conta
+    var qTransf = sb.from('transferencias').select('*').eq('cliente_id', cid);
+    var qPagar = sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('status', 'pago');
+    var qReceber = sb.from('contas_receber').select('*').eq('cliente_id', cid).eq('status', 'recebido');
+
+    if(inicio){
+        qTransf = qTransf.gte('data_movimento', inicio);
+        qPagar = qPagar.gte('data_pagamento', inicio);
+        qReceber = qReceber.gte('data_recebimento', inicio);
+    }
+    if(fim){
+        qTransf = qTransf.lte('data_movimento', fim);
+        qPagar = qPagar.lte('data_pagamento', fim);
+        qReceber = qReceber.lte('data_recebimento', fim);
+    }
+
+    var [resTransf, resPagar, resReceber] = await Promise.all([qTransf, qPagar, qReceber]);
+
+    let movimentos = [];
+
+    if(!resTransf.error && resTransf.data){
+        resTransf.data.forEach(t => {
+            if(t.conta_origem === contaSel){
+                movimentos.push({ data: t.data_movimento, descricao: 'Transferência enviada: '+t.descricao, tipo: 'saida', valor: Number(t.valor)||0 });
+            }
+            if(t.conta_destino === contaSel){
+                movimentos.push({ data: t.data_movimento, descricao: 'Transferência recebida: '+t.descricao, tipo: 'entrada', valor: Number(t.valor)||0 });
+            }
+        });
+    }
+
+    if(!resReceber.error && resReceber.data){
+        resReceber.data.forEach(r => {
+            if(!r.conta_bancaria || r.conta_bancaria === contaSel){
+                movimentos.push({ data: r.data_recebimento || r.vencimento, descricao: 'Recebimento: '+(r.descricao || 'Título #'+r.id), tipo: 'entrada', valor: Number(r.valor)||0 });
+            }
+        });
+    }
+
+    if(!resPagar.error && resPagar.data){
+        resPagar.data.forEach(p => {
+            if(!p.conta_bancaria || p.conta_bancaria === contaSel){
+                movimentos.push({ data: p.data_pagamento || p.vencimento, descricao: 'Pagamento: '+(p.descricao || 'Título #'+p.id), tipo: 'saida', valor: Number(p.valor)||0 });
+            }
+        });
+    }
+
+    // Ordenar por data
+    movimentos.sort((a,b) => new Date(a.data) - new Date(b.data));
+
+    if(!movimentos.length){
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Nenhuma movimentação encontrada para esta conta no período.</div>';
+        document.getElementById('kpiEntradas').innerText = 'R$ 0,00';
+        document.getElementById('kpiSaidas').innerText = 'R$ 0,00';
+        document.getElementById('kpiSaldoFinal').innerText = 'R$ 0,00';
+        return;
+    }
+
+    let totalEntradas = 0;
+    let totalSaidas = 0;
+
+    var html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Histórico / Descrição</th><th>Tipo</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
+    
+    movimentos.forEach(m => {
+        if(m.tipo === 'entrada') totalEntradas += m.valor;
+        else totalSaidas += m.valor;
+
+        let badge = m.tipo === 'entrada' ? '<span class="badge-entrada">Entrada</span>' : '<span class="badge-saida">Saída</span>';
+        let sinal = m.tipo === 'entrada' ? '+ ' : '- ';
+
+        html += '<tr>'+
+            '<td>'+(m.data ? m.data.split('-').reverse().join('/') : '-')+'</td>'+
+            '<td>'+m.descricao+'</td>'+
+            '<td>'+badge+'</td>'+
+            '<td style="text-align:right; font-weight:bold; color:'+(m.tipo==='entrada'?'var(--success)':'var(--danger)')+'">'+sinal+'R$ '+fmtBR(m.valor)+'</td>'+
+        '</tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+
+    let saldoFinal = totalEntradas - totalSaidas;
+
+    document.getElementById('kpiEntradas').innerText = 'R$ ' + fmtBR(totalEntradas);
+    document.getElementById('kpiSaidas').innerText = 'R$ ' + fmtBR(totalSaidas);
+    document.getElementById('kpiSaldoFinal').innerText = 'R$ ' + fmtBR(saldoFinal);
+}
+
+window.onload = function(){
+    carregarContasBancarias();
+};
+</script>
+</body>
+</html>
