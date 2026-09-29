@@ -3,48 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Extrato Bancário & Tesouraria — Sacramento ERP</title>
+    <title>Extrato de Conta Bancária e Caixa — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+            --bg: #f0f4f8; --card: #ffffff; --text-main: #1e293b; --text-light: #64748b; --border: #e2e8f0;
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
         
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { outline: none; border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-        
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 6px; }
+        /* BLOCO OFICIAL INSTITUIÇÃO */
+        .info-banco-box { background: #fffbf0; border: 1px solid #fef08a; border-radius: 10px; padding: 16px 20px; margin-bottom: 16px; }
+        .info-banco-title { font-size: 13px; font-weight: 800; color: #854d0e; text-transform: uppercase; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .info-banco-grid { display: grid; grid-template-columns: 2fr 1.5fr 1.5fr; gap: 16px; font-size: 13px; }
+        .info-banco-grid div span { display: block; font-size: 11px; color: var(--text-light); font-weight: 600; text-transform: uppercase; margin-bottom: 2px; }
+        .info-banco-grid div strong { color: var(--secondary); font-size: 14px; }
+
+        /* KPIS DE SALDO */
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px; }
         .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
         .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); }
-        
+
+        /* FILTROS */
+        .filtros-box { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end; background: var(--bg); padding: 14px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); }
+
+        /* TABELA DE EXTRATO */
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table th { background: var(--bg); padding: 11px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         
-        .badge-entrada { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
-        .badge-saida { background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+        .badge-tipo { background: #f1f5f9; color: #334155; padding: 3px 8px; border-radius: 6px; font-weight: 700; font-size: 10px; border: 1px solid var(--border); text-transform: uppercase; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -54,7 +61,7 @@
 
         @media print {
             body { background: #fff; color: #000; }
-            header, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
+            header, .page-toolbar, .filtros-box, footer, button, .toast-container { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .panel { border: none !important; box-shadow: none !important; }
         }
@@ -66,23 +73,60 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Extrato Bancário & Tesouraria</div>
-            <div class="page-subtitle">Acompanhe o saldo consolidado, entradas, saídas e histórico de movimentações por conta</div>
+            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Extrato de Conta Bancária e Caixa</div>
+            <div class="page-subtitle">Acompanhe o extrato oficial consolidadado e as movimentações por instituição financeira</div>
         </div>
         <div style="display:flex; gap:10px;">
             <button class="btn-acao" onclick="location.href='modulo_financeiro.html'" style="background:#64748b;"><i class="fas fa-arrow-left"></i> Módulo Financeiro</button>
-            <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Extrato</button>
+            <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Extrato Oficial</button>
         </div>
     </div>
 
-    <!-- PAINEL DE FILTROS -->
-    <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-filter"></i> Filtros do Extrato</span></div>
-        <div class="form-row">
+    <!-- BLOCO DE CABEÇALHO OFICIAL INSTITUIÇÃO -->
+    <div class="info-banco-box">
+        <div class="info-banco-title"><i class="fas fa-university"></i> Extrato Oficial — Instituição Financeira</div>
+        <div class="info-banco-grid">
             <div>
-                <label>Conta Bancária / Caixa *</label>
+                <span>Titular / Empresa</span>
+                <strong id="lblTitular">Carregando empresa...</strong>
+            </div>
+            <div>
+                <span>Instituição</span>
+                <strong id="lblInstituicao">Consolidado / Multi-bancos</strong>
+            </div>
+            <div>
+                <span>Agência / Conta</span>
+                <strong id="lblAgenciaConta">Todas as contas da empresa</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIS DE SALDO -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-title">Saldo Total</div>
+            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoTotal">R$ 0,00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Saldo Disponível</div>
+            <div class="kpi-value" style="color:var(--success);" id="kpiSaldoDisponivel">R$ 0,00</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Saldo Bloqueado</div>
+            <div class="kpi-value" style="color:var(--danger);" id="kpiSaldoBloqueado">R$ 0,00</div>
+        </div>
+    </div>
+
+    <!-- FILTROS DE PERÍODO E CONTA -->
+    <div class="panel">
+        <div style="font-size:13px; font-weight:700; color:var(--secondary); margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <i class="fas fa-filter" style="color:var(--primary);"></i> Filtrar Período e Movimentações
+        </div>
+        <div class="filtros-box">
+            <div>
+                <label>Conta Bancária / Origem</label>
                 <select id="filtroConta" class="form-control" onchange="carregarExtrato()">
-                    <option value="">— Selecione a conta —</option>
+                    <option value="">Todas as Contas (Consolidado)</option>
                 </select>
             </div>
             <div>
@@ -93,33 +137,13 @@
                 <label>Data Fim</label>
                 <input type="date" id="filtroFim" class="form-control" onchange="carregarExtrato()">
             </div>
+            <div>
+                <button class="btn-acao" style="background:#64748b; height:38px; width:100%; justify-content:center;" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
         </div>
-    </div>
 
-    <!-- KPIS DE SALDO -->
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <div class="kpi-title">Saldo Inicial do Período</div>
-            <div class="kpi-value" id="kpiSaldoInicial">R$ 0,00</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-title">Total de Entradas (+)</div>
-            <div class="kpi-value" style="color:var(--success);" id="kpiEntradas">R$ 0,00</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-title">Total de Saídas (-)</div>
-            <div class="kpi-value" style="color:var(--danger);" id="kpiSaidas">R$ 0,00</div>
-        </div>
-        <div class="kpi-card">
-            <div class="kpi-title">Saldo Final Consolidado</div>
-            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoFinal">R$ 0,00</div>
-        </div>
-    </div>
-
-    <!-- TABELA DO EXTRATO -->
-    <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-list"></i> Movimentações da Conta</span></div>
-        <div id="listaExtrato" style="overflow-x:auto;">Selecione uma conta bancária para visualizar o extrato.</div>
+        <!-- TABELA DE EXTRATO -->
+        <div id="listaExtrato" style="overflow-x:auto;">A carregar extrato bancário...</div>
     </div>
 </div>
 
@@ -140,6 +164,17 @@ function toast(msg,type='success'){
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
+async function carregarDadosEmpresa(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+    var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    if(data){
+        let razao = data.razao_social || data.nome_fantasia || 'Empresa';
+        let cnpj = data.cnpj_cpf ? ' ('+data.cnpj_cpf+')' : '';
+        document.getElementById('lblTitular').innerText = razao + cnpj;
+    }
+}
+
 async function carregarContasBancarias(){
     var cid=clienteIdAtual();
     if(!cid) return;
@@ -147,11 +182,16 @@ async function carregarContasBancarias(){
     if(!r.error){
         var contas=r.data||[];
         var sel=document.getElementById('filtroConta');
-        sel.innerHTML='<option value="">— Selecione a conta —</option>';
+        sel.innerHTML='<option value="">Todas as Contas (Consolidado)</option>';
+        let saldoTotalAcumulado = 0;
         contas.forEach(function(c){
-            var nome = (c.nome || c.banco_nome || 'Conta')+' - Ag: '+(c.agencia||'-')+' Cc: '+(c.conta||'-');
-            var opt=document.createElement('option'); opt.value=nome; opt.textContent=nome; sel.appendChild(opt);
+            var nome = (c.nome || c.banco || 'Conta');
+            saldoTotalAcumulado += Number(c.saldo_inicial || c.saldo || 0);
+            var opt=document.createElement('option'); opt.value=nome; opt.textContent=nome+' - Saldo: R$ '+fmtBR(c.saldo_inicial || c.saldo || 0); sel.appendChild(opt);
         });
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(saldoTotalAcumulado);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(saldoTotalAcumulado);
+        document.getElementById('kpiSaldoBloqueado').innerText = 'R$ 0,00';
     }
 }
 
@@ -159,29 +199,24 @@ async function carregarExtrato(){
     var cid=clienteIdAtual();
     var contaSel = document.getElementById('filtroConta').value;
     var el = document.getElementById('listaExtrato');
-    
-    if(!cid || !contaSel){
-        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Selecione uma conta bancária para carregar o extrato.</div>';
-        return;
-    }
+    if(!cid) return;
 
     var inicio = document.getElementById('filtroInicio').value;
     var fim = document.getElementById('filtroFim').value;
 
-    // Busca transferências e recebimentos/pagamentos vinculados à conta
     var qTransf = sb.from('transferencias').select('*').eq('cliente_id', cid);
-    var qPagar = sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('status', 'pago');
-    var qReceber = sb.from('contas_receber').select('*').eq('cliente_id', cid).eq('status', 'recebido');
+    var qPagar = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+    var qReceber = sb.from('contas_receber').select('*').eq('cliente_id', cid);
 
     if(inicio){
-        qTransf = qTransf.gte('data_movimento', inicio);
-        qPagar = qPagar.gte('data_pagamento', inicio);
-        qReceber = qReceber.gte('data_recebimento', inicio);
+        qTransf = qTransf.gte('data', inicio);
+        qPagar = qPagar.gte('vencimento', inicio);
+        qReceber = qReceber.gte('vencimento', inicio);
     }
     if(fim){
-        qTransf = qTransf.lte('data_movimento', fim);
-        qPagar = qPagar.lte('data_pagamento', fim);
-        qReceber = qReceber.lte('data_recebimento', fim);
+        qTransf = qTransf.lte('data', fim);
+        qPagar = qPagar.lte('vencimento', fim);
+        qReceber = qReceber.lte('vencimento', fim);
     }
 
     var [resTransf, resPagar, resReceber] = await Promise.all([qTransf, qPagar, qReceber]);
@@ -190,73 +225,94 @@ async function carregarExtrato(){
 
     if(!resTransf.error && resTransf.data){
         resTransf.data.forEach(t => {
-            if(t.conta_origem === contaSel){
-                movimentos.push({ data: t.data_movimento, descricao: 'Transferência enviada: '+t.descricao, tipo: 'saida', valor: Number(t.valor)||0 });
-            }
-            if(t.conta_destino === contaSel){
-                movimentos.push({ data: t.data_movimento, descricao: 'Transferência recebida: '+t.descricao, tipo: 'entrada', valor: Number(t.valor)||0 });
+            if(!contaSel || t.conta_origem === contaSel || t.conta_destino === contaSel){
+                let tipoMov = t.conta_destino === contaSel ? 'entrada' : 'saida';
+                movimentos.push({
+                    data: t.data,
+                    origem: t.conta_origem || 'Caixa Interno',
+                    descricao: t.observacao || ('Transferência para '+(t.conta_destino || t.favorecido_nome || 'Terceiro')),
+                    forma: 'OFX BANCO',
+                    tipo: tipoMov,
+                    valor: Number(t.valor)||0
+                });
             }
         });
     }
 
     if(!resReceber.error && resReceber.data){
         resReceber.data.forEach(r => {
-            if(!r.conta_bancaria || r.conta_bancaria === contaSel){
-                movimentos.push({ data: r.data_recebimento || r.vencimento, descricao: 'Recebimento: '+(r.descricao || 'Título #'+r.id), tipo: 'entrada', valor: Number(r.valor)||0 });
+            if(r.status === 'recebido' || r.status === 'Pago'){
+                movimentos.push({
+                    data: r.vencimento,
+                    origem: r.conta_bancaria || 'Conta Principal',
+                    descricao: 'Recebimento de Título: '+(r.descricao || 'Cliente'),
+                    forma: 'PIX / TED',
+                    tipo: 'entrada',
+                    valor: Number(r.valor_total || r.valor || 0)
+                });
             }
         });
     }
 
     if(!resPagar.error && resPagar.data){
         resPagar.data.forEach(p => {
-            if(!p.conta_bancaria || p.conta_bancaria === contaSel){
-                movimentos.push({ data: p.data_pagamento || p.vencimento, descricao: 'Pagamento: '+(p.descricao || 'Título #'+p.id), tipo: 'saida', valor: Number(p.valor)||0 });
+            if(p.status === 'pago' || p.status === 'Pago'){
+                movimentos.push({
+                    data: p.vencimento,
+                    origem: p.conta_bancaria || 'Conta Principal',
+                    descricao: 'Pagamento de Título: '+(p.descricao || 'Fornecedor'),
+                    forma: 'OFX BANCO',
+                    tipo: 'saida',
+                    valor: Number(p.valor_total || p.valor || 0)
+                });
             }
         });
     }
 
-    // Ordenar por data
     movimentos.sort((a,b) => new Date(a.data) - new Date(b.data));
 
     if(!movimentos.length){
-        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Nenhuma movimentação encontrada para esta conta no período.</div>';
-        document.getElementById('kpiEntradas').innerText = 'R$ 0,00';
-        document.getElementById('kpiSaidas').innerText = 'R$ 0,00';
-        document.getElementById('kpiSaldoFinal').innerText = 'R$ 0,00';
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhuma movimentação registrada no período selecionado.</div>';
         return;
     }
 
-    let totalEntradas = 0;
-    let totalSaidas = 0;
+    let saldoAcumulado = 0;
+    var html = '<table class="analitica-table"><thead><tr>'+
+        '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
+    '</tr></thead><tbody>';
 
-    var html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Histórico / Descrição</th><th>Tipo</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
-    
     movimentos.forEach(m => {
-        if(m.tipo === 'entrada') totalEntradas += m.valor;
-        else totalSaidas += m.valor;
+        if(m.tipo === 'entrada') saldoAcumulado += m.valor;
+        else saldoAcumulado -= m.valor;
 
-        let badge = m.tipo === 'entrada' ? '<span class="badge-entrada">Entrada</span>' : '<span class="badge-saida">Saída</span>';
-        let sinal = m.tipo === 'entrada' ? '+ ' : '- ';
+        let corValor = m.tipo === 'entrada' ? 'color:#166534; font-weight:700;' : 'color:#991b1b; font-weight:700;';
+        let sinalValor = m.tipo === 'entrada' ? '+ R$ ' : '- R$ ';
 
         html += '<tr>'+
             '<td>'+(m.data ? m.data.split('-').reverse().join('/') : '-')+'</td>'+
+            '<td><strong>'+m.origem+'</strong></td>'+
             '<td>'+m.descricao+'</td>'+
-            '<td>'+badge+'</td>'+
-            '<td style="text-align:right; font-weight:bold; color:'+(m.tipo==='entrada'?'var(--success)':'var(--danger)')+'">'+sinal+'R$ '+fmtBR(m.valor)+'</td>'+
+            '<td><span class="badge-tipo">'+m.forma+'</span></td>'+
+            '<td style="text-align:right; '+corValor+'">'+sinalValor+fmtBR(m.valor)+'</td>'+
+            '<td style="text-align:right; font-weight:700;">R$ '+fmtBR(saldoAcumulado)+'</td>'+
         '</tr>';
     });
+
     html += '</tbody></table>';
     el.innerHTML = html;
+}
 
-    let saldoFinal = totalEntradas - totalSaidas;
-
-    document.getElementById('kpiEntradas').innerText = 'R$ ' + fmtBR(totalEntradas);
-    document.getElementById('kpiSaidas').innerText = 'R$ ' + fmtBR(totalSaidas);
-    document.getElementById('kpiSaldoFinal').innerText = 'R$ ' + fmtBR(saldoFinal);
+function limparFiltros(){
+    document.getElementById('filtroConta').value = '';
+    document.getElementById('filtroInicio').value = '';
+    document.getElementById('filtroFim').value = '';
+    carregarExtrato();
 }
 
 window.onload = function(){
+    carregarDadosEmpresa();
     carregarContasBancarias();
+    carregarExtrato();
 };
 </script>
 </body>
