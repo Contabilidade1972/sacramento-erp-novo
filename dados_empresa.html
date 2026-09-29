@@ -76,7 +76,7 @@
                 <button class="btn-acao" style="height:41px;" onclick="consultarCnpjReceita()"><i class="fas fa-cloud-download-alt"></i> Consultar CNPJ na Receita</button>
             </div>
         </div>
-        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, CNAEs e Endereço.</small>
+        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, CNAEs, Quadro Societário e Endereço.</small>
     </div>
 
     <!-- DADOS CADASTRAIS -->
@@ -116,6 +116,13 @@
             </div>
         </div>
 
+        <div class="form-row" style="grid-template-columns: 1fr;">
+            <div>
+                <label>CNAEs Secundários</label>
+                <textarea id="cnaes_secundarios" class="form-control" rows="3" placeholder="Relação de CNAEs secundários" readonly style="background:#e2e8f0;"></textarea>
+            </div>
+        </div>
+
         <div class="form-row">
             <div>
                 <label>E-mail Corporativo</label>
@@ -150,7 +157,7 @@
 
     <!-- QUADRO SOCIETÁRIO IMPORTADO -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-users"></i> Quadro Societário (Importado da Receita)</span></div>
+        <div class="panel-header"><span><i class="fas fa-users"></i> Quadro Societário & Participação (Importado da Receita)</span></div>
         <div id="tabelaQuadroSocietario" style="overflow-x:auto;">
             <div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum quadro societário carregado. Faça a consulta por CNPJ acima.</div>
         </div>
@@ -209,15 +216,32 @@ async function consultarCnpjReceita(){
         document.getElementById('cnpj').value = r.cnpj || '';
         document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
         document.getElementById('data_abertura').value = r.data_inicio_atividade ? r.data_inicio_atividade.split('-').reverse().join('/') : '';
-        document.getElementById('cnae_principal').value = (r.cnae_fiscal ? r.cnae_fiscal + ' - ' : '') + (r.cnae_fiscal_descricao || '');
+        
+        // CNAE Principal
+        let cnaePrinc = r.cnae_fiscal ? `${r.cnae_fiscal} - ${r.cnae_fiscal_descricao || ''}` : '';
+        document.getElementById('cnae_principal').value = cnaePrinc;
+
+        // CNAEs Secundários
+        if(r.cnaes_secundarios && r.cnaes_secundarios.length > 0){
+            let listaSec = r.cnaes_secundarios.map(c => `${c.codigo} - ${c.descricao}`).join('\n');
+            document.getElementById('cnaes_secundarios').value = listaSec;
+        } else {
+            document.getElementById('cnaes_secundarios').value = 'Nenhum CNAE secundário registrado.';
+        }
+
         document.getElementById('email').value = r.email || '';
         document.getElementById('telefone').value = r.ddd_telefone_1 || '';
 
-        // Renderizar Quadro Societário se houver
+        // Renderizar Quadro Societário completo com participação
         if(r.qsa && r.qsa.length > 0){
-            let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio</th><th>Qualificação</th><th>País de Origem</th><th>Faixa Etária</th></tr></thead><tbody>';
+            let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio / Acionista</th><th>Qualificação</th><th>% Participação (Ratio)</th><th>País de Origem</th></tr></thead><tbody>';
             r.qsa.forEach(s => {
-                html += `<tr><td><strong>${s.nome_socio || s.nome}</strong></td><td>${s.qualificacao_socio || s.qualificacao || 'Sócio'}</td><td>${s.pais_origem || 'Brasil'}</td><td>${s.faixa_etaria || '-'}</td></tr>`;
+                let nomeSocio = s.nome_socio || s.nome || 'Sócio';
+                let qualif = s.qualificacao_socio || s.qualificacao || 'Sócio';
+                let pais = s.pais_origem || 'Brasil';
+                let participacao = s.percentual_capital_social ? s.percentual_capital_social + '%' : '—';
+                
+                html += `<tr><td><strong>${nomeSocio}</strong></td><td>${qualif}</td><td><strong style="color:var(--primary);">${participacao}</strong></td><td>${pais}</td></tr>`;
             });
             html += '</tbody></table>';
             document.getElementById('tabelaQuadroSocietario').innerHTML = html;
@@ -225,7 +249,7 @@ async function consultarCnpjReceita(){
             document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
         }
 
-        toast("Dados importados com sucesso da Receita Federal!");
+        toast("Dados, CNAEs e Quadro Societário importados com sucesso!");
     } catch(err) {
         toast("Erro ao consultar CNPJ: " + err.message, "error");
     }
@@ -272,7 +296,7 @@ async function salvarDadosEmpresa(){
         situacao: document.getElementById('situacao').value.trim(),
         data_abertura: document.getElementById('data_abertura').value.trim(),
         cnae_principal: document.getElementById('cnae_principal').value.trim(),
-        email: document.getElementById('email').value.trim(),
+        email: document.getElementById('email'].value.trim(),
         telefone: document.getElementById('telefone').value.trim(),
         logo_url: document.getElementById('logo_url').value.trim()
     };
