@@ -102,9 +102,9 @@
                 </select>
             </div>
             <div>
-                <label>Contrato / Convênio *</label>
+                <label>Contrato / Convênio (Opcional)</label>
                 <select id="contrato_id" class="form-control">
-                    <option value="">— Selecionado automaticamente —</option>
+                    <option value="">— Sem contrato vinculado —</option>
                 </select>
             </div>
         </div>
@@ -117,7 +117,7 @@
                     <option value="material_consumo">Material de Consumo / Insumos</option>
                     <option value="servicos_terceiros">Serviços Técnicos de Terceiros</option>
                     <option value="equipamentos">Equipamentos / Infraestrutura</option>
-                    <option value="outros">Outros Custos Operacionais</option>
+                    <option value="outros" selected>Outros Custos Operacionais</option>
                 </select>
             </div>
             <div>
@@ -264,7 +264,7 @@ async function carregarContratosSelect(){
 function aoSelecionarProjeto(){
     var projId = document.getElementById('projeto_id').value;
     var selContrato = document.getElementById('contrato_id');
-    selContrato.innerHTML = '<option value="">— Selecione o contrato —</option>';
+    selContrato.innerHTML = '<option value="">— Sem contrato vinculado —</option>';
     
     var contratosDoProjeto = contratosCache.filter(c => !projId || c.projeto_id == projId);
     
@@ -272,7 +272,6 @@ function aoSelecionarProjeto(){
         selContrato.innerHTML += `<option value="${c.id}">${c.numero_contrato || 'Contrato'} · ${c.financiador || 'Fomento'}</option>`;
     });
 
-    // Se houver apenas um contrato para este projeto, seleciona automaticamente
     if(contratosDoProjeto.length === 1) {
         selContrato.value = contratosDoProjeto[0].id;
     }
@@ -410,7 +409,7 @@ function editarCusto(id){
 function cancelarEdicao(){
     document.getElementById('edit_id').value='';
     document.getElementById('projeto_id').value='';
-    document.getElementById('contrato_id').innerHTML='<option value="">— Selecione o projeto primeiro —</option>';
+    document.getElementById('contrato_id').innerHTML='<option value="">— Sem contrato vinculado —</option>';
     document.getElementById('categoria').value='pessoal';
     document.getElementById('valor').value='';
     document.getElementById('data_gasto').value='';
@@ -435,7 +434,6 @@ async function salvarCusto(){
     if(!projetoId){toast('Selecione o projeto vinculado.','error');return;}
 
     var contratoId=document.getElementById('contrato_id').value;
-    if(!contratoId){toast('Selecione o contrato de fomento.','error');return;}
 
     var desc=document.getElementById('descricao').value.trim();
     if(!desc){toast('Informe a descrição do gasto.','error');return;}
@@ -452,7 +450,7 @@ async function salvarCusto(){
     var dados={
         cliente_id:cid,
         projeto_id:parseInt(projetoId),
-        contrato_id:parseInt(contratoId),
+        contrato_id:contratoId ? parseInt(contratoId) : null,
         categoria:document.getElementById('categoria').value,
         descricao:desc,
         valor:valor,
