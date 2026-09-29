@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Saldos de P&D — Sacramento ERP</title>
+    <title>Painel de Saldos — P&D — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
@@ -29,30 +30,36 @@
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
-        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: -10px; flex-wrap: wrap; gap: 12px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
-        .kpi-label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
-        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); }
-        .kpi-sub { font-size: 12px; color: var(--text-light); }
-
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 16px; align-items: flex-end; }
+
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        @media(max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
+
+        .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; height: 350px; }
+        .chart-title { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 12px; }
+        .chart-container { flex: 1; position: relative; width: 100%; height: 100%; }
 
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .analitica-table tbody tr:hover { background: #f8fafc; }
 
-        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
-        .b-positivo { background: #dcfce7; color: #166534; }
-        .b-negativo { background: #fee2e2; color: #991b1b; }
+        .progress-bar-container { background: #e2e8f0; border-radius: 10px; height: 10px; width: 100%; overflow: hidden; margin-top: 4px; }
+        .progress-bar-fill { background: var(--primary); height: 100%; border-radius: 10px; transition: width 0.3s; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
@@ -68,41 +75,81 @@
 <div class="container">
     <div class="page-toolbar">
         <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+        <div>
+            <span style="font-size: 12px; color: var(--text-light); margin-right: 15px;"><i class="far fa-clock"></i> <span id="relogioTopo"></span></span>
+            <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        </div>
     </div>
 
     <div>
-        <div class="page-title"><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Painel de Saldos de P&D</div>
-        <div class="page-subtitle">Consolidado financeiro de captação de fomento, aportes recebidos e execução orçamentária por projeto</div>
+        <div class="page-title"><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Painel de Saldos — P&D</div>
+        <div class="page-subtitle">Acompanhamento executivo de aportes recebidos, execução orçamentária e indicadores de utilização por projeto</div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-label">Total Captado (Contratos)</span>
-            <span class="kpi-value" id="kpiTotalContratos">R$ 0,00</span>
-            <span class="kpi-sub">Soma dos contratos de fomento ativos</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Total Aportado (Recebido)</span>
-            <span class="kpi-value" id="kpiTotalAportes" style="color:var(--success);">R$ 0,00</span>
-            <span class="kpi-sub">Recursos efetivamente transferidos</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Total Executado (Gastos)</span>
-            <span class="kpi-value" id="kpiTotalGastos" style="color:var(--warning);">R$ 0,00</span>
-            <span class="kpi-sub">Despesas e insumos em P&D</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Saldo a Executar (Caixa)</span>
-            <span class="kpi-value" id="kpiSaldoCaixa">R$ 0,00</span>
-            <span class="kpi-sub">Aportes recebidos menos gastos</span>
+    <!-- FILTROS AVANÇADOS -->
+    <div class="panel" style="padding: 18px 24px;">
+        <div class="filtros-grid">
+            <div>
+                <label>Projeto</label>
+                <select id="filtro_projeto" class="form-control" onchange="aplicarFiltros()">
+                    <option value="">— Todos os projetos —</option>
+                </select>
+            </div>
+            <div>
+                <label>Período Inicial</label>
+                <input id="filtro_inicio" class="form-control" type="date" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Período Final</label>
+                <input id="filtro_fim" class="form-control" type="date" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Categoria do Gasto</label>
+                <select id="filtro_categoria" class="form-control" onchange="aplicarFiltros()">
+                    <option value="">— Todas —</option>
+                    <option value="pessoal">Pessoal (RH)</option>
+                    <option value="material_consumo">Material / Insumos</option>
+                    <option value="servicos_terceiros">Serviços Terceiros</option>
+                    <option value="equipamentos">Equipamentos</option>
+                    <option value="outros">Outros Custos</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn-secondary" onclick="limparFiltros()" style="width:100%; justify-content:center;"><i class="fas fa-undo"></i> Limpar</button>
+            </div>
         </div>
     </div>
 
+    <!-- GRÁFICOS DINÂMICOS -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-chart-bar"></i> Recebido x Gasto por Projeto</div>
+            <div class="chart-container">
+                <canvas id="chartRecebidoGasto"></canvas>
+            </div>
+        </div>
+        <div class="chart-card">
+            <div class="chart-title"><i class="fas fa-chart-pie"></i> Gastos por Categoria</div>
+            <div class="chart-container">
+                <canvas id="chartCategorias"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- EVOLUÇÃO MÊS A MÊS -->
+    <div class="chart-card" style="height: 320px;">
+        <div class="chart-title"><i class="fas fa-chart-line"></i> Evolução do Saldo (Mês a Mês)</div>
+        <div class="chart-container">
+            <canvas id="chartEvolucao"></canvas>
+        </div>
+    </div>
+
+    <!-- TABELA ANALÍTICA -->
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-table"></i> Balancete Analítico por Projeto de P&D</span>
+            <span><i class="fas fa-list"></i> Saldos por Projeto</span>
         </div>
-        <div id="tabelaPainel" style="overflow-x:auto;">A carregar dados consolidados...</div>
+        <div id="tabelaPainel" style="overflow-x:auto;">A carregar dados analíticos...</div>
     </div>
 </div>
 
@@ -116,6 +163,15 @@ var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa'
 
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 
+let projetosCache = [];
+let aportesCache = [];
+let custosCache = [];
+let contratosCache = [];
+
+let chartRGInstance = null;
+let chartCatInstance = null;
+let chartEvolInstance = null;
+
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
 
@@ -128,79 +184,188 @@ function sbFiltro(tabela){
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
-async function carregarPainel(){
+setInterval(function(){
+    var d = new Date();
+    document.getElementById('relogioTopo').textContent = d.toLocaleDateString('pt-BR') + ', ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+}, 1000);
+
+async function carregarDadosGerais(){
     var cid = clienteIdAtual();
     if(!cid) return;
 
-    try {
-        var pRes = await sbFiltro('projetos_pd');
-        var cRes = await sbFiltro('contratos_fomento');
-        var aRes = await sbFiltro('aportes_pd');
-        var gRes = await sbFiltro('custos_pd');
+    var pRes = await sbFiltro('projetos_pd');
+    var cRes = await sbFiltro('contratos_fomento');
+    var aRes = await sbFiltro('aportes_pd');
+    var gRes = await sbFiltro('custos_pd');
 
-        var projetos = pRes.data || [];
-        var contratos = cRes.data || [];
-        var aportes = aRes.data || [];
-        var gastos = gRes.data || [];
+    projetosCache = pRes.data || [];
+    contratosCache = cRes.data || [];
+    aportesCache = aRes.data || [];
+    custosCache = gRes.data || [];
 
-        var sumContratos = 0;
-        contratos.forEach(function(c){ sumContratos += Number(c.valor_total || c.valor || 0); });
+    var selProj = document.getElementById('filtro_projeto');
+    selProj.innerHTML = '<option value="">— Todos os projetos —</option>';
+    projetosCache.forEach(function(p){
+        selProj.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+    });
 
-        var sumAportes = 0;
-        aportes.forEach(function(a){ sumAportes += Number(a.valor || 0); });
+    aplicarFiltros();
+}
 
-        var sumGastos = 0;
-        gastos.forEach(function(g){ sumGastos += Number(g.valor || 0); });
+function limparFiltros(){
+    document.getElementById('filtro_projeto').value = '';
+    document.getElementById('filtro_inicio').value = '';
+    document.getElementById('filtro_fim').value = '';
+    document.getElementById('filtro_categoria').value = '';
+    aplicarFiltros();
+}
 
-        var saldoCaixa = sumAportes - sumGastos;
+function aplicarFiltros(){
+    var fProj = document.getElementById('filtro_projeto').value;
+    var fInicio = document.getElementById('filtro_inicio').value;
+    var fFim = document.getElementById('filtro_fim').value;
+    var fCat = document.getElementById('filtro_categoria').value;
 
-        document.getElementById('kpiTotalContratos').textContent = 'R$ ' + fmtBR(sumContratos);
-        document.getElementById('kpiTotalAportes').textContent = 'R$ ' + fmtBR(sumAportes);
-        document.getElementById('kpiTotalGastos').textContent = 'R$ ' + fmtBR(sumGastos);
-        
-        var elSaldo = document.getElementById('kpiSaldoCaixa');
-        elSaldo.textContent = 'R$ ' + fmtBR(saldoCaixa);
-        elSaldo.style.color = saldoCaixa >= 0 ? 'var(--success)' : 'var(--danger)';
+    var aportesFiltrados = aportesCache.filter(function(a){
+        if(fProj && String(a.projeto_id) !== String(fProj)) return false;
+        if(fInicio && a.data_recebimento < fInicio) return false;
+        if(fFim && a.data_recebimento > fFim) return false;
+        return true;
+    });
 
-        if(!projetos.length){
-            document.getElementById('tabelaPainel').innerHTML = '<div class="empty-state">Nenhum projeto de P&D cadastrado para exibir balancete.</div>';
-            return;
-        }
+    var custosFiltrados = custosCache.filter(function(g){
+        if(fProj && String(g.projeto_id) !== String(fProj)) return false;
+        if(fInicio && g.data_gasto < fInicio) return false;
+        if(fFim && g.data_gasto > fFim) return false;
+        if(fCat && g.categoria !== fCat) return false;
+        return true;
+    });
 
-        var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th>Status</th><th style="text-align:right;">Contratos (Fomento)</th><th style="text-align:right;">Aportes Recebidos</th><th style="text-align:right;">Gastos Executados</th><th style="text-align:right;">Saldo em Caixa</th></tr></thead><tbody>';
+    renderizarTabelaAnalitica(fProj, aportesFiltrados, custosFiltrados);
+    renderizarGraficos(fProj, aportesFiltrados, custosFiltrados);
+}
 
-        projetos.forEach(function(proj){
-            var cProj = contratos.filter(function(c){ return String(c.projeto_id) === String(proj.id); });
-            var aProj = aportes.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
-            var gProj = gastos.filter(function(g){ return String(g.projeto_id) === String(proj.id); });
+function renderizarTabelaAnalitica(fProj, aportes, custos){
+    var el = document.getElementById('tabelaPainel');
+    var projetosAtivos = fProj ? projetosCache.filter(function(p){ return String(p.id) === String(fProj); }) : projetosCache;
 
-            var totalC = 0; cProj.forEach(function(c){ totalC += Number(c.valor_total || c.valor || 0); });
-            var totalA = 0; aProj.forEach(function(a){ totalA += Number(a.valor || 0); });
-            var totalG = 0; gProj.forEach(function(g){ totalG += Number(g.valor || 0); });
-            var saldoP = totalA - totalG;
-
-            html += '<tr>'+
-                '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
-                '<td><span class="badge" style="background:#e0e7ff; color:#3730a3;">' + (proj.status || 'Ativo') + '</span></td>'+
-                '<td style="text-align:right;">R$ ' + fmtBR(totalC) + '</td>'+
-                '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(totalA) + '</td>'+
-                '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(totalG) + '</td>'+
-                '<td style="text-align:right; font-weight:bold;"><span class="badge ' + (saldoP >= 0 ? 'b-positivo' : 'b-negativo') + '">R$ ' + fmtBR(saldoP) + '</span></td>'+
-            '</tr>';
-        });
-
-        html += '</tbody></table>';
-        document.getElementById('tabelaPainel').innerHTML = html;
-
-    } catch(e) {
-        document.getElementById('tabelaPainel').innerHTML = '<div class="empty-state">Erro ao calcular painel de saldos.</div>';
+    if(!projetosAtivos.length){
+        el.innerHTML = '<div class="empty-state">Nenhum projeto encontrado para os filtros selecionados.</div>';
+        return;
     }
+
+    var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th style="text-align:right;">Recebido (Aportes)</th><th style="text-align:right;">Gasto (Executado)</th><th style="text-align:right;">Disponível (Saldo)</th><th style="width:180px;">% Utilizado</th></tr></thead><tbody>';
+
+    projetosAtivos.forEach(function(proj){
+        var aProj = aportes.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
+        var gProj = custos.filter(function(g){ return String(g.projeto_id) === String(proj.id); });
+
+        var totalA = 0; aProj.forEach(function(a){ totalA += Number(a.valor || 0); });
+        var totalG = 0; gProj.forEach(function(g){ totalG += Number(g.valor || 0); });
+        var disponivel = totalA - totalG;
+        var pct = totalA > 0 ? Math.min(100, (totalG / totalA) * 100) : (totalG > 0 ? 100 : 0);
+
+        html += '<tr>'+
+            '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
+            '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(totalA) + '</td>'+
+            '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(totalG) + '</td>'+
+            '<td style="text-align:right; font-weight:bold; color:' + (disponivel >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R$ ' + fmtBR(disponivel) + '</td>'+
+            '<td>'+
+                '<div style="font-size:11px; font-weight:700; margin-bottom:2px;">' + pct.toFixed(1) + '%</div>'+
+                '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%; background:' + (pct > 90 ? 'var(--danger)' : 'var(--primary)') + ';"></div></div>'+
+            '</td>'+
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function renderizarGraficos(fProj, aportes, custos){
+    var projetosAtivos = fProj ? projetosCache.filter(function(p){ return String(p.id) === String(fProj); }) : projetosCache;
+
+    var labelsProj = [];
+    var dataRecebido = [];
+    var dataGasto = [];
+
+    projetosAtivos.forEach(function(p){
+        labelsProj.push(p.codigo || p.nome);
+        var tA = 0; aportes.filter(function(a){ return String(a.projeto_id) === String(p.id); }).forEach(function(a){ tA += Number(a.valor||0); });
+        var tG = 0; custos.filter(function(g){ return String(g.projeto_id) === String(p.id); }).forEach(function(g){ tG += Number(g.valor||0); });
+        dataRecebido.push(tA);
+        dataGasto.push(tG);
+    });
+
+    // 1. Gráfico Recebido x Gasto
+    if(chartRGInstance) chartRGInstance.destroy();
+    var ctxRG = document.getElementById('chartRecebidoGasto').getContext('2d');
+    chartRGInstance = new Chart(ctxRG, {
+        type: 'bar',
+        data: {
+            labels: labelsProj,
+            datasets: [
+                { label: 'Recebido', data: dataRecebido, backgroundColor: '#10b981', borderRadius: 6 },
+                { label: 'Gasto', data: dataGasto, backgroundColor: '#f59e0b', borderRadius: 6 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // 2. Gráfico Gastos por Categoria
+    var cat Totais = { pessoal: 0, material_consumo: 0, servicos_terceiros: 0, equipamentos: 0, outros: 0 };
+    custos.forEach(function(g){
+        if(catTotais[g.categoria] !== undefined) catTotais[g.categoria] += Number(g.valor || 0);
+        else catTotais.outros += Number(g.valor || 0);
+    });
+
+    if(chartCatInstance) chartCatInstance.destroy();
+    var ctxCat = document.getElementById('chartCategorias').getContext('2d');
+    chartCatInstance = new Chart(ctxCat, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pessoal (RH)', 'Material / Insumos', 'Terceiros (PJ)', 'Equipamentos', 'Outros'],
+            datasets: [{
+                data: [catTotais.pessoal, catTotais.material_consumo, catTotais.servicos_terceiros, catTotais.equipamentos, catTotais.outros],
+                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // 3. Gráfico Evolução Mensal
+    var mesesMap = {};
+    custos.forEach(function(g){
+        if(g.data_gasto){
+            var mes = g.data_gasto.substring(0, 7); // AAAA-MM
+            mesesMap[mes] = (mesesMap[mes] || 0) + Number(g.valor || 0);
+        }
+    });
+    var mesesOrdenados = Object.keys(mesesMap).sort();
+    var valoresEvolucao = mesesOrdenados.map(function(m){ return mesesMap[m]; });
+
+    if(chartEvolInstance) chartEvolInstance.destroy();
+    var ctxEvol = document.getElementById('chartEvolucao').getContext('2d');
+    chartEvolInstance = new Chart(ctxEvol, {
+        type: 'line',
+        data: {
+            labels: mesesOrdenados.length ? mesesOrdenados : ['Nenhum período'],
+            datasets: [{
+                label: 'Gastos Acumulados (R$)',
+                data: valoresEvolucao.length ? valoresEvolucao : [0],
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+    });
 }
 
 async function inicializarPagina(){
     let u = obterUsuarioAtual();
     if(!u || !u.email) { location.href = 'login.html'; return; }
-    await carregarPainel();
+    await carregarDadosGerais();
 }
 
 window.onload = inicializarPagina;
