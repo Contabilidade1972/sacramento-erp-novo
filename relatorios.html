@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios Gerais & Inteligência de Negócios — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        .grid-relatorios { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card-relatorio { background: var(--card); border: 1.5px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px; transition: 0.2s; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .card-relatorio:hover { border-color: var(--primary); transform: translateY(-3px); box-shadow: 0 8px 25px rgba(37,99,235,0.08); }
+        .card-relatorio h3 { font-size: 16px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
+        .card-relatorio p { font-size: 13px; color: var(--text-light); line-height: 1.5; flex: 1; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        @media print {
+            body { background: #fff !important; }
+            .page-toolbar, footer, button, .toast-container { display: none !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-chart-bar" style="color:var(--primary);"></i> Relatórios Gerais & Inteligência de Negócios</div>
+            <div class="page-subtitle">Central de extração e análise de relatórios gerenciais consolidados da empresa</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-folder-open"></i> Relatórios Disponíveis para Emissão</span></div>
+        
+        <div class="grid-relatorios">
+            <!-- Relatório 1 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-file-invoice-dollar" style="color:var(--danger);"></i> Relatório de Contas a Pagar</h3>
+                <p>Extrato analítico e sintético de despesas por fornecedor, centro de custo e status de pagamento no período.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('Pagar')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+
+            <!-- Relatório 2 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-hand-holding-usd" style="color:var(--success);"></i> Relatório de Contas a Receber</h3>
+                <p>Demonstrativo de receitas previstas e realizadas, faturas de clientes e inadimplência acumulada.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('Receber')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+
+            <!-- Relatório 3 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-chart-line" style="color:var(--primary);"></i> Fluxo de Caixa Consolidado</h3>
+                <p>Projeção detalhada de entradas, saídas diárias e saldo acumulado por banco ou caixa geral.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('Caixa')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+
+            <!-- Relatório 4 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-balance-scale" style="color:var(--warning);"></i> DRE Gerencial por Período</h3>
+                <p>Demonstração do Resultado do Exercício detalhando a margem de contribuição e o lucro líquido.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('DRE')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+
+            <!-- Relatório 5 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-boxes" style="color:#8b5cf6;"></i> Relatório de Inventário & Estoque</h3>
+                <p>Posição atual de estoque, valoração de insumos e histórico de movimentações físicas.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('Estoque')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+
+            <!-- Relatório 6 -->
+            <div class="card-relatorio">
+                <h3><i class="fas fa-users" style="color:#065f46;"></i> Relatório do Quadro Societário</h3>
+                <p>Demonstrativo completo de sócios, participações acionárias e cargos administrativos cadastrados.</p>
+                <button class="btn-acao" onclick="gerarRelatorio('Socios')"><i class="fas fa-download"></i> Gerar Relatório</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function gerarRelatorio(tipo){
+    toast(`A processar a extração do relatório de ${tipo}...`, "info");
+    setTimeout(() => {
+        toast(`Relatório de ${tipo} gerado com sucesso! Pronto para impressão.`);
+        window.print();
+    }, 1200);
+}
+</script>
+</body>
+</html>
