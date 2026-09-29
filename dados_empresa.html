@@ -17,23 +17,28 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        .container { max-width: 1200px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1300px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.cinza { background: #64748b; }
         .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
         
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
         
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); background: #fff; }
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
+        .analitica-table th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -48,16 +53,32 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-building" style="color:var(--primary);"></i> Dados da Empresa & Logotipo</div>
-            <div class="page-subtitle">Configure as informações corporativas, fiscais e identidade visual exibidas no sistema</div>
+            <div class="page-title"><i class="fas fa-building" style="color:var(--primary);"></i> Dados da Empresa & Consulta Receita Federal</div>
+            <div class="page-subtitle">Consulte o CNPJ para importar automaticamente os dados cadastrais, societários e fiscais</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
+    <!-- PAINEL DE CONSULTA CNPJ -->
+    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-search"></i> Importação Automática via Receita Federal</span></div>
+        <div class="form-row" style="align-items: flex-end;">
+            <div>
+                <label>Digite o CNPJ da Empresa *</label>
+                <input type="text" id="inputCnpjBusca" class="form-control" placeholder="00.000.000/0001-00" style="background:#fff; font-weight:700;">
+            </div>
+            <div>
+                <button class="btn-acao" style="height:41px;" onclick="consultarCnpjReceita()"><i class="fas fa-cloud-download-alt"></i> Consultar CNPJ na Receita</button>
+            </div>
+        </div>
+        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, Capital Social, CNAEs e Endereço.</small>
+    </div>
+
+    <!-- DADOS CADASTRAIS -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-sliders-h"></i> Informações Cadastrais</span></div>
+        <div class="panel-header"><span><i class="fas id-card"></i> Informações Cadastrais & Fiscais</span></div>
         
         <div class="form-row">
             <div>
@@ -72,8 +93,30 @@
 
         <div class="form-row">
             <div>
-                <label>CNPJ / CPF *</label>
+                <label>CNPJ *</label>
                 <input type="text" id="cnpj_cpf" class="form-control" placeholder="00.000.000/0001-00">
+            </div>
+            <div>
+                <label>Situação Cadastral</label>
+                <input type="text" id="situacao" class="form-control" placeholder="Ex: ATIVA" readonly style="background:#e2e8f0;">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Data de Abertura</label>
+                <input type="text" id="data_abertura" class="form-control" placeholder="DD/MM/AAAA" readonly style="background:#e2e8f0;">
+            </div>
+            <div>
+                <label>Capital Social (R$)</label>
+                <input type="text" id="capital_social" class="form-control" placeholder="R$ 0,00">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>CNAE Principal</label>
+                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição do CNAE principal">
             </div>
             <div>
                 <label>E-mail Corporativo</label>
@@ -87,13 +130,21 @@
                 <input type="text" id="telefone" class="form-control" placeholder="(31) 00000-0000">
             </div>
             <div>
-                <label>URL do Logotipo (Imagem)</label>
+                <label>URL do Logotipo (Identidade Visual)</label>
                 <input type="text" id="logo_url" class="form-control" placeholder="https://exemplo.com/logo.png">
             </div>
         </div>
 
-        <div style="margin-top: 10px;">
-            <button class="btn-acao" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button>
+        <div style="margin-top: 15px; display:flex; gap:10px;">
+            <button class="btn-acao sucesso" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button>
+        </div>
+    </div>
+
+    <!-- QUADRO SOCIETÁRIO IMPORTADO -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-users"></i> Quadro Societário (Importado da Receita)</span></div>
+        <div id="tabelaQuadroSocietario" style="overflow-x:auto;">
+            <div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum quadro societário carregado. Faça a consulta por CNPJ acima.</div>
         </div>
     </div>
 </div>
@@ -113,6 +164,49 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+async function consultarCnpjReceita(){
+    let cnpjInput = document.getElementById('inputCnpjBusca').value.replace(/\D/g, '');
+    if(cnpjInput.length !== 14){
+        toast("Digite um CNPJ válido com 14 dígitos!", "error");
+        return;
+    }
+
+    toast("A consultar dados na Receita Federal...", "info");
+
+    try {
+        let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjInput}`);
+        if(!response.ok) throw new Error("CNPJ não encontrado na base de dados.");
+        let r = await response.json();
+
+        // Preencher campos cadastrais
+        document.getElementById('razao_social').value = r.razao_social || '';
+        document.getElementById('nome_fantasia').value = r.nome_fantasia || '';
+        document.getElementById('cnpj_cpf').value = r.cnpj || '';
+        document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
+        document.getElementById('data_abertura').value = r.data_inicio_atividade ? r.data_inicio_atividade.split('-').reverse().join('/') : '';
+        document.getElementById('capital_social').value = r.capital_social ? Number(r.capital_social).toLocaleString('pt-BR', {minimumFractionDigits:2}) : '';
+        document.getElementById('cnae_principal').value = (r.cnae_fiscal ? r.cnae_fiscal + ' - ' : '') + (r.cnae_fiscal_descricao || '');
+        document.getElementById('email').value = r.email || '';
+        document.getElementById('telefone').value = r.ddd_telefone_1 || '';
+
+        // Renderizar Quadro Societário se houver
+        if(r.qsa && r.qsa.length > 0){
+            let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio</th><th>Qualificação</th><th>País de Origem</th><th>Faixa Etária</th></tr></thead><tbody>';
+            r.qsa.forEach(s => {
+                html += `<tr><td><strong>${s.nome_socio || s.nome}</strong></td><td>${s.qualificacao_socio || s.qualificacao || 'Sócio'}</td><td>${s.pais_origem || 'Brasil'}</td><td>${s.faixa_etaria || '-'}</td></tr>`;
+            });
+            html += '</tbody></table>';
+            document.getElementById('tabelaQuadroSocietario').innerHTML = html;
+        } else {
+            document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
+        }
+
+        toast("Dados importados com sucesso da Receita Federal!");
+    } catch(err) {
+        toast("Erro ao consultar CNPJ: " + err.message, "error");
+    }
+}
+
 async function carregarDadosEmpresa(){
     var cid = clienteIdAtual();
     if(!cid) return;
@@ -121,9 +215,16 @@ async function carregarDadosEmpresa(){
         document.getElementById('razao_social').value = data.razao_social || '';
         document.getElementById('nome_fantasia').value = data.nome_fantasia || '';
         document.getElementById('cnpj_cpf').value = data.cnpj_cpf || '';
+        document.getElementById('situacao').value = data.situacao || 'ATIVA';
+        document.getElementById('data_abertura').value = data.data_abertura || '';
+        document.getElementById('capital_social').value = data.capital_social || '';
+        document.getElementById('cnae_principal').value = data.cnae_principal || '';
         document.getElementById('email').value = data.email || '';
         document.getElementById('telefone').value = data.telefone || '';
         document.getElementById('logo_url').value = data.logo_url || '';
+        if(data.cnpj_cpf){
+            document.getElementById('inputCnpjBusca').value = data.cnpj_cpf;
+        }
     }
 }
 
@@ -135,13 +236,17 @@ async function salvarDadosEmpresa(){
         razao_social: document.getElementById('razao_social').value.trim(),
         nome_fantasia: document.getElementById('nome_fantasia').value.trim(),
         cnpj_cpf: document.getElementById('cnpj_cpf').value.trim(),
+        situacao: document.getElementById('situacao').value.trim(),
+        data_abertura: document.getElementById('data_abertura').value.trim(),
+        capital_social: document.getElementById('capital_social').value.trim(),
+        cnae_principal: document.getElementById('cnae_principal').value.trim(),
         email: document.getElementById('email').value.trim(),
         telefone: document.getElementById('telefone').value.trim(),
         logo_url: document.getElementById('logo_url').value.trim()
     };
 
     if(!payload.razao_social || !payload.cnpj_cpf){
-        toast("Preencha a Razão Social e o CNPJ/CPF!", "error");
+        toast("Preencha a Razão Social e o CNPJ!", "error");
         return;
     }
 
@@ -151,7 +256,7 @@ async function salvarDadosEmpresa(){
         return;
     }
 
-    toast("Dados da empresa atualizados com sucesso!");
+    toast("Dados da empresa salvos e disponibilizados para todo o ERP!");
     setTimeout(() => { location.reload(); }, 1000);
 }
 
