@@ -207,7 +207,7 @@ function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionD
 function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
 
 async function carregarProjetosSelect(){
-    var r = await sbFiltro('projetos_pd');
+    var r = await sb.from('projetos_pd').select('*');
     if(!r.error) {
         projetosCache = r.data || [];
         var sel = document.getElementById('projeto_id');
@@ -219,7 +219,7 @@ async function carregarProjetosSelect(){
 }
 
 async function carregarParceirosSelect(){
-    var r = await sbFiltro('parceiros');
+    var r = await sb.from('parceiros').select('*');
     if(!r.error) {
         parceirosCache = r.data || [];
         var sel = document.getElementById('cliente_tomador');
@@ -234,7 +234,7 @@ async function carregarNotas(){
     var el=document.getElementById('listaNotas');
     var cid=clienteIdAtual();
     if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
-    var r=await sbFiltro('faturamento_pd');
+    var r=await sb.from('faturamento_pd').select('*');
     if(r.error){el.innerHTML='<div class="empty-state">Tabela em configuração ou vazia.</div>';return;}
     notasCache=r.data||[];
     if(!notasCache.length){el.innerHTML='<div class="empty-state">Nenhuma NFS-e registrada.</div>';return;}
@@ -341,7 +341,7 @@ async function salvarNota(){
     }else{
         var ri=await sb.from('faturamento_pd').insert([dados]);
         if(ri.error){
-            toast('Erro ao salvar (verifique se a tabela faturamento_pd existe no Supabase).', 'error');
+            toast('Erro ao salvar: ' + ri.error.message, 'error');
             return;
         }
         toast('NFS-e registada com sucesso!');
