@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Saldos de P&D — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
+        .kpi-label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 12px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
+        .b-positivo { background: #dcfce7; color: #166534; }
+        .b-negativo { background: #fee2e2; color: #991b1b; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Painel de Saldos de P&D</div>
+        <div class="page-subtitle">Consolidado financeiro de captação de fomento, aportes recebidos e execução orçamentária por projeto</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-label">Total Captado (Contratos)</span>
+            <span class="kpi-value" id="kpiTotalContratos">R$ 0,00</span>
+            <span class="kpi-sub">Soma dos contratos de fomento ativos</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Total Aportado (Recebido)</span>
+            <span class="kpi-value" id="kpiTotalAportes" style="color:var(--success);">R$ 0,00</span>
+            <span class="kpi-sub">Recursos efetivamente transferidos</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Total Executado (Gastos)</span>
+            <span class="kpi-value" id="kpiTotalGastos" style="color:var(--warning);">R$ 0,00</span>
+            <span class="kpi-sub">Despesas e insumos em P&D</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Saldo a Executar (Caixa)</span>
+            <span class="kpi-value" id="kpiSaldoCaixa">R$ 0,00</span>
+            <span class="kpi-sub">Aportes recebidos menos gastos</span>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-table"></i> Balancete Analítico por Projeto de P&D</span>
+        </div>
+        <div id="tabelaPainel" style="overflow-x:auto;">A carregar dados consolidados...</div>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function sbFiltro(tabela){
+    let q=sb.from(tabela).select('*');
+    const cid=clienteIdAtual();
+    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+    return q;
+}
+
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+async function carregarPainel(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+
+    try {
+        var pRes = await sbFiltro('projetos_pd');
+        var cRes = await sbFiltro('contratos_fomento');
+        var aRes = await sbFiltro('aportes_pd');
+        var gRes = await sbFiltro('custos_pd');
+
+        var projetos = pRes.data || [];
+        var contratos = cRes.data || [];
+        var aportes = aRes.data || [];
+        var gastos = gRes.data || [];
+
+        var sumContratos = 0;
+        contratos.forEach(function(c){ sumContratos += Number(c.valor_total || c.valor || 0); });
+
+        var sumAportes = 0;
+        aportes.forEach(function(a){ sumAportes += Number(a.valor || 0); });
+
+        var sumGastos = 0;
+        gastos.forEach(function(g){ sumGastos += Number(g.valor || 0); });
+
+        var saldoCaixa = sumAportes - sumGastos;
+
+        document.getElementById('kpiTotalContratos').textContent = 'R$ ' + fmtBR(sumContratos);
+        document.getElementById('kpiTotalAportes').textContent = 'R$ ' + fmtBR(sumAportes);
+        document.getElementById('kpiTotalGastos').textContent = 'R$ ' + fmtBR(sumGastos);
+        
+        var elSaldo = document.getElementById('kpiSaldoCaixa');
+        elSaldo.textContent = 'R$ ' + fmtBR(saldoCaixa);
+        elSaldo.style.color = saldoCaixa >= 0 ? 'var(--success)' : 'var(--danger)';
+
+        if(!projetos.length){
+            document.getElementById('tabelaPainel').innerHTML = '<div class="empty-state">Nenhum projeto de P&D cadastrado para exibir balancete.</div>';
+            return;
+        }
+
+        var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th>Status</th><th style="text-align:right;">Contratos (Fomento)</th><th style="text-align:right;">Aportes Recebidos</th><th style="text-align:right;">Gastos Executados</th><th style="text-align:right;">Saldo em Caixa</th></tr></thead><tbody>';
+
+        projetos.forEach(function(proj){
+            var cProj = contratos.filter(function(c){ return String(c.projeto_id) === String(proj.id); });
+            var aProj = aportes.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
+            var gProj = gastos.filter(function(g){ return String(g.projeto_id) === String(proj.id); });
+
+            var totalC = 0; cProj.forEach(function(c){ totalC += Number(c.valor_total || c.valor || 0); });
+            var totalA = 0; aProj.forEach(function(a){ totalA += Number(a.valor || 0); });
+            var totalG = 0; gProj.forEach(function(g){ totalG += Number(g.valor || 0); });
+            var saldoP = totalA - totalG;
+
+            html += '<tr>'+
+                '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
+                '<td><span class="badge" style="background:#e0e7ff; color:#3730a3;">' + (proj.status || 'Ativo') + '</span></td>'+
+                '<td style="text-align:right;">R$ ' + fmtBR(totalC) + '</td>'+
+                '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(totalA) + '</td>'+
+                '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(totalG) + '</td>'+
+                '<td style="text-align:right; font-weight:bold;"><span class="badge ' + (saldoP >= 0 ? 'b-positivo' : 'b-negativo') + '">R$ ' + fmtBR(saldoP) + '</span></td>'+
+            '</tr>';
+        });
+
+        html += '</tbody></table>';
+        document.getElementById('tabelaPainel').innerHTML = html;
+
+    } catch(e) {
+        document.getElementById('tabelaPainel').innerHTML = '<div class="empty-state">Erro ao calcular painel de saldos.</div>';
+    }
+}
+
+async function inicializarPagina(){
+    let u = obterUsuarioAtual();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    await carregarPainel();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
