@@ -79,10 +79,6 @@
             <label>Nome / Descrição *</label>
             <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Transporte, Manutenção...">
         </div>
-        <div style="margin-bottom:12px;">
-            <label>Código (automático)</label>
-            <input type="text" id="cc_codigo" class="form-control" readonly style="background:var(--bg);">
-        </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
             <button class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
@@ -211,13 +207,6 @@ let listaParceirosCache = [];
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
 
-function sbFiltroLeitura(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(cid) q=q.eq('cliente_id', cid);
-    return q;
-}
-
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
@@ -233,7 +222,7 @@ async function carregarCombosEParceiros(){
     const cid = clienteIdAtual();
     if(!cid) return;
 
-    // ISOLAMENTO ESTRITO POR CLIENT_ID PARA EVITAR QUALQUER VAZAMENTO DE OUTROS CLIENTES
+    // CONTAS BANCÁRIAS ISOLADAS POR CLIENT_ID
     const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     contasBancariasCache = contas || [];
     let lista = document.getElementById('listaContas');
@@ -245,6 +234,7 @@ async function carregarCombosEParceiros(){
         });
     }
 
+    // PARCEIROS ISOLADOS POR CLIENT_ID
     const { data: parceiros } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('nome');
     listaParceirosCache = parceiros || [];
     let listaParc = document.getElementById('listaParceiros');
@@ -253,12 +243,15 @@ async function carregarCombosEParceiros(){
         listaParceirosCache.forEach(p => { listaParc.innerHTML += `<option value="${p.nome}">`; });
     }
 
+    // CENTROS DE CUSTO ISOLADOS POR CLIENT_ID (CORRIGIDO PARA A TABELA CORRETA)
     const { data: centros } = await sb.from('centros_custo').select('*').eq('cliente_id', cid).order('nome');
     let selCC = document.getElementById('centro_custo');
     if(selCC){
         selCC.innerHTML = '<option value="">Selecione o Centro de Custo...</option>';
         (centros || []).forEach(cc => {
-            selCC.innerHTML += `<option value="${cc.codigo || cc.id} - ${cc.nome}">${cc.codigo || cc.id} - ${cc.nome}</option>`;
+            let codigoCC = cc.codigo || cc.id || '';
+            let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+            selCC.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
         });
     }
 }
@@ -284,6 +277,19 @@ function preencherCamposFavorecido(p){
     document.getElementById('favorecido_banco').value = p.banco || '';
     document.getElementById('favorecido_agencia').value = p.agencia || '';
     document.getElementById('favorecido_conta').value = p.conta_corrente || '';
+}
+
+async function cadastrarFavorecidoRapido(){
+    let nome = document.getElementById('favorecido_nome').value.trim();
+    let cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
+    if(!nome || !cnpj_cpf){ toast("Informe pelo menos o Nome e o CPF/CNPJ!", "error"); return; }
+    const cid = clienteIdAtual();
+    let payload = { cliente_id: cid, nome: nome, tipo_cadastro: 'Fornecedor', cnpj_cpf: cnpj_cpf, banco: document.getElementById('favorecido_banco').value.trim(), agencia: document.getElementById('favorecido_agencia').value.trim(), conta_corrente: document.getElementById('favorecido_conta').value.trim() };
+    const { error } = await sb.from('parceiros').insert([payload]);
+    if(error){ toast("Erro ao cadastrar: "+error.message, "error"); return; }
+    toast("Favorecido cadastrado com sucesso!");
+    document.getElementById('divCadastrarRapido').style.display = 'none';
+    carregarCombosEParceiros();
 }
 
 async function salvarTransferencia(){
@@ -326,7 +332,7 @@ async function salvarTransferencia(){
 async function carregarTransferencias(){
     const cid = clienteIdAtual();
     const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
-    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state">Erro ao carregar.</div>'; return; }
+    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px;text-align:center;color:var(--text-light)">Erro ao carregar.</div>'; return; }
     transferenciasCache = r.data || [];
     aplicarFiltrosRelatorio();
 }
@@ -340,7 +346,7 @@ function aplicarFiltrosRelatorio(){
         if(dtIni && i.data < dtIni) return false;
         if(dtFim && i.data > dtFim) return false;
         if(txtBusca){
-            let linha = (i.conta_origem + ' ' + (i.conta_destino||'') + ' ' + (i.favorecido_nome||'') + ' ' + i.observacao).toLowerCase();
+            let linha = (i.conta_origem + ' ' + (i.conta_destino||'') + ' ' + (i.favorecido_nome||'') + ' ' + (i.observacao||'')).toLowerCase();
             if(linha.indexOf(txtBusca) === -1) return false;
         }
         return true;
@@ -383,6 +389,22 @@ function limparForm(){
     document.getElementById('favorecido_agencia').value='';
     document.getElementById('favorecido_conta').value='';
 }
+
+window.abrirModalCentroCusto = function(){
+    document.getElementById('cc_nome').value = '';
+    document.getElementById('modalNovoCentroCusto').style.display = 'flex';
+};
+
+window.salvarNovoCentroCusto = async function(){
+    const nome = document.getElementById('cc_nome').value.trim();
+    if(!nome){ toast("Informe o nome.", "error"); return; }
+    const cid = clienteIdAtual();
+    const { error } = await sb.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
+    if(error){ toast("Erro: "+error.message, "error"); return; }
+    document.getElementById('modalNovoCentroCusto').style.display = 'none';
+    toast("Centro de custo criado!");
+    carregarCombosEParceiros();
+};
 
 window.onload = function(){
     carregarCombosEParceiros();
