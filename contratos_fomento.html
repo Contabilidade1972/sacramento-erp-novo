@@ -49,7 +49,15 @@
         .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+        /* Estilo dos seletores interativos estilo pílula do sistema antigo */
+        .pill-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .pill-btn { background: var(--bg); border: 1.5px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: 0.2s; }
+        .pill-btn.ativo { background: #eff6ff; border-color: var(--primary); color: var(--primary); font-weight: 700; box-shadow: 0 2px 5px rgba(37,99,235,0.1); }
+
+        .infocontrato { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #166534; margin-bottom: 16px; display: none; }
+        .infocontrato b { color: #14532d; }
         
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
@@ -79,63 +87,88 @@
 
     <div class="panel">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
-            <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Novo Contrato ou Convênio de Fomento</span>
+            <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar contrato / convênio de fomento</span>
         </div>
         <input type="hidden" id="edit_id">
+        <input type="hidden" id="naturezaContabil" value="subvencao_custeio">
+
         <div class="form-row">
             <div>
-                <label>Número do Contrato / Edital</label>
-                <input type="text" id="numContrato" class="form-control" placeholder="Ex: FINEP 01/2026">
+                <label>Projeto Vinculado *</label>
+                <select id="projetoId" class="form-control"><option value="">— Selecione o projeto —</option></select>
             </div>
             <div>
-                <label>Projeto Vinculado</label>
-                <select id="projetoId" class="form-control"><option value="">Carregando projetos...</option></select>
-            </div>
-            <div>
-                <label>Financiador / Agência</label>
-                <input type="text" id="financiador" class="form-control" placeholder="Ex: FINEP, CNPq, FAPEMIG">
-            </div>
-            <div>
-                <label>Valor Total (R$)</label>
-                <input type="number" id="valorTotal" class="form-control" step="0.01" min="0" placeholder="0,00">
+                <label>Origem do Recurso *</label>
+                <input type="text" id="financiador" class="form-control" placeholder="Terceiro (financiador / parceiro / órgão de fomento)">
             </div>
         </div>
+
         <div class="form-row">
             <div>
-                <label>Natureza Contábil</label>
-                <select id="naturezaContabil" class="form-control">
-                    <option value="subvencao_custeio" selected>Subvenção para Custeio</option>
-                    <option value="aporte_reembolsavel">Aporte Reembolsável (Mutuável)</option>
-                    <option value="subvencao_investimento">Subvenção para Investimento</option>
-                    <option value="recurso_proprio">Recurso Próprio</option>
-                </select>
+                <label>Financiador / Orígem *</label>
+                <input type="text" id="origemDetalhe" class="form-control" placeholder="Ex.: Finep, Fapesp, BNDES, empresa parceira">
             </div>
             <div>
-                <label>Data de Assinatura</label>
+                <label>Número do Contrato / Convênio *</label>
+                <input type="text" id="numContrato" class="form-control" placeholder="Ex.: 1234/2026">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Valor Total (R$) *</label>
+                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="formatarCampoMoeda(this)">
+            </div>
+            <div>
+                <label>Data de Assinatura *</label>
                 <input type="date" id="dataAssinatura" class="form-control">
             </div>
+        </div>
+
+        <div class="form-row">
             <div>
-                <label>Vigência (Fim)</label>
+                <label>Data de Vigência Final *</label>
                 <input type="date" id="dataVigencia" class="form-control">
             </div>
             <div>
-                <label>Status</label>
+                <label>Status *</label>
                 <select id="statusContrato" class="form-control">
-                    <option value="Vigente" selected>Vigente</option>
+                    <option value="Ativo" selected>Ativo</option>
                     <option value="Em Negociação">Em Negociação</option>
                     <option value="Encerrado">Encerrado</option>
                 </select>
             </div>
         </div>
-        <div style="display:flex; gap:10px; margin-top:4px;">
-            <button class="btn-primary" onclick="salvarContrato()"><i class="fas fa-save"></i> Salvar Contrato</button>
-            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar</button>
+
+        <!-- Seção Interativa de Decisão Contábil (Sistema Antigo) -->
+        <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px;">1. Esse dinheiro precisa ser devolvido?</label>
+            <div class="pill-group" id="grupoDevolucao">
+                <button type="button" class="pill-btn ativo" onclick="selecionarDevolucao('nao', this)">Não — é a fundo perdido (não devolve)</button>
+                <button type="button" class="pill-btn" onclick="selecionarDevolucao('sim', this)">Sim — terá que devolver</button>
+            </div>
+
+            <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px; margin-top: 12px;">2. É para cobrir gastos do dia a dia ou para comprar/construir algo durável?</label>
+            <div class="pill-group" id="grupoFinalidade">
+                <button type="button" class="pill-btn ativo" onclick="selecionarFinalidade('custeio', this)">Gastos do dia a dia (custeio)</button>
+                <button type="button" class="pill-btn" onclick="selecionarFinalidade('investimento', this)">Comprar / construir algo durável (investimento)</button>
+            </div>
+
+            <div id="infoContrato" class="infocontrato" style="display:block;">
+                <b>Tratamento contábil automático:</b> <span id="rotuloTratamento">Subvenção para Custeio — Receita por competência</span><br>
+                <span id="descTratamento">Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.</span>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:16px;">
+            <button class="btn-primary" id="btnSalvar" onclick="salvarContrato()"><i class="fas fa-save"></i> Salvar contrato</button>
+            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
     </div>
 
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Contratos de Fomento Registrados</span>
+            <span><i class="fas fa-list"></i> Contratos cadastrados</span>
         </div>
         <div id="listaContratos" style="overflow-x:auto;">Carregando contratos...</div>
     </div>
@@ -152,6 +185,8 @@ var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa'
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let contratosCache = [];
 let projetosMap = {};
+let decisaoDevolucao = 'nao';
+let decisaoFinalidade = 'custeio';
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -176,19 +211,68 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+function parseValorBR(v){
+    if(v===null||v===undefined)return 0;
+    var s=String(v).trim().replace(/[R$\s]/g,'');
+    if(!s)return 0;
+    if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
+    var n=parseFloat(s);
+    return isNaN(n)?0:n;
+}
+function formatarCampoMoeda(el){
+    if(el.value.trim()===''){el.value='';return;}
+    var n=parseValorBR(el.value);
+    el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 function formatBRL(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0);}
 function formatData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
+
+function selecionarDevolucao(val, btn){
+    decisaoDevolucao = val;
+    document.querySelectorAll('#grupoDevolucao .pill-btn').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    atualizarNaturezaAutomatica();
+}
+
+function selecionarFinalidade(val, btn){
+    decisaoFinalidade = val;
+    document.querySelectorAll('#grupoFinalidade .pill-btn').forEach(b => b.classList.remove('ativo'));
+    btn.classList.add('ativo');
+    atualizarNaturezaAutomatica();
+}
+
+function atualizarNaturezaAutomatica(){
+    const inputNat = document.getElementById('naturezaContabil');
+    const rotulo = document.getElementById('rotuloTratamento');
+    const desc = document.getElementById('descTratamento');
+
+    if(decisaoDevolucao === 'sim'){
+        inputNat.value = 'aporte_reembolsavel';
+        rotulo.textContent = 'Aporte Reembolsável (Mutuável) — Passivo (Dívida)';
+        desc.textContent = 'O valor entra como obrigação a pagar (passivo), não configurando receita imediata.';
+    } else {
+        if(decisaoFinalidade === 'investimento'){
+            inputNat.value = 'subvencao_investimento';
+            rotulo.textContent = 'Subvenção para Investimento — Reserva de Incentivos Fiscais';
+            desc.textContent = 'Vai para o Patrimônio Líquido (Reserva de Incentivos Fiscais) e não pode ser distribuído como dividendo.';
+        } else {
+            inputNat.value = 'subvencao_custeio';
+            rotulo.textContent = 'Subvenção para Custeio — Receita por competência';
+            desc.textContent = 'Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.';
+        }
+    }
+}
 
 async function carregarProjetosSelect(){
     const sel = document.getElementById('projetoId');
     try {
         let q = sbFiltro('projetos_pd');
         const { data } = await q.order('nome');
-        sel.innerHTML = '<option value="">— Selecione o Projeto —</option>';
+        sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
         projetosMap = {};
         (data || []).forEach(p => {
             projetosMap[p.id] = p.nome || ('Projeto #' + p.id);
-            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' - ' : ''}${p.nome}</option>`;
+            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
         });
     } catch(e) {}
 }
@@ -200,20 +284,19 @@ async function carregarContratos(){
         const { data, error } = await q.order('id', { ascending: false });
         if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
         contratosCache = data || [];
-        if(!contratosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum contrato de fomento cadastrado.</div>'; return; }
+        if(!contratosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum contrato cadastrado.</div>'; return; }
         
-        let html = '<table class="analitica-table"><thead><tr><th>Contrato / Edital</th><th>Projeto</th><th>Financiador</th><th>Natureza</th><th style="text-align:right;">Valor Total (R$)</th><th>Vigência</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        let html = '<table class="analitica-table"><thead><tr><th>Contrato</th><th>Projeto</th><th>Financiador / Origem</th><th>Valor Total</th><th>Tratamento Contábil</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
         contratosCache.forEach(c => {
             const nomeProj = projetosMap[c.projeto_id] || '—';
-            const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. Investimento' : (c.natureza_contabil === 'recurso_proprio' ? 'Recurso Próprio' : 'Subv. Custeio'));
+            const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
             html += `<tr>
                 <td><strong>${c.numero_contrato || '-'}</strong></td>
                 <td>${nomeProj}</td>
                 <td>${c.financiador || '-'}</td>
-                <td><span style="font-size:11px; font-weight:600; color:var(--text-light);">${natRotulo}</span></td>
-                <td style="text-align:right; font-weight:bold;">${formatBRL(c.valor_total)}</td>
-                <td>${formatData(c.data_vigencia)}</td>
-                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Vigente'}</span></td>
+                <td style="font-weight:bold;">${formatBRL(c.valor_total)}</td>
+                <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
+                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
                     <button class="btn-secondary" onclick="editarContrato(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
                     <button class="btn-secondary" onclick="excluirContrato(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
@@ -229,30 +312,32 @@ async function carregarContratos(){
 
 async function salvarContrato(){
     const id = document.getElementById('edit_id').value;
-    const num = document.getElementById('numContrato').value.trim();
     const projId = document.getElementById('projetoId').value;
-    const financiador = document.getElementById('financiador').value.trim();
-    const valor = parseFloat(document.getElementById('valorTotal').value) || 0;
-    const natureza = document.getElementById('naturezaContabil').value;
+    const origRecurso = document.getElementById('financiador').value.trim();
+    const financiador = document.getElementById('origemDetalhe').value.trim();
+    const num = document.getElementById('numContrato').value.trim();
+    const valor = parseValorBR(document.getElementById('valorTotal').value);
     const assinatura = document.getElementById('dataAssinatura').value;
     const vigencia = document.getElementById('dataVigencia').value;
     const status = document.getElementById('statusContrato').value;
+    const natureza = document.getElementById('naturezaContabil').value;
 
-    if(!num) { toast("Informe o número do contrato ou edital.", "error"); return; }
     if(!projId) { toast("Selecione o projeto vinculado.", "error"); return; }
+    if(!num) { toast("Informe o número do contrato.", "error"); return; }
     if(valor <= 0) { toast("Informe um valor total válido.", "error"); return; }
+    if(!assinatura || !vigencia) { toast("Informe as datas de assinatura e vigência final.", "error"); return; }
 
     const cid = clienteIdAtual();
     const payload = {
         cliente_id: cid,
-        numero_contrato: num,
         projeto_id: parseInt(projId),
-        financiador: financiador || null,
+        financiador: financiador || origRecurso || 'Órgão de Fomento',
+        numero_contrato: num,
         valor_total: valor,
-        natureza_contabil: natureza,
-        data_assinatura: assinatura || null,
-        data_vigencia: vigencia || null,
-        status: status
+        data_assinatura: assinatura,
+        data_vigencia: vigencia,
+        status: status,
+        natureza_contabil: natureza
     };
 
     let res;
@@ -272,33 +357,49 @@ function editarContrato(id){
     const c = contratosCache.find(x => x.id === id);
     if(!c) return;
     document.getElementById('edit_id').value = c.id;
-    document.getElementById('numContrato').value = c.numero_contrato || '';
     document.getElementById('projetoId').value = c.projeto_id || '';
     document.getElementById('financiador').value = c.financiador || '';
-    document.getElementById('valorTotal').value = c.valor_total || '';
-    document.getElementById('naturezaContabil').value = c.natureza_contabil || 'subvencao_custeio';
+    document.getElementById('origemDetalhe').value = c.financiador || '';
+    document.getElementById('numContrato').value = c.numero_contrato || '';
+    document.getElementById('valorTotal').value = c.valor_total ? formatBRL(c.valor_total).replace('R$', '').trim() : '';
     document.getElementById('dataAssinatura').value = c.data_assinatura || '';
     document.getElementById('dataVigencia').value = c.data_vigencia || '';
-    document.getElementById('statusContrato').value = c.status || 'Vigente';
+    document.getElementById('statusContrato').value = c.status || 'Ativo';
+    document.getElementById('naturezaContabil').value = c.natureza_contabil || 'subvencao_custeio';
+    
+    // Ajustar botões pílula baseados no registro
+    if(c.natureza_contabil === 'aporte_reembolsavel'){
+        document.querySelectorAll('#grupoDevolucao .pill-btn')[1].click();
+    } else {
+        document.querySelectorAll('#grupoDevolucao .pill-btn')[0].click();
+        if(c.natureza_contabil === 'subvencao_investimento'){
+            document.querySelectorAll('#grupoFinalidade .pill-btn')[1].click();
+        } else {
+            document.querySelectorAll('#grupoFinalidade .pill-btn')[0].click();
+        }
+    }
+
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar contrato';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function cancelarEdicao(){
     document.getElementById('edit_id').value = '';
-    document.getElementById('numContrato').value = '';
     document.getElementById('projetoId').value = '';
     document.getElementById('financiador').value = '';
+    document.getElementById('origemDetalhe').value = '';
+    document.getElementById('numContrato').value = '';
     document.getElementById('valorTotal').value = '';
-    document.getElementById('naturezaContabil').value = 'subvencao_custeio';
     document.getElementById('dataAssinatura').value = '';
     document.getElementById('dataVigencia').value = '';
-    document.getElementById('statusContrato').value = 'Vigente';
+    document.getElementById('statusContrato').value = 'Ativo';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar contrato';
     document.getElementById('btnCancelar').style.display = 'none';
 }
 
 async function excluirContrato(id){
-    if(!confirm("Deseja realmente excluir este contrato de fomento?")) return;
+    if(!confirm("Deseja realmente excluir este contrato?")) return;
     const { error } = await sb.from('contratos_fomento').delete().eq('id', id);
     if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
     toast("Contrato excluído com sucesso!");
