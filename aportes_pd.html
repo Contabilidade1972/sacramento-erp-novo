@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aportes Recebidos de P&D — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
+        .b-passivo { background: #fee2e2; color: #991b1b; }
+        .b-receita { background: #dcfce7; color: #166534; }
+        .b-pl { background: #e0e7ff; color: #3730a3; }
+        .b-proprio { background: #fef9c3; color: #854d0e; }
+
+        .infocontrato { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; font-size: 13px; color: var(--text-main); margin-bottom: 16px; display: none; }
+        .infocontrato b { color: var(--secondary); }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-money-bill-wave" style="color:var(--primary);"></i> Aportes Recebidos de P&D</div>
+        <div class="page-subtitle">Registro e controle de entradas de recursos vinculados a contratos de fomento e subvenções</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header" style="border:none; margin-bottom:4px;">
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar entrada de recurso (aporte)</span>
+        </div>
+        <input type="hidden" id="edit_id">
+
+        <div class="form-row">
+            <div>
+                <label>Contrato / Convênio *</label>
+                <select id="contrato_id" class="form-control" onchange="mostrarInfoContrato()">
+                    <option value="">— Selecione o contrato —</option>
+                </select>
+            </div>
+            <div>
+                <label>Projeto Vinculado</label>
+                <input id="projeto_exib" class="form-control" readonly placeholder="Preenchido automaticamente" style="background:var(--bg);">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Valor Recebido (R$) *</label>
+                <input id="valor" class="form-control" placeholder="Ex.: 50.000,00" onblur="formatarCampoMoeda(this)">
+            </div>
+            <div>
+                <label>Data do Recebimento *</label>
+                <input id="data_recebimento" class="form-control" type="date">
+            </div>
+        </div>
+
+        <div>
+            <label>Observações</label>
+            <textarea id="observacoes" class="form-control" placeholder="Ex.: 1ª parcela do contrato, crédito na conta bancária..."></textarea>
+        </div>
+
+        <div id="infoContrato" class="infocontrato"></div>
+
+        <div style="display:flex; gap:10px; margin-top:4px;">
+            <button class="btn-primary" id="btnSalvar" onclick="salvarAporte()"><i class="fas fa-save"></i> Registrar aporte</button>
+            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-list"></i> Aportes registrados</span>
+        </div>
+        <div id="listaAportes" style="overflow-x:auto;">Carregando aportes...</div>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let aportesCache = [];
+let contratosCache = [];
+let projetosCache = [];
+
+var NATUREZA = {
+    aporte_reembolsavel:     { rotulo: 'Aporte Reembolsável',         classe: 'b-passivo' },
+    subvencao_custeio:       { rotulo: 'Subvenção para Custeio',     classe: 'b-receita' },
+    subvencao_investimento: { rotulo: 'Subvenção p/ Investimento',  classe: 'b-pl' },
+    recurso_proprio:         { rotulo: 'Recurso Próprio',            classe: 'b-proprio' }
+};
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function sbFiltro(tabela){
+    let q=sb.from(tabela).select('*');
+    const cid=clienteIdAtual();
+    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+    return q;
+}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){
+        c=document.createElement('div');c.id='toastContainer';
+        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className='toast '+type;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function parseValorBR(v){
+    if(v===null||v===undefined)return 0;
+    var s=String(v).trim().replace(/[R$\s]/g,'');
+    if(!s)return 0;
+    if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
+    var n=parseFloat(s);
+    return isNaN(n)?0:n;
+}
+function formatarCampoMoeda(el){
+    if(el.value.trim()===''){el.value='';return;}
+    var n=parseValorBR(el.value);
+    el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatarData(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+
+function nomeProjeto(id){
+    for(var i=0;i<projetosCache.length;i++){
+        if(projetosCache[i].id===id) return (projetosCache[i].codigo?projetosCache[i].codigo+' · ':'')+projetosCache[i].nome;
+    }
+    return '—';
+}
+function rotuloContrato(c){
+    if(!c)return '—';
+    return (c.numero_contrato||'sem nº')+' · '+(c.financiador||'—');
+}
+
+async function carregarProjetos(){
+    var cid=clienteIdAtual();
+    if(!cid)return;
+    var r=await sbFiltro('projetos_pd');
+    if(!r.error) projetosCache=r.data||[];
+}
+
+async function carregarContratos(){
+    var cid=clienteIdAtual();
+    if(!cid)return;
+    var r=await sbFiltro('contratos_fomento');
+    if(r.error){toast('Erro ao carregar contratos: '+r.error.message,'error');return;}
+    contratosCache=r.data||[];
+    var sel=document.getElementById('contrato_id');
+    sel.innerHTML='<option value="">— Selecione o contrato —</option>';
+    contratosCache.forEach(function(c){
+        var opt=document.createElement('option');
+        opt.value=c.id;
+        opt.textContent=rotuloContrato(c)+' · R$ '+fmtBR(c.valor_total);
+        sel.appendChild(opt);
+    });
+}
+
+function mostrarInfoContrato(){
+    var id=document.getElementById('contrato_id').value;
+    var c=null;
+    for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==id)c=contratosCache[i];}
+    var box=document.getElementById('infoContrato');
+    if(!c){box.style.display='none';document.getElementById('projeto_exib').value='';return;}
+    var info=NATUREZA[c.natureza_contabil]||NATUREZA.subvencao_custeio;
+    document.getElementById('projeto_exib').value=nomeProjeto(c.projeto_id);
+    box.innerHTML='<b>Tratamento contábil do contrato:</b> '+info.rotulo+' — '+
+      (c.natureza_contabil==='aporte_reembolsavel'?'o valor entra como dívida (passivo), não como receita.':
+       c.natureza_contabil==='subvencao_custeio'?'vira receita na medida em que os gastos do projeto acontecem.':
+       c.natureza_contabil==='subvencao_investimento'?'vai para a Reserva de Incentivos Fiscais (não pode virar dividendo).':
+       'é aporte da própria empresa (despesa ou ativo intangível).');
+    box.style.display='block';
+}
+
+async function carregarAportes(){
+    var el=document.getElementById('listaAportes');
+    var cid=clienteIdAtual();
+    if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
+    var r=await sbFiltro('aportes_pd');
+    if(r.error){el.innerHTML='<div class="empty-state">Erro: '+r.error.message+'</div>';return;}
+    aportesCache=r.data||[];
+    if(!aportesCache.length){el.innerHTML='<div class="empty-state">Nenhum aporte registrado.</div>';return;}
+    
+    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Contrato</th><th>Projeto</th><th style="text-align:right;">Valor</th><th>Tratamento Contábil</th><th>Observações</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    aportesCache.forEach(function(a){
+        var c=null;
+        for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==a.contrato_id)c=contratosCache[i];}
+        var info=NATUREZA[(c&&c.natureza_contabil)||'subvencao_custeio'];
+        html+='<tr>'+
+            '<td>'+formatarData(a.data_recebimento)+'</td>'+
+            '<td>'+(c?rotuloContrato(c):'—')+'</td>'+
+            '<td>'+nomeProjeto(a.projeto_id)+'</td>'+
+            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(a.valor)+'</td>'+
+            '<td><span class="badge '+info.classe+'">'+info.rotulo+'</span></td>'+
+            '<td>'+(a.observacoes||'—')+'</td>'+
+            '<td style="text-align:right; white-space:nowrap;">'+
+                '<button class="btn-secondary" onclick="editarAporte('+a.id+')" title="Editar"><i class="fas fa-pen"></i></button>'+
+                '<button class="btn-secondary" onclick="excluirAporte('+a.id+')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>'+
+        '</tr>';
+    });
+    html+='</tbody></table>';
+    el.innerHTML=html;
+}
+
+function editarAporte(id){
+    var a=null;
+    for(var i=0;i<aportesCache.length;i++){if(aportesCache[i].id==id)a=aportesCache[i];}
+    if(!a)return;
+    document.getElementById('edit_id').value=a.id;
+    document.getElementById('contrato_id').value=a.contrato_id||'';
+    document.getElementById('valor').value=a.valor?fmtBR(a.valor):'';
+    document.getElementById('data_recebimento').value=a.data_recebimento||'';
+    document.getElementById('observacoes').value=a.observacoes||'';
+    mostrarInfoContrato();
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando aporte de '+formatarData(a.data_recebimento);
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar aporte';
+    document.getElementById('btnCancelar').style.display='inline-flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function cancelarEdicao(){
+    document.getElementById('edit_id').value='';
+    document.getElementById('contrato_id').value='';
+    document.getElementById('valor').value='';
+    document.getElementById('data_recebimento').value='';
+    document.getElementById('observacoes').value='';
+    document.getElementById('projeto_exib').value='';
+    document.getElementById('infoContrato').style.display='none';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar entrada de recurso (aporte)';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registrar aporte';
+    document.getElementById('btnCancelar').style.display='none';
+}
+
+async function salvarAporte(){
+    var cid=clienteIdAtual();
+    if(!cid){toast('Cliente não identificado.','error');return;}
+
+    var contratoId=document.getElementById('contrato_id').value;
+    if(!contratoId){toast('Selecione o contrato vinculado.','error');return;}
+
+    var c=null;
+    for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==contratoId)c=contratosCache[i];}
+    if(!c){toast('Contrato não encontrado.','error');return;}
+
+    var valor=parseValorBR(document.getElementById('valor').value);
+    if(!valor||valor<=0){toast('Informe o valor recebido.','error');return;}
+
+    var data=document.getElementById('data_recebimento').value;
+    if(!data){toast('Informe a data do recebimento.','error');return;}
+
+    var dados={
+        cliente_id:cid,
+        contrato_id:parseInt(contratoId),
+        projeto_id:c.projeto_id,
+        valor:valor,
+        data_recebimento:data,
+        observacoes:document.getElementById('observacoes').value.trim()||null
+    };
+
+    var editId=document.getElementById('edit_id').value;
+    if(editId){
+        var ru=await sb.from('aportes_pd').update(dados).eq('id',editId);
+        if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
+        toast('Aporte atualizado com sucesso!');
+        cancelarEdicao();
+    }else{
+        var ri=await sb.from('aportes_pd').insert([dados]);
+        if(ri.error){toast('Erro ao salvar: '+ri.error.message,'error');return;}
+        toast('Aporte registrado com sucesso! R$ '+fmtBR(valor));
+        cancelarEdicao();
+    }
+    carregarAportes();
+}
+
+async function excluirAporte(id){
+    if(!confirm('Tem certeza que deseja excluir este aporte?'))return;
+    var r=await sb.from('aportes_pd').delete().eq('id',id);
+    if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
+    toast('Aporte excluído com sucesso!');
+    carregarAportes();
+}
+
+async function inicializarPagina(){
+    let u=obterUsuarioAtual();
+    if(!u||!u.email){location.href='login.html';return;}
+    await carregarProjetos();
+    await carregarContratos();
+    await carregarAportes();
+}
+
+window.onload=inicializarPagina;
+</script>
+</body>
+</html>
