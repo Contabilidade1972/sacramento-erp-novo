@@ -39,6 +39,11 @@
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         
+        .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-light); padding: 6px; font-size: 14px; transition: color 0.2s; }
+        .btn-icon:hover { color: var(--primary); }
+        .btn-icon.excluir:hover { color: var(--danger); }
+        .btn-icon.imprimir:hover { color: var(--success); }
+
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
@@ -186,7 +191,7 @@
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO -->
+    <!-- TABELA DE HISTÓRICO COM BOTÕES DE AÇÃO -->
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
@@ -222,7 +227,6 @@ async function carregarCombosEParceiros(){
     const cid = clienteIdAtual();
     if(!cid) return;
 
-    // CONTAS BANCÁRIAS ISOLADAS POR CLIENT_ID
     const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     contasBancariasCache = contas || [];
     let lista = document.getElementById('listaContas');
@@ -234,7 +238,6 @@ async function carregarCombosEParceiros(){
         });
     }
 
-    // PARCEIROS ISOLADOS POR CLIENT_ID
     const { data: parceiros } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('nome');
     listaParceirosCache = parceiros || [];
     let listaParc = document.getElementById('listaParceiros');
@@ -243,7 +246,6 @@ async function carregarCombosEParceiros(){
         listaParceirosCache.forEach(p => { listaParc.innerHTML += `<option value="${p.nome}">`; });
     }
 
-    // CENTROS DE CUSTO ISOLADOS POR CLIENT_ID (CORRIGIDO PARA A TABELA CORRETA)
     const { data: centros } = await sb.from('centros_custo').select('*').eq('cliente_id', cid).order('nome');
     let selCC = document.getElementById('centro_custo');
     if(selCC){
@@ -332,31 +334,17 @@ async function salvarTransferencia(){
 async function carregarTransferencias(){
     const cid = clienteIdAtual();
     const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
-    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px;text-align:center;color:var(--text-light)">Erro ao carregar.</div>'; return; }
+    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar.</div>'; return; }
     transferenciasCache = r.data || [];
-    aplicarFiltrosRelatorio();
+    renderTabelaHistorico();
 }
 
-function aplicarFiltrosRelatorio(){
-    let dtIni = document.getElementById('filtroDataInicio').value;
-    let dtFim = document.getElementById('filtroDataFim').value;
-    let txtBusca = document.getElementById('filtroBusca').value.toLowerCase().trim();
-
-    let filtradas = transferenciasCache.filter(i => {
-        if(dtIni && i.data < dtIni) return false;
-        if(dtFim && i.data > dtFim) return false;
-        if(txtBusca){
-            let linha = (i.conta_origem + ' ' + (i.conta_destino||'') + ' ' + (i.favorecido_nome||'') + ' ' + (i.observacao||'')).toLowerCase();
-            if(linha.indexOf(txtBusca) === -1) return false;
-        }
-        return true;
-    });
-
+function renderTabelaHistorico(){
     const el = document.getElementById('listaTransferencias');
-    if(!filtradas.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
+    if(!transferenciasCache.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
 
-    let html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
-    filtradas.forEach(t => {
+    let html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    transferenciasCache.forEach(t => {
         let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
         html += `<tr>
             <td>${t.data}</td>
@@ -364,17 +352,35 @@ function aplicarFiltrosRelatorio(){
             <td>${t.centro_custo || '—'}</td>
             <td>${t.observacao || '—'}</td>
             <td style="text-align:right; font-weight:bold;">R$ ${fmtBR(t.valor)}</td>
+            <td style="text-align:right; white-space:nowrap;">
+                <button class="btn-icon" onclick='prepararEdicao(${JSON.stringify(t)})' title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon imprimir" onclick='imprimirComprovante(${JSON.stringify(t)})' title="Imprimir Comprovante"><i class="fas fa-print"></i></button>
+                <button class="btn-icon excluir" onclick='excluirMovimento(${t.id})' title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
         </tr>`;
     });
     html += '</tbody></table>';
     el.innerHTML = html;
 }
 
-function limparFiltrosRelatorio(){
-    document.getElementById('filtroDataInicio').value='';
-    document.getElementById('filtroDataFim').value='';
-    document.getElementById('filtroBusca').value='';
-    aplicarFiltrosRelatorio();
+function prepararEdicao(t){
+    document.getElementById('editId').value = t.id;
+    document.getElementById('conta_origem').value = t.conta_origem || '';
+    document.getElementById('conta_destino').value = t.conta_destino || '';
+    document.getElementById('valor').value = fmtBR(t.valor);
+    document.getElementById('data').value = t.data || '';
+    document.getElementById('favorecido_nome').value = t.favorecido_nome || '';
+    document.getElementById('favorecido_documento').value = t.favorecido_documento || '';
+    document.getElementById('favorecido_banco').value = t.favorecido_banco || '';
+    document.getElementById('favorecido_agencia').value = t.favorecido_agencia || '';
+    document.getElementById('favorecido_conta').value = t.favorecido_conta || '';
+    document.getElementById('observacao').value = t.observacao || '';
+    document.getElementById('centro_custo').value = t.centro_custo || '';
+    
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit" style="color:var(--primary)"></i> Editando Movimentação #${t.id}`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Atualizar Movimentação';
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function limparForm(){
@@ -388,6 +394,44 @@ function limparForm(){
     document.getElementById('favorecido_banco').value='';
     document.getElementById('favorecido_agencia').value='';
     document.getElementById('favorecido_conta').value='';
+    document.getElementById('centro_custo').value='';
+    
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Movimentação Financeira';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Efetuar Lançamento';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+async function excluirMovimento(id){
+    if(!confirm("Tem certeza que deseja excluir esta movimentação?")) return;
+    const cid = clienteIdAtual();
+    const { error } = await sb.from('transferencias').delete().eq('id', id).eq('cliente_id', cid);
+    if(error){ toast("Erro ao excluir: "+error.message, "error"); return; }
+    toast("Movimentação excluída com sucesso!");
+    carregarTransferencias();
+}
+
+function imprimirComprovante(t){
+    var w = window.open('', '_blank');
+    w.document.write('<html><head><meta charset="UTF-8"><title>Comprovante de Movimentação</title>');
+    w.document.write('<style>body{font-family:Arial,sans-serif;padding:30px;color:#0f172a}h2{font-size:18px;margin-bottom:4px;color:#1e3a8a}.sub{color:#64748b;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #cbd5e1;padding:8px 12px;font-size:13px;text-align:left}th{background:#f8fafc;width:200px;color:#475569}</style></head><body>');
+    w.document.write('<h2>Comprovante de Transferência / Movimentação</h2>');
+    w.document.write('<div class="sub">Sacramento ERP Gestão Empresarial &middot; Emitido em ' + new Date().toLocaleDateString('pt-BR') + '</div>');
+    w.document.write('<table>');
+    w.document.write('<tr><th>Data</th><td>' + t.data + '</td></tr>');
+    w.document.write('<tr><th>Conta de Origem</th><td>' + t.conta_origem + '</td></tr>');
+    w.document.write('<tr><th>Conta de Destino / Favorecido</th><td>' + (t.conta_destino || t.favorecido_nome || '—') + '</td></tr>');
+    if(t.favorecido_nome){
+        w.document.write('<tr><th>Dados do Favorecido</th><td>CPF/CNPJ: '+(t.favorecido_documento||'—')+' | Banco: '+(t.favorecido_banco||'—')+' | Ag: '+(t.favorecido_agencia||'—')+' | CC: '+(t.favorecido_conta||'—')+'</td></tr>');
+    }
+    w.document.write('<tr><th>Centro de Custo</th><td>' + (t.centro_custo || '—') + '</td></tr>');
+    w.document.write('<tr><th>Valor</th><td><strong>R$ ' + fmtBR(t.valor) + '</strong></td></tr>');
+    w.document.write('<tr><th>Observação</th><td>' + (t.observacao || '—') + '</td></tr>');
+    w.document.write('</table>');
+    w.document.write('<div style="margin-top:50px;border-top:1px solid #cbd5e1;width:260px;padding-top:6px;font-size:12px;color:#64748b">Assinatura do Responsável</div>');
+    w.document.write('</body></html>');
+    w.document.close();
+    w.focus();
+    setTimeout(function(){ w.print(); }, 300);
 }
 
 window.abrirModalCentroCusto = function(){
@@ -402,7 +446,7 @@ window.salvarNovoCentroCusto = async function(){
     const { error } = await sb.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
     if(error){ toast("Erro: "+error.message, "error"); return; }
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
-    toast("Centro de custo criado!");
+    toast("Centro de custo criado com sucesso!");
     carregarCombosEParceiros();
 };
 
