@@ -97,14 +97,14 @@
         <div class="form-row">
             <div>
                 <label>Projeto *</label>
-                <select id="projeto_id" class="form-control" onchange="filtrarContratosPorProjeto()">
+                <select id="projeto_id" class="form-control" onchange="aoSelecionarProjeto()">
                     <option value="">— Selecione o projeto —</option>
                 </select>
             </div>
             <div>
                 <label>Contrato / Convênio *</label>
                 <select id="contrato_id" class="form-control">
-                    <option value="">— Selecione o contrato —</option>
+                    <option value="">— Selecionado automaticamente —</option>
                 </select>
             </div>
         </div>
@@ -154,7 +154,7 @@
         </div>
 
         <div>
-            <label>Comprovante (Obrigatório)</label>
+            <label>Comprovante (Opcional)</label>
             <div class="upload-box" onclick="document.getElementById('inputArquivo').click()">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--primary); margin-bottom: 6px;"></i>
                 <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para anexar o comprovante (PDF, JPG ou PNG)</div>
@@ -258,19 +258,24 @@ async function carregarContratosSelect(){
     var r = await sbFiltro('contratos_fomento');
     if(!r.error) {
         contratosCache = r.data || [];
-        filtrarContratosPorProjeto();
     }
 }
 
-function filtrarContratosPorProjeto(){
+function aoSelecionarProjeto(){
     var projId = document.getElementById('projeto_id').value;
-    var sel = document.getElementById('contrato_id');
-    sel.innerHTML = '<option value="">— Selecione o contrato —</option>';
-    contratosCache.forEach(c => {
-        if(!projId || c.projeto_id == projId) {
-            sel.innerHTML += `<option value="${c.id}">${c.numero_contrato || 'Contrato'} · ${c.financiador || 'Fomento'}</option>`;
-        }
+    var selContrato = document.getElementById('contrato_id');
+    selContrato.innerHTML = '<option value="">— Selecione o contrato —</option>';
+    
+    var contratosDoProjeto = contratosCache.filter(c => !projId || c.projeto_id == projId);
+    
+    contratosDoProjeto.forEach(c => {
+        selContrato.innerHTML += `<option value="${c.id}">${c.numero_contrato || 'Contrato'} · ${c.financiador || 'Fomento'}</option>`;
     });
+
+    // Se houver apenas um contrato para este projeto, seleciona automaticamente
+    if(contratosDoProjeto.length === 1) {
+        selContrato.value = contratosDoProjeto[0].id;
+    }
 }
 
 function atualizarNomeArquivo(input){
@@ -386,7 +391,7 @@ function editarCusto(id){
     if(!c)return;
     document.getElementById('edit_id').value=c.id;
     document.getElementById('projeto_id').value=c.projeto_id||'';
-    filtrarContratosPorProjeto();
+    aoSelecionarProjeto();
     document.getElementById('contrato_id').value=c.contrato_id||'';
     document.getElementById('categoria').value=c.categoria||'outros';
     document.getElementById('valor').value=c.valor?fmtBR(c.valor):'';
@@ -405,7 +410,7 @@ function editarCusto(id){
 function cancelarEdicao(){
     document.getElementById('edit_id').value='';
     document.getElementById('projeto_id').value='';
-    document.getElementById('contrato_id').value='';
+    document.getElementById('contrato_id').innerHTML='<option value="">— Selecione o projeto primeiro —</option>';
     document.getElementById('categoria').value='pessoal';
     document.getElementById('valor').value='';
     document.getElementById('data_gasto').value='';
