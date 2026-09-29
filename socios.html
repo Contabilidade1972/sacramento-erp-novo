@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro de Sócios — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        
+        .badge-ativo { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-users" style="color:var(--primary);"></i> Cadastro de Sócios & Acionistas</div>
+            <div class="page-subtitle">Gerencie o quadro societário, participações e funções administrativas da empresa</div>
+        </div>
+        <div>
+            <button class="btn-acao" onclick="location.href='index.html'" style="background:#64748b;"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE CADASTRO -->
+    <div class="panel">
+        <div class="panel-header"><span id="formTitle"><i class="fas fa-user-plus"></i> Novo Sócio / Acionista</span></div>
+        <input type="hidden" id="edit_id">
+        <div class="form-row">
+            <div>
+                <label>Nome Completo *</label>
+                <input type="text" id="nome" class="form-control" placeholder="Nome do sócio">
+            </div>
+            <div>
+                <label>CPF *</label>
+                <input type="text" id="cpf" class="form-control" placeholder="000.000.000-00">
+            </div>
+            <div>
+                <label>Cargo / Função</label>
+                <input type="text" id="funcao" class="form-control" placeholder="Ex: Diretor Presidente, Sócio Administrador">
+            </div>
+            <div>
+                <label>Participação Societária (%)</label>
+                <input type="number" step="0.01" id="participacao" class="form-control" placeholder="Ex: 50.00">
+            </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button class="btn-acao" onclick="salvarSocio()"><i class="fas fa-save"></i> Salvar Sócio</button>
+            <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    </div>
+
+    <!-- LISTAGEM -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-list"></i> Quadro Societário Cadastrado</span></div>
+        <div id="listaSocios" style="overflow-x:auto;">A carregar sócios...</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let sociosCache = [];
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarSocios(){
+    var cid = clienteIdAtual();
+    var el = document.getElementById('listaSocios');
+    if(!cid) return;
+
+    var { data, error } = await sb.from('socios').select('*').eq('cliente_id', cid).order('nome');
+    if(error){
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--danger);">Erro ao carregar sócios: '+error.message+'</div>';
+        return;
+    }
+
+    sociosCache = data || [];
+    if(sociosCache.length === 0){
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light);">Nenhum sócio cadastrado até o momento.</div>';
+        return;
+    }
+
+    var html = '<table class="analitica-table"><thead><tr>'+
+        '<th>Nome Completo</th><th>CPF</th><th>Cargo / Função</th><th>Participação</th><th style="text-align:right;">Ações</th>'+
+    '</tr></thead><tbody>';
+
+    sociosCache.forEach(s => {
+        html += '<tr>'+
+            '<td><strong>'+s.nome+'</strong></td>'+
+            '<td>'+(s.cpf || '—')+'</td>'+
+            '<td>'+(s.funcao || 'Sócio')+'</td>'+
+            '<td>'+(s.participacao ? s.participacao + '%' : '—')+'</td>'+
+            '<td style="text-align:right;">'+
+                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--primary);" onclick="editarSocio('+s.id+')"><i class="fas fa-edit"></i></button>'+
+                '<button class="btn-acao" style="padding:5px 10px; font-size:11px; background:var(--danger); margin-left:6px;" onclick="excluirSocio('+s.id+')"><i class="fas fa-trash"></i></button>'+
+            '</td>'+
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function salvarSocio(){
+    var cid = clienteIdAtual();
+    var id = document.getElementById('edit_id').value;
+    var nome = document.getElementById('nome').value.trim();
+    var cpf = document.getElementById('cpf').value.trim();
+    var funcao = document.getElementById('funcao').value.trim();
+    var participacao = parseFloat(document.getElementById('participacao').value) || 0;
+
+    if(!nome || !cpf){
+        toast("Preencha o Nome e o CPF do sócio!", "error");
+        return;
+    }
+
+    var payload = {
+        cliente_id: cid,
+        nome: nome,
+        cpf: cpf,
+        funcao: funcao || 'Sócio',
+        participacao: participacao,
+        situacao: 'Ativo'
+    };
+
+    let res;
+    if(id){
+        res = await sb.from('socios').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('socios').insert([payload]);
+    }
+
+    if(res.error){
+        toast("Erro ao salvar sócio: " + res.error.message, "error");
+        return;
+    }
+
+    toast(id ? "Sócio atualizado com sucesso!" : "Sócio cadastrado com sucesso!");
+    cancelarEdicao();
+    carregarSocios();
+}
+
+function editarSocio(id){
+    let s = sociosCache.find(x => String(x.id) === String(id));
+    if(!s) return;
+    document.getElementById('edit_id').value = s.id;
+    document.getElementById('nome').value = s.nome || '';
+    document.getElementById('cpf').value = s.cpf || '';
+    document.getElementById('funcao').value = s.funcao || '';
+    document.getElementById('participacao').value = s.participacao || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Sócio (#${s.id})`;
+    document.getElementById('btnCancelar').style.display = 'inline-block';
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function cancelarEdicao(){
+    document.getElementById('edit_id').value = '';
+    document.getElementById('nome').value = '';
+    document.getElementById('cpf').value = '';
+    document.getElementById('funcao').value = '';
+    document.getElementById('participacao').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo Sócio / Acionista';
+    document.getElementById('btnCancelar').style.display = 'none';
+}
+
+async function excluirSocio(id){
+    if(confirm("Deseja realmente excluir este sócio?")){
+        var { error } = await sb.from('socios').delete().eq('id', id);
+        if(error){
+            toast("Erro ao excluir: " + error.message, "error");
+            return;
+        }
+        toast("Sócio removido com sucesso!");
+        carregarSocios();
+    }
+}
+
+window.onload = function(){
+    carregarSocios();
+};
+</script>
+</body>
+</html>
