@@ -55,6 +55,7 @@
         .upload-box:hover { border-color: var(--primary); background: #eff6ff; }
 
         .rpa-alert { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .precadastro-box { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 16px; margin-bottom: 14px; display: none; }
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-pesessoal { background: #e0e7ff; color: #3730a3; }
@@ -143,19 +144,47 @@
                 <input id="documento_fiscal" class="form-control" placeholder="Automático em sequência ou NF-e 1234">
             </div>
             <div>
-                <label>Nome Completo do Prestador *</label>
-                <input id="prestador_nome" class="form-control" placeholder="Nome completo para o recibo/RPA">
+                <label>CPF / CNPJ do Prestador * (Busca automática)</label>
+                <input id="prestador_cpf" class="form-control" placeholder="Digite o CPF ou CNPJ..." onblur="buscarPrestadorPorCpfCnpj(this.value)">
             </div>
+        </div>
+
+        <!-- PAINEL DE PRÉ-CADASTRO CASO NÃO EXISTA NA BASE -->
+        <div id="painelPreCadastro" class="precadastro-box">
+            <div style="font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 10px;">
+                <i class="fas fa-user-plus"></i> Prestador não encontrado na base. Preencha o pré-cadastro rápido:
+            </div>
+            <div class="form-row">
+                <div>
+                    <label>Nome Completo / Razão Social *</label>
+                    <input id="pc_nome" class="form-control" placeholder="Nome completo do prestador">
+                </div>
+                <div>
+                    <label>CEP (Busca automática) *</label>
+                    <input id="pc_cep" class="form-control" placeholder="00000-000" onblur="buscarCep(this.value)">
+                </div>
+            </div>
+            <div class="form-row">
+                <div style="grid-column: span 2;">
+                    <label>Endereço (Rua, Bairro, Cidade - UF) *</label>
+                    <input id="pc_endereco" class="form-control" placeholder="Preenchido via CEP">
+                </div>
+                <div>
+                    <label>Número e Complemento *</label>
+                    <input id="pc_num_comp" class="form-control" placeholder="Ex: Apto 201, Bloco B">
+                </div>
+            </div>
+            <button class="btn-primary" onclick="salvarPreCadastroParceiro()" style="background:#166534;"><i class="fas fa-check"></i> Salvar Pré-Cadastro do Prestador</button>
         </div>
 
         <div class="form-row">
             <div>
-                <label>CPF / CNPJ do Prestador *</label>
-                <input id="prestador_cpf" class="form-control" placeholder="000.000.000-00">
+                <label>Nome Completo do Prestador</label>
+                <input id="prestador_nome" class="form-control" readonly style="background:var(--bg);" placeholder="Preenchido automaticamente do cadastro">
             </div>
             <div>
                 <label>Endereço Completo do Prestador</label>
-                <input id="prestador_endereco" class="form-control" placeholder="Rua, Número, Bairro, Cidade - UF">
+                <input id="prestador_endereco" class="form-control" readonly style="background:var(--bg);" placeholder="Preenchido automaticamente do cadastro">
             </div>
         </div>
 
@@ -204,6 +233,7 @@ const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_
 let custosCache = [];
 let projetosCache = [];
 let contratosCache = [];
+let parceirosCache = [];
 let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
 
@@ -265,6 +295,87 @@ function gerarProximoNumeroDocumento(){
     return 'RPA-' + String(maxNum + 1).padStart(3, '0');
 }
 
+async function carregarParceiros(){
+    var r = await sbFiltro('parceiros');
+    if(!r.error) {
+        parceirosCache = r.data || [];
+    }
+}
+
+function buscarPrestadorPorCpfCnpj(val){
+    var v = val.replace(/\D/g, '');
+    if(!v) return;
+    var encontrado = null;
+    parceirosCache.forEach(function(p){
+        var doc = (p.cpf_cnpj || p.cnpj || p.cpf || '').replace(/\D/g, '');
+        if(doc === v) encontrado = p;
+    });
+
+    if(encontrado){
+        document.getElementById('prestador_nome').value = encontrado.nome || encontrado.razao_social || '';
+        document.getElementById('prestador_endereco').value = (encontrado.endereco || '') + (encontrado.numero ? ', ' + encontrado.numero : '') + (encontrado.cidade ? ' - ' + encontrado.cidade : '');
+        document.getElementById('painelPreCadastro').style.display = 'none';
+        toast('Prestador localizado no cadastro com sucesso!', 'success');
+    } else {
+        document.getElementById('prestador_nome').value = '';
+        document.getElementById('prestador_endereco').value = '';
+        document.getElementById('painelPreCadastro').style.display = 'block';
+        document.getElementById('pc_cep').value = '';
+        document.getElementById('pc_nome').value = '';
+        document.getElementById('pc_endereco').value = '';
+        document.getElementById('pc_num_comp').value = '';
+        toast('Prestador não encontrado. Faça o pré-cadastro abaixo.', 'info');
+    }
+}
+
+async function buscarCep(cep){
+    var c = cep.replace(/\D/g, '');
+    if(c.length !== 8) return;
+    try {
+        var res = await fetch(`https://viacep.com.br/ws/${c}/json/`);
+        var data = await res.json();
+        if(!data.erro){
+            document.getElementById('pc_endereco').value = `${data.logradouro}, ${data.bairro}, ${data.localidade} - ${data.uf}`;
+            toast('Endereço carregado via CEP!', 'success');
+        } else {
+            toast('CEP não encontrado.', 'error');
+        }
+    } catch(e) {
+        toast('Erro ao buscar CEP.', 'error');
+    }
+}
+
+async function salvarPreCadastroParceiro(){
+    var nome = document.getElementById('pc_nome').value.trim();
+    var cpfCnpj = document.getElementById('prestador_cpf').value.trim();
+    var endereco = document.getElementById('pc_endereco').value.trim();
+    var numComp = document.getElementById('pc_num_comp').value.trim();
+
+    if(!nome || !cpfCnpj || !endereco) {
+        toast('Preencha os campos obrigatórios do pré-cadastro.', 'error');
+        return;
+    }
+
+    var cid = clienteIdAtual();
+    var payload = {
+        cliente_id: cid,
+        nome: nome,
+        cpf_cnpj: cpfCnpj,
+        endereco: endereco + ' (' + numComp + ')'
+    };
+
+    var r = await sb.from('parceiros').insert([payload]);
+    if(r.error) {
+        toast('Erro ao salvar parceiro: ' + r.error.message, 'error');
+        return;
+    }
+
+    toast('Pré-cadastro realizado com sucesso!');
+    document.getElementById('painelPreCadastro').style.display = 'none';
+    await carregarParceiros();
+    buscarPrestadorPorCpfCnpj(cpfCnpj);
+}
+
 async function carregarProjetosSelect(){
     var r = await sbFiltro('projetos_pd');
     if(!r.error) {
@@ -306,27 +417,6 @@ function atualizarNomeArquivo(input){
         arquivoAnexadoNome = file.name;
         arquivoAnexadoUrl = URL.createObjectURL(file);
         document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Ficheiro pronto: <b>' + arquivoAnexadoNome + '</b>';
-    }
-}
-
-function verComprovante(urlOuNome){
-    if(!urlOuNome || urlOuNome === '—') {
-        toast('Nenhum comprovante anexado.', 'info');
-        return;
-    }
-    if(urlOuNome.startsWith('blob:') || urlOuNome.startsWith('http')) {
-        window.open(urlOuNome, '_blank');
-    } else {
-        var janela = window.open('', '_blank');
-        janela.document.write(`
-            <html><head><title>Comprovante: ${urlOuNome}</title></head>
-            <body style="font-family:Arial; padding:40px; text-align:center;">
-                <h3>Comprovante Anexado</h3>
-                <p><b>Ficheiro:</b> ${urlOuNome}</p>
-                <p style="color:#666;">Documento registado com sucesso no ERP.</p>
-            </body></html>
-        `);
-        janela.document.close();
     }
 }
 
@@ -436,12 +526,13 @@ function editarCusto(id){
     document.getElementById('projeto_id').value=c.projeto_id||'';
     aoSelecionarProjeto();
     document.getElementById('contrato_id').value=c.contrato_id||'';
+    document.getElementById('empresa_pagadora').value=c.empresa_pagadora||'Sacramento ERP / NanoSignals Ltda';
     document.getElementById('categoria').value=c.categoria||'outros';
     document.getElementById('valor').value=c.valor?fmtBR(c.valor):'';
     document.getElementById('data_gasto').value=c.data_gasto||'';
     document.getElementById('documento_fiscal').value=c.documento_fiscal||'';
-    document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_cpf').value=c.prestador_cpf||'';
+    document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_endereco').value=c.prestador_endereco||'';
     document.getElementById('descricao').value=c.descricao||'';
     arquivoAnexadoUrl = c.comprovante || null;
@@ -460,10 +551,11 @@ function cancelarEdicao(){
     document.getElementById('valor').value='';
     document.getElementById('data_gasto').value='';
     document.getElementById('documento_fiscal').value='';
-    document.getElementById('prestador_nome').value='';
     document.getElementById('prestador_cpf').value='';
+    document.getElementById('prestador_nome').value='';
     document.getElementById('prestador_endereco').value='';
     document.getElementById('descricao').value='';
+    document.getElementById('painelPreCadastro').style.display='none';
     document.getElementById('inputArquivo').value='';
     document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
     arquivoAnexadoUrl = null;
@@ -482,6 +574,10 @@ async function salvarCusto(){
     if(!projetoId){toast('Selecione o projeto vinculado.','error');return;}
 
     var contratoId=document.getElementById('contrato_id').value;
+    var prestadorCpf = document.getElementById('prestador_cpf').value.trim();
+    var prestadorNome = document.getElementById('prestador_nome').value.trim();
+
+    if(!prestadorCpf || !prestadorNome){toast('Informe o CPF/CNPJ e selecione/cadastre o prestador.','error');return;}
 
     var desc=document.getElementById('descricao').value.trim();
     if(!desc){toast('Informe a descrição do gasto.','error');return;}
@@ -499,13 +595,14 @@ async function salvarCusto(){
         cliente_id:cid,
         projeto_id:parseInt(projetoId),
         contrato_id:contratoId ? parseInt(contratoId) : null,
+        empresa_pagadora:document.getElementById('empresa_pagadora').value.trim(),
         categoria:document.getElementById('categoria').value,
         descricao:desc,
         valor:valor,
         data_gasto:data,
         documento_fiscal:doc,
-        prestador_nome:document.getElementById('prestador_nome').value.trim()||null,
-        prestador_cpf:document.getElementById('prestador_cpf').value.trim()||null,
+        prestador_cpf:prestadorCpf,
+        prestador_nome:prestadorNome,
         prestador_endereco:document.getElementById('prestador_endereco').value.trim()||null,
         comprovante: arquivoAnexadoUrl || null
     };
@@ -536,6 +633,7 @@ async function excluirCusto(id){
 async function inicializarPagina(){
     let u=obterUsuarioAtual();
     if(!u||!u.email){location.href='login.html';return;}
+    await carregarParceiros();
     await carregarProjetosSelect();
     await carregarContratosSelect();
     await carregarCustos();
