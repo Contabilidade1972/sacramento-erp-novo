@@ -273,6 +273,44 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+// Leitor real de XML SEFAZ
+function importarXmls(input) {
+    if(!input.files || input.files.length === 0) return;
+    Array.from(input.files).forEach(file => {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let parser = new DOMParser();
+                let xmlDoc = parser.parseFromString(e.target.result, "text/xml");
+                
+                // Extrai dados básicos do XML (compatível com NF-e e CT-e)
+                let nCT = xmlDoc.getElementsByTagName("nCT")[0]?.textContent || xmlDoc.getElementsByTagName("nNF")[0]?.textContent || "1";
+                let dhEmi = xmlDoc.getElementsByTagName("dhEmi")[0]?.textContent?.split('T')[0] || new Date().toISOString().split('T')[0];
+                
+                document.getElementById('cte_numero').value = nCT;
+                document.getElementById('cte_data').value = dhEmi;
+                
+                // Remetente (emitente ou remet)
+                let remCnpj = xmlDoc.getElementsByTagName("rem")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || xmlDoc.getElementsByTagName("emit")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || "";
+                let remNome = xmlDoc.getElementsByTagName("rem")[0]?.getElementsByTagName("xNome")[0]?.textContent || xmlDoc.getElementsByTagName("emit")[0]?.getElementsByTagName("xNome")[0]?.textContent || "";
+                if(remCnpj) document.getElementById('rem_cnpj').value = remCnpj;
+                if(remNome) document.getElementById('rem_nome').value = remNome;
+
+                // Destinatário
+                let destCnpj = xmlDoc.getElementsByTagName("dest")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || "";
+                let destNome = xmlDoc.getElementsByTagName("dest")[0]?.getElementsByTagName("xNome")[0]?.textContent || "";
+                if(destCnpj) document.getElementById('dest_cnpj').value = destCnpj;
+                if(destNome) document.getElementById('dest_nome').value = destNome;
+
+                toast(`XML "${file.name}" lido e importado com sucesso!`);
+            } catch(err) {
+                toast(`Erro ao processar o XML ${file.name}`, "error");
+            }
+        };
+        reader.readAsText(file);
+    });
+}
+
 async function buscarRemetente(){
     let cnpj = document.getElementById('rem_cnpj').value.replace(/\D/g,'');
     if(cnpj.length !== 14) { toast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
@@ -335,12 +373,6 @@ async function buscarCepDestinatario(){
     } catch(e) {}
 }
 
-function importarXmls(input) {
-    if(input.files && input.files.length > 0) {
-        toast(input.files.length + " arquivo(s) XML importado(s) com sucesso!");
-    }
-}
-
 async function carregarCtes(){
     var cid = clienteIdAtual();
     var tb = document.getElementById('tbodyCtes');
@@ -376,7 +408,7 @@ async function salvarCte(){
     var cid = clienteIdAtual();
     let payload = {
         cliente_id: cid,
-        numero: Math.floor(Math.random()*900000+100000),
+        numero: parseInt(document.getElementById('cte_numero').value || Math.floor(Math.random()*900000+100000)),
         serie: parseInt(document.getElementById('cte_serie').value || 1),
         data_emissao: document.getElementById('cte_data').value || new Date().toISOString().split('T')[0],
         modelo: document.getElementById('cte_modelo').value,
