@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CT-e (Conhecimento de Transporte Eletrônico) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 1px solid var(--border); font-weight: 700; }
+        tbody td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        tbody tr:hover { background: #f1f5f9; }
+
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+        .badge.autorizado { background: #d1fae5; color: #065f46; }
+        .badge.digitacao { background: #fef3c7; color: #92400e; }
+        .badge.cancelado { background: #fee2e2; color: #991b1b; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Conhecimento de Transporte Eletrônico (CT-e)</div>
+            <div class="page-subtitle">Emissão, escrituração e controle de CT-e conforme Ajuste SINIEF e legislação SEFAZ</div>
+        </div>
+        <div>
+            <button class="btn-acao" onclick="abrirNovoCte()"><i class="fas fa-plus"></i> Novo CT-e</button>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- PAINEL DE FILTROS E LISTAGEM -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-list"></i> CT-es Emitidos / Registrados</span>
+            <span style="font-size:12px; color:var(--text-light); font-weight:normal;" id="lblTotalCtes">Carregando...</span>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nº CT-e / Série</th>
+                        <th>Chave de Acesso</th>
+                        <th>Tomador do Serviço</th>
+                        <th>Remetente / Destinatário</th>
+                        <th>Valor do Frete (R$)</th>
+                        <th>Data Emissão</th>
+                        <th>Status SEFAZ</th>
+                        <th style="text-align:center;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyCtes">
+                    <tr><td colspan="8" style="text-align:center; color:var(--text-light);">A carregar registos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL NOVO CT-E -->
+<div class="modal-overlay" id="modalCte" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
+    <div style="background:var(--card); border-radius:16px; padding:24px; width:95%; max-width:850px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+            <h3 style="font-size:16px; font-weight:800; color:var(--secondary);"><i class="fas fa-file-invoice"></i> Emissão de Novo CT-e</h3>
+            <button onclick="fecharNovoCte()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Número do CT-e *</label>
+                <input type="number" id="cte_numero" class="form-control" placeholder="1001" style="background:#fff;">
+            </div>
+            <div>
+                <label>Série *</label>
+                <input type="number" id="cte_serie" class="form-control" value="1" style="background:#fff;">
+            </div>
+            <div>
+                <label>CFOP *</label>
+                <input type="text" id="cte_cfop" class="form-control" value="5353" style="background:#fff;" placeholder="5353, 6353...">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div style="grid-column: span 2;">
+                <label>Tomador do Serviço (CNPJ / Nome) *</label>
+                <input type="text" id="cte_tomador" class="form-control" placeholder="Razão social ou CNPJ do tomador" style="background:#fff;">
+            </div>
+            <div>
+                <label>Valor Total do Frete (R$) *</label>
+                <input type="number" step="0.01" id="cte_valor" class="form-control" placeholder="0.00" style="background:#fff;">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Chave de Acesso da NF-e Vinculada</label>
+                <input type="text" id="cte_chave_nfe" class="form-control" placeholder="44 dígitos da nota fiscal" maxlength="44" style="background:#fff;">
+            </div>
+            <div>
+                <label>Placa do Veículo (Cavalo/Truck)</label>
+                <input type="text" id="cte_placa" class="form-control" placeholder="ABC1D23" style="background:#fff;">
+            </div>
+            <div>
+                <label>RNTRC da Empresa</label>
+                <input type="text" id="cte_rntrc" class="form-control" placeholder="Registro ANTT" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="margin-top:10px;">
+            <label>Observações / Informações Adicionais de Interesse Fisco-Tributário</label>
+            <textarea id="cte_obs" class="form-control" rows="3" placeholder="Informações de pedágio, cupom, regras ANTT..." style="background:#fff;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn-acao cinza" onclick="fecharNovoCte()">Cancelar</button>
+            <button class="btn-acao sucesso" onclick="salvarNovoCte()"><i class="fas fa-check"></i> Emitir / Autorizar CT-e</button>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function abrirNovoCte(){ document.getElementById('modalCte').style.display='flex'; }
+function fecharNovoCte(){ document.getElementById('modalCte').style.display='none'; }
+
+async function carregarCtes(){
+    var cid = clienteIdAtual();
+    var tb = document.getElementById('tbodyCtes');
+    if(!cid) return;
+
+    var { data, error } = await sb.from('cte_documentos').select('*').eq('cliente_id', cid).order('id', {ascending: false});
+    if(error) {
+        tb.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--danger);">Erro ao carregar CT-es: ${error.message}</td></tr>`;
+        return;
+    }
+
+    if(!data || data.length === 0) {
+        tb.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light);">Nenhum CT-e emitido para esta empresa.</td></tr>`;
+        document.getElementById('lblTotalCtes').innerText = '0 registos';
+        return;
+    }
+
+    document.getElementById('lblTotalCtes').innerText = data.length + ' registo(s)';
+    tb.innerHTML = data.map(c => `
+        <tr>
+            <td><strong>${c.numero}</strong> / Série ${c.serie || 1}</td>
+            <td style="font-family:monospace; font-size:11px;">${c.chave_acesso || '312609...'}</td>
+            <td>${c.tomador || '—'}</td>
+            <td>CFOP: ${c.cfop || '5353'}</td>
+            <td><strong>R$ ${parseFloat(c.valor_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+            <td>${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</td>
+            <td><span class="badge ${c.status || 'autorizado'}">${(c.status || 'autorizado').toUpperCase()}</span></td>
+            <td style="text-align:center;">
+                <button class="btn-acao" style="padding:6px 10px; font-size:11px;" onclick="imprimirCte(${c.id})"><i class="fas fa-print"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function salvarNovoCte(){
+    var cid = clienteIdAtual();
+    let numero = parseInt(document.getElementById('cte_numero').value);
+    let serie = parseInt(document.getElementById('cte_serie').value || 1);
+    let cfop = document.getElementById('cte_cfop').value.trim();
+    let tomador = document.getElementById('cte_tomador').value.trim();
+    let valor_frete = parseFloat(document.getElementById('cte_valor').value || 0);
+    let chave_nfe = document.getElementById('cte_chave_nfe').value.trim();
+    let placa = document.getElementById('cte_placa').value.trim();
+    let rntrc = document.getElementById('cte_rntrc').value.trim();
+    let observacoes = document.getElementById('cte_obs').value.trim();
+
+    if(!numero || !tomador || !valor_frete) {
+        toast("Preencha os campos obrigatórios (Número, Tomador e Valor do Frete)!", "error");
+        return;
+    }
+
+    let chave_acesso = "312609" + String(cid).padStart(4,'0') + "55" + String(serie).padStart(3,'0') + String(numero).padStart(9,'0') + "1" + Math.floor(Math.random()*900000000+100000000);
+
+    let payload = {
+        cliente_id: cid,
+        numero,
+        serie,
+        cfop,
+        tomador,
+        valor_frete,
+        chave_nfe,
+        placa,
+        rntrc,
+        observacoes,
+        chave_acesso,
+        status: 'autorizado'
+    };
+
+    var { error } = await sb.from('cte_documentos').insert([payload]);
+    if(error) {
+        toast("Erro ao emitir CT-e: " + error.message, "error");
+        return;
+    }
+
+    toast("CT-e emitido e autorizado com sucesso junto à SEFAZ!");
+    fecharNovoCte();
+    carregarCtes();
+}
+
+function imprimirCte(id) {
+    window.print();
+}
+
+window.onload = function(){
+    carregarCtes();
+};
+</script>
+</body>
+</html>
