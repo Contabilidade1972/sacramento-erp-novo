@@ -55,7 +55,7 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<div class="container" id="mainContainer" style="display:none;">
+<div class="container" id="mainContainer">
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-cog" style="color:var(--primary);"></i> Parametrização Comercial & Identidade Visual</div>
@@ -224,15 +224,19 @@ async function salvarWhiteLabel(){
 window.onload = function(){
     let u = obterUsuarioAtual();
     
-    // 🔒 TRAVA ABSOLUTA DE SEGURANÇA CONTRA LGPD / ACESSO INDEVIDO
-    if(!u || !u.email || u.email.toLowerCase().trim() !== EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim()) {
-        alert("ACESSO NEGADO! Esta página é restrita exclusivamente ao desenvolvedor Master (lucianojorgesacramento@gmail.com).");
-        location.replace('index.html');
+    // Verificação de segurança branda ou redirecionamento seguro caso não esteja logado
+    if(!u || !u.email) {
+        location.href = 'login.html';
         return;
     }
 
-    // Se passou na validação rigorosa, exibe o conteúdo da página
-    document.getElementById('mainContainer').style.display = 'flex';
+    // Se for usuário comum tentando entrar, avisa e joga para o index
+    if(u.email.toLowerCase().trim() !== EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim() && !((u.perfil || '').toLowerCase().includes('master'))) {
+        alert("Acesso restrito ao desenvolvedor Master.");
+        location.href = 'index.html';
+        return;
+    }
+
     carregarWhiteLabel();
 };
 </script>
