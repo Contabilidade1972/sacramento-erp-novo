@@ -79,41 +79,45 @@
         <i class="fas fa-info-circle"></i> <strong>Nota:</strong> Esta tela é um instrumento de controle interno. Não substitui parecer jurídico formal. As minutas são editáveis — revise e valide com advogado antes da assinatura.
     </div>
 
-    <!-- ABAS DE NAVEGAÇÃO COMPLETAS -->
+    <!-- ABAS DE NAVEGAÇÃO -->
     <div class="abas-container">
         <button class="aba-btn active" onclick="mudarAba('contratos')"><i class="fas fa-file-contract"></i> Contratos &amp; Documentos</button>
         <button class="aba-btn" onclick="mudarAba('compliance')"><i class="fas fa-balance-scale"></i> Compliance &amp; Obrigações</button>
         <button class="aba-btn" onclick="mudarAba('auditoria')"><i class="fas fa-search-dollar"></i> Auditoria &amp; Riscos</button>
     </div>
 
-    <!-- ABA 1: CONTRATOS & DOCUMENTOS (MODELOS DE CONTRATOS) -->
+    <!-- ABA 1: CONTRATOS & DOCUMENTOS -->
     <div id="aba-contratos" class="aba-conteudo active">
         <div class="panel">
             <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-file-alt"></i> Modelos de Contratos &amp; Gerador de Minutas</span></div>
-            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Preencha os dados da Contratante e Contratada. O texto é editável e pronto para emissão.</p>
+            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Preencha CNPJ/CPF (com busca automática interna e na Receita Federal) e o CEP (com preenchimento automático de endereço).</p>
 
             <!-- CONTRATANTE -->
             <h4 style="font-size:12px; font-weight:700; color:var(--secondary); margin-bottom:8px; text-transform:uppercase;"><i class="fas fa-building"></i> Contratante</h4>
             <div class="form-row">
                 <div>
-                    <label>CNPJ / CPF</label>
-                    <input type="text" id="cte_cnpj" class="form-control" placeholder="00.000.000/0001-00">
+                    <label>CNPJ / CPF *</label>
+                    <input type="text" id="cte_cnpj" class="form-control" placeholder="00.000.000/0001-00" onblur="buscarEntidade('cte')">
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Nome / Razão Social</label>
+                    <label>Nome / Razão Social *</label>
                     <input type="text" id="cte_nome" class="form-control" placeholder="Nome ou Razão Social">
                 </div>
                 <div>
-                    <label>CEP</label>
-                    <input type="text" id="cte_cep" class="form-control" placeholder="00000-000">
+                    <label>CEP *</label>
+                    <input type="text" id="cte_cep" class="form-control" placeholder="00000-000" onblur="buscarCep('cte')">
                 </div>
                 <div>
                     <label>Logradouro</label>
                     <input type="text" id="cte_log" class="form-control" placeholder="Rua, Avenida">
                 </div>
                 <div>
-                    <label>Número</label>
-                    <input type="text" id="cte_num" class="form-control" placeholder="Nº">
+                    <label>Número *</label>
+                    <input type="text" id="cte_num" class="form-control" placeholder="Digite o número">
+                </div>
+                <div>
+                    <label>Complemento</label>
+                    <input type="text" id="cte_comp" class="form-control" placeholder="Apto, sala...">
                 </div>
                 <div>
                     <label>Bairro</label>
@@ -129,24 +133,28 @@
             <h4 style="font-size:12px; font-weight:700; color:var(--secondary); margin:16px 0 8px; text-transform:uppercase;"><i class="fas fa-handshake"></i> Contratada</h4>
             <div class="form-row">
                 <div>
-                    <label>CNPJ / CPF</label>
-                    <input type="text" id="cda_cnpj" class="form-control" placeholder="00.000.000/0001-00">
+                    <label>CNPJ / CPF *</label>
+                    <input type="text" id="cda_cnpj" class="form-control" placeholder="00.000.000/0001-00" onblur="buscarEntidade('cda')">
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Nome / Razão Social</label>
+                    <label>Nome / Razão Social *</label>
                     <input type="text" id="cda_nome" class="form-control" placeholder="Nome ou Razão Social">
                 </div>
                 <div>
-                    <label>CEP</label>
-                    <input type="text" id="cda_cep" class="form-control" placeholder="00000-000">
+                    <label>CEP *</label>
+                    <input type="text" id="cda_cep" class="form-control" placeholder="00000-000" onblur="buscarCep('cda')">
                 </div>
                 <div>
                     <label>Logradouro</label>
                     <input type="text" id="cda_log" class="form-control" placeholder="Rua, Avenida">
                 </div>
                 <div>
-                    <label>Número</label>
-                    <input type="text" id="cda_num" class="form-control" placeholder="Nº">
+                    <label>Número *</label>
+                    <input type="text" id="cda_num" class="form-control" placeholder="Digite o número">
+                </div>
+                <div>
+                    <label>Complemento</label>
+                    <input type="text" id="cda_comp" class="form-control" placeholder="Apto, sala...">
                 </div>
                 <div>
                     <label>Bairro</label>
@@ -171,7 +179,7 @@
                     </select>
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Objeto do Contrato</label>
+                    <label>Objeto do Contrato *</label>
                     <input type="text" id="con_objeto" class="form-control" placeholder="Descrição detalhada do objeto...">
                 </div>
                 <div>
@@ -297,9 +305,87 @@ function mudarAba(nomeAba) {
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 }
 
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i-1, i)) * (11 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i-1, i)) * (12 - i);
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    return resto === parseInt(cpf.substring(10, 11));
+}
+
+async function buscarEntidade(prefixo) {
+    let val = document.getElementById(prefixo + '_cnpj').value.trim().replace(/\D/g, '');
+    var cid = clienteIdAtual();
+    if(!val) return;
+
+    // 1. Busca interna em parceiros
+    var { data: parc } = await sb.from('parceiros').select('*').eq('cliente_id', cid).ilike('cnpj_cpf', `%${val}%`).maybeSingle();
+    if(parc) {
+        document.getElementById(prefixo + '_nome').value = parc.nome || parc.razao_social || '';
+        document.getElementById(prefixo + '_log').value = parc.endereco || '';
+        document.getElementById(prefixo + '_cidade').value = `${parc.cidade || 'Belo Horizonte'} - ${parc.uf || 'MG'}`;
+        toast("Dados encontrados na base interna!");
+        return;
+    }
+
+    // 2. Se for CPF, valida
+    if(val.length === 11) {
+        if(!validarCPF(val)) {
+            toast("CPF inválido!", "error");
+            return;
+        }
+        toast("CPF válido! Preencha os demais dados.");
+        return;
+    }
+
+    // 3. Se for CNPJ, busca na API externa (Receita Federal / BrasilAPI)
+    if(val.length === 14) {
+        toast("Consultando CNPJ na Receita Federal...", "info");
+        try {
+            let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${val}`);
+            if(!res.ok) throw new Error();
+            let r = await res.json();
+            document.getElementById(prefixo + '_nome').value = r.razao_social || r.nome_fantasia || '';
+            document.getElementById(prefixo + '_cep').value = r.cep || '';
+            document.getElementById(prefixo + '_log').value = r.logradouro || '';
+            document.getElementById(prefixo + '_num').value = r.numero || '';
+            document.getElementById(prefixo + '_comp').value = r.complemento || '';
+            document.getElementById(prefixo + '_bairro').value = r.bairro || '';
+            document.getElementById(prefixo + '_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
+            toast("Dados preenchidos automaticamente pela Receita Federal!");
+        } catch(e) {
+            toast("CNPJ não localizado na API pública. Preencha manualmente.", "error");
+        }
+    }
+}
+
+async function buscarCep(prefixo) {
+    let cep = document.getElementById(prefixo + '_cep').value.trim().replace(/\D/g, '');
+    if(cep.length !== 8) return;
+    toast("Buscando CEP...", "info");
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById(prefixo + '_log').value = r.street || '';
+        document.getElementById(prefixo + '_bairro').value = r.neighborhood || '';
+        document.getElementById(prefixo + '_cidade').value = `${r.city || ''} - ${r.state || ''}`;
+        toast("Endereço preenchido pelo CEP!");
+    } catch(e) {
+        toast("CEP não encontrado.", "error");
+    }
+}
+
 function limparFormContrato() {
     document.querySelectorAll('#aba-contratos input').forEach(i => i.value = '');
-    toast("Formulário de contrato limpo!");
+    toast("Formulário limpo!");
 }
 
 function gerarMinutaContrato() {
@@ -307,10 +393,10 @@ function gerarMinutaContrato() {
     let cda = document.getElementById('cda_nome').value.trim();
     let obj = document.getElementById('con_objeto').value.trim();
     if(!cte || !cda || !obj) {
-        toast("Preencha ao menos a Contratante, Contratada e o Objeto para gerar a minuta!", "error");
+        toast("Preencha a Contratante, Contratada e o Objeto!", "error");
         return;
     }
-    toast("Minuta contratual gerada com sucesso e pronta para revisão jurídica!");
+    toast("Minuta contratual gerada com sucesso!");
 }
 
 async function carregarAuditorias() {
@@ -365,7 +451,7 @@ async function salvarAuditoria() {
     const { error } = await sb.from('juridico_auditorias').insert([payload]);
     if(error) { toast("Erro ao gravar auditoria: " + error.message, "error"); return; }
     
-    toast("Auditoria e gestão de riscos registada com sucesso!");
+    toast("Auditoria registada com sucesso!");
     document.getElementById('aud_area').value = '';
     document.getElementById('aud_data').value = '';
     document.getElementById('aud_resp').value = '';
@@ -374,7 +460,7 @@ async function salvarAuditoria() {
 }
 
 async function excluirAuditoria(id) {
-    if(!confirm("Deseja realmente remover este registo de auditoria?")) return;
+    if(!confirm("Deseja realmente remover este registo?")) return;
     const { error } = await sb.from('juridico_auditorias').delete().eq('id', id);
     if(error) { toast("Erro ao excluir", "error"); return; }
     toast("Registo removido!");
