@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parâmetros Fiscais — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-sliders-h" style="color:var(--primary);"></i> Parâmetros Fiscais &amp; Tributários</div>
+            <div class="page-subtitle">Configuração de regimes tributários, alíquotas padrão e transição da Reforma Tributária (CBS/IBS)</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- PAINEL DE CONFIGURAÇÕES FISCAIS -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-calculator"></i> Configurações Fiscais da Empresa Ativa</span>
+            <span style="font-size:12px; color:var(--text-light); font-weight:normal;">Isolado por Empresa (Multi-tenant)</span>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Regime Tributário Padrão *</label>
+                <select id="regime_tributario" class="form-control" style="background:#fff;">
+                    <option value="Simples Nacional">Simples Nacional</option>
+                    <option value="Lucro Presumido">Lucro Presumido</option>
+                    <option value="Lucro Real">Lucro Real</option>
+                    <option value="MEI">MEI (Microempreendedor Individual)</option>
+                </select>
+            </div>
+            <div>
+                <label>Alíquota Padrão ISSQN (%)</label>
+                <input type="number" step="0.01" id="aliq_issqn" class="form-control" placeholder="5.00" style="background:#fff;">
+            </div>
+            <div>
+                <label>Alíquota Padrão PIS (%)</label>
+                <input type="number" step="0.01" id="aliq_pis" class="form-control" placeholder="0.65" style="background:#fff;">
+            </div>
+            <div>
+                <label>Alíquota Padrão COFINS (%)</label>
+                <input type="number" step="0.01" id="aliq_cofins" class="form-control" placeholder="3.00" style="background:#fff;">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Alíquota Padrão IRPJ (%)</label>
+                <input type="number" step="0.01" id="aliq_irpj" class="form-control" placeholder="1.20" style="background:#fff;">
+            </div>
+            <div>
+                <label>Alíquota Padrão CSLL (%)</label>
+                <input type="number" step="0.01" id="aliq_csll" class="form-control" placeholder="1.08" style="background:#fff;">
+            </div>
+            <div>
+                <label>CBS (Reforma Tributária - IVA Federal) (%)</label>
+                <input type="number" step="0.01" id="aliq_cbs" class="form-control" placeholder="0.90" style="background:#fff;">
+            </div>
+            <div>
+                <label>IBS (Reforma Tributária - IVA Subnacional) (%)</label>
+                <input type="number" step="0.01" id="aliq_ibs" class="form-control" placeholder="0.10" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+            <label>Observações / Parâmetros Adicionais</label>
+            <textarea id="observacoes_fiscais" class="form-control" rows="3" placeholder="Informações complementares sobre o enquadramento fiscal..." style="background:#fff;"></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+            <button class="btn-acao sucesso" onclick="salvarParametrosFiscais()"><i class="fas fa-save"></i> Salvar Parâmetros Fiscais</button>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarParametrosFiscais(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+
+    var { data, error } = await sb.from('configuracoes_fiscais').select('*').eq('cliente_id', cid).maybeSingle();
+    if(data) {
+        document.getElementById('regime_tributario').value = data.regime_tributario || 'Simples Nacional';
+        document.getElementById('aliq_issqn').value = data.aliq_issqn || '';
+        document.getElementById('aliq_pis').value = data.aliq_pis || '';
+        document.getElementById('aliq_cofins').value = data.aliq_cofins || '';
+        document.getElementById('aliq_irpj').value = data.aliq_irpj || '';
+        document.getElementById('aliq_csll').value = data.aliq_csll || '';
+        document.getElementById('aliq_cbs').value = data.aliq_cbs || '';
+        document.getElementById('aliq_ibs').value = data.aliq_ibs || '';
+        document.getElementById('observacoes_fiscais').value = data.observacoes || '';
+    }
+}
+
+async function salvarParametrosFiscais(){
+    var cid = clienteIdAtual();
+    let regime_tributario = document.getElementById('regime_tributario').value;
+    let aliq_issqn = parseFloat(document.getElementById('aliq_issqn').value || 0);
+    let aliq_pis = parseFloat(document.getElementById('aliq_pis').value || 0);
+    let aliq_cofins = parseFloat(document.getElementById('aliq_cofins').value || 0);
+    let aliq_irpj = parseFloat(document.getElementById('aliq_irpj').value || 0);
+    let aliq_csll = parseFloat(document.getElementById('aliq_csll').value || 0);
+    let aliq_cbs = parseFloat(document.getElementById('aliq_cbs').value || 0);
+    let aliq_ibs = parseFloat(document.getElementById('aliq_ibs').value || 0);
+    let observacoes = document.getElementById('observacoes_fiscais').value.trim();
+
+    let payload = {
+        cliente_id: cid,
+        regime_tributario,
+        aliq_issqn,
+        aliq_pis,
+        aliq_cofins,
+        aliq_irpj,
+        aliq_csll,
+        aliq_cbs,
+        aliq_ibs,
+        observacoes
+    };
+
+    // Verifica se já existe registro para este cliente_id
+    var { data: existente } = await sb.from('configuracoes_fiscais').select('id').eq('cliente_id', cid).maybeSingle();
+
+    let res;
+    if(existente) {
+        res = await sb.from('configuracoes_fiscais').update(payload).eq('cliente_id', cid);
+    } else {
+        res = await sb.from('configuracoes_fiscais').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar parâmetros fiscais: " + res.error.message, "error");
+        return;
+    }
+
+    toast("Parâmetros fiscais salvos com sucesso!");
+    carregarParametrosFiscais();
+}
+
+window.onload = function(){
+    carregarParametrosFiscais();
+};
+</script>
+</body>
+</html>
