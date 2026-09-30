@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão do Escritório & Tarefas — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.perigo { background: var(--danger); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
+        .analitica-table tr:hover { background: #f1f5f9; }
+
+        .badge-status { background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        .badge-status.concluido { background: #d1fae5; color: #065f46; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório &amp; Tarefas</div>
+            <div class="page-subtitle">Controlo de rotinas contábeis, prazos de entrega de obrigações e alocação de tarefas à equipa</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE NOVA TAREFA -->
+    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-tasks"></i> Registar Nova Tarefa / Rotina do Escritório</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Título da Tarefa / Rotina *</label>
+                <input type="text" id="tarefaTitulo" class="form-control" placeholder="Ex: Entrega SPED Fiscal, Fechamento Balancete..." style="background:#fff;">
+            </div>
+            <div>
+                <label>Cliente / Empresa Associada</label>
+                <input type="text" id="tarefaCliente" class="form-control" placeholder="Nome do cliente" style="background:#fff;">
+            </div>
+            <div>
+                <label>Responsável *</label>
+                <input type="text" id="tarefaResponsavel" class="form-control" placeholder="Nome do colaborador" style="background:#fff;">
+            </div>
+            <div>
+                <label>Data Limite (Prazo) *</label>
+                <input type="date" id="tarefaPrazo" class="form-control" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+            <button class="btn-acao sucesso" onclick="salvarTarefa()"><i class="fas fa-save"></i> Criar Tarefa</button>
+        </div>
+    </div>
+
+    <!-- LISTAGEM DE TAREFAS -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-clipboard-list"></i> Tarefas &amp; Rotinas em Andamento</span>
+            <span id="contadorTarefas" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 tarefas</span>
+        </div>
+        <div class="table-container">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th>Título da Tarefa</th>
+                        <th>Cliente / Empresa</th>
+                        <th>Responsável</th>
+                        <th>Prazo Limite</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyTarefas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarTarefas(){
+    var cid = clienteIdAtual();
+    var tbody = document.getElementById('tbodyTarefas');
+    var contador = document.getElementById('contadorTarefas');
+    if(!cid || !tbody) return;
+
+    var { data, error } = await sb.from('gestao_escritorio').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+    
+    if(error){
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma tarefa encontrada ou tabela em fase de estruturação.</td></tr>';
+        contador.innerHTML = '0 tarefas';
+        return;
+    }
+
+    let tarefas = data || [];
+    contador.innerHTML = `${tarefas.length} tarefas`;
+
+    if(tarefas.length === 0){
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma rotina ou tarefa registada.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    tarefas.forEach(t => {
+        let prazoFmt = t.prazo ? t.prazo.split('-').reverse().join('/') : '—';
+        let status = t.status || 'Pendente';
+        let badgeCls = status === 'Concluído' ? 'badge-status concluido' : 'badge-status';
+
+        html += '<tr>'+
+            '<td><strong>'+(t.titulo || '—')+'</strong></td>'+
+            '<td>'+(t.cliente || 'Geral')+'</td>'+
+            '<td>'+(t.responsavel || 'Equipa')+'</td>'+
+            '<td>'+prazoFmt+'</td>'+
+            '<td><span class="'+badgeCls+'">'+status+'</span></td>'+
+            '<td style="text-align:right; display:flex; gap:6px; justify-content:flex-end;">';
+        if(status !== 'Concluído'){
+            html += '<button class="btn-acao sucesso" style="padding:6px 10px; font-size:11px;" onclick="concluirTarefa('+t.id+')"><i class="fas fa-check"></i> Concluir</button>';
+        }
+        html += '<button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="removerTarefa('+t.id+')"><i class="fas fa-trash"></i></button>'+
+            '</td></tr>';
+    });
+
+    tbody.innerHTML = html;
+}
+
+async function salvarTarefa(){
+    var cid = clienteIdAtual();
+    var titulo = document.getElementById('tarefaTitulo').value.trim();
+    var cliente = document.getElementById('tarefaCliente').value.trim() || 'Escritório Sceii';
+    var responsavel = document.getElementById('tarefaResponsavel').value.trim();
+    var prazo = document.getElementById('tarefaPrazo').value;
+
+    if(!titulo || !responsavel || !prazo){
+        toast("Preencha todos os campos obrigatórios!", "error");
+        return;
+    }
+
+    var payload = {
+        cliente_id: cid,
+        titulo: titulo,
+        cliente: cliente,
+        responsavel: responsavel,
+        prazo: prazo,
+        status: 'Pendente'
+    };
+
+    var { error } = await sb.from('gestao_escritorio').insert([payload]);
+    if(error){
+        toast("Erro ao registar tarefa: " + error.message, "error");
+        return;
+    }
+
+    let userLog = obterUsuarioAtual();
+    await sb.from('logs_auditoria').insert([{
+        cliente_id: cid,
+        usuario: userLog ? userLog.nome : 'Sistema',
+        acao: 'INSERT',
+        modulo: 'gestao_escritorio',
+        detalhes: `Criação de rotina/tarefa: ${titulo} (Responsável: ${responsavel})`
+    }]).catch(()=>{});
+
+    toast("Tarefa criada com sucesso!");
+    document.getElementById('tarefaTitulo').value = '';
+    document.getElementById('tarefaCliente').value = '';
+    document.getElementById('tarefaResponsavel').value = '';
+    document.getElementById('tarefaPrazo').value = '';
+    carregarTarefas();
+}
+
+async function concluirTarefa(id){
+    var cid = clienteIdAtual();
+    var { error } = await sb.from('gestao_escritorio').update({ status: 'Concluído' }).eq('id', id);
+    if(error){
+        toast("Erro ao atualizar status: " + error.message, "error");
+        return;
+    }
+    toast("Tarefa concluída com sucesso!");
+    carregarTarefas();
+}
+
+async function removerTarefa(id){
+    if(!confirm("Deseja realmente remover esta tarefa?")) return;
+    var { error } = await sb.from('gestao_escritorio').delete().eq('id', id);
+    if(error){
+        toast("Erro ao remover: " + error.message, "error");
+        return;
+    }
+    toast("Tarefa removida com sucesso!");
+    carregarTarefas();
+}
+
+window.onload = function(){
+    carregarTarefas();
+};
+</script>
+</body>
+</html>
