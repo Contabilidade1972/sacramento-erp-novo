@@ -66,7 +66,7 @@
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório Contábil</div>
-            <div class="page-subtitle">Carteira de clientes contábeis, calendário de obrigações por cliente e protocolo de entregas</div>
+            <div class="page-subtitle">Carteira de clientes contábeis licenciados, calendário de obrigações e protocolo de entregas</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
@@ -83,14 +83,14 @@
     <!-- ABA 1: CLIENTES CONTÁBEIS -->
     <div id="aba-clientes" class="aba-conteudo active">
         <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil (Isolado e Seguro)</span></div>
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil (Busca por CNPJ Licenciado)</span></div>
             
             <div style="margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
                 <div style="flex:1;">
-                    <label>Consultar Empresa Ativa por CNPJ / CPF</label>
-                    <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ para preenchimento automático..." style="background:#fff;">
+                    <label>Consultar Empresa Licenciada por CNPJ</label>
+                    <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ da empresa cliente..." style="background:#fff;">
                 </div>
-                <button class="btn-acao" onclick="buscarDadosEmpresaLogada()"><i class="fas fa-search"></i> Buscar Dados</button>
+                <button class="btn-acao" onclick="buscarEmpresaLicenciada()"><i class="fas fa-search"></i> Buscar Dados</button>
             </div>
 
             <div class="form-row">
@@ -134,13 +134,13 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                <button class="btn-acao sucesso" onclick="salvarClienteContabil()"><i class="fas fa-save"></i> Cadastrar Cliente</button>
+                <button class="btn-acao sucesso" onclick="salvarClienteContabil()"><i class="fas fa-save"></i> Adicionar à Carteira Contábil</button>
             </div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
-                <span><i class="fas fa-users"></i> Carteira de Clientes Contábeis (Privada da Empresa)</span>
+                <span><i class="fas fa-users"></i> Carteira de Clientes Contábeis (Privada da Contabilidade)</span>
                 <span id="contadorClientes" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 cadastrados</span>
             </div>
             <div class="table-container">
@@ -242,42 +242,37 @@ function mudarAba(nomeAba) {
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 }
 
-async function buscarDadosEmpresaLogada() {
-    var cid = clienteIdAtual();
+async function buscarEmpresaLicenciada() {
     let termo = document.getElementById('busca_cnpj').value.trim().replace(/\D/g, '');
     if(!termo) {
-        toast("Digite o CNPJ ou CPF para buscar na base da empresa!", "error");
+        toast("Digite o CNPJ da empresa cliente para pesquisar na base licenciada!", "error");
         return;
     }
 
-    // Busca estritamente restrita ao cliente_id logado na tabela clientes_contratantes ou parceiros
-    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    // Consulta na tabela global de clientes contratantes do sistema (empresas licenciadas)
+    var { data, error } = await sb.from('clientes_contratantes').select('*').ilike('cnpj', `%${termo}%`).maybeSingle();
+    
+    if(error || !data) {
+        // Tenta buscar pelo ID ou nome caso o CNPJ não esteja formatado na coluna exata
+        var { data: dataAlt } = await sb.from('clientes_contratantes').select('*').or(`razao_social.ilike.%${termo}%,nome_fantasia.ilike.%${termo}%`).maybeSingle();
+        data = dataAlt;
+    }
+
     if(data) {
         document.getElementById('cli_cnpj').value = data.cnpj || termo;
         document.getElementById('cli_razao').value = data.razao_social || data.nome_fantasia || '';
         document.getElementById('cli_endereco').value = data.endereco || '';
         document.getElementById('cli_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
-        toast("Dados carregados com sucesso a partir do cadastro da empresa!");
-        return;
-    }
-
-    // Fallback na tabela de parceiros da empresa ativa
-    var { data: parc } = await sb.from('parceiros').select('*').eq('cliente_id', cid).ilike('cnpj_cpf', `%${termo}%`).maybeSingle();
-    if(parc) {
-        document.getElementById('cli_cnpj').value = parc.cnpj_cpf || termo;
-        document.getElementById('cli_razao').value = parc.nome || parc.razao_social || '';
-        document.getElementById('cli_endereco').value = parc.endereco || '';
-        document.getElementById('cli_cidade').value = `${parc.cidade || 'Belo Horizonte'} - ${parc.uf || 'MG'}`;
-        toast("Dados carregados com sucesso a partir dos parceiros!");
+        toast("Empresa licenciada encontrada e dados preenchidos com sucesso!");
     } else {
-        toast("Nenhum registo encontrado com este CNPJ/CPF no escopo da empresa.", "error");
+        toast("Nenhuma empresa licenciada encontrada com este CNPJ no sistema.", "error");
     }
 }
 
 async function carregarClientesContabeis() {
     var cid = clienteIdAtual();
     if(!cid) return;
-    // Isolamento estrito por cliente_id
+    // Isolamento estrito por cliente_id da contabilidade
     var { data, error } = await sb.from('clientes_contabeis').select('*').eq('cliente_id', cid).order('id', { ascending: false });
     if(error) return;
     clientesContabeisCache = data || [];
@@ -291,7 +286,7 @@ function renderTabelaClientes() {
     tbody.innerHTML = '';
     contador.innerText = `${clientesContabeisCache.length} cadastrados`;
     if(clientesContabeisCache.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum cliente contábil cadastrado para esta empresa.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum cliente contábil vinculado a esta contabilidade.</td></tr>`;
         return;
     }
     clientesContabeisCache.forEach(c => {
@@ -326,9 +321,9 @@ async function salvarClienteContabil() {
 
     let payload = { cliente_id: cid, cnpj, razao_social, regime_tributario, cnae, ie, im, endereco, municipio };
     const { error } = await sb.from('clientes_contabeis').insert([payload]);
-    if(error) { toast("Erro ao cadastrar cliente: " + error.message, "error"); return; }
+    if(error) { toast("Erro ao adicionar cliente: " + error.message, "error"); return; }
 
-    toast("Cliente contábil cadastrado com sucesso!");
+    toast("Cliente adicionado à carteira contábil com sucesso!");
     document.getElementById('busca_cnpj').value = '';
     document.getElementById('cli_cnpj').value = '';
     document.getElementById('cli_razao').value = '';
@@ -341,10 +336,10 @@ async function salvarClienteContabil() {
 }
 
 async function excluirCliente(id) {
-    if(!confirm("Deseja realmente remover este cliente contábil?")) return;
+    if(!confirm("Deseja realmente remover este cliente da sua carteira contábil?")) return;
     const { error } = await sb.from('clientes_contabeis').delete().eq('id', id);
     if(error) { toast("Erro ao excluir", "error"); return; }
-    toast("Cliente removido!");
+    toast("Cliente removido da carteira!");
     carregarClientesContabeis();
 }
 
