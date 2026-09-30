@@ -193,7 +193,7 @@
                     <input type="text" id="pro_competencia" class="form-control" value="setembro de 2026">
                 </div>
                 <div>
-                    <label>Sócio (Busca Automática)</label>
+                    <label>Sócio / Colaborador (Busca Automática)</label>
                     <select id="pro_socio_select" class="form-control" onchange="preencherSocio(this.value)">
                         <option value="">Selecione o sócio...</option>
                     </select>
@@ -234,7 +234,7 @@
         </div>
     </div>
 
-    <!-- ABA 4: RUBRICAS eSocial (COMPLETA OFICIAL) -->
+    <!-- ABA 4: RUBRICAS eSocial -->
     <div id="aba-rubricas" class="aba-conteudo">
         <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
             <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Nova Rubrica (códigos da Tabela 3 do eSocial)</span></div>
@@ -397,6 +397,11 @@ function mudarAba(nomeAba) {
     
     document.querySelectorAll('.aba-btn')[idx].classList.add('active');
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
+
+    // Se abrir a aba de Pró-labore, atualizar o select de sócios em tempo real
+    if(nomeAba === 'pro_labore') {
+        atualizarSelectsSocio();
+    }
 }
 
 async function carregarFuncionarios() {
@@ -440,9 +445,8 @@ function atualizarSelectsSocio() {
     const sel = document.getElementById('pro_socio_select');
     if(!sel) return;
     sel.innerHTML = '<option value="">Selecione o sócio...</option>';
-    let socios = funcionariosCache.filter(c => (c.vinculo || '').toLowerCase().includes('pro') || (c.vinculo || '').toLowerCase().includes('sócio') || (c.cargo || '').toLowerCase().includes('diretor') || (c.cargo || '').toLowerCase().includes('sócio') || (c.cargo || '').toLowerCase().includes('sócio/administrador'));
-    if(socios.length === 0) socios = funcionariosCache; // Fallback se necessário para exibir todos
-    socios.forEach(s => {
+    // Carrega TODOS os colaboradores cadastrados para garantir que o select nunca venha vazio
+    funcionariosCache.forEach(s => {
         sel.innerHTML += `<option value="${s.id}">${s.nome} (${s.cpf || 'Sem CPF'})</option>`;
     });
 }
