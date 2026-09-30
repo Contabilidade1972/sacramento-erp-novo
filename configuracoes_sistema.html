@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -56,7 +55,7 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<div class="container">
+<div class="container" id="mainContainer" style="display:none;">
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-cog" style="color:var(--primary);"></i> Parametrização Comercial & Identidade Visual</div>
@@ -120,16 +119,37 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+const EMAIL_MASTER_OBRIGATORIO = "lucianojorgesacramento@gmail.com";
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+function obterUsuarioAtual() {
+    try { 
+        const s = localStorage.getItem('usuarioLogado'); 
+        if (s) return JSON.parse(s); 
+    } catch(e) {}
+    return null;
+}
 
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
-    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+function clienteIdAtual() {
+    try { 
+        const sel = localStorage.getItem('empresaSelecionada'); 
+        if (sel) return parseInt(sel); 
+    } catch(e) {}
+    const u = obterUsuarioAtual();
+    return (u && u.cliente_id) ? u.cliente_id : 1;
+}
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c){ 
+        c = document.createElement('div'); 
+        c.id = 'toastContainer'; 
+        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px'; 
+        document.body.appendChild(c); 
+    }
+    x.className = 'toast '+type; 
+    x.innerHTML = '<i class="fas fa-info-circle"></i> '+msg; 
+    c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
 }
 
 function atualizarPreviewLogo(url) {
@@ -203,19 +223,16 @@ async function salvarWhiteLabel(){
 
 window.onload = function(){
     let u = obterUsuarioAtual();
-    if(!u || !u.email) {
-        location.href = 'login.html';
+    
+    // 🔒 TRAVA ABSOLUTA DE SEGURANÇA CONTRA LGPD / ACESSO INDEVIDO
+    if(!u || !u.email || u.email.toLowerCase().trim() !== EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim()) {
+        alert("ACESSO NEGADO! Esta página é restrita exclusivamente ao desenvolvedor Master (lucianojorgesacramento@gmail.com).");
+        location.replace('index.html');
         return;
     }
 
-    // 🔒 RESTRIÇÃO DE SEGURANÇA MASTER RIGOROSA
-    const ehMaster = (u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim()) || ((u.perfil || '').toLowerCase().includes('master'));
-    if(!ehMaster) {
-        alert("Acesso negado! Esta área de Parametrização White-Label é restrita exclusivamente ao Administrador Master (Desenvolvedor).");
-        location.href = 'index.html';
-        return;
-    }
-
+    // Se passou na validação rigorosa, exibe o conteúdo da página
+    document.getElementById('mainContainer').style.display = 'flex';
     carregarWhiteLabel();
 };
 </script>
