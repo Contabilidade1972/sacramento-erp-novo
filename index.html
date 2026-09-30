@@ -135,7 +135,7 @@
         <button onclick="falarComAssistente()" style="background: #e0f2fe; border: 1px solid #3b82f6; color: #1d4ed8; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-robot"></i> Dica do Assistente</button>
     </div>
 
-    <div class="cards-grid">
+    <div class="cards-grid" id="cardsGridContainer">
         
         <!-- DASHBOARD ANALÍTICO -->
         <a href="dashboard.html" class="portal-card" onclick="transicionarPagina(event, 'dashboard.html')">
@@ -269,6 +269,9 @@
             </div>
         </a>
 
+        <!-- CARD WHITE-LABEL (INSERIDO DINAMICAMENTE APENAS PARA O MASTER) -->
+        <div id="cardWhiteLabelContainer"></div>
+
         <!-- GESTÃO DO ESCRITÓRIO & TAREFAS -->
         <a href="gestao_escritorio.html" class="portal-card" onclick="transicionarPagina(event, 'gestao_escritorio.html')">
             <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80');">
@@ -371,6 +374,7 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER_OBRIGATORIO = "lucianojorgesacramento@gmail.com";
 
     const rotasModulos = [
         { nome: "Dashboard Analítico", url: "dashboard.html", keywords: ["dashboard", "grafico", "executivo", "relatorio"] },
@@ -384,6 +388,7 @@
         { nome: "Módulo Financeiro", url: "modulo_financeiro.html", keywords: ["financeiro", "pagar", "receber", "banco", "caixa", "dre", "fluxo"] },
         { nome: "Contabilidade & Fiscal", url: "modulo_contabil.html", keywords: ["contabilidade", "fiscal", "balancete", "apuracao", "aliquotas", "ecd", "ecf"] },
         { nome: "Parâmetros Fiscais", url: "configuracoes_fiscais.html", keywords: ["parametros", "fiscais", "tributario", "aliquotas"] },
+        { nome: "White-Label (Master)", url: "configuracoes_sistema.html", keywords: ["white-label", "master", "logo", "identidade", "sistema"] },
         { nome: "Gestão do Escritório", url: "gestao_escritorio.html", keywords: ["escritorio", "gestao", "tarefa", "rotina", "prazo", "equipa"] },
         { nome: "Jurídico & Auditoria", url: "juridico.html", keywords: ["juridico", "processo", "contrato", "auditoria", "compliance", "seguranca"] },
         { nome: "Tecnologia & P&D", url: "modulo_tecnologia_pd.html", keywords: ["tecnologia", "pd", "pesquisa", "desenvolvimento", "inovacao", "projetos", "aportes", "fomento", "nfse"] },
@@ -452,6 +457,26 @@
         const u = obterUsuarioAtual();
         if (u) {
             document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+            
+            // Verifica se é o Master para exibir o card de White-Label no portal
+            const ehMaster = (u.email.toLowerCase().trim() === EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim()) || ((u.perfil || '').toLowerCase().includes('master'));
+            if(ehMaster) {
+                const containerCard = document.getElementById('cardWhiteLabelContainer');
+                if(containerCard) {
+                    containerCard.innerHTML = `
+                        <a href="configuracoes_sistema.html" class="portal-card" style="border: 2px solid #1e3a8a;" onclick="transicionarPagina(event, 'configuracoes_sistema.html')">
+                            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80');">
+                                <span class="card-badge-cat" style="color: #1e3a8a;">Master</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title"><h3>White-Label (Master)</h3></div>
+                                <div class="card-desc">Personalização da identidade visual, nome do aplicativo e logotipo corporativo.</div>
+                                <div class="card-footer"><span>Aceder ao Módulo</span> <i class="fas fa-arrow-right"></i></div>
+                            </div>
+                        </a>
+                    `;
+                }
+            }
         }
         await carregarSeletorEmpresa();
     }
