@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parâmetros Fiscais — Sacramento ERP</title>
+    <title>Parâmetros Fiscais da Empresa (Emissor) — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -30,12 +30,12 @@
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
         
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .panel-header { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -50,70 +50,112 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-sliders-h" style="color:var(--primary);"></i> Parâmetros Fiscais &amp; Tributários</div>
-            <div class="page-subtitle">Configuração de regimes tributários, alíquotas padrão e transição da Reforma Tributária (CBS/IBS)</div>
+            <div class="page-title"><i class="fas fa-sliders-h" style="color:var(--primary);"></i> Parâmetros Fiscais da Empresa (Emissor)</div>
+            <div class="page-subtitle">Configuração de dados cadastrais, endereço fiscal, regime tributário e certificado digital</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- PAINEL DE CONFIGURAÇÕES FISCAIS -->
     <div class="panel">
-        <div class="panel-header">
-            <span><i class="fas fa-calculator"></i> Configurações Fiscais da Empresa Ativa</span>
-            <span style="font-size:12px; color:var(--text-light); font-weight:normal;">Isolado por Empresa (Multi-tenant)</span>
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-building"></i> Configuração da Empresa Emitente</span></div>
+
+        <!-- 1. IDENTIFICAÇÃO DA EMPRESA -->
+        <div style="font-size:12px; font-weight:800; color:var(--secondary); margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+            <i class="fas fa-info-circle"></i> 1. IDENTIFICAÇÃO DA EMPRESA
+        </div>
+        <div class="form-row">
+            <div>
+                <label>CNPJ *</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="emp_cnpj" class="form-control" placeholder="00.000.000/0001-00" style="background:#fff;">
+                    <button class="btn-acao" onclick="consultarCnpjEmitente()" style="padding:10px 14px;"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Razão Social *</label>
+                <input type="text" id="emp_razao" class="form-control" placeholder="Razão social da empresa" style="background:#fff;">
+            </div>
+            <div>
+                <label>Inscrição Municipal (IM)</label>
+                <input type="text" id="emp_im" class="form-control" placeholder="Inscrição municipal" style="background:#fff;">
+            </div>
         </div>
 
         <div class="form-row">
             <div>
-                <label>Regime Tributário Padrão *</label>
-                <select id="regime_tributario" class="form-control" style="background:#fff;">
-                    <option value="Simples Nacional">Simples Nacional</option>
+                <label>Inscrição Estadual (IE)</label>
+                <input type="text" id="emp_ie" class="form-control" placeholder="Inscrição estadual ou Isento" style="background:#fff;">
+            </div>
+            <div>
+                <label>Regime Tributário *</label>
+                <select id="emp_regime" class="form-control" style="background:#fff;">
+                    <option value="Simples Nacional (ME / I.S.)">Simples Nacional (ME / I.S.)</option>
                     <option value="Lucro Presumido">Lucro Presumido</option>
                     <option value="Lucro Real">Lucro Real</option>
-                    <option value="MEI">MEI (Microempreendedor Individual)</option>
+                    <option value="MEI">MEI</option>
                 </select>
             </div>
             <div>
-                <label>Alíquota Padrão ISSQN (%)</label>
-                <input type="number" step="0.01" id="aliq_issqn" class="form-control" placeholder="5.00" style="background:#fff;">
+                <label>Ambiente de Emissão</label>
+                <select id="emp_ambiente" class="form-control" style="background:#fff;">
+                    <option value="Homologação (Testes)">Homologação (Testes)</option>
+                    <option value="Produção">Produção</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. ENDEREÇO FISCAL -->
+        <div style="font-size:12px; font-weight:800; color:var(--secondary); margin:20px 0 12px; display:flex; align-items:center; gap:6px;">
+            <i class="fas fa-map-marker-alt"></i> 2. ENDEREÇO FISCAL
+        </div>
+        <div class="form-row">
+            <div>
+                <label>CEP *</label>
+                <input type="text" id="emp_cep" class="form-control" placeholder="00000-000" style="background:#fff;" onblur="buscarCepEmitente()">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Logradouro (Avenida / Rua)</label>
+                <input type="text" id="emp_logradouro" class="form-control" placeholder="Logradouro" style="background:#fff;">
             </div>
             <div>
-                <label>Alíquota Padrão PIS (%)</label>
-                <input type="number" step="0.01" id="aliq_pis" class="form-control" placeholder="0.65" style="background:#fff;">
-            </div>
-            <div>
-                <label>Alíquota Padrão COFINS (%)</label>
-                <input type="number" step="0.01" id="aliq_cofins" class="form-control" placeholder="3.00" style="background:#fff;">
+                <label>Número *</label>
+                <input type="text" id="emp_numero" class="form-control" placeholder="Nº" style="background:#fff;">
             </div>
         </div>
 
         <div class="form-row">
             <div>
-                <label>Alíquota Padrão IRPJ (%)</label>
-                <input type="number" step="0.01" id="aliq_irpj" class="form-control" placeholder="1.20" style="background:#fff;">
+                <label>Complemento</label>
+                <input type="text" id="emp_complemento" class="form-control" placeholder="Apto, sala..." style="background:#fff;">
             </div>
             <div>
-                <label>Alíquota Padrão CSLL (%)</label>
-                <input type="number" step="0.01" id="aliq_csll" class="form-control" placeholder="1.08" style="background:#fff;">
+                <label>Bairro</label>
+                <input type="text" id="emp_bairro" class="form-control" placeholder="Bairro" style="background:#fff;">
             </div>
-            <div>
-                <label>CBS (Reforma Tributária - IVA Federal) (%)</label>
-                <input type="number" step="0.01" id="aliq_cbs" class="form-control" placeholder="0.90" style="background:#fff;">
-            </div>
-            <div>
-                <label>IBS (Reforma Tributária - IVA Subnacional) (%)</label>
-                <input type="number" step="0.01" id="aliq_ibs" class="form-control" placeholder="0.10" style="background:#fff;">
+            <div style="grid-column: span 2;">
+                <label>Cidade / UF</label>
+                <input type="text" id="emp_cidade" class="form-control" placeholder="Belo Horizonte - MG" style="background:#fff;">
             </div>
         </div>
 
-        <div style="margin-top: 10px;">
-            <label>Observações / Parâmetros Adicionais</label>
-            <textarea id="observacoes_fiscais" class="form-control" rows="3" placeholder="Informações complementares sobre o enquadramento fiscal..." style="background:#fff;"></textarea>
+        <!-- 3. CERTIFICADO DIGITAL A1 / A3 -->
+        <div style="font-size:12px; font-weight:800; color:var(--secondary); margin:20px 0 12px; display:flex; align-items:center; gap:6px;">
+            <i class="fas fa-lock"></i> 3. CERTIFICADO DIGITAL A1 / A3
+        </div>
+        <div class="form-row">
+            <div>
+                <label>Status do Certificado Digital</label>
+                <input type="text" id="emp_status_cert" class="form-control" value="Certificado Configurado e Ativo" readonly style="background:#f1f5f9; color:#059669; font-weight:700;">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>E-mail Fiscal / Contato</label>
+                <input type="email" id="emp_email_fiscal" class="form-control" placeholder="email@empresa.com.br" style="background:#fff;">
+            </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+        <div style="display:flex; justify-content:flex-start; margin-top:20px;">
             <button class="btn-acao sucesso" onclick="salvarParametrosFiscais()"><i class="fas fa-save"></i> Salvar Parâmetros Fiscais</button>
         </div>
     </div>
@@ -134,65 +176,105 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
+async function consultarCnpjEmitente(){
+    let rawCnpj = document.getElementById('emp_cnpj').value.trim().replace(/\D/g, '');
+    if(!rawCnpj || rawCnpj.length !== 14) {
+        toast("Insira um CNPJ válido com 14 dígitos!", "error");
+        return;
+    }
+    toast("Consultando CNPJ na Receita Federal...", "info");
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${rawCnpj}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('emp_razao').value = r.razao_social || r.nome_fantasia || '';
+        document.getElementById('emp_cep').value = r.cep || '';
+        document.getElementById('emp_logradouro').value = r.logradouro || '';
+        document.getElementById('emp_numero').value = r.numero || '';
+        document.getElementById('emp_complemento').value = r.complemento || '';
+        document.getElementById('emp_bairro').value = r.bairro || '';
+        document.getElementById('emp_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
+        toast("Dados preenchidos automaticamente pela Receita Federal!");
+    } catch(e) {
+        toast("CNPJ não localizado na API pública.", "error");
+    }
+}
+
+async function buscarCepEmitente(){
+    let cep = document.getElementById('emp_cep').value.trim().replace(/\D/g, '');
+    if(cep.length !== 8) return;
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('emp_logradouro').value = r.street || '';
+        document.getElementById('emp_bairro').value = r.neighborhood || '';
+        document.getElementById('emp_cidade').value = `${r.city || ''} - ${r.state || ''}`;
+        toast("Endereço preenchido pelo CEP!");
+    } catch(e) {}
+}
+
 async function carregarParametrosFiscais(){
     var cid = clienteIdAtual();
     if(!cid) return;
 
-    var { data, error } = await sb.from('configuracoes_fiscais').select('*').eq('cliente_id', cid).maybeSingle();
+    // Sincroniza com a tabela de clientes contratantes ou configurações fiscais
+    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
     if(data) {
-        document.getElementById('regime_tributario').value = data.regime_tributario || 'Simples Nacional';
-        document.getElementById('aliq_issqn').value = data.aliq_issqn || '';
-        document.getElementById('aliq_pis').value = data.aliq_pis || '';
-        document.getElementById('aliq_cofins').value = data.aliq_cofins || '';
-        document.getElementById('aliq_irpj').value = data.aliq_irpj || '';
-        document.getElementById('aliq_csll').value = data.aliq_csll || '';
-        document.getElementById('aliq_cbs').value = data.aliq_cbs || '';
-        document.getElementById('aliq_ibs').value = data.aliq_ibs || '';
-        document.getElementById('observacoes_fiscais').value = data.observacoes || '';
+        document.getElementById('emp_cnpj').value = data.cnpj || '';
+        document.getElementById('emp_razao').value = data.razao_social || data.nome_fantasia || '';
+        document.getElementById('emp_im').value = data.inscricao_municipal || '';
+        document.getElementById('emp_ie').value = data.inscricao_estadual || 'Isento';
+        document.getElementById('emp_cep').value = data.cep || '';
+        document.getElementById('emp_logradouro').value = data.logradouro || '';
+        document.getElementById('emp_numero').value = data.numero || '';
+        document.getElementById('emp_complemento').value = data.complemento || '';
+        document.getElementById('emp_bairro').value = data.bairro || '';
+        document.getElementById('emp_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
+        document.getElementById('emp_email_fiscal').value = data.email || '';
     }
 }
 
 async function salvarParametrosFiscais(){
     var cid = clienteIdAtual();
-    let regime_tributario = document.getElementById('regime_tributario').value;
-    let aliq_issqn = parseFloat(document.getElementById('aliq_issqn').value || 0);
-    let aliq_pis = parseFloat(document.getElementById('aliq_pis').value || 0);
-    let aliq_cofins = parseFloat(document.getElementById('aliq_cofins').value || 0);
-    let aliq_irpj = parseFloat(document.getElementById('aliq_irpj').value || 0);
-    let aliq_csll = parseFloat(document.getElementById('aliq_csll').value || 0);
-    let aliq_cbs = parseFloat(document.getElementById('aliq_cbs').value || 0);
-    let aliq_ibs = parseFloat(document.getElementById('aliq_ibs').value || 0);
-    let observacoes = document.getElementById('observacoes_fiscais').value.trim();
+    let cnpj = document.getElementById('emp_cnpj').value.trim();
+    let razao_social = document.getElementById('emp_razao').value.trim();
+    let inscricao_municipal = document.getElementById('emp_im').value.trim();
+    let inscricao_estadual = document.getElementById('emp_ie').value.trim();
+    let cep = document.getElementById('emp_cep').value.trim();
+    let logradouro = document.getElementById('emp_logradouro').value.trim();
+    let numero = document.getElementById('emp_numero').value.trim();
+    let complemento = document.getElementById('emp_complemento').value.trim();
+    let bairro = document.getElementById('emp_bairro').value.trim();
+    let cidadeUf = document.getElementById('emp_cidade').value.trim();
+    let email = document.getElementById('emp_email_fiscal').value.trim();
+
+    let partesCidade = cidadeUf.split('-');
+    let cidade = partesCidade[0] ? partesCidade[0].trim() : cidadeUf;
+    let uf = partesCidade[1] ? partesCidade[1].trim() : '';
 
     let payload = {
-        cliente_id: cid,
-        regime_tributario,
-        aliq_issqn,
-        aliq_pis,
-        aliq_cofins,
-        aliq_irpj,
-        aliq_csll,
-        aliq_cbs,
-        aliq_ibs,
-        observacoes
+        cnpj,
+        razao_social,
+        inscricao_municipal,
+        inscricao_estadual,
+        cep,
+        logradouro,
+        numero,
+        complemento,
+        bairro,
+        cidade,
+        uf,
+        email
     };
 
-    // Verifica se já existe registro para este cliente_id
-    var { data: existente } = await sb.from('configuracoes_fiscais').select('id').eq('cliente_id', cid).maybeSingle();
-
-    let res;
-    if(existente) {
-        res = await sb.from('configuracoes_fiscais').update(payload).eq('cliente_id', cid);
-    } else {
-        res = await sb.from('configuracoes_fiscais').insert([payload]);
-    }
-
-    if(res.error) {
-        toast("Erro ao salvar parâmetros fiscais: " + res.error.message, "error");
+    var { error } = await sb.from('clientes_contratantes').update(payload).eq('id', cid);
+    if(error) {
+        toast("Erro ao atualizar parâmetros fiscais: " + error.message, "error");
         return;
     }
 
-    toast("Parâmetros fiscais salvos com sucesso!");
+    toast("Parâmetros fiscais da empresa emitente salvos com sucesso!");
     carregarParametrosFiscais();
 }
 
