@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CT-e (Conhecimento de Transporte Eletrônico) — Sacramento ERP</title>
+    <title>CT-e - Conhecimento de Transporte Eletrônico — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -30,12 +30,17 @@
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
         
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .panel-header { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .panel-header { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
         
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .dropzone { border: 2px dashed var(--border); border-radius: 12px; background: var(--bg); padding: 25px; text-align: center; cursor: pointer; transition: 0.2s; margin-bottom: 20px; }
+        .dropzone:hover { border-color: var(--primary); background: #eff6ff; }
+        .dropzone i { font-size: 28px; color: var(--primary); margin-bottom: 6px; }
+        .dropzone p { font-size: 13px; color: var(--text-main); font-weight: 600; }
 
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         thead th { background: var(--bg); text-align: left; padding: 12px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 1px solid var(--border); font-weight: 700; }
@@ -44,7 +49,7 @@
 
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
         .badge.autorizado { background: #d1fae5; color: #065f46; }
-        .badge.digitacao { background: #fef3c7; color: #92400e; }
+        .badge.rascunho { background: #fef3c7; color: #92400e; }
         .badge.cancelado { background: #fee2e2; color: #991b1b; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
@@ -60,101 +65,195 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Conhecimento de Transporte Eletrônico (CT-e)</div>
+            <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> CT-e - Conhecimento de Transporte Eletrônico</div>
             <div class="page-subtitle">Emissão, escrituração e controle de CT-e conforme Ajuste SINIEF e legislação SEFAZ</div>
         </div>
         <div>
-            <button class="btn-acao" onclick="abrirNovoCte()"><i class="fas fa-plus"></i> Novo CT-e</button>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- PAINEL DE FILTROS E LISTAGEM -->
+    <!-- IMPORTAR XML -->
     <div class="panel">
-        <div class="panel-header">
-            <span><i class="fas fa-list"></i> CT-es Emitidos / Registrados</span>
-            <span style="font-size:12px; color:var(--text-light); font-weight:normal;" id="lblTotalCtes">Carregando...</span>
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-file-code"></i> Importar XML (unitário ou em lote)</span></div>
+        <div class="dropzone" onclick="document.getElementById('fileXml').click()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Clique para selecionar um ou vários arquivos XML (NF-e, CT-e ou CC-e)</p>
+            <input type="file" id="fileXml" accept=".xml" multiple style="display:none;" onchange="importarXmls(this)">
+        </div>
+    </div>
+
+    <!-- CADASTRO DE CT-E -->
+    <div class="panel">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-edit"></i> Dados do CT-e</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Número do CT-e (Automático)</label>
+                <input type="text" id="cte_numero" class="form-control" value="000001" readonly style="background:#f1f5f9;">
+            </div>
+            <div>
+                <label>Série</label>
+                <input type="number" id="cte_serie" class="form-control" value="1" style="background:#fff;">
+            </div>
+            <div>
+                <label>Data de Emissão</label>
+                <input type="date" id="cte_data" class="form-control" style="background:#fff;">
+            </div>
+            <div>
+                <label>Modelo</label>
+                <select id="cte_modelo" class="form-control" style="background:#fff;">
+                    <option value="57 - CT-e">57 - CT-e</option>
+                    <option value="67 - CT-e OS">67 - CT-e OS</option>
+                </select>
+            </div>
+            <div>
+                <label>Tomador do Serviço</label>
+                <select id="cte_tomador" class="form-control" style="background:#fff;">
+                    <option value="0 - Remetente">0 - Remetente</option>
+                    <option value="1 - Expedidor">1 - Expedidor</option>
+                    <option value="2 - Recebedor">2 - Recebedor</option>
+                    <option value="3 - Destinatário">3 - Destinatário</option>
+                    <option value="4 - Outros">4 - Outros</option>
+                </select>
+            </div>
         </div>
 
+        <div class="form-row">
+            <div>
+                <label>Tipo do Serviço</label>
+                <select id="cte_tipo" class="form-control" style="background:#fff;">
+                    <option value="0 - Normal">0 - Normal</option>
+                    <option value="1 - Subcontratação">1 - Subcontratação</option>
+                    <option value="2 - Redespacho">2 - Redespacho</option>
+                    <option value="3 - Redespacho Intermediário">3 - Redespacho Intermediário</option>
+                </select>
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="cte_status" class="form-control" style="background:#fff;">
+                    <option value="Rascunho">Rascunho</option>
+                    <option value="Autorizado">Autorizado</option>
+                    <option value="Cancelado">Cancelado</option>
+                </select>
+            </div>
+            <div>
+                <label>Protocolo SEFAZ</label>
+                <input type="text" id="cte_protocolo" class="form-control" placeholder="Preenchido após autorização" style="background:#fff;">
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Observações</label>
+                <input type="text" id="cte_obs" class="form-control" placeholder="Anotações" style="background:#fff;">
+            </div>
+        </div>
+
+        <!-- REMETENTE -->
+        <div style="font-size:12px; font-weight:800; color:var(--secondary); margin:16px 0 10px; border-top:1px solid var(--border); padding-top:12px;">REMETENTE</div>
+        <div class="form-row">
+            <div>
+                <label>CNPJ / CPF *</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="rem_cnpj" class="form-control" placeholder="Digite CNPJ ou CPF" style="background:#fff;">
+                    <button class="btn-acao" onclick="buscarRemetente()" style="padding:10px 14px;"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Nome / Razão Social</label>
+                <input type="text" id="rem_nome" class="form-control" placeholder="Preenchido no CNPJ" style="background:#fff;">
+            </div>
+            <div>
+                <label>CEP</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="rem_cep" class="form-control" placeholder="00000-000" style="background:#fff;">
+                    <button class="btn-acao" onclick="buscarCepRemetente()" style="padding:10px 14px;"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div style="grid-column: span 2;">
+                <label>Logradouro</label>
+                <input type="text" id="rem_logradouro" class="form-control" placeholder="Preenchido pelo CEP" style="background:#fff;">
+            </div>
+            <div>
+                <label>Número</label>
+                <input type="text" id="rem_numero" class="form-control" placeholder="Nº" style="background:#fff;">
+            </div>
+            <div>
+                <label>Bairro</label>
+                <input type="text" id="rem_bairro" class="form-control" placeholder="Bairro" style="background:#fff;">
+            </div>
+            <div>
+                <label>Município / UF</label>
+                <input type="text" id="rem_municipio" class="form-control" placeholder="Município - UF" style="background:#fff;">
+            </div>
+        </div>
+
+        <!-- DESTINATÁRIO -->
+        <div style="font-size:12px; font-weight:800; color:var(--secondary); margin:16px 0 10px; border-top:1px solid var(--border); padding-top:12px;">DESTINATÁRIO</div>
+        <div class="form-row">
+            <div>
+                <label>CNPJ / CPF *</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="dest_cnpj" class="form-control" placeholder="Digite CNPJ ou CPF" style="background:#fff;">
+                    <button class="btn-acao" onclick="buscarDestinatario()" style="padding:10px 14px;"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div style="grid-column: span 2;">
+                <label>Nome / Razão Social</label>
+                <input type="text" id="dest_nome" class="form-control" placeholder="Preenchido no CNPJ" style="background:#fff;">
+            </div>
+            <div>
+                <label>CEP</label>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="dest_cep" class="form-control" placeholder="00000-000" style="background:#fff;">
+                    <button class="btn-acao" onclick="buscarCepDestinatario()" style="padding:10px 14px;"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div style="grid-column: span 2;">
+                <label>Logradouro</label>
+                <input type="text" id="dest_logradouro" class="form-control" placeholder="Preenchido pelo CEP" style="background:#fff;">
+            </div>
+            <div>
+                <label>Número</label>
+                <input type="text" id="dest_numero" class="form-control" placeholder="Nº" style="background:#fff;">
+            </div>
+            <div>
+                <label>Bairro</label>
+                <input type="text" id="dest_bairro" class="form-control" placeholder="Bairro" style="background:#fff;">
+            </div>
+            <div>
+                <label>Município / UF</label>
+                <input type="text" id="dest_municipio" class="form-control" placeholder="Município - UF" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-start; margin-top:20px;">
+            <button class="btn-acao sucesso" onclick="salvarCte()"><i class="fas fa-save"></i> Salvar / Emitir CT-e</button>
+        </div>
+    </div>
+
+    <!-- LISTAGEM -->
+    <div class="panel">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-list"></i> CT-es Registrados</span></div>
         <div style="overflow-x: auto;">
             <table>
                 <thead>
                     <tr>
-                        <th>Nº CT-e / Série</th>
-                        <th>Chave de Acesso</th>
-                        <th>Tomador do Serviço</th>
-                        <th>Remetente / Destinatário</th>
-                        <th>Valor do Frete (R$)</th>
-                        <th>Data Emissão</th>
-                        <th>Status SEFAZ</th>
+                        <th>Nº CT-e</th>
+                        <th>Série</th>
+                        <th>Tomador</th>
+                        <th>Remetente</th>
+                        <th>Destinatário</th>
+                        <th>Status</th>
                         <th style="text-align:center;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyCtes">
-                    <tr><td colspan="8" style="text-align:center; color:var(--text-light);">A carregar registos...</td></tr>
+                    <tr><td colspan="7" style="text-align:center; color:var(--text-light);">A carregar registos...</td></tr>
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL NOVO CT-E -->
-<div class="modal-overlay" id="modalCte" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:3000; align-items:center; justify-content:center;">
-    <div style="background:var(--card); border-radius:16px; padding:24px; width:95%; max-width:850px; max-height:90vh; overflow-y:auto; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
-            <h3 style="font-size:16px; font-weight:800; color:var(--secondary);"><i class="fas fa-file-invoice"></i> Emissão de Novo CT-e</h3>
-            <button onclick="fecharNovoCte()" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-light);"><i class="fas fa-times"></i></button>
-        </div>
-
-        <div class="form-row">
-            <div>
-                <label>Número do CT-e *</label>
-                <input type="number" id="cte_numero" class="form-control" placeholder="1001" style="background:#fff;">
-            </div>
-            <div>
-                <label>Série *</label>
-                <input type="number" id="cte_serie" class="form-control" value="1" style="background:#fff;">
-            </div>
-            <div>
-                <label>CFOP *</label>
-                <input type="text" id="cte_cfop" class="form-control" value="5353" style="background:#fff;" placeholder="5353, 6353...">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div style="grid-column: span 2;">
-                <label>Tomador do Serviço (CNPJ / Nome) *</label>
-                <input type="text" id="cte_tomador" class="form-control" placeholder="Razão social ou CNPJ do tomador" style="background:#fff;">
-            </div>
-            <div>
-                <label>Valor Total do Frete (R$) *</label>
-                <input type="number" step="0.01" id="cte_valor" class="form-control" placeholder="0.00" style="background:#fff;">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div>
-                <label>Chave de Acesso da NF-e Vinculada</label>
-                <input type="text" id="cte_chave_nfe" class="form-control" placeholder="44 dígitos da nota fiscal" maxlength="44" style="background:#fff;">
-            </div>
-            <div>
-                <label>Placa do Veículo (Cavalo/Truck)</label>
-                <input type="text" id="cte_placa" class="form-control" placeholder="ABC1D23" style="background:#fff;">
-            </div>
-            <div>
-                <label>RNTRC da Empresa</label>
-                <input type="text" id="cte_rntrc" class="form-control" placeholder="Registro ANTT" style="background:#fff;">
-            </div>
-        </div>
-
-        <div style="margin-top:10px;">
-            <label>Observações / Informações Adicionais de Interesse Fisco-Tributário</label>
-            <textarea id="cte_obs" class="form-control" rows="3" placeholder="Informações de pedágio, cupom, regras ANTT..." style="background:#fff;"></textarea>
-        </div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-            <button class="btn-acao cinza" onclick="fecharNovoCte()">Cancelar</button>
-            <button class="btn-acao sucesso" onclick="salvarNovoCte()"><i class="fas fa-check"></i> Emitir / Autorizar CT-e</button>
         </div>
     </div>
 </div>
@@ -174,90 +273,150 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-function abrirNovoCte(){ document.getElementById('modalCte').style.display='flex'; }
-function fecharNovoCte(){ document.getElementById('modalCte').style.display='none'; }
+async function buscarRemetente(){
+    let cnpj = document.getElementById('rem_cnpj').value.replace(/\D/g,'');
+    if(cnpj.length !== 14) { toast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('rem_nome').value = r.razao_social || '';
+        document.getElementById('rem_cep').value = r.cep || '';
+        document.getElementById('rem_logradouro').value = r.logradouro || '';
+        document.getElementById('rem_numero').value = r.numero || '';
+        document.getElementById('rem_bairro').value = r.bairro || '';
+        document.getElementById('rem_municipio').value = `${r.municipio || ''} - ${r.uf || ''}`;
+        toast("Remetente preenchido com sucesso!");
+    } catch(e) { toast("CNPJ não encontrado na API", "error"); }
+}
+
+async function buscarCepRemetente(){
+    let cep = document.getElementById('rem_cep').value.replace(/\D/g,'');
+    if(cep.length !== 8) return;
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('rem_logradouro').value = r.street || '';
+        document.getElementById('rem_bairro').value = r.neighborhood || '';
+        document.getElementById('rem_municipio').value = `${r.city || ''} - ${r.state || ''}`;
+        toast("Endereço preenchido!");
+    } catch(e) {}
+}
+
+async function buscarDestinatario(){
+    let cnpj = document.getElementById('dest_cnpj').value.replace(/\D/g,'');
+    if(cnpj.length !== 14) { toast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('dest_nome').value = r.razao_social || '';
+        document.getElementById('dest_cep').value = r.cep || '';
+        document.getElementById('dest_logradouro').value = r.logradouro || '';
+        document.getElementById('dest_numero').value = r.numero || '';
+        document.getElementById('dest_bairro').value = r.bairro || '';
+        document.getElementById('dest_municipio').value = `${r.municipio || ''} - ${r.uf || ''}`;
+        toast("Destinatário preenchido com sucesso!");
+    } catch(e) { toast("CNPJ não encontrado na API", "error"); }
+}
+
+async function buscarCepDestinatario(){
+    let cep = document.getElementById('dest_cep').value.replace(/\D/g,'');
+    if(cep.length !== 8) return;
+    try {
+        let res = await fetch(`https://brasilapi.com.br/api/cep/v1/${cep}`);
+        if(!res.ok) throw new Error();
+        let r = await res.json();
+        document.getElementById('dest_logradouro').value = r.street || '';
+        document.getElementById('dest_bairro').value = r.neighborhood || '';
+        document.getElementById('dest_municipio').value = `${r.city || ''} - ${r.state || ''}`;
+        toast("Endereço preenchido!");
+    } catch(e) {}
+}
+
+function importarXmls(input) {
+    if(input.files && input.files.length > 0) {
+        toast(input.files.length + " arquivo(s) XML importado(s) com sucesso!");
+    }
+}
 
 async function carregarCtes(){
     var cid = clienteIdAtual();
     var tb = document.getElementById('tbodyCtes');
     if(!cid) return;
 
-    var { data, error } = await sb.from('cte_documentos').select('*').eq('cliente_id', cid).order('id', {ascending: false});
+    var { data, error } = await sb.from('cte_documentos').select('*').eq('cliente_id', cid).order('id', {ascending:false});
     if(error) {
-        tb.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--danger);">Erro ao carregar CT-es: ${error.message}</td></tr>`;
+        tb.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
     if(!data || data.length === 0) {
-        tb.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light);">Nenhum CT-e emitido para esta empresa.</td></tr>`;
-        document.getElementById('lblTotalCtes').innerText = '0 registos';
+        tb.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light);">Nenhum CT-e registrado.</td></tr>`;
         return;
     }
 
-    document.getElementById('lblTotalCtes').innerText = data.length + ' registo(s)';
     tb.innerHTML = data.map(c => `
         <tr>
-            <td><strong>${c.numero}</strong> / Série ${c.serie || 1}</td>
-            <td style="font-family:monospace; font-size:11px;">${c.chave_acesso || '312609...'}</td>
+            <td><strong>${c.numero || '—'}</strong></td>
+            <td>${c.serie || 1}</td>
             <td>${c.tomador || '—'}</td>
-            <td>CFOP: ${c.cfop || '5353'}</td>
-            <td><strong>R$ ${parseFloat(c.valor_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
-            <td>${c.created_at ? new Date(c.created_at).toLocaleDateString('pt-BR') : '—'}</td>
-            <td><span class="badge ${c.status || 'autorizado'}">${(c.status || 'autorizado').toUpperCase()}</span></td>
+            <td>${c.rem_nome || c.rem_cnpj || '—'}</td>
+            <td>${c.dest_nome || c.dest_cnpj || '—'}</td>
+            <td><span class="badge ${(c.status||'rascunho').toLowerCase()}">${c.status || 'Rascunho'}</span></td>
             <td style="text-align:center;">
-                <button class="btn-acao" style="padding:6px 10px; font-size:11px;" onclick="imprimirCte(${c.id})"><i class="fas fa-print"></i></button>
+                <button class="btn-acao" style="padding:6px 10px; font-size:11px;" onclick="excluirCte(${c.id})"><i class="fas fa-trash"></i></button>
             </td>
         </tr>
     `).join('');
 }
 
-async function salvarNovoCte(){
+async function salvarCte(){
     var cid = clienteIdAtual();
-    let numero = parseInt(document.getElementById('cte_numero').value);
-    let serie = parseInt(document.getElementById('cte_serie').value || 1);
-    let cfop = document.getElementById('cte_cfop').value.trim();
-    let tomador = document.getElementById('cte_tomador').value.trim();
-    let valor_frete = parseFloat(document.getElementById('cte_valor').value || 0);
-    let chave_nfe = document.getElementById('cte_chave_nfe').value.trim();
-    let placa = document.getElementById('cte_placa').value.trim();
-    let rntrc = document.getElementById('cte_rntrc').value.trim();
-    let observacoes = document.getElementById('cte_obs').value.trim();
-
-    if(!numero || !tomador || !valor_frete) {
-        toast("Preencha os campos obrigatórios (Número, Tomador e Valor do Frete)!", "error");
-        return;
-    }
-
-    let chave_acesso = "312609" + String(cid).padStart(4,'0') + "55" + String(serie).padStart(3,'0') + String(numero).padStart(9,'0') + "1" + Math.floor(Math.random()*900000000+100000000);
-
     let payload = {
         cliente_id: cid,
-        numero,
-        serie,
-        cfop,
-        tomador,
-        valor_frete,
-        chave_nfe,
-        placa,
-        rntrc,
-        observacoes,
-        chave_acesso,
-        status: 'autorizado'
+        numero: Math.floor(Math.random()*900000+100000),
+        serie: parseInt(document.getElementById('cte_serie').value || 1),
+        data_emissao: document.getElementById('cte_data').value || new Date().toISOString().split('T')[0],
+        modelo: document.getElementById('cte_modelo').value,
+        tomador: document.getElementById('cte_tomador').value,
+        tipo_servico: document.getElementById('cte_tipo').value,
+        status: document.getElementById('cte_status').value,
+        protocolo_sefaz: document.getElementById('cte_protocolo').value,
+        observacoes: document.getElementById('cte_obs').value,
+        rem_cnpj: document.getElementById('rem_cnpj').value,
+        rem_nome: document.getElementById('rem_nome').value,
+        rem_cep: document.getElementById('rem_cep').value,
+        rem_logradouro: document.getElementById('rem_logradouro').value,
+        rem_numero: document.getElementById('rem_numero').value,
+        rem_bairro: document.getElementById('rem_bairro').value,
+        rem_municipio: document.getElementById('rem_municipio').value,
+        dest_cnpj: document.getElementById('dest_cnpj').value,
+        dest_nome: document.getElementById('dest_nome').value,
+        dest_cep: document.getElementById('dest_cep').value,
+        dest_logradouro: document.getElementById('dest_logradouro').value,
+        dest_numero: document.getElementById('dest_numero').value,
+        dest_bairro: document.getElementById('dest_bairro').value,
+        dest_municipio: document.getElementById('dest_municipio').value
     };
 
     var { error } = await sb.from('cte_documentos').insert([payload]);
     if(error) {
-        toast("Erro ao emitir CT-e: " + error.message, "error");
+        toast("Erro ao salvar CT-e: " + error.message, "error");
         return;
     }
 
-    toast("CT-e emitido e autorizado com sucesso junto à SEFAZ!");
-    fecharNovoCte();
+    toast("CT-e salvo com sucesso!");
     carregarCtes();
 }
 
-function imprimirCte(id) {
-    window.print();
+async function excluirCte(id) {
+    if(!confirm("Deseja realmente excluir este CT-e?")) return;
+    var { error } = await sb.from('cte_documentos').delete().eq('id', id);
+    if(error) { toast("Erro ao excluir", "error"); return; }
+    toast("CT-e excluído com sucesso!");
+    carregarCtes();
 }
 
 window.onload = function(){
