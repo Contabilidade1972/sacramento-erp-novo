@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Logs de Auditoria — Sacramento ERP</title>
+    <title>Trilha de Auditoria & Compliance Corporativo — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -23,25 +23,39 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.cinza { background: #64748b; }
         .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
         
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
         
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
         .analitica-table tr:hover { background: #f1f5f9; }
 
-        .badge-acao { background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        .badge-acao { background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        @media print {
+            body { background: #fff !important; }
+            .page-toolbar, footer, button, .toast-container, .panel-filtros { display: none !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            @page { size: landscape; }
+        }
     </style>
 </head>
 <body>
@@ -50,19 +64,48 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-history" style="color:var(--primary);"></i> Logs de Auditoria do Sistema</div>
-            <div class="page-subtitle">Registo histórico de operações, alterações e acessos realizados no ambiente corporativo</div>
+            <div class="page-title"><i class="fas fa-history" style="color:var(--primary);"></i> Trilha de Auditoria & Compliance Corporativo</div>
+            <div class="page-subtitle">Registo imutável de operações, alterações e acessos realizados no ambiente corporativo</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- TABELA DE LOGS -->
+    <!-- PAINEL DE FILTROS DE AUDITORIA -->
+    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-filter"></i> Filtros de Auditoria</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Tipo de Ação</label>
+                <select id="filtroAcao" class="form-control" style="background:#fff; font-weight:700;">
+                    <option value="TODAS">Todas as Ações</option>
+                    <option value="INSERT">INSERT (Inclusão)</option>
+                    <option value="UPDATE">UPDATE (Alteração)</option>
+                    <option value="DELETE">DELETE (Exclusão)</option>
+                </select>
+            </div>
+            <div>
+                <label>Módulo / Tabela Alvo</label>
+                <input type="text" id="filtroModulo" class="form-control" placeholder="Ex: parceiros, contas_pagar..." style="background:#fff;">
+            </div>
+            <div>
+                <label>Utilizador Responsável</label>
+                <input type="text" id="filtroUsuario" class="form-control" placeholder="Filtrar por nome ou e-mail..." style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn-acao" onclick="carregarLogs()"><i class="fas fa-search"></i> Atualizar Trilha</button>
+        </div>
+    </div>
+
+    <!-- TABELA DE REGISTOS DE EVENTOS -->
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list-alt"></i> Registo de Actividades</span>
-            <span id="contadorLogs" style="font-size:12px; color:var(--text-light); font-weight:normal;">A carregar logs...</span>
+            <span><i class="fas fa-shield-alt"></i> Registo Imutável de Eventos do Sistema</span>
+            <button class="btn-acao sucesso" onclick="window.print()" style="padding: 6px 12px; font-size: 12px;"><i class="fas fa-print"></i> Imprimir / Exportar PDF</button>
         </div>
         <div id="listaLogs" style="overflow-x:auto;">A carregar registos de auditoria...</div>
     </div>
@@ -86,42 +129,57 @@ function toast(msg,type='success'){
 async function carregarLogs(){
     var cid = clienteIdAtual();
     var el = document.getElementById('listaLogs');
-    var contadorEl = document.getElementById('contadorLogs');
-    if(!cid) return;
+    var acaoFiltro = document.getElementById('filtroAcao').value;
+    var moduloFiltro = document.getElementById('filtroModulo').value.toLowerCase().trim();
+    var usuarioFiltro = document.getElementById('filtroUsuario').value.toLowerCase().trim();
 
-    var { data, error } = await sb.from('logs_auditoria').select('*').eq('cliente_id', cid).order('created_at', { ascending: false }).limit(100);
+    if(!cid) return;
+    el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">A consultar trilha de auditoria...</div>';
+
+    var { data, error } = await sb.from('logs_auditoria').select('*').eq('cliente_id', cid).order('created_at', { ascending: false }).limit(200);
     
     if(error){
-        // Caso a tabela ainda não exista, exibe tabela vazia informativa
-        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum registo de auditoria encontrado ou tabela em fase de estruturação.</div>';
-        contadorEl.innerHTML = '0 registos';
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum registo encontrado ou tabela em fase de estruturação.</div>';
         return;
     }
 
     let logs = data || [];
-    contadorEl.innerHTML = `${logs.length} registos encontrados`;
+
+    // Aplicar filtros avançados
+    if(acaoFiltro !== 'TODAS'){
+        logs = logs.filter(l => (l.acao || '').toUpperCase().includes(acaoFiltro));
+    }
+    if(moduloFiltro){
+        logs = logs.filter(l => (l.modulo || l.tabela || '').toLowerCase().includes(moduloFiltro));
+    }
+    if(usuarioFiltro){
+        logs = logs.filter(l => (l.usuario || '').toLowerCase().includes(usuarioFiltro));
+    }
 
     if(logs.length === 0){
-        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum registo de auditoria gravado até o momento.</div>';
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum log corresponde aos filtros aplicados.</div>';
         return;
     }
 
     let html = '<table class="analitica-table"><thead><tr>'+
-        '<th>Data / Hora</th><th>Utilizador</th><th>Ação / Módulo</th><th>Detalhes da Operação</th>'+
+        '<th>Data / Hora</th><th>Ação</th><th>Módulo / Alvo</th><th>Utilizador</th><th>Detalhes / Alteração Registrada</th>'+
     '</tr></thead><tbody>';
 
     logs.forEach(l => {
         let dataFmt = l.created_at ? new Date(l.created_at).toLocaleString('pt-BR') : '—';
+        let acao = (l.acao || 'UPDATE').toUpperCase();
         html += '<tr>'+
             '<td>'+dataFmt+'</td>'+
-            '<td><strong>'+(l.usuario || 'Sistema')+'</strong></td>'+
-            '<td><span class="badge-acao">'+(l.acao || 'OPERAÇÃO')+'</span></td>'+
+            '<td><span class="badge-acao">'+acao+'</span></td>'+
+            '<td><strong>'+(l.modulo || l.tabela || 'Sistema')+'</strong></td>'+
+            '<td>'+(l.usuario || 'Sistema')+'</td>'+
             '<td>'+(l.detalhes || l.descricao || '—')+'</td>'+
         '</tr>';
     });
 
     html += '</tbody></table>';
     el.innerHTML = html;
+    toast("Trilha de auditoria atualizada com sucesso!");
 }
 
 window.onload = function(){
