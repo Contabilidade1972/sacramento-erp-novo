@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>White-Label (Master) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-cog" style="color:var(--primary);"></i> White-Label (Master)</div>
+            <div class="page-subtitle">Personalização da identidade visual, nome do aplicativo e logotipo corporativo</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- PAINEL WHITE-LABEL -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-palette"></i> Configurações de Identidade Visual</span>
+            <span style="font-size:12px; color:var(--text-light); font-weight:normal;">Painel Administrativo Master</span>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Nome do Aplicativo (App Name)</label>
+                <input type="text" id="app_name" class="form-control" placeholder="Ex: Sacramento ERP" style="background:#fff;">
+            </div>
+            <div>
+                <label>Subtítulo / Módulo</label>
+                <input type="text" id="app_subtitle" class="form-control" placeholder="Ex: ERP Financeiro & Logística" style="background:#fff;">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div style="grid-column: span 2;">
+                <label>URL do Logotipo Corporativo (Logo URL)</label>
+                <input type="text" id="app_logo_url" class="form-control" placeholder="https://exemplo.com/logo.png" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; margin-top:20px;">
+            <button class="btn-acao sucesso" onclick="salvarWhiteLabel()"><i class="fas fa-save"></i> Salvar Configurações White-Label</button>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarWhiteLabel(){
+    var cid = clienteIdAtual();
+    if(!cid) return;
+
+    var { data, error } = await sb.from('configuracoes_sistema').select('*').eq('cliente_id', cid).maybeSingle();
+    if(data) {
+        document.getElementById('app_name').value = data.app_name || '';
+        document.getElementById('app_subtitle').value = data.app_subtitle || '';
+        document.getElementById('app_logo_url').value = data.app_logo_url || '';
+    }
+}
+
+async function salvarWhiteLabel(){
+    var cid = clienteIdAtual();
+    let app_name = document.getElementById('app_name').value.trim();
+    let app_subtitle = document.getElementById('app_subtitle').value.trim();
+    let app_logo_url = document.getElementById('app_logo_url').value.trim();
+
+    let payload = {
+        cliente_id: cid,
+        app_name,
+        app_subtitle,
+        app_logo_url
+    };
+
+    var { data: existente } = await sb.from('configuracoes_sistema').select('id').eq('cliente_id', cid).maybeSingle();
+
+    let res;
+    if(existente) {
+        res = await sb.from('configuracoes_sistema').update(payload).eq('cliente_id', cid);
+    } else {
+        res = await sb.from('configuracoes_sistema').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar White-Label: " + res.error.message, "error");
+        return;
+    }
+
+    toast("Configurações White-Label salvas com sucesso!");
+    carregarWhiteLabel();
+}
+
+window.onload = function(){
+    carregarWhiteLabel();
+};
+</script>
+</body>
+</html>
