@@ -50,7 +50,8 @@
         .aba-conteudo { display: none; }
         .aba-conteudo.active { display: block; }
 
-        .badge-status { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        .badge-status { background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        .badge-status.concluido { background: #d1fae5; color: #065f46; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -66,7 +67,7 @@
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório Contábil</div>
-            <div class="page-subtitle">Carteira de clientes contábeis, consulta automática na Receita Federal, calendário e protocolo</div>
+            <div class="page-subtitle">Carteira de clientes, calendário com Reforma Tributária (CBS/IBS) e protocolo de entregas</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
@@ -76,7 +77,7 @@
     <!-- ABAS DE NAVEGAÇÃO -->
     <div class="abas-container">
         <button class="aba-btn active" onclick="mudarAba('clientes')"><i class="fas fa-address-book"></i> Clientes Contábeis</button>
-        <button class="aba-btn" onclick="mudarAba('calendario')"><i class="fas fa-calendar-alt"></i> Calendário de Obrigações</button>
+        <button class="aba-btn" onclick="mudarAba('calendario')"><i class="fas fa-calendar-alt"></i> Calendário &amp; Reforma Tributária</button>
         <button class="aba-btn" onclick="mudarAba('protocolo')"><i class="fas fa-file-signature"></i> Protocolo de Entregas</button>
     </div>
 
@@ -161,21 +162,48 @@
         </div>
     </div>
 
-    <!-- ABA 2: CALENDÁRIO DE OBRIGAÇÕES -->
+    <!-- ABA 2: CALENDÁRIO DE OBRIGAÇÕES (TOTALMENTE EDITÁVEL E CUSTOMIZÁVEL) -->
     <div id="aba-calendario" class="aba-conteudo">
+        <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Registrar Nova Obrigação / Ajustar Prazos (Reforma Tributária e Atual)</span></div>
+            <div class="form-row">
+                <div>
+                    <label>Competência *</label>
+                    <input type="text" id="ob_competencia" class="form-control" value="09/2026" style="background:#fff;">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Nome da Obrigação *</label>
+                    <input type="text" id="ob_nome" class="form-control" placeholder="Ex: Apuração IVA Dual (CBS/IBS), DCTFWeb, PGDAS..." style="background:#fff;">
+                </div>
+                <div>
+                    <label>Órgão / Destino *</label>
+                    <input type="text" id="ob_orgao" class="form-control" placeholder="Ex: Receita Federal" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Prazo Legal (Data Limite) *</label>
+                    <input type="date" id="ob_prazo" class="form-control" style="background:#fff;">
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                <button class="btn-acao sucesso" onclick="cadastrar Obrigacao()"><i class="fas fa-save"></i> Adicionar ao Calendário</button>
+            </div>
+        </div>
+
         <div class="panel">
-            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-calendar-alt"></i> Calendário de Obrigações Fiscais &amp; Contábeis</span></div>
-            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Controle restrito de prazos de entrega (ECD, ECF, DCTF, SPED Fiscal, DAS, PIS/COFINS).</p>
+            <div class="panel-header">
+                <span><i class="fas fa-calendar-alt"></i> Calendário de Obrigações Fiscais, Contábeis &amp; Reforma Tributária</span>
+                <span id="contadorObrigacoes" style="font-size:12px; color:var(--text-light); font-weight:normal;">4 obrigações</span>
+            </div>
             <div class="table-container">
                 <table class="analitica-table">
                     <thead>
-                        <tr><th>Competência</th><th>Obrigações / Entrega</th><th>Órgão / Destino</th><th>Prazo Legal</th><th>Status</th></tr>
+                        <tr><th>Competência</th><th>Obrigações / Entrega</th><th>Órgão / Destino</th><th>Prazo Legal</th><th>Status</th><th style="text-align:right;">Ações</th></tr>
                     </thead>
-                    <tbody>
-                        <tr><td>09/2026</td><td>DCTFWeb Mensal</td><td>Receita Federal</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
-                        <tr><td>09/2026</td><td>DEFIS / SPED Contribuições</td><td>Receita Federal</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
-                        <tr><td>09/2026</td><td>PGDAS-D (Simples Nacional)</td><td>Portal Simples</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
-                        <tr><td>09/2026</td><td>ISSQN Municipal Próprio</td><td>Prefeitura BH</td><td>10/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
+                    <tbody id="tbodyObrigacoes">
+                        <tr><td>09/2026</td><td><strong>Apuração IVA Dual (CBS / IBS - Transição)</strong></td><td>Receita Federal / Comitê Gestor</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>DCTFWeb Mensal</td><td>Receita Federal</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>PGDAS-D (Simples Nacional)</td><td>Portal Simples</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>ISSQN Municipal Próprio</td><td>Prefeitura BH</td><td>10/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -252,25 +280,18 @@ async function consultarCnpjAutomatico() {
     toast("Consultando dados na Receita Federal (Web)...", "info");
 
     try {
-        // Consulta API pública de CNPJ em tempo real (ex: ReceitaWS)
         let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${rawCnpj}`);
         if(!response.ok) throw new Error("CNPJ não encontrado na base pública.");
         let r = await response.json();
 
         document.getElementById('cli_cnpj').value = r.cnpj || rawCnpj;
         document.getElementById('cli_razao').value = r.razao_social || r.nome_fantasia || '';
-        document.getElementById('cli_cnae').value = r.cnae_fiscal ? `${r.cnae_fiscal}-${r.cnae_fiscal_descricao ? '' : ''}` : '';
+        document.getElementById('cli_cnae').value = r.cnae_fiscal ? `${r.cnae_fiscal} - ${r.cnae_fiscal_descricao || ''}` : '';
         document.getElementById('cli_endereco').value = `${r.logradouro || ''}, nº ${r.numero || 'S/N'} ${r.complemento || ''} - ${r.bairro || ''}`;
         document.getElementById('cli_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
 
-        // Se houver CNAE descrição, tentamos colocar no campo ou exibir
-        if(r.cnae_fiscal_descricao) {
-            document.getElementById('cli_cnae').value = `${r.cnae_fiscal} - ${r.cnae_fiscal_descricao}`;
-        }
-
         toast("Dados cadastrais obtidos e preenchidos automaticamente com sucesso!");
     } catch(err) {
-        // Fallback: tenta buscar na base interna caso a API externa falhe
         var { data } = await sb.from('clientes_contratantes').select('*').ilike('cnpj', `%${rawCnpj}%`).maybeSingle();
         if(data) {
             document.getElementById('cli_cnpj').value = data.cnpj || rawCnpj;
@@ -282,6 +303,34 @@ async function consultarCnpjAutomatico() {
             toast("CNPJ não localizado na API pública ou base interna. Preencha manualmente se necessário.", "error");
         }
     }
+}
+
+function cadastrarObrigacao() {
+    let comp = document.getElementById('ob_competencia').value.trim();
+    let nome = document.getElementById('ob_nome').value.trim();
+    let orgao = document.getElementById('ob_orgao').value.trim();
+    let prazo = document.getElementById('ob_prazo').value;
+
+    if(!comp || !nome || !orgao || !prazo) {
+        toast("Preencha todos os campos da obrigação!", "error");
+        return;
+    }
+
+    let tbody = document.getElementById('tbodyObrigacoes');
+    let prazoFmt = prazo.split('-').reverse().join('/');
+    tbody.innerHTML += `<tr>
+        <td>${comp}</td>
+        <td><strong>${nome}</strong></td>
+        <td>${orgao}</td>
+        <td>${prazoFmt}</td>
+        <td><span class="badge-status">Pendente</span></td>
+        <td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+    </tr>`;
+
+    toast("Obrigação adicionada ao calendário com sucesso!");
+    document.getElementById('ob_nome').value = '';
+    document.getElementById('ob_orgao').value = '';
+    document.getElementById('ob_prazo').value = '';
 }
 
 async function carregarClientesContabeis() {
