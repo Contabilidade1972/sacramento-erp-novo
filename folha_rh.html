@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folha de Pagamento & RH (eSocial) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.perigo { background: var(--danger); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
+        .analitica-table tr:hover { background: #f1f5f9; }
+
+        .badge-status { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas id-card" style="color:var(--primary);"></i> Folha de Pagamento & RH (eSocial)</div>
+            <div class="page-subtitle">Gestão de colaboradores, registo salarial, encargos e obrigações trabalhistas</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE NOVO COLABORADOR -->
+    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-user-plus"></i> Registar Novo Colaborador / Funcionário</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Nome Completo *</label>
+                <input type="text" id="novoNome" class="form-control" placeholder="Nome do colaborador" style="background:#fff;">
+            </div>
+            <div>
+                <label>CPF *</label>
+                <input type="text" id="novoCpf" class="form-control" placeholder="000.000.000-00" style="background:#fff;">
+            </div>
+            <div>
+                <label>Cargo / Função *</label>
+                <input type="text" id="novoCargo" class="form-control" placeholder="Ex: Motorista, Analista..." style="background:#fff;">
+            </div>
+            <div>
+                <label>Salário Base (R$) *</label>
+                <input type="number" step="0.01" id="novoSalario" class="form-control" placeholder="0,00" style="background:#fff;">
+            </div>
+            <div>
+                <label>Data de Admissão *</label>
+                <input type="date" id="novoAdmissao" class="form-control" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn-acao sucesso" onclick="salvarColaborador()"><i class="fas fa-save"></i> Gravar Colaborador</button>
+        </div>
+    </div>
+
+    <!-- LISTAGEM DE COLABORADORES -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-users"></i> Quadro de Colaboradores Ativos</span>
+            <span id="contadorColaboradores" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 colaboradores</span>
+        </div>
+        <div id="listaColaboradores" style="overflow-x:auto;">A carregar colaboradores...</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarColaboradores(){
+    var cid = clienteIdAtual();
+    var el = document.getElementById('listaColaboradores');
+    var contadorEl = document.getElementById('contadorColaboradores');
+    if(!cid) return;
+
+    var { data, error } = await sb.from('colaboradores_rh').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+    
+    if(error){
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum colaborador encontrado ou tabela em fase de estruturação.</div>';
+        contadorEl.innerHTML = '0 colaboradores';
+        return;
+    }
+
+    let cols = data || [];
+    contadorEl.innerHTML = `${cols.length} colaboradores`;
+
+    if(cols.length === 0){
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum colaborador registado. Utilize o formulário acima para cadastrar.</div>';
+        return;
+    }
+
+    let html = '<table class="analitica-table"><thead><tr>'+
+        '<th>Nome Completo</th><th>CPF</th><th>Cargo</th><th>Salário Base</th><th>Admissão</th><th>Status</th><th>Ações</th>'+
+    '</tr></thead><tbody>';
+
+    cols.forEach(c => {
+        let salFmt = 'R$ ' + Number(c.salario || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2});
+        let admFmt = c.admissao ? c.admissao.split('-').reverse().join('/') : '—';
+        html += '<tr>'+
+            '<td><strong>'+(c.nome || '—')+'</strong></td>'+
+            '<td>'+(c.cpf || '—')+'</td>'+
+            '<td>'+(c.cargo || '—')+'</td>'+
+            '<td><strong>'+salFmt+'</strong></td>'+
+            '<td>'+admFmt+'</td>'+
+            '<td><span class="badge-status">Ativo (eSocial)</span></td>'+
+            '<td><button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="removerColaborador('+c.id+')"><i class="fas fa-trash"></i></button></td>'+
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function salvarColaborador(){
+    var cid = clienteIdAtual();
+    var nome = document.getElementById('novoNome').value.trim();
+    var cpf = document.getElementById('novoCpf').value.trim();
+    var cargo = document.getElementById('novoCargo').value.trim();
+    var salario = parseFloat(document.getElementById('novoSalario').value);
+    var admissao = document.getElementById('novoAdmissao').value;
+
+    if(!nome || !cpf || !cargo || isNaN(salario) || !admissao){
+        toast("Preencha todos os campos obrigatórios corretamente!", "error");
+        return;
+    }
+
+    var payload = {
+        cliente_id: cid,
+        nome: nome,
+        cpf: cpf,
+        cargo: cargo,
+        salario: salario,
+        admissao: admissao,
+        status: 'Ativo'
+    };
+
+    var { error } = await sb.from('colaboradores_rh').insert([payload]);
+    if(error){
+        toast("Erro ao registar colaborador: " + error.message, "error");
+        return;
+    }
+
+    let userLog = obterUsuarioAtual();
+    await sb.from('logs_auditoria').insert([{
+        cliente_id: cid,
+        usuario: userLog ? userLog.nome : 'Sistema',
+        acao: 'INSERT',
+        modulo: 'folha_rh',
+        detalhes: `Registo de colaborador RH: ${nome} (${cargo}) - Salário: R$ ${salario}`
+    }]).catch(()=>{});
+
+    toast("Colaborador registado com sucesso!");
+    document.getElementById('novoNome').value = '';
+    document.getElementById('novoCpf').value = '';
+    document.getElementById('novoCargo').value = '';
+    document.getElementById('novoSalario').value = '';
+    document.getElementById('novoAdmissao').value = '';
+    carregarColaboradores();
+}
+
+async function removerColaborador(id){
+    if(!confirm("Deseja realmente remover este registo de colaborador?")) return;
+    var { error } = await sb.from('colaboradores_rh').delete().eq('id', id);
+    if(error){
+        toast("Erro ao remover: " + error.message, "error");
+        return;
+    }
+    toast("Colaborador removido com sucesso!");
+    carregarColaboradores();
+}
+
+window.onload = function(){
+    carregarColaboradores();
+};
+</script>
+</body>
+</html>
