@@ -83,13 +83,14 @@
     <!-- ABA 1: CLIENTES CONTÁBEIS -->
     <div id="aba-clientes" class="aba-conteudo active">
         <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil</span></div>
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil (Isolado e Seguro)</span></div>
             
-            <div style="margin-bottom:14px;">
-                <label>Empresa Vinculada a esta Contabilidade (Puxa Dados Automaticamente)</label>
-                <select id="cliente_vinculado_select" class="form-control" style="background:#fff;" onchange="preencherDadosEmpresa(this.value)">
-                    <option value="">Selecione a empresa contratante...</option>
-                </select>
+            <div style="margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
+                <div style="flex:1;">
+                    <label>Consultar Empresa Ativa por CNPJ / CPF</label>
+                    <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ para preenchimento automático..." style="background:#fff;">
+                </div>
+                <button class="btn-acao" onclick="buscarDadosEmpresaLogada()"><i class="fas fa-search"></i> Buscar Dados</button>
             </div>
 
             <div class="form-row">
@@ -139,7 +140,7 @@
 
         <div class="panel">
             <div class="panel-header">
-                <span><i class="fas fa-users"></i> Carteira de Clientes Contábeis</span>
+                <span><i class="fas fa-users"></i> Carteira de Clientes Contábeis (Privada da Empresa)</span>
                 <span id="contadorClientes" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 cadastrados</span>
             </div>
             <div class="table-container">
@@ -164,7 +165,7 @@
     <div id="aba-calendario" class="aba-conteudo">
         <div class="panel">
             <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-calendar-alt"></i> Calendário de Obrigações Fiscais &amp; Contábeis</span></div>
-            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Controle de prazos de entrega (ECD, ECF, DCTF, SPED Fiscal, DAS, PIS/COFINS).</p>
+            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Controle restrito de prazos de entrega (ECD, ECF, DCTF, SPED Fiscal, DAS, PIS/COFINS).</p>
             <div class="table-container">
                 <table class="analitica-table">
                     <thead>
@@ -219,7 +220,6 @@
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let clientesContabeisCache = [];
-let empresasPortfolioCache = [];
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -242,33 +242,43 @@ function mudarAba(nomeAba) {
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 }
 
-async function carregarEmpresasPortfolio() {
+async function buscarDadosEmpresaLogada() {
     var cid = clienteIdAtual();
-    const sel = document.getElementById('cliente_vinculado_select');
-    if(!sel) return;
+    let termo = document.getElementById('busca_cnpj').value.trim().replace(/\D/g, '');
+    if(!termo) {
+        toast("Digite o CNPJ ou CPF para buscar na base da empresa!", "error");
+        return;
+    }
 
-    var { data, error } = await sb.from('clientes_contratantes').select('*').order('id');
-    if(error || !data) return;
-    empresasPortfolioCache = data;
+    // Busca estritamente restrita ao cliente_id logado na tabela clientes_contratantes ou parceiros
+    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    if(data) {
+        document.getElementById('cli_cnpj').value = data.cnpj || termo;
+        document.getElementById('cli_razao').value = data.razao_social || data.nome_fantasia || '';
+        document.getElementById('cli_endereco').value = data.endereco || '';
+        document.getElementById('cli_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
+        toast("Dados carregados com sucesso a partir do cadastro da empresa!");
+        return;
+    }
 
-    sel.innerHTML = '<option value="">Selecione a empresa contratante...</option>';
-    data.forEach(e => {
-        sel.innerHTML += `<option value="${e.id}">${e.nome_fantasia || e.razao_social} (CNPJ: ${e.cnpj || '—'})</option>`;
-    });
-}
-
-function preencherDadosEmpresa(id) {
-    let emp = empresasPortfolioCache.find(x => x.id == id);
-    if(!emp) return;
-    document.getElementById('cli_cnpj').value = emp.cnpj || '';
-    document.getElementById('cli_razao').value = emp.razao_social || emp.nome_fantasia || '';
-    document.getElementById('cli_endereco').value = emp.endereco || '';
-    document.getElementById('cli_cidade').value = `${emp.cidade || 'Belo Horizonte'} - ${emp.uf || 'MG'}`;
+    // Fallback na tabela de parceiros da empresa ativa
+    var { data: parc } = await sb.from('parceiros').select('*').eq('cliente_id', cid).ilike('cnpj_cpf', `%${termo}%`).maybeSingle();
+    if(parc) {
+        document.getElementById('cli_cnpj').value = parc.cnpj_cpf || termo;
+        document.getElementById('cli_razao').value = parc.nome || parc.razao_social || '';
+        document.getElementById('cli_endereco').value = parc.endereco || '';
+        document.getElementById('cli_cidade').value = `${parc.cidade || 'Belo Horizonte'} - ${parc.uf || 'MG'}`;
+        toast("Dados carregados com sucesso a partir dos parceiros!");
+    } else {
+        toast("Nenhum registo encontrado com este CNPJ/CPF no escopo da empresa.", "error");
+    }
 }
 
 async function carregarClientesContabeis() {
     var cid = clienteIdAtual();
-    var { data, error } = await sb.from('clientes_contabeis').select('*').order('id', { ascending: false });
+    if(!cid) return;
+    // Isolamento estrito por cliente_id
+    var { data, error } = await sb.from('clientes_contabeis').select('*').eq('cliente_id', cid).order('id', { ascending: false });
     if(error) return;
     clientesContabeisCache = data || [];
     renderTabelaClientes();
@@ -281,7 +291,7 @@ function renderTabelaClientes() {
     tbody.innerHTML = '';
     contador.innerText = `${clientesContabeisCache.length} cadastrados`;
     if(clientesContabeisCache.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum cliente contábil cadastrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum cliente contábil cadastrado para esta empresa.</td></tr>`;
         return;
     }
     clientesContabeisCache.forEach(c => {
@@ -319,6 +329,7 @@ async function salvarClienteContabil() {
     if(error) { toast("Erro ao cadastrar cliente: " + error.message, "error"); return; }
 
     toast("Cliente contábil cadastrado com sucesso!");
+    document.getElementById('busca_cnpj').value = '';
     document.getElementById('cli_cnpj').value = '';
     document.getElementById('cli_razao').value = '';
     document.getElementById('cli_cnae').value = '';
@@ -360,7 +371,6 @@ function registarProtocolo() {
 }
 
 window.onload = function(){
-    carregarEmpresasPortfolio();
     carregarClientesContabeis();
 };
 </script>
