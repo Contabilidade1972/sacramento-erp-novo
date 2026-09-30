@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Utilizadores & Permissões — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.perigo { background: var(--danger); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 16px; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tr:hover { background: #f1f5f9; }
+
+        .badge-perfil { background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+        .badge-status { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <div>
+            <div class="page-title"><i class="fas fa-users-cog" style="color:var(--primary);"></i> Gestão de Utilizadores & Permissões</div>
+            <div class="page-subtitle">Controlo de acessos, perfis operacionais e utilizadores autorizados no ambiente corporativo</div>
+        </div>
+        <div>
+            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        </div>
+    </div>
+
+    <!-- FORMULÁRIO DE NOVO UTILIZADOR -->
+    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-user-plus"></i> Registar Novo Utilizador</span></div>
+        
+        <div class="form-row">
+            <div>
+                <label>Nome Completo *</label>
+                <input type="text" id="novoNome" class="form-control" placeholder="Nome do utilizador" style="background:#fff;">
+            </div>
+            <div>
+                <label>E-mail Corporativo (Login) *</label>
+                <input type="email" id="novoEmail" class="form-control" placeholder="utilizador@empresa.com.br" style="background:#fff;">
+            </div>
+            <div>
+                <label>Perfil de Acesso *</label>
+                <select id="novoPerfil" class="form-control" style="background:#fff; font-weight:700;">
+                    <option value="Administrador">Administrador (Acesso Total)</option>
+                    <option value="Financeiro">Operador Financeiro</option>
+                    <option value="Contador">Contador / Escritório</option>
+                    <option value="Logistica">Operador Logístico</option>
+                    <option value="Visualizador">Visualizador (Consulta)</option>
+                </select>
+            </div>
+            <div>
+                <label>Senha Provisória *</label>
+                <input type="password" id="novoSenha" class="form-control" placeholder="••••••••" style="background:#fff;">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+            <button class="btn-acao sucesso" onclick="salvarUtilizador()"><i class="fas fa-save"></i> Gravar Novo Utilizador</button>
+        </div>
+    </div>
+
+    <!-- LISTAGEM DE UTILIZADORES -->
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-user-shield"></i> Utilizadores Autorizados na Empresa</span>
+            <span id="contadorUsuarios" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 utilizadores</span>
+        </div>
+        <div id="listaUsuarios" style="overflow-x:auto;">A carregar utilizadores...</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+async function carregarUtilizadores(){
+    var cid = clienteIdAtual();
+    var el = document.getElementById('listaUsuarios');
+    var contadorEl = document.getElementById('contadorUsuarios');
+    if(!cid) return;
+
+    var { data, error } = await sb.from('usuarios').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+    
+    if(error){
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum utilizador encontrado ou tabela em fase de estruturação.</div>';
+        contadorEl.innerHTML = '0 utilizadores';
+        return;
+    }
+
+    let usuarios = data || [];
+    contadorEl.innerHTML = `${usuarios.length} utilizadores`;
+
+    if(usuarios.length === 0){
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum utilizador registado para esta empresa.</div>';
+        return;
+    }
+
+    let html = '<table class="analitica-table"><thead><tr>'+
+        '<th>Nome Completo</th><th>E-mail (Login)</th><th>Perfil de Acesso</th><th>Status</th><th>Ações</th>'+
+    '</tr></thead><tbody>';
+
+    usuarios.forEach(u => {
+        let perfil = u.perfil || u.cargo || 'Operador';
+        let status = u.status || 'Ativo';
+        html += '<tr>'+
+            '<td><strong>'+(u.nome || '—')+'</strong></td>'+
+            '<td>'+(u.email || '—')+'</td>'+
+            '<td><span class="badge-perfil">'+perfil+'</span></td>'+
+            '<td><span class="badge-status">'+status+'</span></td>'+
+            '<td><button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="removerUtilizador('+u.id+')"><i class="fas fa-trash"></i></button></td>'+
+        '</tr>';
+    });
+
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function salvarUtilizador(){
+    var cid = clienteIdAtual();
+    var nome = document.getElementById('novoNome').value.trim();
+    var email = document.getElementById('novoEmail').value.trim();
+    var perfil = document.getElementById('novoPerfil').value;
+    var senha = document.getElementById('novoSenha').value.trim();
+
+    if(!nome || !email || !senha){
+        toast("Preencha todos os campos obrigatórios!", "error");
+        return;
+    }
+
+    var payload = {
+        cliente_id: cid,
+        nome: nome,
+        email: email,
+        perfil: perfil,
+        senha: senha,
+        status: 'Ativo'
+    };
+
+    var { error } = await sb.from('usuarios').insert([payload]);
+    if(error){
+        toast("Erro ao registar utilizador: " + error.message, "error");
+        return;
+    }
+
+    // Registar log de auditoria
+    let userLog = obterUsuarioAtual();
+    await sb.from('logs_auditoria').insert([{
+        cliente_id: cid,
+        usuario: userLog ? userLog.nome : 'Sistema',
+        acao: 'INSERT',
+        modulo: 'usuarios',
+        detalhes: `Registo de novo utilizador: ${nome} (${email}) com perfil ${perfil}`
+    }]).catch(()=>{});
+
+    toast("Utilizador gravado com sucesso!");
+    document.getElementById('novoNome').value = '';
+    document.getElementById('novoEmail').value = '';
+    document.getElementById('novoSenha').value = '';
+    carregarUtilizadores();
+}
+
+async function removerUtilizador(id){
+    if(!confirm("Deseja realmente remover este utilizador do sistema?")) return;
+    var { error } = await sb.from('usuarios').delete().eq('id', id);
+    if(error){
+        toast("Erro ao remover: " + error.message, "error");
+        return;
+    }
+    toast("Utilizador removido com sucesso!");
+    carregarUtilizadores();
+}
+
+window.onload = function(){
+    carregarUtilizadores();
+};
+</script>
+</body>
+</html>
