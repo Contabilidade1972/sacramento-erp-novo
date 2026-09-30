@@ -147,7 +147,7 @@
         <div class="form-row">
             <div>
                 <label>Status do Certificado Digital</label>
-                <input type="text" id="emp_status_cert" class="form-control" value="Certificado Configurado e Ativo" readonly style="background:#f1f5f9; color:#059669; font-weight:700;">
+                <input type="text" id="emp_status_cert" class="form-control" value="Verificando certificado..." readonly style="background:#f1f5f9; color:#059669; font-weight:700;">
             </div>
             <div style="grid-column: span 2;">
                 <label>E-mail Fiscal / Contato</label>
@@ -214,12 +214,48 @@ async function buscarCepEmitente(){
     } catch(e) {}
 }
 
+async function verificarStatusCertificado(cid) {
+    const inputCert = document.getElementById('emp_status_cert');
+    try {
+        var { data, error } = await sb.from('certificados_digitais').select('*').eq('cliente_id', cid);
+        if(error || !data || data.length === 0) {
+            inputCert.value = "Nenhum Certificado Configurado";
+            inputCert.style.color = "#ef4444";
+            return;
+        }
+        
+        let hoje = new Date();
+        hoje.setHours(0,0,0,0);
+        let ativoEncontrado = false;
+        
+        data.forEach(c => {
+            if(c.validade_fim) {
+                let fim = new Date(c.validade_fim + 'T23:59:59');
+                if(fim >= hoje && (c.status || 'ativo') === 'ativo') {
+                    ativoEncontrado = true;
+                }
+            }
+        });
+
+        if(ativoEncontrado) {
+            inputCert.value = "Certificado Configurado e Ativo";
+            inputCert.style.color = "#059669";
+        } else {
+            inputCert.value = "Certificado Expirado ou Inativo";
+            inputCert.style.color = "#d97706";
+        }
+    } catch(e) {
+        inputCert.value = "Erro ao verificar certificado";
+        inputCert.style.color = "#ef4444";
+    }
+}
+
 async function carregarParametrosFiscais(){
     var cid = clienteIdAtual();
     if(!cid) return;
 
-    // Sincroniza com a tabela de clientes contratantes ou configurações fiscais
-    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    // Carrega dados da empresa emitente
+    var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
     if(data) {
         document.getElementById('emp_cnpj').value = data.cnpj || '';
         document.getElementById('emp_razao').value = data.razao_social || data.nome_fantasia || '';
@@ -233,6 +269,9 @@ async function carregarParametrosFiscais(){
         document.getElementById('emp_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
         document.getElementById('emp_email_fiscal').value = data.email || '';
     }
+
+    // Verifica status real do certificado digital na tabela dedicada
+    await verificarStatusCertificado(cid);
 }
 
 async function salvarParametrosFiscais(){
@@ -257,7 +296,6 @@ async function salvarParametrosFiscais(){
         cnpj,
         razao_social,
         inscricao_municipal,
-        inscricao_estadual,
         cep,
         logradouro,
         numero,
