@@ -66,7 +66,7 @@
     <div class="page-toolbar">
         <div>
             <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório Contábil</div>
-            <div class="page-subtitle">Carteira de clientes contábeis licenciados, calendário de obrigações e protocolo de entregas</div>
+            <div class="page-subtitle">Carteira de clientes contábeis, consulta automática na Receita Federal, calendário e protocolo</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
@@ -83,14 +83,14 @@
     <!-- ABA 1: CLIENTES CONTÁBEIS -->
     <div id="aba-clientes" class="aba-conteudo active">
         <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil (Busca por CNPJ Licenciado)</span></div>
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil (Consulta Automática Receita Federal)</span></div>
             
             <div style="margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
                 <div style="flex:1;">
-                    <label>Consultar Empresa Licenciada por CNPJ</label>
-                    <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ da empresa cliente..." style="background:#fff;">
+                    <label>Consultar CNPJ na Receita Federal / Base Licenciada</label>
+                    <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ para preenchimento automático..." style="background:#fff;">
                 </div>
-                <button class="btn-acao" onclick="buscarEmpresaLicenciada()"><i class="fas fa-search"></i> Buscar Dados</button>
+                <button class="btn-acao" onclick="consultarCnpjAutomatico()"><i class="fas fa-search"></i> Consultar Web</button>
             </div>
 
             <div class="form-row">
@@ -113,7 +113,7 @@
                 </div>
                 <div>
                     <label>CNAE Principal</label>
-                    <input type="text" id="cli_cnae" class="form-control" placeholder="Ex: 72.19-0" style="background:#fff;">
+                    <input type="text" id="cli_cnae" class="form-control" placeholder="Ex: 72.19-0/00" style="background:#fff;">
                 </div>
                 <div>
                     <label>Inscrição Estadual</label>
@@ -242,37 +242,51 @@ function mudarAba(nomeAba) {
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 }
 
-async function buscarEmpresaLicenciada() {
-    let termo = document.getElementById('busca_cnpj').value.trim().replace(/\D/g, '');
-    if(!termo) {
-        toast("Digite o CNPJ da empresa cliente para pesquisar na base licenciada!", "error");
+async function consultarCnpjAutomatico() {
+    let rawCnpj = document.getElementById('busca_cnpj').value.trim().replace(/\D/g, '');
+    if(!rawCnpj || rawCnpj.length !== 14) {
+        toast("Insira um CNPJ válido com 14 dígitos para consulta automática!", "error");
         return;
     }
 
-    // Consulta na tabela global de clientes contratantes do sistema (empresas licenciadas)
-    var { data, error } = await sb.from('clientes_contratantes').select('*').ilike('cnpj', `%${termo}%`).maybeSingle();
-    
-    if(error || !data) {
-        // Tenta buscar pelo ID ou nome caso o CNPJ não esteja formatado na coluna exata
-        var { data: dataAlt } = await sb.from('clientes_contratantes').select('*').or(`razao_social.ilike.%${termo}%,nome_fantasia.ilike.%${termo}%`).maybeSingle();
-        data = dataAlt;
-    }
+    toast("Consultando dados na Receita Federal (Web)...", "info");
 
-    if(data) {
-        document.getElementById('cli_cnpj').value = data.cnpj || termo;
-        document.getElementById('cli_razao').value = data.razao_social || data.nome_fantasia || '';
-        document.getElementById('cli_endereco').value = data.endereco || '';
-        document.getElementById('cli_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
-        toast("Empresa licenciada encontrada e dados preenchidos com sucesso!");
-    } else {
-        toast("Nenhuma empresa licenciada encontrada com este CNPJ no sistema.", "error");
+    try {
+        // Consulta API pública de CNPJ em tempo real (ex: ReceitaWS)
+        let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${rawCnpj}`);
+        if(!response.ok) throw new Error("CNPJ não encontrado na base pública.");
+        let r = await response.json();
+
+        document.getElementById('cli_cnpj').value = r.cnpj || rawCnpj;
+        document.getElementById('cli_razao').value = r.razao_social || r.nome_fantasia || '';
+        document.getElementById('cli_cnae').value = r.cnae_fiscal ? `${r.cnae_fiscal}-${r.cnae_fiscal_descricao ? '' : ''}` : '';
+        document.getElementById('cli_endereco').value = `${r.logradouro || ''}, nº ${r.numero || 'S/N'} ${r.complemento || ''} - ${r.bairro || ''}`;
+        document.getElementById('cli_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
+
+        // Se houver CNAE descrição, tentamos colocar no campo ou exibir
+        if(r.cnae_fiscal_descricao) {
+            document.getElementById('cli_cnae').value = `${r.cnae_fiscal} - ${r.cnae_fiscal_descricao}`;
+        }
+
+        toast("Dados cadastrais obtidos e preenchidos automaticamente com sucesso!");
+    } catch(err) {
+        // Fallback: tenta buscar na base interna caso a API externa falhe
+        var { data } = await sb.from('clientes_contratantes').select('*').ilike('cnpj', `%${rawCnpj}%`).maybeSingle();
+        if(data) {
+            document.getElementById('cli_cnpj').value = data.cnpj || rawCnpj;
+            document.getElementById('cli_razao').value = data.razao_social || data.nome_fantasia || '';
+            document.getElementById('cli_endereco').value = data.endereco || '';
+            document.getElementById('cli_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
+            toast("Dados carregados com sucesso a partir da base interna licenciada!");
+        } else {
+            toast("CNPJ não localizado na API pública ou base interna. Preencha manualmente se necessário.", "error");
+        }
     }
 }
 
 async function carregarClientesContabeis() {
     var cid = clienteIdAtual();
     if(!cid) return;
-    // Isolamento estrito por cliente_id da contabilidade
     var { data, error } = await sb.from('clientes_contabeis').select('*').eq('cliente_id', cid).order('id', { ascending: false });
     if(error) return;
     clientesContabeisCache = data || [];
