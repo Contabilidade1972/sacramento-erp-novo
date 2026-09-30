@@ -193,7 +193,7 @@
                     <input type="text" id="pro_competencia" class="form-control" value="setembro de 2026">
                 </div>
                 <div>
-                    <label>Sócio / Colaborador (Busca Automática)</label>
+                    <label>Sócio (Página de Sócios)</label>
                     <select id="pro_socio_select" class="form-control" onchange="preencherSocio(this.value)">
                         <option value="">Selecione o sócio...</option>
                     </select>
@@ -376,6 +376,7 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let sociosCache = [];
 let funcionariosCache = [];
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
@@ -398,10 +399,48 @@ function mudarAba(nomeAba) {
     document.querySelectorAll('.aba-btn')[idx].classList.add('active');
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 
-    // Se abrir a aba de Pró-labore, atualizar o select de sócios em tempo real
     if(nomeAba === 'pro_labore') {
-        atualizarSelectsSocio();
+        carregarSociosParaProLabore();
     }
+}
+
+async function carregarSociosParaProLabore() {
+    var cid = clienteIdAtual();
+    const sel = document.getElementById('pro_socio_select');
+    if(!sel) return;
+    
+    // Busca direta na tabela 'socios' da página de Sócios
+    var { data, error } = await sb.from('socios').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+    if(error || !data || data.length === 0) {
+        // Fallback caso a tabela socios esteja vazia: busca da tabela colaboradores_rh
+        var { data: colabs } = await sb.from('colaboradores_rh').select('*').eq('cliente_id', cid);
+        sociosCache = colabs || [];
+    } else {
+        sociosCache = data.map(s => ({
+            id: s.id,
+            nome: s.nome || s.razao_social || 'Sócio',
+            cpf: s.cpf || s.cnpj_cpf || '',
+            salario: s.pro_labore || s.valor || 0
+        }));
+    }
+
+    sel.innerHTML = '<option value="">Selecione o sócio...</option>';
+    sociosCache.forEach(s => {
+        sel.innerHTML += `<option value="${s.id}">${s.nome} (${s.cpf || 'Sem CPF'})</option>`;
+    });
+}
+
+function preencherSocio(id) {
+    let s = sociosCache.find(x => x.id == id);
+    if(!s) {
+        document.getElementById('pro_nome').value = '';
+        document.getElementById('pro_cpf').value = '';
+        document.getElementById('pro_valor').value = '';
+        return;
+    }
+    document.getElementById('pro_nome').value = s.nome || '';
+    document.getElementById('pro_cpf').value = s.cpf || '';
+    document.getElementById('pro_valor').value = s.salario || s.pro_labore || 0;
 }
 
 async function carregarFuncionarios() {
@@ -411,7 +450,6 @@ async function carregarFuncionarios() {
     if(error) return;
     funcionariosCache = data || [];
     renderTabelaFuncionarios();
-    atualizarSelectsSocio();
 }
 
 function renderTabelaFuncionarios() {
@@ -441,29 +479,6 @@ function renderTabelaFuncionarios() {
     });
 }
 
-function atualizarSelectsSocio() {
-    const sel = document.getElementById('pro_socio_select');
-    if(!sel) return;
-    sel.innerHTML = '<option value="">Selecione o sócio...</option>';
-    // Carrega TODOS os colaboradores cadastrados para garantir que o select nunca venha vazio
-    funcionariosCache.forEach(s => {
-        sel.innerHTML += `<option value="${s.id}">${s.nome} (${s.cpf || 'Sem CPF'})</option>`;
-    });
-}
-
-function preencherSocio(id) {
-    let s = funcionariosCache.find(x => x.id == id);
-    if(!s) {
-        document.getElementById('pro_nome').value = '';
-        document.getElementById('pro_cpf').value = '';
-        document.getElementById('pro_valor').value = '';
-        return;
-    }
-    document.getElementById('pro_nome').value = s.nome || '';
-    document.getElementById('pro_cpf').value = s.cpf || '';
-    document.getElementById('pro_valor').value = s.salario || '';
-}
-
 async function salvarFuncionario() {
     var cid = clienteIdAtual();
     let nome = document.getElementById('func_nome').value.trim();
@@ -486,15 +501,6 @@ async function salvarFuncionario() {
     const { error } = await sb.from('colaboradores_rh').insert([payload]);
     if(error) { toast("Erro ao cadastrar funcionário: " + error.message, "error"); return; }
     
-    let u = obterUsuarioAtual();
-    await sb.from('logs_auditoria').insert([{
-        cliente_id: cid,
-        usuario: u ? u.nome : 'Sistema',
-        acao: 'INSERT',
-        modulo: 'folha_rh',
-        detalhes: `Cadastro do Colaborador: ${nome} (${cargo} - R$ ${salario})`
-    }]).catch(()=>{});
-
     toast("Colaborador cadastrado com sucesso!");
     document.getElementById('func_nome').value = '';
     document.getElementById('func_cpf').value = '';
@@ -510,19 +516,8 @@ async function salvarFuncionario() {
 
 async function excluirFuncionario(id) {
     if(!confirm("Deseja realmente excluir este colaborador?")) return;
-    let colab = funcionariosCache.find(x => x.id == id);
     const { error } = await sb.from('colaboradores_rh').delete().eq('id', id);
     if(error) { toast("Erro ao excluir", "error"); return; }
-    
-    let u = obterUsuarioAtual();
-    await sb.from('logs_auditoria').insert([{
-        cliente_id: clienteIdAtual(),
-        usuario: u ? u.nome : 'Sistema',
-        acao: 'DELETE',
-        modulo: 'folha_rh',
-        detalhes: `Exclusão do Colaborador ID: ${id} (${colab ? colab.nome : ''})`
-    }]).catch(()=>{});
-
     toast("Colaborador removido!");
     carregarFuncionarios();
 }
@@ -554,7 +549,7 @@ async function lancarProLabore() {
     let valor = parseFloat(document.getElementById('pro_valor').value || 0);
     if(!nome || !valor) { toast("Selecione um sócio e informe o valor bruto!", "error"); return; }
 
-    let inss = Math.min(valor * 0.11, 908.85); // teto INSS pró-labore
+    let inss = Math.min(valor * 0.11, 908.85);
     let irrf = valor > 2259.20 ? (valor - 2259.20) * 0.075 : 0;
     let liquido = valor - inss - irrf;
 
@@ -595,6 +590,7 @@ function cadastrarRubrica() {
 
 window.onload = function(){
     carregarFuncionarios();
+    carregarSociosParaProLabore();
 };
 </script>
 </body>
