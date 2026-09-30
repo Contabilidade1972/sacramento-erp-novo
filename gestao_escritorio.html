@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão do Escritório & Tarefas — Sacramento ERP</title>
+    <title>Gestão do Escritório Contábil & Tarefas — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -43,8 +43,14 @@
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
         .analitica-table tr:hover { background: #f1f5f9; }
 
-        .badge-status { background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
-        .badge-status.concluido { background: #d1fae5; color: #065f46; }
+        /* ABAS DE NAVEGAÇÃO */
+        .abas-container { display: flex; gap: 8px; border-bottom: 2px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
+        .aba-btn { padding: 10px 16px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; background: transparent; color: var(--text-light); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .aba-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+        .aba-conteudo { display: none; }
+        .aba-conteudo.active { display: block; }
+
+        .badge-status { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
@@ -59,62 +65,151 @@
 <div class="container">
     <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório &amp; Tarefas</div>
-            <div class="page-subtitle">Controlo de rotinas contábeis, prazos de entrega de obrigações e alocação de tarefas à equipa</div>
+            <div class="page-title"><i class="fas fa-briefcase" style="color:var(--primary);"></i> Gestão do Escritório Contábil</div>
+            <div class="page-subtitle">Carteira de clientes contábeis, calendário de obrigações por cliente e protocolo de entregas</div>
         </div>
         <div>
             <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
         </div>
     </div>
 
-    <!-- FORMULÁRIO DE NOVA TAREFA -->
-    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-tasks"></i> Registar Nova Tarefa / Rotina do Escritório</span></div>
-        
-        <div class="form-row">
-            <div>
-                <label>Título da Tarefa / Rotina *</label>
-                <input type="text" id="tarefaTitulo" class="form-control" placeholder="Ex: Entrega SPED Fiscal, Fechamento Balancete..." style="background:#fff;">
+    <!-- ABAS DE NAVEGAÇÃO -->
+    <div class="abas-container">
+        <button class="aba-btn active" onclick="mudarAba('clientes')"><i class="fas fa-address-book"></i> Clientes Contábeis</button>
+        <button class="aba-btn" onclick="mudarAba('calendario')"><i class="fas fa-calendar-alt"></i> Calendário de Obrigações</button>
+        <button class="aba-btn" onclick="mudarAba('protocolo')"><i class="fas fa-file-signature"></i> Protocolo de Entregas</button>
+    </div>
+
+    <!-- ABA 1: CLIENTES CONTÁBEIS -->
+    <div id="aba-clientes" class="aba-conteudo active">
+        <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Novo Cliente Contábil</span></div>
+            
+            <div style="margin-bottom:14px;">
+                <label>Empresa Vinculada a esta Contabilidade (Puxa Dados Automaticamente)</label>
+                <select id="cliente_vinculado_select" class="form-control" style="background:#fff;" onchange="preencherDadosEmpresa(this.value)">
+                    <option value="">Selecione a empresa contratante...</option>
+                </select>
             </div>
-            <div>
-                <label>Cliente / Empresa Associada</label>
-                <input type="text" id="tarefaCliente" class="form-control" placeholder="Nome do cliente" style="background:#fff;">
+
+            <div class="form-row">
+                <div>
+                    <label>CNPJ *</label>
+                    <input type="text" id="cli_cnpj" class="form-control" placeholder="00.000.000/0001-00" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Nome / Razão Social *</label>
+                    <input type="text" id="cli_razao" class="form-control" placeholder="Razão social do cliente" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Regime Tributário *</label>
+                    <select id="cli_regime" class="form-control" style="background:#fff;">
+                        <option value="Lucro Presumido">Lucro Presumido</option>
+                        <option value="Simples Nacional">Simples Nacional</option>
+                        <option value="Lucro Real">Lucro Real</option>
+                        <option value="MEI">MEI</option>
+                    </select>
+                </div>
+                <div>
+                    <label>CNAE Principal</label>
+                    <input type="text" id="cli_cnae" class="form-control" placeholder="Ex: 72.19-0" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Inscrição Estadual</label>
+                    <input type="text" id="cli_ie" class="form-control" placeholder="Inscrição estadual" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Inscrição Municipal</label>
+                    <input type="text" id="cli_im" class="form-control" placeholder="Inscrição municipal" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Endereço</label>
+                    <input type="text" id="cli_endereco" class="form-control" placeholder="Logradouro, nº" style="background:#fff;">
+                </div>
+                <div>
+                    <label>Município / UF</label>
+                    <input type="text" id="cli_cidade" class="form-control" placeholder="Belo Horizonte - MG" style="background:#fff;">
+                </div>
             </div>
-            <div>
-                <label>Responsável *</label>
-                <input type="text" id="tarefaResponsavel" class="form-control" placeholder="Nome do colaborador" style="background:#fff;">
-            </div>
-            <div>
-                <label>Data Limite (Prazo) *</label>
-                <input type="date" id="tarefaPrazo" class="form-control" style="background:#fff;">
+
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+                <button class="btn-acao sucesso" onclick="salvarClienteContabil()"><i class="fas fa-save"></i> Cadastrar Cliente</button>
             </div>
         </div>
 
-        <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-            <button class="btn-acao sucesso" onclick="salvarTarefa()"><i class="fas fa-save"></i> Criar Tarefa</button>
+        <div class="panel">
+            <div class="panel-header">
+                <span><i class="fas fa-users"></i> Carteira de Clientes Contábeis</span>
+                <span id="contadorClientes" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 cadastrados</span>
+            </div>
+            <div class="table-container">
+                <table class="analitica-table">
+                    <thead>
+                        <tr>
+                            <th>Razão Social</th>
+                            <th>CNPJ</th>
+                            <th>Regime Tributário</th>
+                            <th>CNAE</th>
+                            <th>Município / UF</th>
+                            <th style="text-align:right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyClientes"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
-    <!-- LISTAGEM DE TAREFAS -->
-    <div class="panel">
-        <div class="panel-header">
-            <span><i class="fas fa-clipboard-list"></i> Tarefas &amp; Rotinas em Andamento</span>
-            <span id="contadorTarefas" style="font-size:12px; color:var(--text-light); font-weight:normal;">0 tarefas</span>
+    <!-- ABA 2: CALENDÁRIO DE OBRIGAÇÕES -->
+    <div id="aba-calendario" class="aba-conteudo">
+        <div class="panel">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-calendar-alt"></i> Calendário de Obrigações Fiscais &amp; Contábeis</span></div>
+            <p style="font-size:12px; color:var(--text-light); margin-bottom:16px;">Controle de prazos de entrega (ECD, ECF, DCTF, SPED Fiscal, DAS, PIS/COFINS).</p>
+            <div class="table-container">
+                <table class="analitica-table">
+                    <thead>
+                        <tr><th>Competência</th><th>Obrigações / Entrega</th><th>Órgão / Destino</th><th>Prazo Legal</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>09/2026</td><td>DCTFWeb Mensal</td><td>Receita Federal</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
+                        <tr><td>09/2026</td><td>DEFIS / SPED Contribuições</td><td>Receita Federal</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
+                        <tr><td>09/2026</td><td>PGDAS-D (Simples Nacional)</td><td>Portal Simples</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
+                        <tr><td>09/2026</td><td>ISSQN Municipal Próprio</td><td>Prefeitura BH</td><td>10/10/2026</td><td><span class="badge-status">Pendente</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="table-container">
-            <table class="analitica-table">
-                <thead>
-                    <tr>
-                        <th>Título da Tarefa</th>
-                        <th>Cliente / Empresa</th>
-                        <th>Responsável</th>
-                        <th>Prazo Limite</th>
-                        <th>Status</th>
-                        <th style="text-align:right;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="tbodyTarefas"></tbody>
-            </table>
+    </div>
+
+    <!-- ABA 3: PROTOCOLO DE ENTREGAS -->
+    <div id="aba-protocolo" class="aba-conteudo">
+        <div class="panel">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-file-signature"></i> Protocolo de Entrega de Documentos &amp; Balancetes</span></div>
+            <div class="form-row" style="align-items:flex-end;">
+                <div>
+                    <label>Cliente Associado</label>
+                    <input type="text" id="prot_cliente" class="form-control" placeholder="Nome do cliente">
+                </div>
+                <div>
+                    <label>Documento Entregue</label>
+                    <input type="text" id="prot_doc" class="form-control" placeholder="Ex: Balancete 08/2026, Declaração...">
+                </div>
+                <div>
+                    <label>Data de Entrega</label>
+                    <input type="date" id="prot_data" class="form-control">
+                </div>
+                <div>
+                    <button class="btn-acao" onclick="registarProtocolo()"><i class="fas fa-check"></i> Emitir Protocolo</button>
+                </div>
+            </div>
+            <div class="table-container" style="margin-top:20px;">
+                <table class="analitica-table">
+                    <thead><tr><th>Nº Protocolo</th><th>Cliente</th><th>Documento</th><th>Data</th><th>Status</th></tr></thead>
+                    <tbody id="tbodyProtocolos">
+                        <tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum protocolo emitido.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -123,6 +218,8 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let clientesContabeisCache = [];
+let empresasPortfolioCache = [];
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
@@ -134,119 +231,137 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-async function carregarTarefas(){
-    var cid = clienteIdAtual();
-    var tbody = document.getElementById('tbodyTarefas');
-    var contador = document.getElementById('contadorTarefas');
-    if(!cid || !tbody) return;
-
-    var { data, error } = await sb.from('gestao_escritorio').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+function mudarAba(nomeAba) {
+    document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.aba-conteudo').forEach(c => c.classList.remove('active'));
     
-    if(error){
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma tarefa encontrada ou tabela em fase de estruturação.</td></tr>';
-        contador.innerHTML = '0 tarefas';
-        return;
-    }
+    let mapa = { 'clientes': 0, 'calendario': 1, 'protocolo': 2 };
+    let idx = mapa[nomeAba] !== undefined ? mapa[nomeAba] : 0;
+    
+    document.querySelectorAll('.aba-btn')[idx].classList.add('active');
+    document.getElementById(`aba-${nomeAba}`).classList.add('active');
+}
 
-    let tarefas = data || [];
-    contador.innerHTML = `${tarefas.length} tarefas`;
+async function carregarEmpresasPortfolio() {
+    var cid = clienteIdAtual();
+    const sel = document.getElementById('cliente_vinculado_select');
+    if(!sel) return;
 
-    if(tarefas.length === 0){
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma rotina ou tarefa registada.</td></tr>';
-        return;
-    }
+    var { data, error } = await sb.from('clientes_contratantes').select('*').order('id');
+    if(error || !data) return;
+    empresasPortfolioCache = data;
 
-    let html = '';
-    tarefas.forEach(t => {
-        let prazoFmt = t.prazo ? t.prazo.split('-').reverse().join('/') : '—';
-        let status = t.status || 'Pendente';
-        let badgeCls = status === 'Concluído' ? 'badge-status concluido' : 'badge-status';
-
-        html += '<tr>'+
-            '<td><strong>'+(t.titulo || '—')+'</strong></td>'+
-            '<td>'+(t.cliente || 'Geral')+'</td>'+
-            '<td>'+(t.responsavel || 'Equipa')+'</td>'+
-            '<td>'+prazoFmt+'</td>'+
-            '<td><span class="'+badgeCls+'">'+status+'</span></td>'+
-            '<td style="text-align:right; display:flex; gap:6px; justify-content:flex-end;">';
-        if(status !== 'Concluído'){
-            html += '<button class="btn-acao sucesso" style="padding:6px 10px; font-size:11px;" onclick="concluirTarefa('+t.id+')"><i class="fas fa-check"></i> Concluir</button>';
-        }
-        html += '<button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="removerTarefa('+t.id+')"><i class="fas fa-trash"></i></button>'+
-            '</td></tr>';
+    sel.innerHTML = '<option value="">Selecione a empresa contratante...</option>';
+    data.forEach(e => {
+        sel.innerHTML += `<option value="${e.id}">${e.nome_fantasia || e.razao_social} (CNPJ: ${e.cnpj || '—'})</option>`;
     });
-
-    tbody.innerHTML = html;
 }
 
-async function salvarTarefa(){
+function preencherDadosEmpresa(id) {
+    let emp = empresasPortfolioCache.find(x => x.id == id);
+    if(!emp) return;
+    document.getElementById('cli_cnpj').value = emp.cnpj || '';
+    document.getElementById('cli_razao').value = emp.razao_social || emp.nome_fantasia || '';
+    document.getElementById('cli_endereco').value = emp.endereco || '';
+    document.getElementById('cli_cidade').value = `${emp.cidade || 'Belo Horizonte'} - ${emp.uf || 'MG'}`;
+}
+
+async function carregarClientesContabeis() {
     var cid = clienteIdAtual();
-    var titulo = document.getElementById('tarefaTitulo').value.trim();
-    var cliente = document.getElementById('tarefaCliente').value.trim() || 'Escritório Sceii';
-    var responsavel = document.getElementById('tarefaResponsavel').value.trim();
-    var prazo = document.getElementById('tarefaPrazo').value;
-
-    if(!titulo || !responsavel || !prazo){
-        toast("Preencha todos os campos obrigatórios!", "error");
-        return;
-    }
-
-    var payload = {
-        cliente_id: cid,
-        titulo: titulo,
-        cliente: cliente,
-        responsavel: responsavel,
-        prazo: prazo,
-        status: 'Pendente'
-    };
-
-    var { error } = await sb.from('gestao_escritorio').insert([payload]);
-    if(error){
-        toast("Erro ao registar tarefa: " + error.message, "error");
-        return;
-    }
-
-    let userLog = obterUsuarioAtual();
-    await sb.from('logs_auditoria').insert([{
-        cliente_id: cid,
-        usuario: userLog ? userLog.nome : 'Sistema',
-        acao: 'INSERT',
-        modulo: 'gestao_escritorio',
-        detalhes: `Criação de rotina/tarefa: ${titulo} (Responsável: ${responsavel})`
-    }]).catch(()=>{});
-
-    toast("Tarefa criada com sucesso!");
-    document.getElementById('tarefaTitulo').value = '';
-    document.getElementById('tarefaCliente').value = '';
-    document.getElementById('tarefaResponsavel').value = '';
-    document.getElementById('tarefaPrazo').value = '';
-    carregarTarefas();
+    var { data, error } = await sb.from('clientes_contabeis').select('*').order('id', { ascending: false });
+    if(error) return;
+    clientesContabeisCache = data || [];
+    renderTabelaClientes();
 }
 
-async function concluirTarefa(id){
+function renderTabelaClientes() {
+    const tbody = document.getElementById('tbodyClientes');
+    const contador = document.getElementById('contadorClientes');
+    if(!tbody) return;
+    tbody.innerHTML = '';
+    contador.innerText = `${clientesContabeisCache.length} cadastrados`;
+    if(clientesContabeisCache.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum cliente contábil cadastrado.</td></tr>`;
+        return;
+    }
+    clientesContabeisCache.forEach(c => {
+        tbody.innerHTML += `<tr>
+            <td><strong>${c.razao_social || ''}</strong></td>
+            <td>${c.cnpj || ''}</td>
+            <td><span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">${c.regime_tributario || 'Presumido'}</span></td>
+            <td>${c.cnae || '—'}</td>
+            <td>${c.municipio || 'Belo Horizonte - MG'}</td>
+            <td style="text-align:right;">
+                <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="excluirCliente(${c.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+}
+
+async function salvarClienteContabil() {
     var cid = clienteIdAtual();
-    var { error } = await sb.from('gestao_escritorio').update({ status: 'Concluído' }).eq('id', id);
-    if(error){
-        toast("Erro ao atualizar status: " + error.message, "error");
+    let cnpj = document.getElementById('cli_cnpj').value.trim();
+    let razao_social = document.getElementById('cli_razao').value.trim();
+    let regime_tributario = document.getElementById('cli_regime').value;
+    let cnae = document.getElementById('cli_cnae').value.trim();
+    let ie = document.getElementById('cli_ie').value.trim();
+    let im = document.getElementById('cli_im').value.trim();
+    let endereco = document.getElementById('cli_endereco').value.trim();
+    let municipio = document.getElementById('cli_cidade').value.trim();
+
+    if(!cnpj || !razao_social) {
+        toast("Preencha o CNPJ e a Razão Social obrigatórios!", "error");
         return;
     }
-    toast("Tarefa concluída com sucesso!");
-    carregarTarefas();
+
+    let payload = { cliente_id: cid, cnpj, razao_social, regime_tributario, cnae, ie, im, endereco, municipio };
+    const { error } = await sb.from('clientes_contabeis').insert([payload]);
+    if(error) { toast("Erro ao cadastrar cliente: " + error.message, "error"); return; }
+
+    toast("Cliente contábil cadastrado com sucesso!");
+    document.getElementById('cli_cnpj').value = '';
+    document.getElementById('cli_razao').value = '';
+    document.getElementById('cli_cnae').value = '';
+    document.getElementById('cli_ie').value = '';
+    document.getElementById('cli_im').value = '';
+    document.getElementById('cli_endereco').value = '';
+    document.getElementById('cli_cidade').value = '';
+    carregarClientesContabeis();
 }
 
-async function removerTarefa(id){
-    if(!confirm("Deseja realmente remover esta tarefa?")) return;
-    var { error } = await sb.from('gestao_escritorio').delete().eq('id', id);
-    if(error){
-        toast("Erro ao remover: " + error.message, "error");
-        return;
-    }
-    toast("Tarefa removida com sucesso!");
-    carregarTarefas();
+async function excluirCliente(id) {
+    if(!confirm("Deseja realmente remover este cliente contábil?")) return;
+    const { error } = await sb.from('clientes_contabeis').delete().eq('id', id);
+    if(error) { toast("Erro ao excluir", "error"); return; }
+    toast("Cliente removido!");
+    carregarClientesContabeis();
+}
+
+function registarProtocolo() {
+    let cli = document.getElementById('prot_cliente').value.trim();
+    let doc = document.getElementById('prot_doc').value.trim();
+    let dt = document.getElementById('prot_data').value;
+    if(!cli || !doc || !dt) { toast("Preencha todos os campos do protocolo!", "error"); return; }
+
+    let tbody = document.getElementById('tbodyProtocolos');
+    if(tbody.innerHTML.includes('Nenhum')) tbody.innerHTML = '';
+    let numProt = Math.floor(100000 + Math.random() * 900000);
+    tbody.innerHTML += `<tr>
+        <td><strong>#${numProt}</strong></td>
+        <td>${cli}</td>
+        <td>${doc}</td>
+        <td>${dt.split('-').reverse().join('/')}</td>
+        <td><span class="badge-status">Entregue</span></td>
+    </tr>`;
+    toast("Protocolo emitido com sucesso!");
+    document.getElementById('prot_cliente').value = '';
+    document.getElementById('prot_doc').value = '';
+    document.getElementById('prot_data').value = '';
 }
 
 window.onload = function(){
-    carregarTarefas();
+    carregarEmpresasPortfolio();
+    carregarClientesContabeis();
 };
 </script>
 </body>
