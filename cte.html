@@ -25,6 +25,8 @@
         .btn-acao.cinza:hover { background: #475569; }
         .btn-acao.sucesso { background: var(--success); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.amarelo { background: #d97706; color: #fff; }
+        .btn-acao.amarelo:hover { background: #b45309; }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -91,13 +93,18 @@
 
     <!-- CADASTRO DE CT-E -->
     <div class="panel">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-edit"></i> Cadastro de CT-e</span></div>
+        <div class="panel-header">
+            <span style="color:var(--primary);"><i class="fas fa-edit"></i> <span id="lblTituloForm">Cadastro de CT-e</span></span>
+            <span id="lblModoEdicaoBadge" style="display:none; font-size:11px; background:#fef3c7; color:#92400e; padding:3px 8px; border-radius:6px; font-weight:700;">Modo Edição (Rascunho)</span>
+        </div>
         
+        <input type="hidden" id="edit_id" value="">
+
         <div style="font-size:12px; font-weight:800; color:var(--secondary); margin-bottom:10px;">DADOS DO CT-E</div>
         <div class="form-row">
             <div>
                 <label>Número do CT-e *</label>
-                <input type="text" id="cte_numero" class="form-control" placeholder="Ex: 991" style="background:#fff;">
+                <input type="number" id="cte_numero" class="form-control" placeholder="Ex: 991" style="background:#fff;">
             </div>
             <div>
                 <label>Série</label>
@@ -380,12 +387,12 @@
         </div>
 
         <div style="display:flex; justify-content:flex-start; gap:10px; margin-top:20px;">
-            <button class="btn-acao sucesso" onclick="salvarCte()"><i class="fas fa-save"></i> Salvar</button>
-            <button class="btn-acao cinza" onclick="limparFormulario()"><i class="fas fa-eraser"></i> Limpar</button>
+            <button class="btn-acao sucesso" onclick="salvarCte()"><i class="fas fa-save"></i> <span id="btnSalvarTexto">Salvar</span></button>
+            <button class="btn-acao cinza" onclick="limparFormulario()"><i class="fas fa-eraser"></i> Limpar / Novo</button>
         </div>
     </div>
 
-    <!-- LISTAGEM COM BOTÕES DE VISUALIZAR E IMPRIMIR -->
+    <!-- LISTAGEM COM BOTÃO DE EDIÇÃO PARA RASCUNHOS -->
     <div class="panel">
         <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-list"></i> CT-es Cadastrados</span></div>
         <div style="overflow-x: auto;">
@@ -400,7 +407,7 @@
                         <th>Produto</th>
                         <th>Frete (R$)</th>
                         <th>Status</th>
-                        <th style="text-align:center;">Ações</th>
+                        <th style="text-align:center; width: 140px;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyCtes">
@@ -443,7 +450,7 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-// Leitor real e robusto de XML CT-e SEFAZ
+// Leitor rigoroso de XML CT-e SEFAZ (isolei estrictamente a tag nCT do CT-e)
 function importarXmls(input) {
     if(!input.files || input.files.length === 0) return;
     Array.from(input.files).forEach(file => {
@@ -453,9 +460,18 @@ function importarXmls(input) {
                 let parser = new DOMParser();
                 let xmlDoc = parser.parseFromString(e.target.result, "text/xml");
                 
-                // Número do CT-e
-                let nCT = xmlDoc.getElementsByTagName("nCT")[0]?.textContent || xmlDoc.getElementsByTagName("nNF")[0]?.textContent || "991";
-                document.getElementById('cte_numero').value = nCT;
+                // Extrai especificamente o número do CT-e (<nCT>), sem misturar com <nNF>
+                let nCT = "";
+                let nCTTags = xmlDoc.getElementsByTagName("nCT");
+                if(nCTTags && nCTTags.length > 0) {
+                    nCT = nCTTags[0].textContent;
+                }
+                if(nCT) {
+                    document.getElementById('cte_numero').value = nCT;
+                } else {
+                    document.getElementById('cte_numero').value = '';
+                    toast("Aviso: O XML não continha o número do CT-e (<nCT>). Insira manualmente.", "error");
+                }
 
                 let dhEmi = xmlDoc.getElementsByTagName("dhEmi")[0]?.textContent?.split('T')[0] || new Date().toISOString().split('T')[0];
                 document.getElementById('cte_data').value = dhEmi;
@@ -499,8 +515,8 @@ function importarXmls(input) {
                 }
 
                 // Valores, Carga e Peso
-                let vFrete = xmlDoc.getElementsByTagName("vTPrest")[0]?.textContent || xmlDoc.getElementsByTagName("vFrete")[0]?.textContent || "0";
-                document.getElementById('val_frete').value = parseFloat(vFrete).toFixed(2);
+                let vTPrest = xmlDoc.getElementsByTagName("vTPrest")[0]?.textContent || xmlDoc.getElementsByTagName("vFrete")[0]?.textContent || "0";
+                document.getElementById('val_frete').value = parseFloat(vTPrest).toFixed(2);
 
                 let vCarga = xmlDoc.getElementsByTagName("vCarga")[0]?.textContent || "0";
                 document.getElementById('val_carga').value = parseFloat(vCarga).toFixed(2);
@@ -511,11 +527,10 @@ function importarXmls(input) {
                 let xProd = xmlDoc.getElementsByTagName("proPred")[0]?.textContent || "Tubos";
                 document.getElementById('prod_predominante').value = xProd;
 
-                // Chave da NF-e
                 let chaveNFe = xmlDoc.getElementsByTagName("chNFe")[0]?.textContent || "";
                 if(chaveNFe) document.getElementById('chave_nfe').value = chaveNFe;
 
-                toast(`Importação concluída com sucesso!`);
+                toast(`XML importado com sucesso!`);
             } catch(err) {
                 toast(`Erro ao processar o XML`, "error");
             }
@@ -601,7 +616,16 @@ async function buscarCepDestinatario(){
 }
 
 function limparFormulario() {
-    document.querySelectorAll('input').forEach(i => { if(i.id !== 'cte_numero') i.value = ''; });
+    document.getElementById('edit_id').value = '';
+    document.getElementById('lblTituloForm').innerText = 'Cadastro de CT-e';
+    document.getElementById('lblModoEdicaoBadge').style.display = 'none';
+    document.getElementById('btnSalvarTexto').innerText = 'Salvar';
+    document.querySelectorAll('input').forEach(i => { if(i.id !== 'edit_id') i.value = ''; });
+    document.getElementById('cte_serie').value = '1';
+    document.getElementById('val_frete').value = '0.00';
+    document.getElementById('val_carga').value = '0.00';
+    document.getElementById('peso_total').value = '0.0000';
+    document.getElementById('class_tributaria').value = '90-Simples Nacional';
     toast("Formulário limpo!");
 }
 
@@ -621,30 +645,125 @@ async function carregarCtes(){
         return;
     }
 
-    tb.innerHTML = data.map(c => `
-        <tr>
-            <td><strong>${c.numero || '—'}</strong></td>
-            <td>${c.serie || 1}</td>
-            <td>${c.data_emissao ? new Date(c.data_emissao).toLocaleDateString('pt-BR') : '—'}</td>
-            <td>${c.rem_nome || c.rem_cnpj || '—'}</td>
-            <td>${c.dest_nome || c.dest_cnpj || '—'}</td>
-            <td>${c.prod_predominante || '—'}</td>
-            <td><strong>R$ ${parseFloat(c.valor_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
-            <td><span class="badge ${(c.status||'rascunho').toLowerCase()}">${c.status || 'Rascunho'}</span></td>
-            <td style="text-align:center; display:flex; justify-content:center; gap:6px;">
-                <button class="btn-acao" style="padding:6px 10px; font-size:11px;" onclick='visualizarCte(${JSON.stringify(c)})' title="Visualizar / Imprimir"><i class="fas fa-eye"></i></button>
-                <button class="btn-acao cinza" style="padding:6px 10px; font-size:11px;" onclick="excluirCte(${c.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    tb.innerHTML = data.map(c => {
+        let isRascunho = (c.status || '').toLowerCase() === 'rascunho';
+        return `
+            <tr>
+                <td><strong>${c.numero || '—'}</strong></td>
+                <td>${c.serie || 1}</td>
+                <td>${c.data_emissao ? new Date(c.data_emissao).toLocaleDateString('pt-BR') : '—'}</td>
+                <td>${c.rem_nome || c.rem_cnpj || '—'}</td>
+                <td>${c.dest_nome || c.dest_cnpj || '—'}</td>
+                <td>${c.prod_predominante || '—'}</td>
+                <td><strong>R$ ${parseFloat(c.valor_frete || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
+                <td><span class="badge ${(c.status||'rascunho').toLowerCase()}">${c.status || 'Rascunho'}</span></td>
+                <td style="text-align:center; white-space:nowrap;">
+                    <button class="btn-acao" style="padding:6px 10px; font-size:11px;" onclick='visualizarCte(${JSON.stringify(c)})' title="Visualizar / Imprimir"><i class="fas fa-eye"></i></button>
+                    ${isRascunho ? `<button class="btn-acao amarelo" style="padding:6px 10px; font-size:11px;" onclick='editarCte(${JSON.stringify(c)})' title="Editar Rascunho"><i class="fas fa-edit"></i></button>` : ''}
+                    <button class="btn-acao cinza" style="padding:6px 10px; font-size:11px;" onclick="excluirCte(${c.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function editarCte(c) {
+    document.getElementById('edit_id').value = c.id;
+    document.getElementById('lblTituloForm').innerText = 'Editar CT-e (Rascunho)';
+    document.getElementById('lblModoEdicaoBadge').style.display = 'inline-block';
+    document.getElementById('btnSalvarTexto').innerText = 'Atualizar';
+
+    document.getElementById('cte_numero').value = c.numero || '';
+    document.getElementById('cte_serie').value = c.serie || 1;
+    document.getElementById('cte_data').value = c.data_emissao || '';
+    document.getElementById('cte_modelo').value = c.modelo || '57 - CT-e';
+    document.getElementById('cte_tomador').value = c.tomador || '0 - Remetente';
+    document.getElementById('cte_tipo').value = c.tipo_servico || '0 - Normal';
+    document.getElementById('cte_status').value = c.status || 'Rascunho';
+    document.getElementById('cte_protocolo').value = c.protocolo_sefaz || '';
+    document.getElementById('cte_obs').value = c.observacoes || '';
+    document.getElementById('inicio_prestacao').value = c.inicio_prestacao || '';
+    document.getElementById('termino_prestacao').value = c.termino_prestacao || '';
+
+    document.getElementById('rem_cnpj').value = c.rem_cnpj || '';
+    document.getElementById('rem_nome').value = c.rem_nome || '';
+    document.getElementById('rem_cep').value = c.rem_cep || '';
+    document.getElementById('rem_ibge').value = c.rem_ibge || '';
+    document.getElementById('rem_logradouro').value = c.rem_logradouro || '';
+    document.getElementById('rem_numero').value = c.rem_numero || '';
+    document.getElementById('rem_complemento').value = c.rem_complemento || '';
+    document.getElementById('rem_bairro').value = c.rem_bairro || '';
+    document.getElementById('rem_municipio').value = c.rem_municipio || '';
+    document.getElementById('rem_uf').value = c.rem_uf || '';
+    document.getElementById('rem_ie').value = c.rem_ie || '';
+    document.getElementById('rem_telefone').value = c.rem_telefone || '';
+    document.getElementById('rem_email').value = c.rem_email || '';
+
+    document.getElementById('dest_cnpj').value = c.dest_cnpj || '';
+    document.getElementById('dest_nome').value = c.dest_nome || '';
+    document.getElementById('dest_cep').value = c.dest_cep || '';
+    document.getElementById('dest_ibge').value = c.dest_ibge || '';
+    document.getElementById('dest_logradouro').value = c.dest_logradouro || '';
+    document.getElementById('dest_numero').value = c.dest_numero || '';
+    document.getElementById('dest_complemento').value = c.dest_complemento || '';
+    document.getElementById('dest_bairro').value = c.dest_bairro || '';
+    document.getElementById('dest_municipio').value = c.dest_municipio || '';
+    document.getElementById('dest_uf').value = c.dest_uf || '';
+    document.getElementById('dest_ie').value = c.dest_ie || '';
+    document.getElementById('dest_telefone').value = c.dest_telefone || '';
+    document.getElementById('dest_email').value = c.dest_email || '';
+
+    document.getElementById('exp_cnpj').value = c.exp_cnpj || '';
+    document.getElementById('exp_nome').value = c.exp_nome || '';
+    document.getElementById('exp_cep').value = c.exp_cep || '';
+    document.getElementById('exp_municipio').value = c.exp_municipio || '';
+
+    document.getElementById('rec_cnpj').value = c.rec_cnpj || '';
+    document.getElementById('rec_nome').value = c.rec_nome || '';
+    document.getElementById('rec_cep').value = c.rec_cep || '';
+    document.getElementById('rec_municipio').value = c.rec_municipio || '';
+
+    document.getElementById('prod_predominante').value = c.prod_predominante || '';
+    document.getElementById('val_frete').value = c.valor_frete || 0;
+    document.getElementById('val_carga').value = c.valor_carga || 0;
+    document.getElementById('veiculo_placa').value = c.veiculo_placa || '';
+    document.getElementById('peso_total').value = c.peso_total || 0;
+    document.getElementById('emp_rntrc').value = c.rntrc || '';
+    document.getElementById('chave_nfe').value = c.chave_nfe || '';
+    document.getElementById('class_tributaria').value = c.class_tributaria || '90-Simples Nacional';
+
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    toast("Modo de edição ativado para o CT-e rascunho.");
 }
 
 async function salvarCte(){
     var cid = clienteIdAtual();
+    let editId = document.getElementById('edit_id').value;
+    let numeroCte = parseInt(document.getElementById('cte_numero').value);
+    let serieCte = parseInt(document.getElementById('cte_serie').value || 1);
+
+    if(!numeroCte) {
+        toast("Informe o número do CT-e!", "error");
+        return;
+    }
+
+    // 🔒 BLOQUEIO RIGOROSO DE DUPLICIDADE
+    // Se for novo registo, verifica se já existe. Se for edição, verifica se o número/série pertence a OUTRO ID.
+    let queryDup = sb.from('cte_documentos').select('id').eq('cliente_id', cid).eq('numero', numeroCte).eq('serie', serieCte);
+    if(editId) {
+        queryDup = queryDup.neq('id', editId);
+    }
+    var { data: existente } = await queryDup.maybeSingle();
+
+    if(existente) {
+        toast(`Erro de Duplicidade: Já existe um CT-e nº ${numeroCte} (Série ${serieCte}) registado para esta empresa!`, "error");
+        return;
+    }
+
     let payload = {
         cliente_id: cid,
-        numero: parseInt(document.getElementById('cte_numero').value || 991),
-        serie: parseInt(document.getElementById('cte_serie').value || 1),
+        numero: numeroCte,
+        serie: serieCte,
         data_emissao: document.getElementById('cte_data').value || new Date().toISOString().split('T')[0],
         modelo: document.getElementById('cte_modelo').value,
         tomador: document.getElementById('cte_tomador').value,
@@ -698,13 +817,20 @@ async function salvarCte(){
         class_tributaria: document.getElementById('class_tributaria').value
     };
 
-    var { error } = await sb.from('cte_documentos').insert([payload]);
-    if(error) {
-        toast("Erro ao salvar CT-e: " + error.message, "error");
+    let res;
+    if(editId) {
+        res = await sb.from('cte_documentos').update(payload).eq('id', editId);
+    } else {
+        res = await sb.from('cte_documentos').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar CT-e: " + res.error.message, "error");
         return;
     }
 
-    toast("CT-e salvo com sucesso!");
+    toast(editId ? "CT-e atualizado com sucesso!" : "CT-e salvo com sucesso!");
+    limparFormulario();
     carregarCtes();
 }
 
