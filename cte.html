@@ -284,7 +284,7 @@
             </div>
             <div>
                 <label>E-mail</label>
-                <input type="email" id="dest_email" class="form-control" placeholder="email@exemplo.com" style="background:#fff;">
+                <email id="dest_email" class="form-control" placeholder="email@exemplo.com" style="background:#fff;">
             </div>
         </div>
 
@@ -387,7 +387,7 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},3000);
 }
 
-// Leitor real de XML SEFAZ
+// Leitor real e avançado de XML SEFAZ (NF-e ou CT-e)
 function importarXmls(input) {
     if(!input.files || input.files.length === 0) return;
     Array.from(input.files).forEach(file => {
@@ -403,15 +403,57 @@ function importarXmls(input) {
                 document.getElementById('cte_numero').value = nCT;
                 document.getElementById('cte_data').value = dhEmi;
                 
-                let remCnpj = xmlDoc.getElementsByTagName("rem")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || xmlDoc.getElementsByTagName("emit")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || "";
-                let remNome = xmlDoc.getElementsByTagName("rem")[0]?.getElementsByTagName("xNome")[0]?.textContent || xmlDoc.getElementsByTagName("emit")[0]?.getElementsByTagName("xNome")[0]?.textContent || "";
-                if(remCnpj) document.getElementById('rem_cnpj').value = remCnpj;
-                if(remNome) document.getElementById('rem_nome').value = remNome;
+                // Remetente (emitente ou remet)
+                let remNode = xmlDoc.getElementsByTagName("rem")[0] || xmlDoc.getElementsByTagName("emit")[0];
+                if(remNode) {
+                    document.getElementById('rem_cnpj').value = remNode.getElementsByTagName("CNPJ")[0]?.textContent || "";
+                    document.getElementById('rem_nome').value = remNode.getElementsByTagName("xNome")[0]?.textContent || "";
+                    let endRem = remNode.getElementsByTagName("enderEmit")[0] || remNode.getElementsByTagName("enderReme")[0];
+                    if(endRem) {
+                        document.getElementById('rem_logradouro').value = endRem.getElementsByTagName("xLgr")[0]?.textContent || "";
+                        document.getElementById('rem_numero').value = endRem.getElementsByTagName("nro")[0]?.textContent || "";
+                        document.getElementById('rem_bairro').value = endRem.getElementsByTagName("xBairro")[0]?.textContent || "";
+                        document.getElementById('rem_municipio').value = endRem.getElementsByTagName("xMun")[0]?.textContent || "";
+                        document.getElementById('rem_uf').value = endRem.getElementsByTagName("UF")[0]?.textContent || "";
+                        document.getElementById('rem_cep').value = endRem.getElementsByTagName("CEP")[0]?.textContent || "";
+                    }
+                    document.getElementById('rem_ie').value = remNode.getElementsByTagName("IE")[0]?.textContent || "";
+                }
 
-                let destCnpj = xmlDoc.getElementsByTagName("dest")[0]?.getElementsByTagName("CNPJ")[0]?.textContent || "";
-                let destNome = xmlDoc.getElementsByTagName("dest")[0]?.getElementsByTagName("xNome")[0]?.textContent || "";
-                if(destCnpj) document.getElementById('dest_cnpj').value = destCnpj;
-                if(destNome) document.getElementById('dest_nome').value = destNome;
+                // Destinatário
+                let destNode = xmlDoc.getElementsByTagName("dest")[0];
+                if(destNode) {
+                    document.getElementById('dest_cnpj').value = destNode.getElementsByTagName("CNPJ")[0]?.textContent || "";
+                    document.getElementById('dest_nome').value = destNode.getElementsByTagName("xNome")[0]?.textContent || "";
+                    let endDest = destNode.getElementsByTagName("enderDest")[0];
+                    if(endDest) {
+                        document.getElementById('dest_logradouro').value = endDest.getElementsByTagName("xLgr")[0]?.textContent || "";
+                        document.getElementById('dest_numero').value = endDest.getElementsByTagName("nro")[0]?.textContent || "";
+                        document.getElementById('dest_bairro').value = endDest.getElementsByTagName("xBairro")[0]?.textContent || "";
+                        document.getElementById('dest_municipio').value = endDest.getElementsByTagName("xMun")[0]?.textContent || "";
+                        document.getElementById('dest_uf').value = endDest.getElementsByTagName("UF")[0]?.textContent || "";
+                        document.getElementById('dest_cep').value = endDest.getElementsByTagName("CEP")[0]?.textContent || "";
+                    }
+                    document.getElementById('dest_ie').value = destNode.getElementsByTagName("IE")[0]?.textContent || "";
+                }
+
+                // Valores e Carga
+                let vFrete = xmlDoc.getElementsByTagName("vTPrest")[0]?.textContent || xmlDoc.getElementsByTagName("vFrete")[0]?.textContent || "0";
+                document.getElementById('val_frete').value = parseFloat(vFrete).toFixed(2);
+
+                let vCarga = xmlDoc.getElementsByTagName("vCarga")[0]?.textContent || xmlDoc.getElementsByTagName("vNF")[0]?.textContent || "0";
+                document.getElementById('val_carga').value = parseFloat(vCarga).toFixed(2);
+
+                let xProd = xmlDoc.getElementsByTagName("xProd")[0]?.textContent || xmlDoc.getElementsByTagName("proPred")[0]?.textContent || "";
+                if(xProd) document.getElementById('prod_predominante').value = xProd;
+
+                // Chave de Acesso da NF-e vinculada
+                let chaveNFe = xmlDoc.getElementsByTagName("chNFe")[0]?.textContent || "";
+                if(!chaveNFe) {
+                    let infProt = xmlDoc.getElementsByTagName("infProt")[0];
+                    if(infProt) chaveNFe = infProt.getElementsByTagName("chNFe")[0]?.textContent || "";
+                }
+                if(chaveNFe) document.getElementById('chave_nfe').value = chaveNFe;
 
                 toast(`Importação concluída: 1 documento(s) importado(s).`);
             } catch(err) {
@@ -549,6 +591,7 @@ async function salvarCte(){
         rem_cnpj: document.getElementById('rem_cnpj').value,
         rem_nome: document.getElementById('rem_nome').value,
         rem_cep: document.getElementById('rem_cep').value,
+        rem_ibge: document.getElementById('rem_ibge').value,
         rem_logradouro: document.getElementById('rem_logradouro').value,
         rem_numero: document.getElementById('rem_numero').value,
         rem_complemento: document.getElementById('rem_complemento').value,
@@ -556,9 +599,12 @@ async function salvarCte(){
         rem_municipio: document.getElementById('rem_municipio').value,
         rem_uf: document.getElementById('rem_uf').value,
         rem_ie: document.getElementById('rem_ie').value,
+        rem_telefone: document.getElementById('rem_telefone').value,
+        rem_email: document.getElementById('rem_email').value,
         dest_cnpj: document.getElementById('dest_cnpj').value,
         dest_nome: document.getElementById('dest_nome').value,
         dest_cep: document.getElementById('dest_cep').value,
+        dest_ibge: document.getElementById('dest_ibge').value,
         dest_logradouro: document.getElementById('dest_logradouro').value,
         dest_numero: document.getElementById('dest_numero').value,
         dest_complemento: document.getElementById('dest_complemento').value,
@@ -566,6 +612,8 @@ async function salvarCte(){
         dest_municipio: document.getElementById('dest_municipio').value,
         dest_uf: document.getElementById('dest_uf').value,
         dest_ie: document.getElementById('dest_ie').value,
+        dest_telefone: document.getElementById('dest_telefone').value,
+        dest_email: document.getElementById('dest_email').value,
         prod_predominante: document.getElementById('prod_predominante').value,
         valor_frete: parseFloat(document.getElementById('val_frete').value || 0),
         valor_carga: parseFloat(document.getElementById('val_carga').value || 0),
