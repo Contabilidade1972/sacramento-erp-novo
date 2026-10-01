@@ -103,12 +103,12 @@
         <div style="font-size:12px; font-weight:800; color:var(--secondary); margin-bottom:10px;">DADOS DO CT-E</div>
         <div class="form-row">
             <div>
-                <label>Número do CT-e *</label>
-                <input type="number" id="cte_numero" class="form-control" placeholder="Ex: 991" style="background:#fff;">
+                <label>Número do CT-e (Automático)</label>
+                <input type="number" id="cte_numero" class="form-control" style="background:#fff;" placeholder="Calculando...">
             </div>
             <div>
                 <label>Série</label>
-                <input type="number" id="cte_serie" class="form-control" value="1" style="background:#fff;">
+                <input type="number" id="cte_serie" class="form-control" value="1" style="background:#fff;" onchange="atualizarProximoNumeroCte()">
             </div>
             <div>
                 <label>Data de Emissão</label>
@@ -443,14 +443,36 @@ const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
 
-function toast(msg,type='success'){
+fnToast = function(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
     x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
     setTimeout(function(){x.remove();},3000);
 }
 
-// Leitor rigoroso de XML CT-e SEFAZ (isolei estrictamente a tag nCT do CT-e)
+// Função para buscar e preencher automaticamente o próximo número de CT-e disponível
+async function atualizarProximoNumeroCte() {
+    let editId = document.getElementById('edit_id').value;
+    if(editId) return; // Se estiver a editar um rascunho existente, mantém o número original
+
+    var cid = clienteIdAtual();
+    let serie = parseInt(document.getElementById('cte_serie').value || 1);
+
+    var { data, error } = await sb.from('cte_documentos')
+        .select('numero')
+        .eq('cliente_id', cid)
+        .eq('serie', serie)
+        .order('numero', {ascending: false})
+        .limit(1);
+
+    let proximoNum = 1;
+    if(data && data.length > 0 && data[0].numero) {
+        proximoNum = parseInt(data[0].numero) + 1;
+    }
+    document.getElementById('cte_numero').value = proximoNum;
+}
+
+// Leitor rigoroso de XML CT-e SEFAZ (Ignora nNF e busca apenas nCT)
 function importarXmls(input) {
     if(!input.files || input.files.length === 0) return;
     Array.from(input.files).forEach(file => {
@@ -460,17 +482,17 @@ function importarXmls(input) {
                 let parser = new DOMParser();
                 let xmlDoc = parser.parseFromString(e.target.result, "text/xml");
                 
-                // Extrai especificamente o número do CT-e (<nCT>), sem misturar com <nNF>
+                // Extrai estrictamente a tag <nCT> do CT-e
                 let nCT = "";
                 let nCTTags = xmlDoc.getElementsByTagName("nCT");
                 if(nCTTags && nCTTags.length > 0) {
                     nCT = nCTTags[0].textContent;
                 }
+                
                 if(nCT) {
                     document.getElementById('cte_numero').value = nCT;
                 } else {
-                    document.getElementById('cte_numero').value = '';
-                    toast("Aviso: O XML não continha o número do CT-e (<nCT>). Insira manualmente.", "error");
+                    fnToast("Aviso: O XML importado não contém a tag <nCT>. O número sequencial automático foi mantido.", "error");
                 }
 
                 let dhEmi = xmlDoc.getElementsByTagName("dhEmi")[0]?.textContent?.split('T')[0] || new Date().toISOString().split('T')[0];
@@ -530,9 +552,9 @@ function importarXmls(input) {
                 let chaveNFe = xmlDoc.getElementsByTagName("chNFe")[0]?.textContent || "";
                 if(chaveNFe) document.getElementById('chave_nfe').value = chaveNFe;
 
-                toast(`XML importado com sucesso!`);
+                fnToast(`XML importado com sucesso!`);
             } catch(err) {
-                toast(`Erro ao processar o XML`, "error");
+                fnToast(`Erro ao processar o XML`, "error");
             }
         };
         reader.readAsText(file);
@@ -541,7 +563,7 @@ function importarXmls(input) {
 
 async function buscarRemetente(){
     let cnpj = document.getElementById('rem_cnpj').value.replace(/\D/g,'');
-    if(cnpj.length !== 14) { toast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
+    if(cnpj.length !== 14) { fnToast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
     try {
         let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
         if(!res.ok) throw new Error();
@@ -557,8 +579,8 @@ async function buscarRemetente(){
         document.getElementById('rem_uf').value = r.uf || '';
         document.getElementById('rem_telefone').value = r.ddd_telefone_1 || '';
         document.getElementById('rem_email').value = r.email || '';
-        toast("Remetente preenchido com sucesso!");
-    } catch(e) { toast("CNPJ não encontrado na API", "error"); }
+        fnToast("Remetente preenchido com sucesso!");
+    } catch(e) { fnToast("CNPJ não encontrado na API", "error"); }
 }
 
 async function buscarCepRemetente(){
@@ -573,13 +595,13 @@ async function buscarCepRemetente(){
         document.getElementById('rem_municipio').value = r.city || '';
         document.getElementById('rem_uf').value = r.state || '';
         document.getElementById('rem_ibge').value = r.ibge || '';
-        toast("Endereço preenchido!");
+        fnToast("Endereço preenchido!");
     } catch(e) {}
 }
 
 async function buscarDestinatario(){
     let cnpj = document.getElementById('dest_cnpj').value.replace(/\D/g,'');
-    if(cnpj.length !== 14) { toast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
+    if(cnpj.length !== 14) { fnToast("Insira um CNPJ válido com 14 dígitos", "error"); return; }
     try {
         let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
         if(!res.ok) throw new Error();
@@ -595,8 +617,8 @@ async function buscarDestinatario(){
         document.getElementById('dest_uf').value = r.uf || '';
         document.getElementById('dest_telefone').value = r.ddd_telefone_1 || '';
         document.getElementById('dest_email').value = r.email || '';
-        toast("Destinatário preenchido com sucesso!");
-    } catch(e) { toast("CNPJ não encontrado na API", "error"); }
+        fnToast("Destinatário preenchido com sucesso!");
+    } catch(e) { fnToast("CNPJ não encontrado na API", "error"); }
 }
 
 async function buscarCepDestinatario(){
@@ -611,7 +633,7 @@ async function buscarCepDestinatario(){
         document.getElementById('dest_municipio').value = r.city || '';
         document.getElementById('dest_uf').value = r.state || '';
         document.getElementById('dest_ibge').value = r.ibge || '';
-        toast("Endereço preenchido!");
+        fnToast("Endereço preenchido!");
     } catch(e) {}
 }
 
@@ -620,13 +642,14 @@ function limparFormulario() {
     document.getElementById('lblTituloForm').innerText = 'Cadastro de CT-e';
     document.getElementById('lblModoEdicaoBadge').style.display = 'none';
     document.getElementById('btnSalvarTexto').innerText = 'Salvar';
-    document.querySelectorAll('input').forEach(i => { if(i.id !== 'edit_id') i.value = ''; });
-    document.getElementById('cte_serie').value = '1';
+    document.querySelectorAll('input').forEach(i => { if(i.id !== 'edit_id' && i.id !== 'cte_serie') i.value = ''; });
+    document.getElementById('cte_série').value = '1';
     document.getElementById('val_frete').value = '0.00';
     document.getElementById('val_carga').value = '0.00';
     document.getElementById('peso_total').value = '0.0000';
     document.getElementById('class_tributaria').value = '90-Simples Nacional';
-    toast("Formulário limpo!");
+    atualizarProximoNumeroCte();
+    fnToast("Formulário limpo!");
 }
 
 async function carregarCtes(){
@@ -642,6 +665,7 @@ async function carregarCtes(){
 
     if(!data || data.length === 0) {
         tb.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light);">Nenhum CT-e registrado.</td></tr>`;
+        atualizarProximoNumeroCte();
         return;
     }
 
@@ -665,6 +689,8 @@ async function carregarCtes(){
             </tr>
         `;
     }).join('');
+
+    atualizarProximoNumeroCte();
 }
 
 function editarCte(c) {
@@ -733,7 +759,7 @@ function editarCte(c) {
     document.getElementById('class_tributaria').value = c.class_tributaria || '90-Simples Nacional';
 
     window.scrollTo({top: 0, behavior: 'smooth'});
-    toast("Modo de edição ativado para o CT-e rascunho.");
+    fnToast("Modo de edição ativado para o CT-e rascunho.");
 }
 
 async function salvarCte(){
@@ -743,12 +769,11 @@ async function salvarCte(){
     let serieCte = parseInt(document.getElementById('cte_serie').value || 1);
 
     if(!numeroCte) {
-        toast("Informe o número do CT-e!", "error");
+        fnToast("Informe o número do CT-e!", "error");
         return;
     }
 
     // 🔒 BLOQUEIO RIGOROSO DE DUPLICIDADE
-    // Se for novo registo, verifica se já existe. Se for edição, verifica se o número/série pertence a OUTRO ID.
     let queryDup = sb.from('cte_documentos').select('id').eq('cliente_id', cid).eq('numero', numeroCte).eq('serie', serieCte);
     if(editId) {
         queryDup = queryDup.neq('id', editId);
@@ -756,7 +781,7 @@ async function salvarCte(){
     var { data: existente } = await queryDup.maybeSingle();
 
     if(existente) {
-        toast(`Erro de Duplicidade: Já existe um CT-e nº ${numeroCte} (Série ${serieCte}) registado para esta empresa!`, "error");
+        fnToast(`Erro de Duplicidade: Já existe um CT-e nº ${numeroCte} (Série ${serieCte}) registado para esta empresa!`, "error");
         return;
     }
 
@@ -825,11 +850,11 @@ async function salvarCte(){
     }
 
     if(res.error) {
-        toast("Erro ao salvar CT-e: " + res.error.message, "error");
+        fnToast("Erro ao salvar CT-e: " + res.error.message, "error");
         return;
     }
 
-    toast(editId ? "CT-e atualizado com sucesso!" : "CT-e salvo com sucesso!");
+    fnToast(editId ? "CT-e atualizado com sucesso!" : "CT-e salvo com sucesso!");
     limparFormulario();
     carregarCtes();
 }
@@ -883,8 +908,8 @@ function fecharModalVisualizar() {
 async function excluirCte(id) {
     if(!confirm("Deseja realmente excluir este CT-e?")) return;
     var { error } = await sb.from('cte_documentos').delete().eq('id', id);
-    if(error) { toast("Erro ao excluir", "error"); return; }
-    toast("CT-e excluído com sucesso!");
+    if(error) { fnToast("Erro ao excluir", "error"); return; }
+    fnToast("CT-e excluído com sucesso!");
     carregarCtes();
 }
 
