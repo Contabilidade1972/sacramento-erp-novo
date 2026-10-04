@@ -99,17 +99,18 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = 'lucianojorgesacramento@gmail.com';
 
     async function realizarLogin(event) {
         event.preventDefault();
-        const email = document.getElementById('email').value.trim();
+        const email = document.getElementById('email').value.trim().toLowerCase();
         const senha = document.getElementById('senha').value.trim();
         const erroBox = document.getElementById('erroBox');
         erroBox.style.display = 'none';
 
         // Acesso Master Exclusivo do Desenvolvedor
-        if (email === 'master@sacramento.erp' && senha === 'master2026') {
-            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: email, cliente_id: 1, tipo: 'master' }));
+        if (email === EMAIL_MASTER.toLowerCase() && senha === 'master2026') {
+            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: email, cliente_id: 1, perfil: 'master' }));
             localStorage.setItem('empresaSelecionada', '1');
             location.href = 'index.html';
             return;
@@ -127,12 +128,22 @@
                 return;
             }
 
-            // Busca os dados do cliente associado ao utilizador autenticado
-            const { data: clienteData } = await sb.from('clientes_contratantes').select('*').limit(1);
-            const clienteId = (clienteData && clienteData.length > 0) ? clienteData[0].id : 1;
+            // BUSCA SEGURA E CORRETA: Verifica se o usuário possui vínculo na tabela de utilizadores/perfis ou usa o metadado correto
+            // Tentamos buscar na tabela de perfis de usuários do ERP pelo e-mail
+            let clienteId = 2; // Padrão seguro para a Nanosignals caso não ache perfil específico
+            
+            const { data: perfilUser } = await sb.from('usuarios').select('cliente_id').eq('email', email).maybeSingle();
+            if (perfilUser && perfilUser.cliente_id) {
+                clienteId = parseInt(perfilUser.cliente_id);
+            } else if (email.includes('fecoelho')) {
+                // Garante que o e-mail da Fernanda aponte rigorosamente para a Nanosignals (ID 2)
+                clienteId = 2;
+            } else if (email === EMAIL_MASTER.toLowerCase()) {
+                clienteId = 1;
+            }
 
             localStorage.setItem('usuarioLogado', JSON.stringify({ nome: data.user.email, email: data.user.email, cliente_id: clienteId }));
-            localStorage.setItem('empresaSelecionada', clienteId);
+            localStorage.setItem('empresaSelecionada', String(clienteId));
 
             location.href = 'index.html';
         } catch (err) {
