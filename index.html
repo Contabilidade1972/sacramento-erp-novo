@@ -531,6 +531,11 @@
         if (u) {
             document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
             
+            // GARANTIA LGPD: Se não for Master, força o localStorage da empresa a ser o ID real do usuário imediatamente ao carregar
+            if (!ehMasterGlobal() && u.cliente_id) {
+                localStorage.setItem('empresaSelecionada', String(u.cliente_id));
+            }
+
             const ehMaster = ehMasterGlobal() || ((u.perfil || '').toLowerCase().includes('master'));
             if(ehMaster) {
                 const containerCard = document.getElementById('cardWhiteLabelContainer');
@@ -563,7 +568,6 @@
 
         try {
             if (master) {
-                // MASTER: Vê todas as empresas do banco
                 const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
                 if (data) {
                     select.innerHTML = '';
@@ -578,20 +582,15 @@
                     if (cid) select.value = cid;
                 }
             } else {
-                // CLIENTE COMUM: Vê estritamente APENAS a sua própria empresa vinculada
                 const meuClienteId = u && u.cliente_id ? parseInt(u.cliente_id) : null;
                 if (meuClienteId) {
                     const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', meuClienteId).maybeSingle();
-                    if (data) {
-                        const nomeEmp = data.nome_fantasia || data.razao_social || ('Empresa ' + data.id);
-                        select.innerHTML = `<option value="${data.id}">${nomeEmp}</option>`;
-                        select.value = data.id;
-                        localStorage.setItem('empresaSelecionada', String(data.id));
-                    } else {
-                        select.innerHTML = `<option value="${meuClienteId}">Minha Empresa (${meuClienteId})</option>`;
-                    }
-                } else {
-                    if(boxSeletor) boxSeletor.style.display = 'none';
+                    const nomeEmp = data ? (data.nome_fantasia || data.razao_social) : ('Empresa ' + meuClienteId);
+                    
+                    select.innerHTML = `<option value="${meuClienteId}">${nomeEmp}</option>`;
+                    select.value = meuClienteId;
+                    localStorage.setItem('empresaSelecionada', String(meuClienteId));
+                    select.disabled = true;
                 }
             }
         } catch(e) {
@@ -600,7 +599,7 @@
     }
 
     function trocarEmpresa() {
-        if (!ehMasterGlobal()) return; // Clientes comuns não podem trocar de empresa
+        if (!ehMasterGlobal()) return;
         const select = document.getElementById('selectEmpresa');
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
