@@ -1,11 +1,10 @@
-// auth-guard.js - Validação estrita de Sessão e LGPD para o Sacramento ERP
+// auth-guard.js — Blindagem Absoluta Multi-Tenant e LGPD para o Sacramento ERP
 (function() {
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     
-    function verificarAutenticacao() {
+    function validarSegurancaSessao() {
         const usuarioStr = localStorage.getItem('usuarioLogado');
         
-        // Se não houver usuário logado, expulsa para o login imediatamente
         if (!usuarioStr) {
             window.location.href = 'login.html';
             return;
@@ -16,24 +15,29 @@
             const emailUser = (usuario.email || '').toLowerCase().trim();
             const ehMaster = (emailUser === EMAIL_MASTER.toLowerCase().trim());
 
-            // Se NÃO for Master, o cliente_id DEVE pertencer estritamente ao usuário logado
             if (!ehMaster) {
+                // Se o usuário comum não tiver um cliente_id válido, expulsa imediatamente
                 if (!usuario.cliente_id) {
-                    alert("Erro de segurança: Usuário sem empresa vinculada.");
                     localStorage.removeItem('usuarioLogado');
                     localStorage.removeItem('empresaSelecionada');
                     window.location.href = 'login.html';
                     return;
                 }
                 
-                // TRAVA DE SEGURANÇA LGPD: Força o localStorage a assumir unicamente o ID da empresa do usuário
+                // TRAVA DE SEGURANÇA LEI LGPD: NUNCA permite que o ID da empresa seja diferente do ID do usuário
                 localStorage.setItem('empresaSelecionada', String(usuario.cliente_id));
+            } else {
+                // Se for Master e não houver empresa selecionada, define um padrão seguro
+                if (!localStorage.getItem('empresaSelecionada')) {
+                    localStorage.setItem('empresaSelecionada', '1');
+                }
             }
         } catch (e) {
-            console.error("Erro no guardião de autenticação:", e);
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
             window.location.href = 'login.html';
         }
     }
 
-    verificarAutenticacao();
+    validarSegurancaSessao();
 })();
