@@ -114,7 +114,7 @@
     </div>
 
     <div class="site-nav-right">
-        <div class="empresa-selector">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
             <i class="fas fa-building" style="color: #93c5fd;"></i>
             <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
         </div>
@@ -451,7 +451,7 @@
         { nome: "Documentos XML", url: "documentos.html", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
         { nome: "Módulo Financeiro", url: "modulo_financeiro.html", keywords: ["financeiro", "pagar", "receber", "banco", "caixa", "dre", "fluxo"] },
         { nome: "Contabilidade & Fiscal", url: "modulo_contabil.html", keywords: ["contabilidade", "fiscal", "balancete", "apuracao", "aliquotas", "ecd", "ecf"] },
-        { nome: "Calendário Fiscal", url: "calendario_fiscal.html", keywords: ["calendario", "fiscal", "obrigacoes", "vencimento", "prazo", "certificados"] },
+        { nome: "Calendário Fiscal", url: "calendario_fiscal.html", keywords: ["calendario", "fiscal", "obrigacoes", "vencimento", "prazo"] },
         { nome: "Parâmetros Fiscais", url: "configuracoes_fiscais.html", keywords: ["parametros", "fiscais", "tributario", "aliquotas"] },
         { nome: "White-Label (Master)", url: "configuracoes_sistema.html", keywords: ["white-label", "master", "logo", "identidade", "sistema"] },
         { nome: "Gestão do Escritório", url: "gestao_escritorio.html", keywords: ["escritorio", "gestao", "tarefa", "rotina", "prazo", "equipa"] },
@@ -512,10 +512,18 @@
         return null;
     }
 
-    function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+    function ehMasterGlobal() {
         const u = obterUsuarioAtual();
-        return (u && u.cliente_id) ? u.cliente_id : 1;
+        return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim());
+    }
+
+    function clienteIdAtual() {
+        const u = obterUsuarioAtual();
+        if (!u) return 1;
+        if (ehMasterGlobal()) {
+            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        }
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
 
     async function inicializar() {
@@ -523,7 +531,7 @@
         if (u) {
             document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
             
-            const ehMaster = (u.email.toLowerCase().trim() === EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim()) || ((u.perfil || '').toLowerCase().includes('master'));
+            const ehMaster = ehMasterGlobal() || ((u.perfil || '').toLowerCase().includes('master'));
             if(ehMaster) {
                 const containerCard = document.getElementById('cardWhiteLabelContainer');
                 if(containerCard) {
@@ -547,24 +555,52 @@
 
     async function carregarSeletorEmpresa() {
         const select = document.getElementById('selectEmpresa');
+        const boxSeletor = document.getElementById('boxSeletorEmpresa');
         if (!select) return;
+
+        const u = obterUsuarioAtual();
+        const master = ehMasterGlobal();
+
         try {
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            if (!data) return;
-            select.innerHTML = '';
-            data.forEach(emp => {
-                const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                const opt = document.createElement('option');
-                opt.value = emp.id;
-                opt.textContent = nomeEmp;
-                select.appendChild(opt);
-            });
-            const cid = clienteIdAtual();
-            if (cid) select.value = cid;
-        } catch(e) {}
+            if (master) {
+                // MASTER: Vê todas as empresas do banco
+                const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+                if (data) {
+                    select.innerHTML = '';
+                    data.forEach(emp => {
+                        const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                        const opt = document.createElement('option');
+                        opt.value = emp.id;
+                        opt.textContent = nomeEmp;
+                        select.appendChild(opt);
+                    });
+                    const cid = clienteIdAtual();
+                    if (cid) select.value = cid;
+                }
+            } else {
+                // CLIENTE COMUM: Vê estritamente APENAS a sua própria empresa vinculada
+                const meuClienteId = u && u.cliente_id ? parseInt(u.cliente_id) : null;
+                if (meuClienteId) {
+                    const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', meuClienteId).maybeSingle();
+                    if (data) {
+                        const nomeEmp = data.nome_fantasia || data.razao_social || ('Empresa ' + data.id);
+                        select.innerHTML = `<option value="${data.id}">${nomeEmp}</option>`;
+                        select.value = data.id;
+                        localStorage.setItem('empresaSelecionada', String(data.id));
+                    } else {
+                        select.innerHTML = `<option value="${meuClienteId}">Minha Empresa (${meuClienteId})</option>`;
+                    }
+                } else {
+                    if(boxSeletor) boxSeletor.style.display = 'none';
+                }
+            }
+        } catch(e) {
+            console.error("Erro ao carregar seletor de empresa:", e);
+        }
     }
 
     function trocarEmpresa() {
+        if (!ehMasterGlobal()) return; // Clientes comuns não podem trocar de empresa
         const select = document.getElementById('selectEmpresa');
         if (!select) return;
         localStorage.setItem('empresaSelecionada', select.value);
