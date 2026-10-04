@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cofre de Certificados & Calendário Fiscal — Sacramento ERP</title>
+    <title>Calendário Fiscal — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -21,244 +21,613 @@
             --text-main: #0f172a;
             --text-light: #64748b;
             --border: #e2e8f0;
+            --zebra: #fafbfc;
+            --hover: #f1f5f9;
         }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        body.escuro {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text-main: #e2e8f0;
+            --text-light: #94a3b8;
+            --border: #334155;
+            --zebra: #1a2740;
+            --hover: #24344f;
         }
-        .site-brand { display: flex; align-items: center; gap: 14px; }
-        .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
-        .brand-info h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: row; transition: background 0.3s, color 0.3s; }
 
-        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        /* MENU LATERAL PADRÃO */
+        .sidebar { width: 260px; background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 160%); color: #fff; position: fixed; top: 0; left: 0; height: 100vh; z-index: 1000; display: flex; flex-direction: column; overflow-y: auto; transition: width 0.3s ease, transform 0.3s ease; box-shadow: 2px 0 12px rgba(15,23,42,0.15); }
+        .sidebar.collapsed { width: 70px !important; }
+        .sidebar.collapsed .logo-text-wrapper,
+        .sidebar.collapsed .logo-watermark,
+        .sidebar.collapsed .sidebar-logo img,
+        .sidebar.collapsed .nav-section,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .menu-busca,
+        .sidebar.collapsed .nav-seta { display: none !important; }
+        .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
+        .sidebar-logo { padding: 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.10); display: flex; align-items: center; justify-content: space-between; position: relative; overflow: hidden; z-index: 10; min-height: 80px; gap: 8px; }
+        .logo-watermark { position: absolute; right: -14px; top: 50%; transform: translateY(-50%); font-size: 110px; color: rgba(255,255,255,0.07); z-index: 0; pointer-events: none; line-height: 1; }
+        .logo-text-wrapper { display: flex; flex-direction: column; overflow: hidden; flex: 1; position: relative; z-index: 1; }
+        .sidebar-logo h1 { font-size: 12px; font-weight: 700; line-height: 1.25; color: #fff; letter-spacing: 0; text-transform: none; word-wrap: break-word; }
+        .sidebar-logo span { font-size: 9px; color: #93c5fd; margin-top: 3px; display: block; letter-spacing: 0.5px; text-transform: uppercase; font-weight: 600; }
+        .btn-toggle-menu { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
+        .btn-toggle-menu:hover { color: #fff; }
+        .btn-tema { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; padding: 4px; transition: color 0.2s; }
+        .btn-tema:hover { color: #fff; }
+        .nav-section { padding: 16px 20px 8px; font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.5px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+        .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; cursor: pointer; color: #cbd5e1; font-size: 13px; transition: .2s; border-left: 3px solid transparent; }
+        .nav-item-left { display: flex; align-items: center; gap: 12px; }
+        .sidebar.collapsed .nav-item-left { gap: 0; }
+        .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+        .nav-item.active { background: rgba(37, 99, 235, 0.18); color: var(--primary); border-left: 3px solid var(--primary); font-weight: 600; }
+        .menu-busca { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .menu-busca .busca-wrapper { position: relative; }
+        .menu-busca .busca-wrapper i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 12px; }
+        .menu-busca input { width: 100%; padding: 8px 10px 8px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; outline: none; box-sizing: border-box; }
+        .menu-busca input::placeholder { color: #64748b; }
+        .menu-back-dashboard { border-top: 1px solid rgba(255,255,255,0.08); }
+
+        /* ÁREA PRINCIPAL E CABEÇALHO */
+        .main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-width: 0; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
+        .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
+        .header { height: 60px; background: var(--card); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 900; }
+        .header-title-wrapper { display: flex; align-items: center; gap: 12px; }
+        .btn-home { background: linear-gradient(135deg,#2563eb,#1d4ed8); border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; cursor: pointer; color: #fff; font-weight: 700; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: .2s; }
+        .btn-home:hover { transform: translateY(-1px); }
+        .btn-mobile-toggle { background: var(--primary); border: none; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
+        .header-title { font-size: 16px; font-weight: 700; color: var(--secondary); }
+        .header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; color: var(--text-light); font-weight: 500; }
+        .date-time { color: var(--primary); font-weight: 600; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; }
+        .empresa-selector i { color: var(--primary); font-size: 13px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: var(--secondary); cursor: pointer; outline: none; max-width: 200px; }
+        .user-menu { display: flex; align-items: center; gap: 10px; cursor: pointer; padding-left: 16px; border-left: 1px solid var(--border); }
+        .user-menu:hover { color: var(--primary); }
+
+        .container { max-width: 1240px; margin: 26px auto; padding: 0 20px; width: 100%; flex: 1; }
+        .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 22px; }
+        .kpi { background: var(--card); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(15,23,42,.08); border-left: 5px solid; cursor: pointer; transition: transform .15s, box-shadow .15s; border: 1px solid var(--border); }
+        .kpi:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(15,23,42,.15); }
+        .kpi.ativo { outline: 3px solid var(--primary); }
+        .kpi .kpi-label { font-size: 12px; font-weight: 600; color: var(--text-light); text-transform: uppercase; letter-spacing: .04em; }
+        .kpi .kpi-valor { font-size: 30px; font-weight: 800; margin-top: 4px; }
+        .kpi.total { border-left-color: #1e3a8a; } .kpi.total .kpi-valor { color: #1e3a8a; }
+        .kpi.pendente { border-left-color: #d97706; } .kpi.pendente .kpi-valor { color: #d97706; }
+        .kpi.concluida { border-left-color: #16a34a; } .kpi.concluida .kpi-valor { color: #16a34a; }
+
+        .filtros { background: var(--card); border-radius: 12px; padding: 18px 20px; box-shadow: 0 1px 4px rgba(15,23,42,.08); display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; border: 1px solid var(--border); }
+        .filtros label { display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .03em; }
+        .filtros select { padding: 10px 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 14px; min-width: 210px; background: var(--card); color: var(--text-main); }
+        .btn-limpar { background: #e2e8f0; color: #475569; border: none; padding: 10px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        body.escuro .btn-limpar { background: #334155; color: #e2e8f0; }
+
+        .card { background: var(--card); border-radius: 12px; box-shadow: 0 1px 4px rgba(15,23,42,.08); overflow: hidden; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        thead th { background: var(--zebra); text-align: left; padding: 14px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-main); }
+        tbody tr:nth-child(even) { background: var(--zebra); }
+        tbody tr:hover { background: var(--hover); }
+        .codigo { font-weight: 700; color: var(--primary); }
+        .venc-atrasado { color: #dc2626; font-weight: 700; }
         
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        .status { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status.pendente { background: #fef3c7; color: #92400e; }
+        .status.em_elaboracao { background: #dbeafe; color: #1e40af; }
+        .status.transmitida { background: #d1fae5; color: #065f46; }
+        .status.validada { background: #dcfce7; color: #166534; }
+        .status.rejeitada { background: #fee2e2; color: #991b1b; }
+        .status.atrasada { background: #fee2e2; color: #991b1b; }
 
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
-        .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.cinza { background: #64748b; }
-        .btn-acao.cinza:hover { background: #475569; }
-        .btn-acao.sucesso { background: var(--success); }
-        .btn-acao.sucesso:hover { background: #059669; }
+        .vazio { text-align: center; padding: 36px; color: var(--text-light); }
+        .acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn { padding: 7px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; color: #fff; transition: opacity .15s; }
+        .btn:hover { opacity: .85; }
+        .btn-transmitir { background: var(--secondary); }
+        .btn-status { background: #475569; }
 
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .panel-header { font-size: 14px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .rodape { text-align: center; padding: 22px; color: var(--text-light); font-size: 12px; }
 
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 16px; }
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { border-color: var(--primary); background: #fff; }
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-overlay.ativo { display: flex; }
+        .modal { background: var(--card); border-radius: 14px; padding: 26px; width: 90%; max-width: 540px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(15,23,42,.3); border: 1px solid var(--border); }
+        .modal h2 { font-size: 19px; margin-bottom: 16px; color: var(--text-main); }
+        .modal label { display: block; font-size: 12px; font-weight: 600; color: var(--text-light); margin: 14px 0 5px; text-transform: uppercase; }
+        .modal input, .modal select, .modal textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 14px; color: var(--text-main); background: var(--card); }
+        .modal textarea { min-height: 64px; }
+        .modal .botoes { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+        .btn-cancelar { background: #e2e8f0; color: #475569; }
+        .btn-salvar { background: #16a34a; }
+        .historico { margin-top: 8px; font-size: 12px; color: var(--text-light); }
+        .historico .item { padding: 4px 0; border-top: 1px dashed var(--border); }
+        .historico a { color: var(--primary); text-decoration: none; }
+        .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 950; display: none; backdrop-filter: blur(2px); }
 
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); text-align: left; padding: 12px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 1px solid var(--border); font-weight: 700; }
-        tbody td { padding: 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
-        tbody tr:hover { background: #f1f5f9; }
-
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
-        .badge.ativo { background: #d1fae5; color: #065f46; }
-        .badge.vencendo { background: #fef3c7; color: #92400e; }
-        .badge.vencido { background: #fee2e2; color: #991b1b; }
-
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
-
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        @media(max-width:900px){
+            .sidebar { transform: translateX(-100%); width: 260px !important; }
+            .sidebar.mobile-open { transform: translateX(0); }
+            .main { margin-left: 0 !important; width: 100% !important; }
+            .btn-mobile-toggle { display: flex !important; }
+        }
     </style>
 </head>
 <body>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenuMobile()"></div>
 
-<div class="toast-container" id="toastContainer"></div>
-
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Contabilidade & Escritório</span>
+<!-- MODAL ALTERAR SENHA -->
+<div class="modal-overlay" id="modalSenha" style="z-index: 3000;">
+    <div class="modal" style="max-width: 500px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border); padding-bottom:12px; margin-bottom:16px;">
+            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
+            <button onclick="document.getElementById('modalSenha').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
         </div>
-    </div>
-    <div>
-        <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
-    </div>
-</header>
-
-<div class="container">
-    <div class="page-toolbar">
         <div>
-            <div class="page-title"><i class="fas fa-shield-alt" style="color:var(--primary);"></i> Cofre de Certificados & Calendário Fiscal</div>
-            <div class="page-subtitle">Gestão de prazos de e-CNPJ/e-CPF e controle de obrigações tributárias e contábeis</div>
-        </div>
-    </div>
-
-    <!-- PAINEL DE CADASTRO DE CERTIFICADOS -->
-    <div class="panel">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-key"></i> Registar / Atualizar Certificado Digital</span></div>
-        <input type="hidden" id="cert_id" value="">
-        <div class="form-row">
-            <div>
-                <label>Tipo de Certificado</label>
-                <select id="cert_tipo" class="form-control">
-                    <option value="e-CNPJ (A1)">e-CNPJ (A1)</option>
-                    <option value="e-CNPJ (A3 Cartão/Token)">e-CNPJ (A3 Cartão/Token)</option>
-                    <option value="e-CPF">e-CPF</option>
-                </select>
-            </div>
-            <div>
-                <label>Responsável / Titular</label>
-                <input type="text" id="cert_titular" class="form-control" placeholder="Nome do titular ou empresa">
-            </div>
-            <div>
-                <label>Data de Vencimento</label>
-                <input type="date" id="cert_vencimento" class="form-control">
-            </div>
-            <div>
-                <label>Senha / Notas de Armazenamento</label>
-                <input type="password" id="cert_senha" class="form-control" placeholder="Senha (opcional/cofre)">
-            </div>
-        </div>
-        <div style="display:flex; gap:10px;">
-            <button class="btn-acao sucesso" onclick="salvarCertificado()"><i class="fas fa-save"></i> Salvar Certificado</button>
-            <button class="btn-acao cinza" onclick="limparFormCert()"><i class="fas fa-eraser"></i> Limpar</button>
-        </div>
-    </div>
-
-    <!-- TABELA DE CERTIFICADOS CADASTRADOS -->
-    <div class="panel">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-list"></i> Certificados Digitais Monitorados</span></div>
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Titular / Empresa</th>
-                        <th>Vencimento</th>
-                        <th>Status</th>
-                        <th style="text-align:center; width: 120px;">Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="tbodyCertificados">
-                    <tr><td colspan="5" style="text-align:center; color:var(--text-light);">A carregar registos...</td></tr>
-                </tbody>
-            </table>
+            <label>Nova Senha</label>
+            <input type="password" id="novaSenha" placeholder="Digite a nova senha">
+            <label style="margin-top:10px;">Confirmar Nova Senha</label>
+            <input type="password" id="confirmaSenha" placeholder="Confirme a nova senha">
+            <button class="btn" style="width:100%; margin-top:14px; background:var(--primary); color:#fff; padding:10px;" onclick="salvarNovaSenha()"><i class="fas fa-save"></i> Atualizar Senha</button>
         </div>
     </div>
 </div>
 
-<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+<!-- ===== MENU LATERAL DINÂMICO ===== -->
+<aside class="sidebar" id="appSidebar">
+    <div class="sidebar-logo">
+        <div class="logo-watermark"><i class="fas fa-cube"></i></div>
+        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
+            <div class="logo-text-wrapper">
+                <h1 id="sidebarAppName">Sacramento ERP</h1>
+                <span id="sidebarSubName">Gestão Empresarial</span>
+            </div>
+        </div>
+        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema claro/escuro"><i class="fas fa-moon"></i></button>
+        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher / Expandir Menu"><i class="fas fa-bars"></i></button>
+    </div>
+    <div class="menu-busca">
+        <div class="busca-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="menuBuscaGlobal" placeholder="Buscar no menu...">
+        </div>
+    </div>
+    <div id="menuLateralDinamicoContainer"></div>
+</aside>
+
+<!-- ===== ÁREA PRINCIPAL ===== -->
+<main class="main" id="appMain">
+  <header class="header">
+    <div class="header-title-wrapper" style="display:flex; align-items:center; gap:12px;">
+      <button class="btn-mobile-toggle" onclick="toggleMenuMobile()" title="Abrir Menu"><i class="fas fa-bars"></i></button>
+      <button class="btn-home" onclick="location.href='index.html'"><i class="fas fa-home"></i> Home</button>
+      <div class="header-title">📅 Calendário Fiscal</div>
+    </div>
+    <div class="header-right">
+      <div class="empresa-selector" id="empresaSelector" title="Alternar entre empresas">
+        <i class="fas fa-building"></i>
+        <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+      </div>
+      <div class="date-time" id="current_datetime">--/--/----, --:--</div>
+      <div class="user-menu" onclick="document.getElementById('modalSenha').style.display='flex'" title="Clique para alterar sua senha">
+        <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
+        <span id="userInfo">Administrador</span>
+        <i class="fas fa-key" style="font-size:11px; color:var(--text-light); margin-left:4px;"></i>
+      </div>
+      <button class="btn-sair" onclick="sair()" title="Sair do sistema"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="kpis">
+      <div class="kpi total" onclick="filtrarPorStatus('total')" title="Clique para ver todas"><div class="kpi-label">Total de obrigações</div><div class="kpi-valor" id="kpiTotal">—</div></div>
+      <div class="kpi pendente" onclick="filtrarPorStatus('pendente')" title="Clique para ver as pendentes"><div class="kpi-label">Pendentes</div><div class="kpi-valor" id="kpiPendente">—</div></div>
+      <div class="kpi concluida" onclick="filtrarPorStatus('concluida')" title="Clique para ver as transmitidas/validadas"><div class="kpi-label">Transmitidas / Validadas</div><div class="kpi-valor" id="kpiConcluida">—</div></div>
+    </div>
+    <div class="filtros">
+      <div><label>Empresa</label><select id="selectEmpresaHeader" onchange="sincronizarEmpresaHeader()"></select></div>
+      <div><label>Competência</label><select id="selectCompetencia" onchange="carregarCalendario()"></select></div>
+      <div><label>Tipo de documento</label><select id="selectTipo" onchange="carregarCalendario()"></select></div>
+      <button class="btn-limpar" id="btnLimparFiltro" onclick="limparFiltros()" style="display:none;">✕ Limpar filtros</button>
+    </div>
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Código</th><th>Obrigação</th><th>Órgão</th><th>Compet.</th>
+            <th>Vencimento</th><th>Status</th><th>Transmissões</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbodyCalendario"><tr><td colspan="8" class="vazio">Carregando...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="rodape">Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</div>
+</main>
+
+<div class="modal-overlay" id="modalTransmissao">
+  <div class="modal">
+    <h2>Registrar Transmissão</h2>
+    <div id="modalInfo" style="font-size:13px; color:var(--text-light); margin-bottom:8px;"></div>
+    <label>Status</label>
+    <select id="modalStatus">
+      <option value="transmitida">Transmitida</option>
+      <option value="validada">Validada</option>
+      <option value="rejeitada">Rejeitada</option>
+    </select>
+    <label>Nº do Protocolo</label>
+    <input type="text" id="modalProtocolo" placeholder="Ex.: 2026.0001.123456">
+    <label>Data da transmissão</label>
+    <input type="date" id="modalData">
+    <label>Arquivo do protocolo/comprovante</label>
+    <input type="file" id="modalArquivo" accept=".pdf,.png,.jpg,.jpeg">
+    <label>Observações</label>
+    <textarea id="modalObs" placeholder="Observações da transmissão..."></textarea>
+    <div class="botoes">
+      <button class="btn btn-cancelar" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-salvar" onclick="salvarTransmissao()">Salvar transmissão</button>
+    </div>
+  </div>
+</div>
 
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+  const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+  const EMAIL_MASTER = 'lucianojorgesacramento@gmail.com';
 
-    function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        try { const u = JSON.parse(localStorage.getItem('usuarioLogado')||'{}'); if (u.cliente_id) return u.cliente_id; } catch(e) {}
-        return 1;
+  function obterUsuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e){ return null; } }
+  function clienteIdAtual() {
+      const u = obterUsuario();
+      if (!u) return 1;
+      const ehAdmin = !!(u.email === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master'));
+      if (ehAdmin) {
+          try {
+              const sel = localStorage.getItem('empresaSelecionada');
+              if (sel) return parseInt(sel);
+          } catch(e) {}
+      }
+      return u.cliente_id || 1;
+  }
+  function ehMasterGlobal() {
+      const u = obterUsuario();
+      return !!(u && (u.email || '').toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+  }
+
+  const ROTULOS_STATUS = { pendente:'Pendente', em_elaboracao:'Em elaboração', transmitida:'Transmitida', validada:'Validada', rejeitada:'Rejeitada', atrasada:'Atrasada' };
+  let contextoAtual = null;
+  let filtroStatus = null;
+  
+  function formatarData(d) { if(!d) return '—'; const p=String(d).split('-'); return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : d; }
+  function formatarDataHora(d) { if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+
+  // ===== TEMA CLARO / ESCURO =====
+  function aplicarTema(tema) {
+    document.body.classList.toggle('escuro', tema === 'escuro');
+    try { localStorage.setItem('erp_tema', tema); } catch(e){}
+    const btn = document.getElementById('btnTemaGlobal');
+    if (btn) btn.innerHTML = tema === 'escuro' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+  }
+  function alternarTemaGlobal() {
+    const atual = document.body.classList.contains('escuro') ? 'escuro' : 'claro';
+    aplicarTema(atual === 'escuro' ? 'claro' : 'escuro');
+  }
+  aplicarTema(localStorage.getItem('erp_tema') || 'claro');
+
+  function toggleRecolherMenuPC() {
+      const sidebar = document.getElementById('appSidebar');
+      const main = document.getElementById('appMain');
+      sidebar.classList.toggle('collapsed');
+      main.classList.toggle('expanded');
+  }
+  function toggleMenuMobile() {
+      const sidebar = document.getElementById('appSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      sidebar.classList.toggle('mobile-open');
+      overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
+  }
+  function sair() {
+      if (confirm('Deseja realmente sair do sistema?')) { 
+          localStorage.removeItem('usuarioLogado'); 
+          localStorage.removeItem('empresaSelecionada'); 
+          location.href = 'login.html'; 
+      }
+  }
+
+  // Relógio
+  setInterval(() => {
+      let now = new Date();
+      const dt = document.getElementById('current_datetime');
+      if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+  }, 1000);
+
+  async function salvarNovaSenha() {
+      let nova = document.getElementById('novaSenha').value.trim();
+      let conf = document.getElementById('confirmaSenha').value.trim();
+      if(!nova || !conf) { alert("Preencha todos os campos da senha!"); return; }
+      if(nova !== conf) { alert("As senhas não coincidem!"); return; }
+      const { error } = await sb.auth.updateUser({ password: nova });
+      if(error) { alert("Erro ao atualizar senha: " + error.message); return; }
+      alert("Senha alterada com sucesso!");
+      document.getElementById('modalSenha').style.display = 'none';
+      document.getElementById('novaSenha').value = '';
+      document.getElementById('confirmaSenha').value = '';
+  }
+
+  // ===== CARREGA EMPRESAS =====
+  async function carregarEmpresas() {
+    const u = obterUsuario();
+    const select = document.getElementById('selectEmpresa');
+    const selectHeader = document.getElementById('selectEmpresaHeader');
+    select.innerHTML = '<option value="">Carregando...</option>';
+    selectHeader.innerHTML = '<option value="">Carregando...</option>';
+    
+    let empresas = [];
+    try {
+      if (ehMasterGlobal()) {
+          const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+          empresas = data || [];
+      } else {
+          const cid = clienteIdAtual();
+          if (cid) {
+              const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', cid);
+              empresas = data || [];
+          }
+      }
+    } catch(e) { console.error('Erro ao carregar empresas:', e); }
+
+    if (empresas.length === 0) {
+      select.innerHTML = '<option value="">Nenhuma empresa encontrada</option>';
+      selectHeader.innerHTML = '<option value="">Nenhuma empresa encontrada</option>';
+      if(document.getElementById('userInfo')) document.getElementById('userInfo').innerText = (u && u.nome) || 'Administrador';
+      await carregarCompetencias();
+      return;
     }
 
-    function fnToast(msg, type='success') {
-        const c = document.getElementById('toastContainer');
-        const x = document.createElement('div');
-        x.className = `toast ${type}`;
-        x.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
-        c.appendChild(x);
-        setTimeout(() => x.remove(), 3000);
+    select.innerHTML = '';
+    selectHeader.innerHTML = '';
+    empresas.forEach(emp => {
+      const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+      const o1 = document.createElement('option'); o1.value = emp.id; o1.textContent = nomeEmp; select.appendChild(o1);
+      const o2 = document.createElement('option'); o2.value = emp.id; o2.textContent = nomeEmp; selectHeader.appendChild(o2);
+    });
+
+    const sel = localStorage.getItem('empresaSelecionada');
+    if (sel && [...select.options].some(o => o.value === sel)) {
+      select.value = sel;
+      selectHeader.value = sel;
+    } else {
+      select.value = select.options[0].value;
+      selectHeader.value = select.options[0].value;
     }
 
-    async function carregarCertificados() {
-        const cid = clienteIdAtual();
-        const tb = document.getElementById('tbodyCertificados');
-        if(!tb) return;
+    if(document.getElementById('userInfo')) document.getElementById('userInfo').innerText = (u && u.nome) || 'Administrador';
+    
+    const cidAtual = clienteIdAtual();
+    await carregarMarcaSistema(cidAtual);
+    await carregarCompetencias();
+  }
 
-        const { data, error } = await sb.from('cofre_certificados').select('*').eq('cliente_id', cid).order('data_vencimento', {asending: true});
-        if(error) {
-            tb.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Erro ao carregar cofre: ${error.message}</td></tr>`;
-            return;
-        }
+  function sincronizarEmpresaHeader() {
+      const val = document.getElementById('selectEmpresaHeader').value;
+      document.getElementById('selectEmpresa').value = val;
+      const u = obterUsuario();
+      if(u) {
+          u.cliente_id = parseInt(val);
+          localStorage.setItem('usuarioLogado', JSON.stringify(u));
+      }
+      localStorage.setItem('empresaSelecionada', String(val));
+      carregarCompetencias();
+  }
 
-        if(!data || data.length === 0) {
-            tb.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light);">Nenhum certificado registado no cofre.</td></tr>`;
-            return;
-        }
+  async function carregarMarcaSistema(clienteId) {
+      try {
+          const { data: clientes } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteId).maybeSingle();
+          if (clientes) {
+              const nomeEmp = clientes.nome_fantasia || clientes.razao_social;
+              if (nomeEmp) {
+                  var elApp = document.getElementById('sidebarAppName');
+                  if (elApp) elApp.innerText = nomeEmp;
+                  var elSub = document.getElementById('sidebarSubName');
+                  if (elSub) elSub.innerText = "ERP Corporativo";
+              }
+          }
+          let { data } = await sb.from('configuracoes_sistema').select('*').eq('cliente_id', clienteId).limit(1);
+          if (data && data.length > 0) {
+              let cfg = data[0];
+              if (cfg.app_name) {
+                  var elApp2 = document.getElementById('sidebarAppName');
+                  if (elApp2) elApp2.innerText = cfg.app_name;
+              }
+              if (cfg.app_subtitle) {
+                  var elSub2 = document.getElementById('sidebarSubName');
+                  if (elSub2) elSub2.innerText = cfg.app_subtitle;
+              }
+              if (cfg.app_logo_url) {
+                  var elLogo = document.getElementById('sidebarLogoContainer');
+                  if (elLogo) {
+                      elLogo.innerHTML = `
+                          <img src="${cfg.app_logo_url}" alt="Logo" style="max-height:36px; max-width:130px; object-fit:contain; display:block;">
+                          <div class="logo-text-wrapper">
+                              <h1 id="sidebarAppName">${document.getElementById('sidebarAppName').innerText}</h1>
+                              <span id="sidebarSubName">${document.getElementById('sidebarSubName').innerText}</span>
+                          </div>
+                      `;
+                  }
+              }
+          }
+      } catch (e) {
+          console.error("Erro em carregarMarcaSistema:", e);
+      }
+  }
 
-        const hoje = new Date();
-        tb.innerHTML = data.map(c => {
-            const venc = new Date(c.data_vencimento);
-            const diffDias = Math.ceil((venc - hoje) / (1000 * 60 * 60 * 24));
-            let statusHtml = '<span class="badge ativo">Ativo</span>';
-            if(diffDias < 0) {
-                statusHtml = '<span class="badge vencido">Vencido</span>';
-            } else if(diffDias <= 30) {
-                statusHtml = `<span class="badge vencendo">Vence em ${diffDias} dias</span>`;
-            }
+  async function carregarCompetencias() {
+    const clienteId = document.getElementById('selectEmpresa').value, select = document.getElementById('selectCompetencia');
+    select.innerHTML = '<option value="">Todas</option>';
+    if (!clienteId) { await carregarTipos(); await carregarCalendario(); return; }
+    const { data } = await sb.from('calendario_fiscal').select('competencia').eq('cliente_id', clienteId).order('competencia', { ascending: false });
+    const vistos = new Set();
+    (data || []).forEach(r => { if (!vistos.has(r.competencia)) { vistos.add(r.competencia); const o = document.createElement('option'); o.value = r.competencia; o.textContent = r.competencia; select.appendChild(o); } });
+    await carregarTipos();
+    await carregarCalendario();
+  }
 
-            return `
-                <tr>
-                    <td><strong>${c.tipo || '—'}</strong></td>
-                    <td>${c.titular || '—'}</td>
-                    <td>${c.data_vencimento ? new Date(c.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}</td>
-                    <td>${statusHtml}</td>
-                    <td style="text-align:center;">
-                        <button class="btn-acao cinza" style="padding:4px 8px; font-size:11px;" onclick="excluirCertificado(${c.id})"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+  async function carregarTipos() {
+    const clienteId = document.getElementById('selectEmpresa').value, select = document.getElementById('selectTipo');
+    select.innerHTML = '<option value="">Todos os documentos</option>';
+    if (!clienteId) return;
+    const { data } = await sb.from('calendario_fiscal')
+      .select('obrigacoes_fiscais(codigo, descricao)')
+      .eq('cliente_id', clienteId);
+    const vistos = new Set();
+    (data || []).forEach(r => {
+      const o = r.obrigacoes_fiscais || {};
+      const codigo = o.codigo || '—';
+      if (!vistos.has(codigo)) {
+        vistos.add(codigo);
+        const opt = document.createElement('option');
+        opt.value = codigo;
+        opt.textContent = codigo + ' — ' + (o.descricao || '');
+        select.appendChild(opt);
+      }
+    });
+  }
+
+  function filtrarPorStatus(tipo) {
+    filtroStatus = (filtroStatus === tipo) ? null : tipo;
+    document.querySelectorAll('.kpi').forEach(k => k.classList.remove('ativo'));
+    if (filtroStatus) document.querySelector('.kpi.' + (filtroStatus==='total'?'total':filtroStatus==='pendente'?'pendente':'concluida')).classList.add('ativo');
+    atualizarBotaoLimpar();
+    carregarCalendario();
+  }
+  function limparFiltros() {
+    filtroStatus = null;
+    document.querySelectorAll('.kpi').forEach(k => k.classList.remove('ativo'));
+    document.getElementById('selectTipo').value = '';
+    document.getElementById('selectCompetencia').value = '';
+    atualizarBotaoLimpar();
+    carregarCalendario();
+  }
+  function atualizarBotaoLimpar() {
+    const temStatus = !!filtroStatus;
+    const temTipo = !!document.getElementById('selectTipo').value;
+    const temComp = !!document.getElementById('selectCompetencia').value;
+    document.getElementById('btnLimparFiltro').style.display = (temStatus || temTipo || temComp) ? 'inline-block' : 'none';
+  }
+
+  async function carregarCalendario() {
+    const clienteId = document.getElementById('selectEmpresa').value, competencia = document.getElementById('selectCompetencia').value;
+    const tipo = document.getElementById('selectTipo').value;
+    const tbody = document.getElementById('tbodyCalendario');
+    tbody.innerHTML = '<tr><td colspan="8" class="vazio">Carregando...</td></tr>';
+    if (!clienteId) { tbody.innerHTML = '<tr><td colspan="8" class="vazio">Selecione uma empresa.</td></tr>'; limparKpis(); return; }
+    let q = sb.from('calendario_fiscal').select('id, competencia, data_vencimento, status, responsavel, observacoes, obrigacoes_fiscais(codigo, descricao, orgao)').eq('cliente_id', clienteId);
+    if (competencia) q = q.eq('competencia', competencia);
+    if (tipo) q = q.eq('obrigacoes_fiscais.codigo', tipo);
+    q = q.order('data_vencimento');
+    const { data, error } = await q;
+    if (error) { tbody.innerHTML = '<tr><td colspan="8" class="vazio">Erro: ' + error.message + '</td></tr>'; return; }
+    if (!data || data.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="vazio">Nenhuma obrigação encontrada.</td></tr>'; limparKpis(); return; }
+    const total = data.length;
+    const pendentes = data.filter(i => (i.status||'pendente')==='pendente' || (i.status||'')==='em_elaboracao' || (i.status||'')==='atrasada').length;
+    const concluidas = data.filter(i => (i.status||'')==='transmitida' || (i.status||'')==='validada').length;
+    document.getElementById('kpiTotal').textContent = total;
+    document.getElementById('kpiPendente').textContent = pendentes;
+    document.getElementById('kpiConcluida').textContent = concluidas;
+    let lista = data;
+    if (filtroStatus === 'pendente') lista = data.filter(i => (i.status||'pendente')==='pendente' || (i.status||'')==='em_elaboracao' || (i.status||'')==='atrasada');
+    if (filtroStatus === 'concluida') lista = data.filter(i => (i.status||'')==='transmitida' || (i.status||'')==='validada');
+    tbody.innerHTML = '';
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    for (const item of lista) {
+      const o = item.obrigacoes_fiscais || {};
+      const tr = document.createElement('tr');
+      const venc = item.data_vencimento ? new Date(item.data_vencimento + 'T00:00:00') : null;
+      const atrasado = venc && venc < hoje && (item.status||'pendente')!=='transmitida' && (item.status||'')!=='validada';
+      tr.innerHTML =
+        '<td><span class="codigo">' + (o.codigo || '—') + '</span></td>' +
+        '<td>' + (o.descricao || '—') + '</td>' +
+        '<td>' + (o.orgao || '—') + '</td>' +
+        '<td>' + item.competencia + '</td>' +
+        '<td class="' + (atrasado ? 'venc-atrasado' : '') + '">' + formatarData(item.data_vencimento) + (atrasado ? ' ⚠' : '') + '</td>' +
+        '<td><span class="status ' + (item.status || 'pendente') + '">' + (ROTULOS_STATUS[item.status] || item.status || 'Pendente') + '</span></td>' +
+        '<td class="historico" id="hist-' + item.id + '">Carregando...</td>' +
+        '<td><div class="acoes">' +
+          '<button class="btn btn-transmitir" onclick="abrirTransmissao(' + item.id + ',' + clienteId + ',\'' + item.competencia + '\',\'' + (o.codigo || '') + '\')">Transmitir</button>' +
+          '<button class="btn btn-status" onclick="mudarStatus(' + item.id + ')">Status</button>' +
+        '</div></td>';
+      tbody.appendChild(tr);
+      carregarHistorico(item.id, clienteId);
     }
+  }
 
-    async function salvarCertificado() {
-        const cid = clienteIdAtual();
-        const tipo = document.getElementById('cert_tipo').value;
-        const titular = document.getElementById('cert_titular').value.trim();
-        const data_vencimento = document.getElementById('cert_vencimento').value;
-        const senha = document.getElementById('cert_senha').value;
+  function limparKpis() { document.getElementById('kpiTotal').textContent='—'; document.getElementById('kpiPendente').textContent='—'; document.getElementById('kpiConcluida').textContent='—'; }
 
-        if(!titular || !data_vencimento) {
-            fnToast("Preencha o titular e a data de vencimento!", "error");
-            return;
-        }
+  async function carregarHistorico(calId, clienteId) {
+    const el = document.getElementById('hist-' + calId);
+    const { data } = await sb.from('transmissoes_obrigacoes').select('*').eq('cliente_id', clienteId).order('data_transmissao', { ascending: false });
+    const lista = (data || []).filter(t => t.competencia === document.getElementById('selectCompetencia').value || !document.getElementById('selectCompetencia').value);
+    if (!lista || lista.length === 0) { el.innerHTML = '<div class="item">Sem transmissões</div>'; return; }
+    el.innerHTML = lista.map(t =>
+      '<div class="item">' + formatarDataHora(t.data_transmissao) + ' · ' + (ROTULOS_STATUS[t.status] || t.status) +
+      (t.protocolo_numero ? ' · Nº ' + t.protocolo_numero : '') +
+      (t.arquivo_url ? ' · <a href="' + t.arquivo_url + '" target="_blank">Ver</a> <a href="' + t.arquivo_url + '" target="_blank" onclick="event.stopPropagation();window.print&&imprimirUrl(\'' + t.arquivo_url + '\');return false;">Imprimir</a>' : '') +
+      '</div>').join('');
+  }
 
-        const payload = { cliente_id: cid, tipo, titular, data_vencimento, senha_cofre: senha };
-        const { error } = await sb.from('cofre_certificados').insert([payload]);
+  function abrirTransmissao(calId, clienteId, competencia, codigo) {
+    contextoAtual = { calId, clienteId, competencia, codigo };
+    document.getElementById('modalInfo').textContent = 'Obrigação: ' + codigo + ' · Competência: ' + competencia;
+    document.getElementById('modalProtocolo').value = '';
+    document.getElementById('modalObs').value = '';
+    document.getElementById('modalData').value = new Date().toISOString().split('T')[0];
+    document.getElementById('modalArquivo').value = '';
+    document.getElementById('modalStatus').value = 'transmitida';
+    document.getElementById('modalTransmissao').classList.add('ativo');
+  }
+  function fecharModal() { document.getElementById('modalTransmissao').classList.remove('ativo'); }
 
-        if(error) {
-            fnToast("Erro ao guardar certificado: " + error.message, "error");
-            return;
-        }
-
-        fnToast("Certificado guardado com sucesso no cofre!");
-        limparFormCert();
-        carregarCertificados();
+  async function salvarTransmissao() {
+    if (!contextoAtual) return;
+    const status = document.getElementById('modalStatus').value;
+    const protocolo = document.getElementById('modalProtocolo').value.trim();
+    const obs = document.getElementById('modalObs').value.trim();
+    const data = document.getElementById('modalData').value;
+    const arquivo = document.getElementById('modalArquivo').files[0];
+    const responsavel = (obterUsuario() && obterUsuario().nome) || 'Administrador';
+    let arquivoUrl = null, arquivoNome = null;
+    if (arquivo) {
+      const path = contextoAtual.clienteId + '/' + contextoAtual.competencia + '/' + Date.now() + '_' + arquivo.name;
+      const { error: upErr } = await sb.storage.from('protocolos').upload(path, arquivo);
+      if (upErr) { alert('Erro ao enviar arquivo: ' + upErr.message); return; }
+      const { data: pub } = sb.storage.from('protocolos').getPublicUrl(path);
+      arquivoUrl = pub.publicUrl; arquivoNome = arquivo.name;
     }
+    const { error } = await sb.from('transmissoes_obrigacoes').insert({
+      cliente_id: contextoAtual.clienteId, competencia: contextoAtual.competencia,
+      data_transmissao: data ? new Date(data + 'T12:00:00').toISOString() : new Date().toISOString(),
+      status, protocolo_numero: protocolo, arquivo_url: arquivoUrl, arquivo_nome: arquivoNome,
+      responsavel, observacoes: obs
+    });
+    if (error) { alert('Erro ao salvar: ' + error.message); return; }
+    await sb.from('calendario_fiscal').update({ status, atualizado_em: new Date().toISOString() }).eq('id', contextoAtual.calId);
+    fecharModal();
+    await carregarCalendario();
+  }
 
-    function limparFormCert() {
-        document.getElementById('cert_id').value = '';
-        document.getElementById('cert_titular').value = '';
-        document.getElementById('cert_vencimento').value = '';
-        document.getElementById('cert_senha').value = '';
-    }
+  async function mudarStatus(calId) {
+    const opcoes = ['pendente','em_elaboracao','transmitida','validada','atrasada'];
+    const escolha = prompt('Escolha o novo status:\n\n1 - Pendente\n2 - Em elaboração\n3 - Transmitida\n4 - Validada\n5 - Atrasada\n\nDigite o número (1 a 5):');
+    if (!escolha) return;
+    const idx = parseInt(escolha, 10);
+    if (isNaN(idx) || idx < 1 || idx > 5) { alert('Opção inválida. Digite um número de 1 a 5.'); return; }
+    const novo = opcoes[idx - 1];
+    const { error } = await sb.from('calendario_fiscal').update({ status: novo, atualizado_em: new Date().toISOString() }).eq('id', calId);
+    if (error) { alert('Erro: ' + error.message); return; }
+    await carregarCalendario();
+  }
 
-    async function excluirCertificado(id) {
-        if(!confirm("Deseja remover este certificado do cofre?")) return;
-        const { error } = await sb.from('cofre_certificados').delete().eq('id', id);
-        if(error) {
-            fnToast("Erro ao excluir", "error");
-            return;
-        }
-        fnToast("Certificado removido!");
-        carregarCertificados();
-    }
+  function imprimirUrl(url) { const w = window.open(url, '_blank'); if (w) w.onload = () => w.print(); }
 
-    window.onload = function() {
-        carregarCertificados();
-    };
+  carregarEmpresas();
 </script>
+<script src="menu_dinamico.js"></script>
 </body>
 </html>
