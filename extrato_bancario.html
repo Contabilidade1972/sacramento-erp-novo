@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -17,6 +16,23 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 20px; }
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
@@ -57,7 +73,7 @@
 
         @media print {
             body { background: #fff; color: #000; }
-            header, .page-toolbar, .filtros-box, footer, button, .toast-container { display: none !important; }
+            .site-header, .page-toolbar, .filtros-box, footer, button, .toast-container { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .panel { border: none !important; box-shadow: none !important; }
         }
@@ -65,6 +81,27 @@
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <div class="container">
     <div class="page-toolbar">
@@ -84,7 +121,7 @@
         <div class="info-banco-grid">
             <div>
                 <span>Titular / Empresa</span>
-                <strong id="lblTitular">NanoSignals Nanotecnologia Diagnóstica de Precisão Inova Simples (I.S.) (61.926.954/0001-14)</strong>
+                <strong id="lblTitular">Carregando titular...</strong>
             </div>
             <div>
                 <span>Instituição</span>
@@ -101,11 +138,11 @@
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-title">Saldo Total</div>
-            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoTotal">R$ 9.833,53</div>
+            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoTotal">R$ 0,00</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Saldo Disponível</div>
-            <div class="kpi-value" style="color:var(--success);" id="kpiSaldoDisponivel">R$ 9.833,53</div>
+            <div class="kpi-value" style="color:var(--success);" id="kpiSaldoDisponivel">R$ 0,00</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Saldo Bloqueado</div>
@@ -147,10 +184,83 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function ehMaster() {
+    const u = obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+
+function clienteIdAtual() {
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+}
+
+async function inicializarPagina() {
+    const u = obterUsuario();
+    if (u) {
+        document.getElementById('userName').innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+    }
+
+    const select = document.getElementById('selectEmpresa');
+    const master = ehMaster();
+
+    if (master) {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || '2';
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        const cid = clienteIdAtual();
+        let nomeEmpresa = "Nanosignals Nanotecnologia";
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
+        } catch(e) {}
+
+        select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
+        select.value = cid;
+        select.disabled = true;
+    }
+
+    await carregarDadosEmpresa();
+    await carregarContasBancarias();
+    await carregarExtrato();
+}
+
+function trocarEmpresa() {
+    if (!ehMaster()) return;
+    const select = document.getElementById('selectEmpresa');
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarDadosEmpresa();
+    carregarContasBancarias();
+    carregarExtrato();
+}
+
+function sair() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+}
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
@@ -159,8 +269,8 @@ async function carregarDadosEmpresa(){
     if(!cid) return;
     var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
     if(data){
-        let razao = data.razao_social || data.nome_fantasia || 'NanoSignals Nanotecnologia Diagnóstica de Precisão Inova Simples (I.S.)';
-        let cnpj = data.cnpj_cpf ? ' ('+data.cnpj_cpf+')' : ' (61.926.954/0001-14)';
+        let razao = data.razao_social || data.nome_fantasia || 'Empresa';
+        let cnpj = data.cnpj_cpf ? ' ('+data.cnpj_cpf+')' : '';
         document.getElementById('lblTitular').innerText = razao + cnpj;
     }
 }
@@ -173,10 +283,9 @@ async function carregarContasBancarias(){
         contasCache = r.data || [];
         var sel=document.getElementById('filtroConta');
         sel.innerHTML='<option value="">Todas as Contas (Consolidado)</option>';
-        let saldoTotalAcumulado = 9833.53;
         contasCache.forEach(function(c){
             var nomeConta = (c.nome || c.banco || 'Conta');
-            let saldoConta = Number(c.saldo_inicial || c.saldo || 9833.53);
+            let saldoConta = Number(c.saldo_inicial || c.saldo || 0);
             var opt=document.createElement('option'); 
             opt.value = c.id; 
             opt.textContent = nomeConta + ' - Saldo: R$ ' + fmtBR(saldoConta); 
@@ -200,9 +309,9 @@ function atualizarDadosContaSelecionada(){
 
     let encontrada = contasCache.find(c => String(c.id) === String(contaId));
     if(encontrada){
-        document.getElementById('lblInstituicao').innerText = encontrada.banco || encontrada.nome || '077 - BANCO INTER S.A.';
-        document.getElementById('lblAgenciaConta').innerText = 'Ag: ' + (encontrada.agencia || '0001') + ' CC: ' + (encontrada.conta || encontrada.conta_corrente || '047318646');
-        let saldoC = Number(encontrada.saldo_inicial || encontrada.saldo || 116.13);
+        document.getElementById('lblInstituicao').innerText = encontrada.banco || encontrada.nome || 'Instituição Financeira';
+        document.getElementById('lblAgenciaConta').innerText = 'Ag: ' + (encontrada.agencia || '0001') + ' CC: ' + (encontrada.conta || encontrada.conta_corrente || '—');
+        let saldoC = Number(encontrada.saldo_inicial || encontrada.saldo || 0);
         document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(saldoC);
         document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(saldoC);
     }
@@ -219,7 +328,6 @@ async function carregarExtrato(){
     var inicio = document.getElementById('filtroInicio').value;
     var fim = document.getElementById('filtroFim').value;
 
-    // Se o usuário selecionou especificamente o Banco Inter (ou ID correspondente), carregamos os dados exatos do extrato real
     let movimentos = [
         { data: '2026-05-25', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:60701190-FERNANDA COELHO M J OLIVEIRA"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
         { data: '2026-05-26', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:90400888-ALICE FREITAS VERSIANI"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
@@ -243,7 +351,7 @@ async function carregarExtrato(){
 
     movimentos.sort((a,b) => new Date(a.data) - new Date(b.data));
 
-    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 116.13) : 9833.53;
+    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : 9833.53;
     var html = '<table class="analitica-table"><thead><tr>'+
         '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
     '</tr></thead><tbody>';
@@ -277,11 +385,7 @@ function limparFiltros(){
     carregarExtrato();
 }
 
-window.onload = async function(){
-    await carregarDadosEmpresa();
-    await carregarContasBancarias();
-    await carregarExtrato();
-};
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
