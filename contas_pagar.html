@@ -43,7 +43,7 @@
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-sair:hover { background: #b91c1c; }
 
-        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1380px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); text-decoration: none; }
@@ -65,7 +65,7 @@
 
         .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
 
         .table-container { overflow-x: auto; }
@@ -82,17 +82,21 @@
         .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
 
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 16px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 28px; }
-        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .print-header { display: none; }
 
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        @media print {
+            body { background: #fff !important; color: #000 !important; }
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; text-align: center; margin-bottom: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 10px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
     </style>
 </head>
 <body>
-<div class="toast-container" id="toastContainer"></div>
 
 <!-- CABEÇALHO PADRÃO NOVO -->
 <header class="site-header">
@@ -119,7 +123,6 @@
 <div class="container">
     <div class="page-toolbar">
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
-        <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
     </div>
 
     <!-- CARDS DE INDICADORES -->
@@ -184,8 +187,18 @@
                 </select>
             </div>
             <div>
+                <label>Centro de Custo / Projeto *</label>
+                <input type="text" id="centro_custo" class="form-control" placeholder="Ex: 1.02 - Administrativo">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+            <div>
                 <label>Descrição / Despesa / Nota Fiscal *</label>
-                <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis...">
+                <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Consultoria...">
+            </div>
+            <div>
+                <label>Conta Contábil (DRE)</label>
+                <input type="text" id="conta_contabil" class="form-control" placeholder="Ex: 2.03 - Serviços Terceiros">
             </div>
         </div>
         <div style="margin-top: 10px; display:flex; gap:10px;">
@@ -194,7 +207,64 @@
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO -->
+    <!-- RELATÓRIO OPERACIONAL COM FILTROS -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Relatório Operacional de Obrigações (Contas a Pagar)</h2>
+            <p>Emitido em: <span id="printDataEmissao">--</span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
+        </div>
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Obrigações (Contas a Pagar)</h3>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+        </div>
+        <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;">
+            <div>
+                <label>Data Início</label>
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
+            </div>
+            <div>
+                <label>Data Fim</label>
+                <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                    <option value="todos">Todos os Status</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="atrasado">Vencido / Atrasado</option>
+                    <option value="pago">Pago</option>
+                </select>
+            </div>
+            <div>
+                <label>Buscar por Nome / Descrição</label>
+                <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
+            </div>
+            <div>
+                <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Fornecedor / Favorecido</th>
+                        <th>Centro de Custo</th>
+                        <th>Conta DRE</th>
+                        <th>Descrição / NF</th>
+                        <th>Vencimento</th>
+                        <th>Valor (R$)</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRelatorioModo">
+                    <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- HISTÓRICO DE CONTAS A PAGAR -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
@@ -205,15 +275,19 @@
                     <tr>
                         <th>Código</th>
                         <th>Fornecedor / Favorecido</th>
+                        <th>Centro de Custo</th>
+                        <th>Conta DRE</th>
                         <th>Descrição / NF</th>
                         <th>Vencimento</th>
                         <th>Valor Total</th>
                         <th>Status</th>
+                        <th>Data Criação</th>
+                        <th>Última Alteração</th>
                         <th style="text-align:right;">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyContas">
-                    <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados do Supabase...</td></tr>
+                    <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -278,6 +352,7 @@ async function inicializarPagina() {
         select.disabled = true; // TRAVA DE SEGURANÇA LGPD
     }
 
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
     await carregarContas();
 }
 
@@ -309,13 +384,29 @@ async function carregarContas() {
     const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
-    contasCache = data || [];
+    let hoje = new Date().toISOString().split('T')[0];
+    contasCache = (data || []).map(t => {
+        let v = parseFloat(t.valor) || 0;
+        let st = (t.status || 'Pendente').toLowerCase();
+        let stFinal = 'pendente';
+        if (st.includes('pago') || st.includes('quitado')) {
+            stFinal = 'pago';
+        } else if (t.vencimento && t.vencimento < hoje) {
+            stFinal = 'atrasado';
+        }
+        t.valorNumerico = v;
+        t.statusSeguro = stFinal;
+        return t;
+    });
+
     renderTabela();
+    aplicarFiltrosRelatorio();
     atualizarDashboard();
+    atualizarCodigoVirtual();
 }
 
 function atualizarDashboard() {
@@ -323,13 +414,10 @@ function atualizarDashboard() {
     let hoje = new Date().toISOString().split('T')[0];
 
     contasCache.forEach(t => {
-        let st = (t.status || 'Pendente').toLowerCase();
-        let val = parseFloat(t.valor) || 0;
-        let venc = t.vencimento || '';
-
-        if (st.includes('pago') || st.includes('quitado')) {
+        let val = t.valorNumerico;
+        if (t.statusSeguro === 'pago') {
             pago += val;
-        } else if (venc && venc < hoje) {
+        } else if (t.vencimento && t.vencimento < hoje) {
             atr += val;
         } else {
             pend += val;
@@ -341,29 +429,92 @@ function atualizarDashboard() {
     document.getElementById('tot_atrasado').innerText = formatBRL(atr);
 }
 
+function aplicarFiltrosRelatorio() {
+    let dtIni = document.getElementById('filtroDataInicio').value;
+    let dtFim = document.getElementById('filtroDataFim').value;
+    let stFiltro = document.getElementById('filtroStatus').value;
+    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+
+    let dadosFiltrados = contasCache.filter(t => {
+        let dataRef = (stFiltro === 'pago' && t.data_pagamento) ? t.data_pagamento : t.vencimento;
+        if (dtIni && dataRef && dataRef < dtIni) return false;
+        if (dtFim && dataRef && dataRef > dtFim) return false;
+        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
+        if (txtBusca) {
+            let linha = (t.fornecedor_nome + ' ' + t.descricao + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
+        }
+        return true;
+    });
+
+    let infoFiltros = [];
+    if(dtIni) infoFiltros.push(`Início: ${dtIni.split('-').reverse().join('/')}`);
+    if(dtFim) infoFiltros.push(`Fim: ${dtFim.split('-').reverse().join('/')}`);
+    if(stFiltro !== 'todos') infoFiltros.push(`Status: ${stFiltro.toUpperCase()}`);
+    if(txtBusca) infoFiltros.push(`Busca: "${txtBusca}"`);
+    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+
+    const tbody = document.getElementById('tbodyRelatorioModo');
+    tbody.innerHTML = '';
+    if(dadosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado para os filtros selecionados.</td></tr>`;
+        return;
+    }
+
+    dadosFiltrados.forEach(t => {
+        let codVirtual = formatarCodigoVirtual(t.id);
+        let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
+        let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
+        tbody.innerHTML += `<tr>
+            <td><strong>${codVirtual}</strong></td>
+            <td><strong>${t.fornecedor_nome || '—'}</strong></td>
+            <td>${t.centro_custo || '—'}</td>
+            <td>${t.conta_contabil || '—'}</td>
+            <td>${t.descricao || '—'}</td>
+            <td>${dataVencFmt}</td>
+            <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
+            <td>${badgeText}</td>
+        </tr>`;
+    });
+}
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroStatus').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
+}
+
 function renderTabela() {
     const tbody = document.getElementById('tbodyContas');
     if (!contasCache.length) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada para esta empresa.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
     contasCache.forEach(t => {
-        let st = (t.status || 'Pendente').toLowerCase();
-        let badgeClass = st.includes('pago') || st.includes('quitado') ? 'badge-pago' : 'badge-pendente';
+        let badgeClass = t.statusSeguro === 'pago' ? 'badge-pago' : (t.statusSeguro === 'atrasado' ? 'badge-atrasado' : 'badge-pendente');
+        let badgeLabel = t.statusSeguro === 'pago' ? 'Pago' : (t.statusSeguro === 'atrasado' ? 'Vencido' : 'Pendente');
         let codVirtual = formatarCodigoVirtual(t.id);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
+        let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        let dataAlt = t.updated_at ? t.updated_at.split('T')[0].split('-').reverse().join('/') : '-';
 
         tbody.innerHTML += `
             <tr>
                 <td><strong>${codVirtual}</strong></td>
-                <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
+                <td><strong>${t.fornecedor_nome || '—'}</strong></td>
+                <td>${t.centro_custo || '—'}</td>
+                <td>${t.conta_contabil || '—'}</td>
                 <td>${t.descricao || '—'}</td>
                 <td>${dataVencFmt}</td>
-                <td><strong>${formatBRL(t.valor)}</strong></td>
-                <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
-                <td style="text-align:right;">
+                <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
+                <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+                <td>${dataReg}</td>
+                <td>${dataAlt}</td>
+                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;">
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
@@ -380,14 +531,16 @@ async function salvarContaPagar() {
     const vencimento = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
     const status = document.getElementById('status_edicao').value;
+    const centro_custo = document.getElementById('centro_custo').value.trim();
+    const conta_contabil = document.getElementById('conta_contabil').value.trim();
     const cliente_id = clienteIdAtual();
 
     if(!fornecedor_nome || isNaN(valor) || !vencimento) {
-        alert("Por favor, preencha os campos obrigatórios (Fornecedor, Valor e Vencimento).");
+        alert("Preencha os campos obrigatórios (Fornecedor, Valor e Vencimento).");
         return;
     }
 
-    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status };
+    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, updated_at: new Date().toISOString() };
     let res;
 
     if(id) {
@@ -410,9 +563,11 @@ window.editarConta = function(id) {
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(t.id);
     document.getElementById('cpf_cnpj_fornecedor').value = t.cpf_cnpj_fornecedor || '';
     document.getElementById('fornecedor_nome').value = t.fornecedor_nome || '';
-    document.getElementById('valor').value = t.valor || '';
+    document.getElementById('valor').value = t.valorNumerico || '';
     document.getElementById('vencimento').value = t.vencimento || '';
     document.getElementById('descricao').value = t.descricao || '';
+    document.getElementById('centro_custo').value = t.centro_custo || '';
+    document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('status_edicao').value = t.status || 'Pendente';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(t.id)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
@@ -427,10 +582,13 @@ function cancelarEdicao() {
     document.getElementById('valor').value = '';
     document.getElementById('vencimento').value = '';
     document.getElementById('descricao').value = '';
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('conta_contabil').value = '';
     document.getElementById('status_edicao').value = 'Pendente';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'none';
+    atualizarCodigoVirtual();
 }
 
 window.excluirConta = async function(id) {
