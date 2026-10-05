@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -27,7 +25,24 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .toolbar-left { display: flex; align-items: center; gap: 12px; }
@@ -95,6 +110,27 @@
     </style>
 </head>
 <body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <div class="container">
     <div class="page-toolbar">
@@ -207,12 +243,81 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let cachePagar = [];
 
+    function obterUsuario() {
+        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+    }
+
+    function ehMaster() {
+        const u = obterUsuario();
+        return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+    }
+
     function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
-        return 1;
+        const u = obterUsuario();
+        if (!u) return 1;
+        if (ehMaster()) {
+            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+            return 2; // Padrão seguro para testes se Master não selecionar
+        }
+        // SE NÃO FOR MASTER, FORÇA RIGOROSAMENTE O ID DO USUÁRIO (Nanosignals = 2 ou o registado)
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+
+    async function inicializarPagina() {
+        const u = obterUsuario();
+        if (u) {
+            document.getElementById('userName').innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+        }
+
+        const select = document.getElementById('selectEmpresa');
+        const master = ehMaster();
+
+        if (master) {
+            // MASTER VÊ TODAS AS EMPRESAS E PODE ALTERAR
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+            select.innerHTML = '';
+            if (data) {
+                data.forEach(emp => {
+                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                    select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+                });
+            }
+            const selAtual = localStorage.getItem('empresaSelecionada') || '2';
+            select.value = selAtual;
+            select.disabled = false;
+        } else {
+            // CLIENTE COMUM (EX: FERNANDA / NANOSIGNALS): VÊ UNICAMENTE A SUA EMPRESA E O SELECT FICA TRAVADO
+            const cid = clienteIdAtual();
+            let nomeEmpresa = "Nanosignals Nanotecnologia";
+            try {
+                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+                if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
+            } catch(e) {}
+
+            select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
+            select.value = cid;
+            select.disabled = true; // TRAVA ABSOLUTA LGPD
+        }
+
+        await carregarContasPagar();
+    }
+
+    function trocarEmpresa() {
+        if (!ehMaster()) return;
+        const select = document.getElementById('selectEmpresa');
+        localStorage.setItem('empresaSelecionada', select.value);
+        carregarContasPagar();
+    }
+
+    function sair() {
+        if (confirm('Deseja realmente sair?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
     }
 
     function formatBRL(v) {
@@ -222,9 +327,15 @@
     async function carregarContasPagar() {
         const cid = clienteIdAtual();
         const tbody = document.getElementById('tbodyPagar');
-        
-        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+        tbody.innerHTML = '<tr><td colspan="6" class="vazio">A carregar dados do Supabase...</td></tr>';
+
+        // Busca blindada por cliente_id
+        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`;
+            return;
+        }
 
         cachePagar = data || [];
         aplicarFiltros();
@@ -233,23 +344,30 @@
 
     function renderizar(lista) {
         const tbody = document.getElementById('tbodyPagar');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta a pagar encontrada.</td></tr>'; atualizarKpis([]); return; }
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhum registo de contas a pagar encontrado para esta empresa.</td></tr>';
+            atualizarKpis([]);
+            return;
+        }
 
         tbody.innerHTML = '';
         lista.forEach(t => {
-            const st = (t.status || 'pendente').toLowerCase();
+            const st = (t.status || 'Pendente').toLowerCase();
             const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
+            const dataVenc = t.vencimento || t.data_vencimento || '';
+            const dataFmt = dataVenc ? dataVenc.split('-').reverse().join('/') : '—';
+            
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
                     <td>${t.descricao || '—'}</td>
-                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td>${dataFmt}</td>
                     <td class="num">${formatBRL(t.valor)}</td>
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
                         <button class="btn-icon" title="Visualizar Detalhes" onclick="verDetalhes('${t.id}')"><i class="fas fa-eye"></i></button>
                         <button class="btn-icon" title="Imprimir Comprovativo" onclick="imprimirItemDireto('${t.id}')"><i class="fas fa-print"></i></button>
-                        <button class="btn-icon excluir" title="Excluir Registro" onclick="excluirConta('${t.id}')"><i class="fas fa-trash-alt"></i></button>
+                        <button class="btn-icon excluir" title="Excluir Registo" onclick="excluirConta('${t.id}')"><i class="fas fa-trash-alt"></i></button>
                     </td>
                 </tr>
             `;
@@ -258,7 +376,7 @@
     }
 
     function atualizarKpis(lista) {
-        const totalTitulos = lista.length;
+        let totalTitulos = lista.length;
         let valorAberto = 0;
         let valorPago = 0;
 
@@ -283,8 +401,9 @@
         const texto = document.getElementById('filtroTexto').value.toLowerCase();
 
         const filtrados = cachePagar.filter(t => {
-            if (inicio && t.vencimento && t.vencimento < inicio) return false;
-            if (fim && t.vencimento && t.vencimento > fim) return false;
+            const dt = t.vencimento || t.data_vencimento || '';
+            if (inicio && dt && dt < inicio) return false;
+            if (fim && dt && dt > fim) return false;
             if (texto && !(t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(texto) && !(t.descricao || '').toLowerCase().includes(texto)) return false;
             return true;
         });
@@ -321,13 +440,13 @@
         const cliente_id = clienteIdAtual();
 
         if (!fornecedor_nome || isNaN(valor) || !vencimento) {
-            alert('Por favor, preencha os campos obrigatórios (Fornecedor, Vencimento e Valor).');
+            alert('Por favor, preencha os campos obrigatórios.');
             return;
         }
 
         const { error } = await sb.from('contas_pagar').insert([{ cliente_id, fornecedor_nome, descricao, vencimento, valor, status }]);
         if (error) {
-            alert('Erro ao guardar no Supabase: ' + error.message);
+            alert('Erro ao guardar: ' + error.message);
             return;
         }
 
@@ -338,10 +457,11 @@
     function verDetalhes(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
+        const dt = t.vencimento || t.data_vencimento || '';
         document.getElementById('conteudoDetalhes').innerHTML = `
             <b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br>
             <b>Descrição:</b> ${t.descricao || '—'}<br>
-            <b>Data de Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
+            <b>Data de Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br>
             <b>Valor:</b> ${formatBRL(t.valor)}<br>
             <b>Status:</b> ${t.status || 'Pendente'}
         `;
@@ -353,7 +473,8 @@
     function imprimirItemDireto(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
-        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        const dt = t.vencimento || t.data_vencimento || '';
+        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
         dispararJanelaImpressaoItem(html);
     }
 
@@ -367,34 +488,23 @@
         const janela = window.open('', '_blank', 'width=700,height=600');
         janela.document.write(`
             <html>
-            <head>
-                <title>Comprovativo de Conta a Pagar — Sacramento ERP</title>
-                <style>
-                    body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
-                    h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
-                    .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
-                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
-                </style>
+            <head><title>Comprovativo — Sacramento ERP</title>
+            <style>body{font-family:Inter,sans-serif;padding:30px;color:#1e293b;}h2{color:#1e3a8a;border-bottom:2px solid #2563eb;padding-bottom:10px;margin-bottom:20px;font-size:18px;}.info-box{background:#f8fafc;border:1px solid #e2e8f0;padding:20px;border-radius:10px;font-size:14px;line-height:1.8;}.footer{margin-top:30px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:10px;}</style>
             </head>
-            <body>
-                <h2>Comprovativo de Conta a Pagar — Sacramento ERP</h2>
-                <div class="info-box">${conteudoHtml}</div>
-                <div class="footer">Emitido em: ${agora}</div>
-                <script>window.print();<\/script>
-            </body>
+            <body><h2>Comprovativo — Sacramento ERP</h2><div class="info-box">${conteudoHtml}</div><div class="footer">Emitido em: ${agora}</div><script>window.print();<\/script></body>
             </html>
         `);
         janela.document.close();
     }
 
     async function excluirConta(id) {
-        if (!confirm('Deseja realmente excluir esta conta a pagar?')) return;
+        if (!confirm('Deseja realmente excluir este registo?')) return;
         const { error } = await sb.from('contas_pagar').delete().eq('id', id);
         if (error) { alert('Erro ao excluir: ' + error.message); return; }
         carregarContasPagar();
     }
 
-    window.onload = carregarContasPagar;
+    window.onload = inicializarPagina;
 </script>
 </body>
 </html>
