@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -18,6 +16,23 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
@@ -64,7 +79,7 @@
 
         @media print {
             body { background: #fff; color: #000; }
-            header, nav, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
+            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
             .panel { border: none !important; box-shadow: none !important; }
         }
@@ -72,6 +87,27 @@
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <!-- MODAL CADASTRO RÁPIDO: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
@@ -205,12 +241,84 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let transferenciasCache = [];
 let contasBancariasCache = [];
 let listaParceirosCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function ehMaster() {
+    const u = obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+
+function clienteIdAtual() {
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+}
+
+async function inicializarPagina() {
+    const u = obterUsuario();
+    if (u) {
+        document.getElementById('userName').innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+    }
+
+    const select = document.getElementById('selectEmpresa');
+    const master = ehMaster();
+
+    if (master) {
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || '2';
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        const cid = clienteIdAtual();
+        let nomeEmpresa = "Nanosignals Nanotecnologia";
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
+        } catch(e) {}
+
+        select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
+        select.value = cid;
+        select.disabled = true;
+    }
+
+    carregarCombosEParceiros();
+    carregarTransferencias();
+    document.getElementById('data').value = new Date().toISOString().split('T')[0];
+}
+
+function trocarEmpresa() {
+    if (!ehMaster()) return;
+    const select = document.getElementById('selectEmpresa');
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarCombosEParceiros();
+    carregarTransferencias();
+}
+
+function sair() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+}
 
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
@@ -363,6 +471,53 @@ function renderTabelaHistorico(){
     el.innerHTML = html;
 }
 
+function aplicarFiltrosRelatorio() {
+    const inicio = document.getElementById('filtroDataInicio').value;
+    const fim = document.getElementById('filtroDataFim').value;
+    const busca = document.getElementById('filtroBusca').value.toLowerCase();
+
+    const filtradas = transferenciasCache.filter(t => {
+        if (inicio && t.data < inicio) return false;
+        if (fim && t.data > fim) return false;
+        if (busca) {
+            const origem = (t.conta_origem || '').toLowerCase();
+            const destino = (t.conta_destino || '').toLowerCase();
+            const fav = (t.favorecido_nome || '').toLowerCase();
+            if (!origem.includes(busca) && !destino.includes(busca) && !fav.includes(busca)) return false;
+        }
+        return true;
+    });
+
+    const el = document.getElementById('listaTransferencias');
+    if(!filtradas.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada com os filtros aplicados.</div>'; return; }
+
+    let html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    filtradas.forEach(t => {
+        let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
+        html += `<tr>
+            <td>${t.data}</td>
+            <td><strong>${t.conta_origem}</strong>${dest}</td>
+            <td>${t.centro_custo || '—'}</td>
+            <td>${t.observacao || '—'}</td>
+            <td style="text-align:right; font-weight:bold;">R$ ${fmtBR(t.valor)}</td>
+            <td style="text-align:right; white-space:nowrap;">
+                <button class="btn-icon" onclick='prepararEdicao(${JSON.stringify(t)})' title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon imprimir" onclick='imprimirComprovante(${JSON.stringify(t)})' title="Imprimir Comprovante"><i class="fas fa-print"></i></button>
+                <button class="btn-icon excluir" onclick='excluirMovimento(${t.id})' title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroBusca').value = '';
+    renderTabelaHistorico();
+}
+
 function prepararEdicao(t){
     document.getElementById('editId').value = t.id;
     document.getElementById('conta_origem').value = t.conta_origem || '';
@@ -450,11 +605,7 @@ window.salvarNovoCentroCusto = async function(){
     carregarCombosEParceiros();
 };
 
-window.onload = function(){
-    carregarCombosEParceiros();
-    carregarTransferencias();
-    document.getElementById('data').value = new Date().toISOString().split('T')[0];
-};
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
