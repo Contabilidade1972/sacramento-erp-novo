@@ -27,24 +27,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
-
-        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .toolbar-left { display: flex; align-items: center; gap: 12px; }
@@ -112,27 +95,6 @@
     </style>
 </head>
 <body>
-
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
 
 <div class="container">
     <div class="page-toolbar">
@@ -245,95 +207,12 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER_OBRIGATORIO = "lucianojorgesacramento@gmail.com";
     let cachePagar = [];
 
-    function obterUsuarioAtual() {
-        try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
-        return null;
-    }
-
-    function ehMasterGlobal() {
-        const u = obterUsuarioAtual();
-        return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim());
-    }
-
     function clienteIdAtual() {
-        const u = obterUsuarioAtual();
-        if (!u) return 1;
-        if (ehMasterGlobal()) {
-            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        }
-        return u.cliente_id ? parseInt(u.cliente_id) : 1;
-    }
-
-    async function inicializarPagina() {
-        const u = obterUsuarioAtual();
-        if (u) {
-            document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
-            if (!ehMasterGlobal() && u.cliente_id) {
-                localStorage.setItem('empresaSelecionada', String(u.cliente_id));
-            }
-        }
-        await carregarSeletorEmpresa();
-        await carregarContasPagar();
-    }
-
-    async function carregarSeletorEmpresa() {
-        const select = document.getElementById('selectEmpresa');
-        if (!select) return;
-
-        const u = obterUsuarioAtual();
-        const master = ehMasterGlobal();
-
-        try {
-            if (master) {
-                const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-                if (data) {
-                    select.innerHTML = '';
-                    data.forEach(emp => {
-                        const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                        const opt = document.createElement('option');
-                        opt.value = emp.id;
-                        opt.textContent = nomeEmp;
-                        select.appendChild(opt);
-                    });
-                    const cid = clienteIdAtual();
-                    if (cid) select.value = cid;
-                    select.disabled = false;
-                }
-            } else {
-                const meuClienteId = u && u.cliente_id ? parseInt(u.cliente_id) : null;
-                if (meuClienteId) {
-                    const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', meuClienteId).maybeSingle();
-                    const nomeEmp = data ? (data.nome_fantasia || data.razao_social) : ('Empresa ' + meuClienteId);
-                    
-                    // SEGURANÇA LGPD: Cliente comum vê unicamente a sua própria empresa, bloqueada no select
-                    select.innerHTML = `<option value="${meuClienteId}">${nomeEmp}</option>`;
-                    select.value = meuClienteId;
-                    localStorage.setItem('empresaSelecionada', String(meuClienteId));
-                    select.disabled = true; 
-                }
-            }
-        } catch(e) {
-            console.error("Erro ao carregar seletor de empresa:", e);
-        }
-    }
-
-    function trocarEmpresa() {
-        if (!ehMasterGlobal()) return;
-        const select = document.getElementById('selectEmpresa');
-        if (!select) return;
-        localStorage.setItem('empresaSelecionada', select.value);
-        carregarContasPagar();
-    }
-
-    function sair() {
-        if (confirm('Deseja realmente sair do sistema?')) { 
-            localStorage.removeItem('usuarioLogado'); 
-            localStorage.removeItem('empresaSelecionada'); 
-            location.href = 'login.html'; 
-        }
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
+        return 1;
     }
 
     function formatBRL(v) {
@@ -344,14 +223,8 @@
         const cid = clienteIdAtual();
         const tbody = document.getElementById('tbodyPagar');
         
-        // ORDEM CORRETA: Tenta buscar pelo campo 'vencimento', se a coluna na sua base for diferente, trata para não falhar
-        let { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        
-        if (error) {
-            // Fallback caso a coluna seja data_vencimento
-            const res2 = await sb.from('contas_pagar').select('*').eq('cliente_id', cid);
-            data = res2.data || [];
-        }
+        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
 
         cachePagar = data || [];
         aplicarFiltros();
@@ -360,20 +233,17 @@
 
     function renderizar(lista) {
         const tbody = document.getElementById('tbodyPagar');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta a pagar encontrada para esta empresa.</td></tr>'; atualizarKpis([]); return; }
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta a pagar encontrada.</td></tr>'; atualizarKpis([]); return; }
 
         tbody.innerHTML = '';
         lista.forEach(t => {
             const st = (t.status || 'pendente').toLowerCase();
             const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
-            const dataVenc = t.vencimento || t.data_vencimento || '';
-            const dataFmt = dataVenc ? dataVenc.split('-').reverse().join('/') : '—';
-            
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
                     <td>${t.descricao || '—'}</td>
-                    <td>${dataFmt}</td>
+                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
                     <td class="num">${formatBRL(t.valor)}</td>
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
@@ -413,9 +283,8 @@
         const texto = document.getElementById('filtroTexto').value.toLowerCase();
 
         const filtrados = cachePagar.filter(t => {
-            const dt = t.vencimento || t.data_vencimento || '';
-            if (inicio && dt && dt < inicio) return false;
-            if (fim && dt && dt > fim) return false;
+            if (inicio && t.vencimento && t.vencimento < inicio) return false;
+            if (fim && t.vencimento && t.vencimento > fim) return false;
             if (texto && !(t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(texto) && !(t.descricao || '').toLowerCase().includes(texto)) return false;
             return true;
         });
@@ -469,11 +338,10 @@
     function verDetalhes(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
-        const dt = t.vencimento || t.data_vencimento || '';
         document.getElementById('conteudoDetalhes').innerHTML = `
             <b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br>
             <b>Descrição:</b> ${t.descricao || '—'}<br>
-            <b>Data de Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br>
+            <b>Data de Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
             <b>Valor:</b> ${formatBRL(t.valor)}<br>
             <b>Status:</b> ${t.status || 'Pendente'}
         `;
@@ -485,8 +353,7 @@
     function imprimirItemDireto(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
-        const dt = t.vencimento || t.data_vencimento || '';
-        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
         dispararJanelaImpressaoItem(html);
     }
 
@@ -527,7 +394,7 @@
         carregarContasPagar();
     }
 
-    window.onload = inicializarPagina;
+    window.onload = carregarContasPagar;
 </script>
 </body>
 </html>
