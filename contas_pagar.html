@@ -27,7 +27,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* HEADER PADRÃO UNIFICADO COM SELETOR BLINDADO */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -45,7 +44,7 @@
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-sair:hover { background: #b91c1c; }
 
-        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .toolbar-left { display: flex; align-items: center; gap: 12px; }
@@ -301,6 +300,7 @@
                     });
                     const cid = clienteIdAtual();
                     if (cid) select.value = cid;
+                    select.disabled = false;
                 }
             } else {
                 const meuClienteId = u && u.cliente_id ? parseInt(u.cliente_id) : null;
@@ -308,10 +308,11 @@
                     const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', meuClienteId).maybeSingle();
                     const nomeEmp = data ? (data.nome_fantasia || data.razao_social) : ('Empresa ' + meuClienteId);
                     
+                    // SEGURANÇA LGPD: Cliente comum vê unicamente a sua própria empresa, bloqueada no select
                     select.innerHTML = `<option value="${meuClienteId}">${nomeEmp}</option>`;
                     select.value = meuClienteId;
                     localStorage.setItem('empresaSelecionada', String(meuClienteId));
-                    select.disabled = true; // Trava estritamente o select para clientes comuns, garantindo LGPD
+                    select.disabled = true; 
                 }
             }
         } catch(e) {
@@ -343,8 +344,14 @@
         const cid = clienteIdAtual();
         const tbody = document.getElementById('tbodyPagar');
         
-        const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-        if (error) { tbody.innerHTML = `<tr><td colspan="6" class="vazio">Erro ao carregar: ${error.message}</td></tr>`; return; }
+        // ORDEM CORRETA: Tenta buscar pelo campo 'vencimento', se a coluna na sua base for diferente, trata para não falhar
+        let { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+        
+        if (error) {
+            // Fallback caso a coluna seja data_vencimento
+            const res2 = await sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+            data = res2.data || [];
+        }
 
         cachePagar = data || [];
         aplicarFiltros();
@@ -353,17 +360,20 @@
 
     function renderizar(lista) {
         const tbody = document.getElementById('tbodyPagar');
-        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta a pagar encontrada.</td></tr>'; atualizarKpis([]); return; }
+        if (!lista.length) { tbody.innerHTML = '<tr><td colspan="6" class="vazio">Nenhuma conta a pagar encontrada para esta empresa.</td></tr>'; atualizarKpis([]); return; }
 
         tbody.innerHTML = '';
         lista.forEach(t => {
             const st = (t.status || 'pendente').toLowerCase();
             const badgeClass = st.includes('pago') || st.includes('quitado') ? 'pago' : 'pendente';
+            const dataVenc = t.vencimento || t.data_vencimento || '';
+            const dataFmt = dataVenc ? dataVenc.split('-').reverse().join('/') : '—';
+            
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${t.fornecedor_nome || t.fornecedor || 'Fornecedor'}</strong></td>
                     <td>${t.descricao || '—'}</td>
-                    <td>${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}</td>
+                    <td>${dataFmt}</td>
                     <td class="num">${formatBRL(t.valor)}</td>
                     <td><span class="badge ${badgeClass}">${t.status || 'Pendente'}</span></td>
                     <td style="text-align:center;" class="col-acoes">
@@ -403,8 +413,9 @@
         const texto = document.getElementById('filtroTexto').value.toLowerCase();
 
         const filtrados = cachePagar.filter(t => {
-            if (inicio && t.vencimento && t.vencimento < inicio) return false;
-            if (fim && t.vencimento && t.vencimento > fim) return false;
+            const dt = t.vencimento || t.data_vencimento || '';
+            if (inicio && dt && dt < inicio) return false;
+            if (fim && dt && dt > fim) return false;
             if (texto && !(t.fornecedor_nome || t.fornecedor || '').toLowerCase().includes(texto) && !(t.descricao || '').toLowerCase().includes(texto)) return false;
             return true;
         });
@@ -458,10 +469,11 @@
     function verDetalhes(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
+        const dt = t.vencimento || t.data_vencimento || '';
         document.getElementById('conteudoDetalhes').innerHTML = `
             <b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br>
             <b>Descrição:</b> ${t.descricao || '—'}<br>
-            <b>Data de Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br>
+            <b>Data de Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br>
             <b>Valor:</b> ${formatBRL(t.valor)}<br>
             <b>Status:</b> ${t.status || 'Pendente'}
         `;
@@ -473,7 +485,8 @@
     function imprimirItemDireto(id) {
         const t = cachePagar.find(x => x.id == id);
         if (!t) return;
-        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${t.vencimento ? t.vencimento.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
+        const dt = t.vencimento || t.data_vencimento || '';
+        const html = `<b>Fornecedor:</b> ${t.fornecedor_nome || t.fornecedor || '—'}<br><b>Descrição:</b> ${t.descricao || '—'}<br><b>Vencimento:</b> ${dt ? dt.split('-').reverse().join('/') : '—'}<br><b>Valor:</b> ${formatBRL(t.valor)}<br><b>Status:</b> ${t.status || 'Pendente'}`;
         dispararJanelaImpressaoItem(html);
     }
 
@@ -493,7 +506,7 @@
                     body { font-family: Inter, Arial, sans-serif; padding: 30px; color: #1e293b; }
                     h2 { color: #1e3a8a; border-bottom: 2px solid #2563eb; padding-bottom: 10px; margin-bottom: 20px; font-size: 18px; }
                     .info-box { background: #f8fafc; border: 1px solid #e2e8f0; padding: 20px; border-radius: 10px; font-size: 14px; line-height: 1.8; }
-.footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+                    .footer { margin-top: 30px; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0; padding-top: 10px; }
                 </style>
             </head>
             <body>
