@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Clientes (Master) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
+        body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
+        
+        .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;}
+        .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;min-height:80px; gap:8px;}
+        .sidebar-logo h1{font-size:12px;font-weight:700;color:#fff;}
+        .sidebar-logo span{font-size:9px;color:#93c5fd;text-transform:uppercase;}
+        .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;}
+        .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;border-left:3px solid transparent;}
+        .nav-item-left{display:flex;align-items:center;gap:12px;}
+        .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
+        .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
+
+        .main{margin-left:260px;flex:1;display:flex;flex-direction:column;width:calc(100% - 260px);}
+        .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900}
+        .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
+        .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);}
+
+        .content{padding:24px;display:flex;flex-direction:column;gap:20px;}
+        .card{background:var(--card);border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.03);padding:20px;border:1px solid var(--border)}
+        .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--bg)}
+        .card-header h3{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;color:var(--secondary)}
+        
+        .form-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:12px;margin-bottom:12px}
+        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
+        .form-control{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#fff;color:var(--text-main);}
+        .form-control:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15)}
+        
+        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;}
+        .btn-primary{background:var(--primary);color:#fff}
+        .btn-success{background:var(--success);color:#fff}
+        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-light);}
+        
+        .table-container{overflow-x:auto}
+        table{width:100%;border-collapse:collapse;font-size:13px}
+        thead th{background:var(--bg);padding:10px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
+        tbody td{padding:10px 14px;border-bottom:1px solid var(--bg);color:var(--text-main);vertical-align:middle}
+        
+        .badge{padding:4px 8px;border-radius:6px;font-weight:600;font-size:10px;text-transform:uppercase;display:inline-block;}
+        .badge-ativo{background:#d1fae5;color:#065f46}
+        .badge-aviso{background:#fef3c7;color:#d97706}
+        .badge-bloqueado{background:#fee2e2;color:#b91c1c}
+        .badge-vitalicia{background:#e0e7ff;color:#3730a3}
+
+        .mod-check{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+        .mod-check label{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-transform:none;}
+        
+        .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
+        .modal-card{background:var(--card);width:100%;max-width:700px;border-radius:8px;padding:24px;max-height:92vh;overflow-y:auto;}
+        .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
+        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;}
+        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- MODAL DE CLIENTE / LICENÇAS -->
+<div class="modal-overlay" id="modalCliente">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 id="modalClienteTitle"><i class="fas fa-building"></i> Gestão de Licença e Cliente</h3>
+            <button onclick="fecharModalCliente()" style="background:none;border:none;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="edit_cliente_id">
+        <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
+            <div>
+                <label>CNPJ / CPF *</label>
+                <input type="text" id="cli_cnpj" class="form-control" placeholder="Apenas números">
+            </div>
+            <div>
+                <label>Razão Social / Nome da Empresa *</label>
+                <input type="text" id="cli_razao_social" class="form-control" placeholder="Nome corporativo">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+            <div>
+                <label>E-mail do Administrador *</label>
+                <input type="email" id="cli_email" class="form-control" placeholder="admin@empresa.com">
+            </div>
+            <div>
+                <label>Telefone / WhatsApp</label>
+                <input type="text" id="cli_telefone" class="form-control" placeholder="(00) 00000-0000">
+            </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+            <div>
+                <label>Plano Contratado</label>
+                <select id="cli_plano" class="form-control">
+                    <option value="basico">Básico (Módulos Essenciais)</option>
+                    <option value="pro">Pro (Intermediário)</option>
+                    <option value="completo">Completo (Todos os Módulos)</option>
+                </select>
+            </div>
+            <div>
+                <label>Data de Vencimento Mensal</label>
+                <input type="date" id="cli_vencimento" class="form-control">
+            </div>
+            <div>
+                <label>Status Financeiro / Licença</label>
+                <select id="cli_status" class="form-control">
+                    <option value="ativo">Ativo (Regular)</option>
+                    <option value="aviso">Em Aviso Prévio (Atrasado)</option>
+                    <option value="bloqueado">Bloqueado por Inadimplência</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:600;">
+                <input type="checkbox" id="cli_vitalicia" style="width:16px;height:16px;accent-color:var(--primary);">
+                Licença Vitalícia / Isenta de Vencimento Mensal
+            </label>
+        </div>
+        <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn btn-outline" onclick="fecharModalCliente()">Cancelar</button>
+            <button class="btn btn-primary" onclick="salvarCliente()"><i class="fas fa-save"></i> Salvar Licença e Cliente</button>
+        </div>
+    </div>
+</div>
+
+<!-- MENU LATERAL -->
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div>
+            <h1>Sacramento ERP</h1>
+            <span>Painel Master</span>
+        </div>
+    </div>
+    <div class="nav-section">Controle Master</div>
+    <div class="nav-item active" onclick="location.href='clientes_contratantes.html'"><div class="nav-item-left"><i class="fas fa-building"></i> <span>Gestão de Clientes</span></div></div>
+    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-home"></i> <span>Voltar ao Dashboard</span></div></div>
+</aside>
+
+<main class="main">
+    <header class="header">
+        <div class="header-title">Gestão de Licenças e Clientes Contratantes</div>
+        <div class="header-right">
+            <span id="userInfo">Master</span>
+            <button class="btn" style="background:var(--danger);color:#fff;padding:6px 12px;font-size:11px;" onclick="sair()">Sair</button>
+        </div>
+    </header>
+
+    <div class="content">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="fas fa-key"></i> Licenciamento e Empresas Ativas</h3>
+                <button class="btn btn-primary" onclick="abrirModalCliente()"><i class="fas fa-plus"></i> Novo Cliente / Licença</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Empresa / Razão Social</th>
+                            <th>CNPJ</th>
+                            <th>Plano</th>
+                            <th>Vencimento</th>
+                            <th>Status da Licença</th>
+                            <th style="text-align:right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyClientes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+let clientesCache = [];
+
+function toast(msg, type='success'){
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if(!c) { c = document.createElement('div'); c.id = 'toastContainer'; document.body.appendChild(c); }
+    x.className = 'toast '+type; x.innerHTML = msg; c.appendChild(x);
+    setTimeout(function(){ x.remove(); }, 3000);
+}
+
+function obterUsuarioAtual() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function sair() {
+    localStorage.removeItem('usuarioLogado');
+    location.href = 'login.html';
+}
+
+async function carregarClientes() {
+    const { data, error } = await sb.from('clientes_contratantes').select('*').order('id', { ascending: false });
+    if(error) { toast("Erro ao carregar clientes: " + error.message, "error"); return; }
+    clientesCache = data || [];
+    renderTabela();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyClientes');
+    tbody.innerHTML = '';
+    if(clientesCache.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:var(--text-light);">Nenhum cliente contratante cadastrado.</td></tr>`;
+        return;
+    }
+    clientesCache.forEach(c => {
+        let statusBadge = '<span class="badge badge-ativo">Ativo</span>';
+        let st = (c.status || 'ativo').toLowerCase();
+        if(c.vitalicia) {
+            statusBadge = '<span class="badge badge-vitalicia">Vitalícia</span>';
+        } else if(st === 'aviso') {
+            statusBadge = '<span class="badge badge-aviso">Em Aviso Prévio</span>';
+        } else if(st === 'bloqueado') {
+            statusBadge = '<span class="badge badge-bloqueado">Bloqueado</span>';
+        }
+
+        tbody.innerHTML += `<tr>
+            <td><strong>#${c.id}</strong></td>
+            <td><strong>${c.razao_social || c.nome_fantasia || 'Empresa'}</strong></td>
+            <td>${c.cnpj_cpf || '-'}</td>
+            <td style="text-transform:uppercase; font-weight:600;">${c.plano || 'padrão'}</td>
+            <td>${c.data_vencimento ? c.data_vencimento.split('-').reverse().join('/') : 'Não definida'}</td>
+            <td>${statusBadge}</td>
+            <td style="text-align:right;">
+                <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editarCliente(${c.id})"><i class="fas fa-edit"></i> Editar Licença</button>
+            </td>
+        </tr>`;
+    });
+}
+
+function abrirModalCliente() {
+    document.getElementById('edit_cliente_id').value = '';
+    document.getElementById('cli_cnpj').value = '';
+    document.getElementById('cli_razao_social').value = '';
+    document.getElementById('cli_email').value = '';
+    document.getElementById('cli_telefone').value = '';
+    document.getElementById('cli_plano').value = 'basico';
+    document.getElementById('cli_vencimento').value = '';
+    document.getElementById('cli_status').value = 'ativo';
+    document.getElementById('cli_vitalicia').checked = false;
+    document.getElementById('modalClienteTitle').innerHTML = '<i class="fas fa-building"></i> Novo Cliente Contratante';
+    document.getElementById('modalCliente').style.display = 'flex';
+}
+
+function fecharModalCliente() {
+    document.getElementById('modalCliente').style.display = 'none';
+}
+
+function editarCliente(id) {
+    let c = clientesCache.find(x => x.id === id);
+    if(!c) return;
+    document.getElementById('edit_cliente_id').value = c.id;
+    document.getElementById('cli_cnpj').value = c.cnpj_cpf || '';
+    document.getElementById('cli_razao_social').value = c.razao_social || c.nome_fantasia || '';
+    document.getElementById('cli_email').value = c.email || '';
+    document.getElementById('cli_telefone').value = c.telefone || '';
+    document.getElementById('cli_plano').value = c.plano || 'basico';
+    document.getElementById('cli_vencimento').value = c.data_vencimento || '';
+    document.getElementById('cli_status').value = c.status || 'ativo';
+    document.getElementById('cli_vitalicia').checked = !!c.vitalicia;
+    document.getElementById('modalClienteTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Licença (#${c.id})`;
+    document.getElementById('modalCliente').style.display = 'flex';
+}
+
+async function salvarCliente() {
+    const id = document.getElementById('edit_cliente_id').value;
+    const cnpj_cpf = document.getElementById('cli_cnpj').value.trim();
+    const razao_social = document.getElementById('cli_razao_social').value.trim();
+    const email = document.getElementById('cli_email').value.trim();
+    const telefone = document.getElementById('cli_telefone').value.trim();
+    const plano = document.getElementById('cli_plano').value;
+    const data_vencimento = document.getElementById('cli_vencimento').value;
+    const status = document.getElementById('cli_status').value;
+    const vitalicia = document.getElementById('cli_vitalicia').checked;
+
+    if(!razao_social || !email) {
+        toast("Preencha a Razão Social e o E-mail!", "error");
+        return;
+    }
+
+    let payload = { razao_social, nome_fantasia: razao_social, cnpj_cpf, email, telefone, plano, data_vencimento, status, vitalicia };
+    let res;
+
+    if(id) {
+        res = await sb.from('clientes_contratantes').update(payload).eq('id', id);
+    } else {
+        res = await sb.from('clientes_contratantes').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar cliente: " + res.error.message, "error");
+        return;
+    }
+
+    toast(id ? "Licença atualizada com sucesso!" : "Cliente cadastrado com sucesso!");
+    fecharModalCliente();
+    carregarClientes();
+}
+
+window.onload = function() {
+    let u = obterUsuarioAtual();
+    if(!u) { location.href = 'login.html'; return; }
+    document.getElementById('userInfo').innerText = u.nome || u.email;
+    carregarClientes();
+};
+</script>
+</body>
+</html>
