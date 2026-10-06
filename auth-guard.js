@@ -31,7 +31,7 @@
 
     const ehMaster = Boolean(usuario.email && usuario.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 
-    // 2. Trava de Segurança Multi-Tenant Absoluta: Se não for Master, força o cliente_id da própria empresa
+    // 2. Trava de Segurança Multi-Tenant Absoluta: Se não for Master, força estritamente o seu próprio cliente_id
     if (!ehMaster) {
         if (!usuario.cliente_id) {
             alert("Acesso negado: Utilizador sem empresa vinculada.");
@@ -39,16 +39,59 @@
             window.location.href = 'login.html';
             return;
         }
-        // Trava absoluta no cache para impedir qualquer adulteração de tenant
         localStorage.setItem('empresaSelecionada', String(usuario.cliente_id));
     }
 
-    // O utilizador Master tem passe livre nas rotas administrativas
+    // 3. Ajuste automático do Cabeçalho e Nome do Utilizador ao carregar o DOM
+    window.addEventListener('DOMContentLoaded', async () => {
+        // Exibe o nome real do utilizador no cabeçalho
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (usuario.nome || usuario.email || 'Utilizador').split('@')[0];
+        }
+
+        // Se NÃO for Master, remove ou bloqueia rigorosamente o seletor de empresas em qualquer página
+        if (!ehMaster) {
+            const seletores = document.querySelectorAll('#selectEmpresa, #selectEmpresaHeader, .empresa-selector');
+            seletores.forEach(sel => {
+                if (sel) {
+                    // Substitui o seletor por um bloco estático contendo apenas a empresa autorizada do utilizador
+                    let parent = sel.closest('.empresa-selector') || sel.parentElement;
+                    if (parent) {
+                        parent.innerHTML = `<span style="font-size:12px; font-weight:600; color:#fff; display:flex; align-items:center; gap:6px;"><i class="fas fa-building" style="color:#93c5fd;"></i> Empresa Licenciada</span>`;
+                    } else {
+                        sel.style.display = 'none';
+                    }
+                }
+            });
+        } else {
+            // Se for Master, garante o funcionamento do seletor nas páginas que o utilizarem
+            const select = document.getElementById('selectEmpresa') || document.getElementById('selectEmpresaHeader');
+            if (select && typeof supabase !== 'undefined') {
+                try {
+                    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+                    const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+                    if (data) {
+                        select.innerHTML = '';
+                        data.forEach(emp => {
+                            const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                            select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+                        });
+                        const selAtual = localStorage.getItem('empresaSelecionada') || String(usuario.cliente_id);
+                        select.value = selAtual;
+                    }
+                } catch(err) {
+                    console.error("Erro ao carregar empresas para o Master:", err);
+                }
+            }
+        }
+    });
+
     if (ehMaster) {
         return;
     }
 
-    // 3. Validação de Licença e Inadimplência via Supabase para Empresas Comuns
+    // 4. Validação de Licença e Inadimplência via Supabase para Empresas Comuns
     try {
         if (typeof supabase === 'undefined') {
             console.error("Supabase SDK não carregado.");
@@ -74,7 +117,6 @@
         let diaVenc = parseInt(cliente.dia_vencimento || 10);
         let diffDias = diaAtual - diaVenc;
 
-        // Bloqueio por Inadimplência (mais de 15 dias após o vencimento)
         if (diffDias > 15 || (cliente.status && cliente.status.toLowerCase() === 'bloqueado')) {
             document.body.innerHTML = `
                 <div style="font-family:'Inter',sans-serif; background:#0f172a; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
@@ -96,7 +138,6 @@
             throw new Error("Sistema bloqueado por inadimplência.");
         }
 
-        // Aviso Prévio (entre 3 e 15 dias após o vencimento)
         if (diffDias >= 3 && diffDias <= 15) {
             window.addEventListener('DOMContentLoaded', () => {
                 let avisoDiv = document.createElement('div');
