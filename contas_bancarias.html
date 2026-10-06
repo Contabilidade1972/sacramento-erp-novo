@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -53,13 +54,11 @@
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
 
-        /* KPIs Superiores */
         .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
         .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 8px; }
         .kpi-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
         .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
 
-        /* Barra de Filtros */
         .filter-bar {
             background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 24px;
             display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0,0,0,0.02);
@@ -124,7 +123,7 @@
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
+            <span id="userName">Utilizador</span>
         </div>
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -250,15 +249,20 @@
         if (!u) return 1;
         if (ehMaster()) {
             try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-            return 2;
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
         }
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        // Trava LGPD: Retorna estritamente o ID da empresa do utilizador comum
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
 
     async function inicializarPagina() {
         const u = obterUsuario();
         if (u) {
-            document.getElementById('userName').innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+            // Exibe o nome correto do utilizador no cabeçalho
+            const elUserName = document.getElementById('userName');
+            if (elUserName) {
+                elUserName.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+            }
         }
 
         const select = document.getElementById('selectEmpresa');
@@ -273,12 +277,12 @@
                     select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
                 });
             }
-            const selAtual = localStorage.getItem('empresaSelecionada') || '2';
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
             select.value = selAtual;
             select.disabled = false;
         } else {
             const cid = clienteIdAtual();
-            let nomeEmpresa = "Nanosignals Nanotecnologia";
+            let nomeEmpresa = "Empresa Licenciada";
             try {
                 const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
                 if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
@@ -286,7 +290,7 @@
 
             select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
             select.value = cid;
-            select.disabled = true;
+            select.disabled = true; // Trava absoluta LGPD
         }
 
         await carregarBancos();
