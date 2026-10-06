@@ -26,7 +26,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO NOVO COM SEGURANÇA MULTI-TENANT */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -52,14 +51,12 @@
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
 
-        /* CARDS / KPIS */
         .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 16px; }
         .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
         .dash-card h4 { font-size: 11px; color: var(--text-light); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .dash-card .value { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
 
-        /* FORMULÁRIO E CARDS */
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
         .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
@@ -99,7 +96,6 @@
 </head>
 <body>
 
-<!-- CABEÇALHO PADRÃO NOVO COM SEGURANÇA MULTI-TENANT -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
@@ -115,7 +111,7 @@
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Utilizador</span>
+            <span id="userName">Usuário</span>
         </div>
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -126,7 +122,6 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- CARDS DE INDICADORES -->
     <div class="dash-cards">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
@@ -151,7 +146,6 @@
         </div>
     </div>
 
-    <!-- FORMULÁRIO DE LANÇAMENTO -->
     <div class="card">
         <div class="card-header">
             <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar</h3>
@@ -208,7 +202,6 @@
         </div>
     </div>
 
-    <!-- RELATÓRIO OPERACIONAL COM FILTROS -->
     <div class="card" id="cardRelatorioModo">
         <div class="print-header">
             <h2>Relatório Operacional de Obrigações (Contas a Pagar)</h2>
@@ -265,7 +258,6 @@
         </div>
     </div>
 
-    <!-- HISTÓRICO DE CONTAS A PAGAR -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
@@ -309,53 +301,50 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
+// BLINDAGEM LGPD DEFINITIVA: Se não for master, retorna unicamente o cliente_id da sessão do utilizador
 function clienteIdAtual() {
     const u = obterUsuario();
-    if (!u) return 1;
+    if (!u) return null;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        return u.cliente_id ? parseInt(u.cliente_id) : null;
     }
-    // Trava LGPD: Retorna estritamente o ID da empresa do utilizador comum
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
 }
 
 async function inicializarPagina() {
     const u = obterUsuario();
-    if (u) {
-        // Exibe o nome correto do utilizador logado no cabeçalho
+    if (!u) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    if (u.email) {
         const elUserName = document.getElementById('userName');
         if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
         }
     }
 
     const select = document.getElementById('selectEmpresa');
+    const boxSeletor = document.getElementById('boxSeletorEmpresa');
     const master = ehMaster();
 
     if (master) {
+        if (boxSeletor) boxSeletor.style.display = 'flex';
         const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        if (data) {
+        if (select && data) {
+            select.innerHTML = '';
             data.forEach(emp => {
                 const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(u.cliente_id || '1');
+            select.value = selAtual;
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
     } else {
-        const cid = clienteIdAtual();
-        let nomeEmpresa = "Empresa Licenciada";
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
-        } catch(e) {}
-
-        select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
-        select.value = cid;
-        select.disabled = true; // Trava absoluta LGPD: Impede troca de empresa
+        // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas para utilizadores comuns
+        if (boxSeletor) boxSeletor.style.display = 'none';
     }
 
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
@@ -365,8 +354,10 @@ async function inicializarPagina() {
 function trocarEmpresa() {
     if (!ehMaster()) return;
     const select = document.getElementById('selectEmpresa');
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarContas();
+    if (select) {
+        localStorage.setItem('empresaSelecionada', select.value);
+        carregarContas();
+    }
 }
 
 function sair() {
@@ -397,6 +388,11 @@ function atualizarCodigoVirtual() {
 
 async function carregarContas() {
     const cid = clienteIdAtual();
+    if (!cid) {
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro: Cliente não identificado.</td></tr>`;
+        return;
+    }
+
     const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
