@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -111,7 +110,7 @@
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
+            <span id="userName">Utilizador</span>
         </div>
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -301,7 +300,7 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
-// BLINDAGEM LGPD DEFINITIVA: Se não for master, retorna unicamente o cliente_id da sessão do utilizador
+// TRAVA DE SEGURANÇA LGPD NATIVA E INFALÍVEL
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return null;
@@ -309,21 +308,21 @@ function clienteIdAtual() {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : null;
     }
+    // Utilizador comum: força unicamente o ID da sua própria empresa
     return u.cliente_id ? parseInt(u.cliente_id) : null;
 }
 
 async function inicializarPagina() {
     const u = obterUsuario();
-    if (!u) {
+    if (!u || !u.email) {
         window.location.href = 'login.html';
         return;
     }
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
+    // Exibe o nome correto do utilizador no topo
+    const elUserName = document.getElementById('userName');
+    if (elUserName) {
+        elUserName.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
     }
 
     const select = document.getElementById('selectEmpresa');
@@ -343,7 +342,7 @@ async function inicializarPagina() {
             select.value = selAtual;
         }
     } else {
-        // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas para utilizadores comuns
+        // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas no HTML para utilizadores comuns
         if (boxSeletor) boxSeletor.style.display = 'none';
     }
 
