@@ -31,7 +31,7 @@
 
     const ehMaster = Boolean(usuario.email && usuario.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 
-    // 2. Trava de Segurança Multi-Tenant: Se não for Master, força estritamente o seu próprio cliente_id
+    // 2. Trava de Segurança Multi-Tenant Absoluta: Se não for Master, força o cliente_id da própria empresa
     if (!ehMaster) {
         if (!usuario.cliente_id) {
             alert("Acesso negado: Utilizador sem empresa vinculada.");
@@ -39,7 +39,7 @@
             window.location.href = 'login.html';
             return;
         }
-        // Trava de segurança no cache para impedir qualquer adulteração de tenant por inspect/localStorage
+        // Trava absoluta no cache para impedir qualquer adulteração de tenant
         localStorage.setItem('empresaSelecionada', String(usuario.cliente_id));
     }
 
