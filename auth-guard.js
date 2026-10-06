@@ -1,20 +1,19 @@
 /**
- * Sacramento ERP — Auth Guard & Motor de Segurança Financeira (Multi-Tenant)
- * Protege as rotas, valida sessões e aplica o bloqueio automático por inadimplência.
+ * Sacramento ERP — Auth Guard & Motor de Isolamento Multi-Tenant Absoluto (LGPD)
+ * Protege rotas, valida sessões, impede vazamento de dados e aplica o bloqueio por inadimplência.
  */
 
 (async function () {
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     const paginaAtual = window.location.pathname.split("/").pop();
 
-    // Páginas públicas que não exigem verificação de login
+    // Páginas públicas que não exigem autenticação
     const paginasPublicas = ['login.html', 'cadastro.html', 'recuperar.html'];
-
     if (paginasPublicas.includes(paginaAtual)) {
-        return; // Permite acesso livre às páginas públicas
+        return;
     }
 
-    // 1. Validação de Sessão do Utilizador
+    // 1. Validação estrita de Sessão do Utilizador
     let usuarioStr = localStorage.getItem('usuarioLogado');
     if (!usuarioStr) {
         window.location.href = 'login.html';
@@ -30,34 +29,35 @@
         return;
     }
 
-    // O utilizador Master tem passe livre em todas as rotas e validações financeiras
-    if (usuario.email && usuario.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim()) {
+    const ehMaster = Boolean(usuario.email && usuario.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+
+    // 2. Trava de Segurança Multi-Tenant: Se não for Master, força estritamente o seu próprio cliente_id
+    if (!ehMaster) {
+        if (!usuario.cliente_id) {
+            alert("Acesso negado: Utilizador sem empresa vinculada.");
+            localStorage.removeItem('usuarioLogado');
+            window.location.href = 'login.html';
+            return;
+        }
+        // Trava de segurança no cache para impedir qualquer adulteração de tenant por inspect/localStorage
+        localStorage.setItem('empresaSelecionada', String(usuario.cliente_id));
+    }
+
+    // O utilizador Master tem passe livre nas rotas administrativas
+    if (ehMaster) {
         return;
     }
 
-    // 2. Validação e Conexão com o Supabase para Checagem de Licença
+    // 3. Validação de Licença e Inadimplência via Supabase para Empresas Comuns
     try {
         if (typeof supabase === 'undefined') {
             console.error("Supabase SDK não carregado.");
             return;
         }
 
-        // URL e Chave pública do projeto Supabase
         const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-        
-        // Identifica o ID da empresa do utilizador logado
-        let clienteId = usuario.cliente_id;
-        if (!clienteId) {
-            // Tenta resgatar da seleção salva em cache
-            let sel = localStorage.getItem('empresaSelecionada');
-            if (sel) clienteId = parseInt(sel);
-        }
+        let clienteId = parseInt(usuario.cliente_id);
 
-        if (!clienteId) {
-            return; // Se não houver vínculo de empresa, prossegue com cautela
-        }
-
-        // Consulta a tabela de clientes contratantes para verificar a licença e status
         let { data: cliente, error } = await sb.from('clientes_contratantes').select('*').eq('id', clienteId).maybeSingle();
 
         if (error || !cliente) {
@@ -65,20 +65,16 @@
             return;
         }
 
-        // Se a licença for vitalícia, o acesso é liberado permanentemente
         if (cliente.vitalicia) {
             return;
         }
 
-        // Cálculo dinâmico do status financeiro com base no dia do vencimento mensal
         let hoje = new Date();
         let diaAtual = hoje.getDate();
         let diaVenc = parseInt(cliente.dia_vencimento || 10);
-        
-        // Simulação de diferença de dias para o vencimento
         let diffDias = diaAtual - diaVenc;
 
-        // Regra 1: Bloqueio por Inadimplência (mais de 15 dias após o vencimento)
+        // Bloqueio por Inadimplência (mais de 15 dias após o vencimento)
         if (diffDias > 15 || (cliente.status && cliente.status.toLowerCase() === 'bloqueado')) {
             document.body.innerHTML = `
                 <div style="font-family:'Inter',sans-serif; background:#0f172a; color:#fff; height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px;">
@@ -89,7 +85,7 @@
                             O acesso da empresa <strong>${cliente.razao_social || 'Contratante'}</strong> encontra-se temporariamente suspenso devido a pendências financeiras na fatura mensal (Vencimento dia ${diaVenc}).
                         </p>
                         <div style="background:#0f172a; padding:16px; border-radius:8px; font-size:13px; color:#cbd5e1; margin-bottom:24px; border-left:4px solid #ef4444;">
-                            Regularize a sua situação com o desenvolvedor / suporte para restabelecer o acesso imediato ao sistema.
+                            Regularize a sua situação junto ao suporte para restabelecer o acesso imediato ao sistema.
                         </div>
                         <button onclick="localStorage.removeItem('usuarioLogado'); location.href='login.html';" style="background:#2563eb; color:#fff; border:none; padding:10px 20px; border-radius:8px; font-weight:700; cursor:pointer; font-size:13px;">
                             <i class="fas fa-sign-out-alt"></i> Voltar ao Login
@@ -100,19 +96,19 @@
             throw new Error("Sistema bloqueado por inadimplência.");
         }
 
-        // Regra 2: Aviso Prévio (entre 3 e 15 dias após o vencimento)
+        // Aviso Prévio (entre 3 e 15 dias após o vencimento)
         if (diffDias >= 3 && diffDias <= 15) {
             window.addEventListener('DOMContentLoaded', () => {
                 let avisoDiv = document.createElement('div');
                 avisoDiv.style.cssText = "background:#fef3c7; color:#92400e; padding:10px 20px; font-size:13px; font-weight:600; text-align:center; border-bottom:1px solid #fde68a; position:sticky; top:0; z-index:9999; display:flex; justify-content:center; align-items:center; gap:8px;";
-                avisoDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Atenção: Identificamos uma fatura em aberto com vencimento em ${diaVenc} deste mês. Evite o bloqueio regularizando o pagamento junto ao suporte.`;
+                avisoDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Atenção: Identificamos uma fatura em aberto com vencimento em ${diaVenc} deste mês. Evite o bloqueio regularizando o pagamento.`;
                 document.body.prepend(avisoDiv);
             });
         }
 
     } catch (e) {
         if (e.message === "Sistema bloqueado por inadimplência.") {
-            throw e; // Interrompe a execução normal da página
+            throw e;
         }
         console.error("Erro no motor de verificação de segurança:", e);
     }
