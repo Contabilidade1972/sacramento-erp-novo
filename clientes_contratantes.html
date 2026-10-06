@@ -53,9 +53,6 @@
         .badge-bloqueado{background:#fee2e2;color:#b91c1c}
         .badge-vitalicia{background:#e0e7ff;color:#3730a3}
 
-        .mod-check{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
-        .mod-check label{display:flex;align-items:center;gap:6px;background:var(--bg);border:1px solid var(--border);padding:6px 10px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;text-transform:none;}
-        
         .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
         .modal-card{background:var(--card);width:100%;max-width:700px;border-radius:8px;padding:24px;max-height:92vh;overflow-y:auto;}
         .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px}
@@ -105,12 +102,19 @@
                 </select>
             </div>
             <div>
-                <label>Data de Vencimento Mensal</label>
-                <input type="date" id="cli_vencimento" class="form-control">
+                <label>Dia do Vencimento Mensal</label>
+                <select id="cli_dia_vencimento" class="form-control">
+                    <option value="5">Dia 05</option>
+                    <option value="10" selected>Dia 10</option>
+                    <option value="15">Dia 15</option>
+                    <option value="20">Dia 20</option>
+                    <option value="25">Dia 25</option>
+                    <option value="30">Dia 30</option>
+                </select>
             </div>
             <div>
-                <label>Status Financeiro / Licença</label>
-                <select id="cli_status" class="form-control">
+                <label>Status Financeiro (Automático)</label>
+                <select id="cli_status" class="form-control" disabled style="background:var(--bg); font-weight:bold;">
                     <option value="ativo">Ativo (Regular)</option>
                     <option value="aviso">Em Aviso Prévio (Atrasado)</option>
                     <option value="bloqueado">Bloqueado por Inadimplência</option>
@@ -119,7 +123,7 @@
         </div>
         <div style="margin-bottom:12px;">
             <label style="display:flex;align-items:center;gap:8px;text-transform:none;font-size:13px;font-weight:600;">
-                <input type="checkbox" id="cli_vitalicia" style="width:16px;height:16px;accent-color:var(--primary);">
+                <input type="checkbox" id="cli_vitalicia" style="width:16px;height:16px;accent-color:var(--primary);" onchange="alternarVitalicia()">
                 Licença Vitalícia / Isenta de Vencimento Mensal
             </label>
         </div>
@@ -166,7 +170,7 @@
                             <th>Empresa / Razão Social</th>
                             <th>CNPJ</th>
                             <th>Plano</th>
-                            <th>Vencimento</th>
+                            <th>Vencimento Mensal</th>
                             <th>Status da Licença</th>
                             <th style="text-align:right;">Ações</th>
                         </tr>
@@ -199,10 +203,39 @@ function sair() {
     location.href = 'login.html';
 }
 
+function calcularStatusAutomatico(diaVenc, vitalicia) {
+    if(vitalicia) return 'ativo';
+    
+    let hoje = new Date();
+    let diaAtual = hoje.getDate();
+    let mesAtual = hoje.getMonth();
+    let anoAtual = hoje.getFullYear();
+    
+    let vencimento = new Date(anoAtual, mesAtual, parseInt(diaVenc || 10));
+    let diffDias = Math.floor((hoje - vencimento) / (1000 * 60 * 60 * 24));
+    
+    if(diffDias < 0) {
+        return 'ativo'; // Ainda não venceu este mês
+    } else if(diffDias >= 0 && diffDias <= 3) {
+        return 'ativo'; // Tolerância inicial de 3 dias
+    } else if(diffDias > 3 && diffDias <= 15) {
+        return 'aviso'; // Entre 3 e 15 dias de atraso: Aviso Prévio
+    } else {
+        return 'bloqueado'; // Mais de 15 dias de atraso: Bloqueio automático por inadimplência
+    }
+}
+
 async function carregarClientes() {
     const { data, error } = await sb.from('clientes_contratantes').select('*').order('id', { ascending: false });
     if(error) { toast("Erro ao carregar clientes: " + error.message, "error"); return; }
-    clientesCache = data || [];
+    
+    // Atualiza status automáticos baseados na data se necessário
+    clientesCache = (data || []).map(c => {
+        if(!c.vitalicia) {
+            c.status = calcularStatusAutomatico(c.dia_vencimento || 10, c.vitalicia);
+        }
+        return c;
+    });
     renderTabela();
 }
 
@@ -214,14 +247,14 @@ function renderTabela() {
         return;
     }
     clientesCache.forEach(c => {
-        let statusBadge = '<span class="badge badge-ativo">Ativo</span>';
+        let statusBadge = '<span class="badge badge-ativo">Ativo (Regular)</span>';
         let st = (c.status || 'ativo').toLowerCase();
         if(c.vitalicia) {
-            statusBadge = '<span class="badge badge-vitalicia">Vitalícia</span>';
+            statusBadge = '<span class="badge badge-vitalicia">Vitalícia / Isenta</span>';
         } else if(st === 'aviso') {
             statusBadge = '<span class="badge badge-aviso">Em Aviso Prévio</span>';
         } else if(st === 'bloqueado') {
-            statusBadge = '<span class="badge badge-bloqueado">Bloqueado</span>';
+            statusBadge = '<span class="badge badge-bloqueado">Bloqueado por Inadimplência</span>';
         }
 
         tbody.innerHTML += `<tr>
@@ -229,13 +262,26 @@ function renderTabela() {
             <td><strong>${c.razao_social || c.nome_fantasia || 'Empresa'}</strong></td>
             <td>${c.cnpj_cpf || '-'}</td>
             <td style="text-transform:uppercase; font-weight:600;">${c.plano || 'padrão'}</td>
-            <td>${c.data_vencimento ? c.data_vencimento.split('-').reverse().join('/') : 'Não definida'}</td>
+            <td>Dia ${c.dia_vencimento || 10} de cada mês</td>
             <td>${statusBadge}</td>
             <td style="text-align:right;">
                 <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editarCliente(${c.id})"><i class="fas fa-edit"></i> Editar Licença</button>
             </td>
         </tr>`;
     });
+}
+
+function alternarVitalicia() {
+    let vit = document.getElementById('cli_vitalicia').checked;
+    let statusSel = document.getElementById('cli_status');
+    if(vit) {
+        statusSel.value = 'ativo';
+        statusSel.disabled = true;
+    } else {
+        statusSel.disabled = false;
+        let dia = document.getElementById('cli_dia_vencimento').value;
+        statusSel.value = calcularStatusAutomatico(dia, false);
+    }
 }
 
 function abrirModalCliente() {
@@ -245,9 +291,9 @@ function abrirModalCliente() {
     document.getElementById('cli_email').value = '';
     document.getElementById('cli_telefone').value = '';
     document.getElementById('cli_plano').value = 'basico';
-    document.getElementById('cli_vencimento').value = '';
-    document.getElementById('cli_status').value = 'ativo';
+    document.getElementById('cli_dia_vencimento').value = '10';
     document.getElementById('cli_vitalicia').checked = false;
+    alternarVitalicia();
     document.getElementById('modalClienteTitle').innerHTML = '<i class="fas fa-building"></i> Novo Cliente Contratante';
     document.getElementById('modalCliente').style.display = 'flex';
 }
@@ -265,9 +311,9 @@ function editarCliente(id) {
     document.getElementById('cli_email').value = c.email || '';
     document.getElementById('cli_telefone').value = c.telefone || '';
     document.getElementById('cli_plano').value = c.plano || 'basico';
-    document.getElementById('cli_vencimento').value = c.data_vencimento || '';
-    document.getElementById('cli_status').value = c.status || 'ativo';
+    document.getElementById('cli_dia_vencimento').value = c.dia_vencimento || '10';
     document.getElementById('cli_vitalicia').checked = !!c.vitalicia;
+    alternarVitalicia();
     document.getElementById('modalClienteTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Licença (#${c.id})`;
     document.getElementById('modalCliente').style.display = 'flex';
 }
@@ -279,16 +325,16 @@ async function salvarCliente() {
     const email = document.getElementById('cli_email').value.trim();
     const telefone = document.getElementById('cli_telefone').value.trim();
     const plano = document.getElementById('cli_plano').value;
-    const data_vencimento = document.getElementById('cli_vencimento').value;
-    const status = document.getElementById('cli_status').value;
+    const dia_vencimento = parseInt(document.getElementById('cli_dia_vencimento').value);
     const vitalicia = document.getElementById('cli_vitalicia').checked;
+    const status = calcularStatusAutomatico(dia_vencimento, vitalicia);
 
     if(!razao_social || !email) {
         toast("Preencha a Razão Social e o E-mail!", "error");
         return;
     }
 
-    let payload = { razao_social, nome_fantasia: razao_social, cnpj_cpf, email, telefone, plano, data_vencimento, status, vitalicia };
+    let payload = { razao_social, nome_fantasia: razao_social, cnpj_cpf, email, telefone, plano, dia_vencimento, status, vitalicia };
     let res;
 
     if(id) {
