@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -125,7 +124,7 @@
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Utilizador</span>
+            <span id="userName">Usuário</span>
         </div>
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -142,7 +141,6 @@
         </div>
     </div>
 
-    <!-- KPIs SUPERIORES -->
     <div class="kpi-grid">
         <div class="kpi-card">
             <span class="kpi-title">Total de Títulos</span>
@@ -158,7 +156,6 @@
         </div>
     </div>
 
-    <!-- BARRA DE FILTROS AVANÇADA -->
     <div class="filter-bar">
         <div class="filter-group"><span>Vencimento De</span><input type="date" id="filtroDataInicio" onchange="aplicarFiltros()"></div>
         <div class="filter-group"><span>Vencimento Até</span><input type="date" id="filtroDataFim" onchange="aplicarFiltros()"></div>
@@ -188,7 +185,6 @@
     </div>
 </div>
 
-<!-- MODAL DE CADASTRO / NOVO RECEBIMENTO -->
 <div class="modal-overlay" id="modalNovoRecebimento">
   <div class="modal-card">
     <div class="modal-header">
@@ -225,7 +221,6 @@
   </div>
 </div>
 
-<!-- MODAL DETALHES -->
 <div class="modal-overlay" id="modalDetalhes">
   <div class="modal-card">
     <div class="modal-header">
@@ -254,53 +249,50 @@
         return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
     }
 
+    // TRAVA DE SEGURANÇA LGPD NATIVA E INFALÍVEL
     function clienteIdAtual() {
         const u = obterUsuario();
-        if (!u) return 1;
+        if (!u) return null;
         if (ehMaster()) {
             try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+            return u.cliente_id ? parseInt(u.cliente_id) : null;
         }
-        // Trava LGPD: Retorna estritamente o ID da empresa do utilizador comum
-        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        return u.cliente_id ? parseInt(u.cliente_id) : null;
     }
 
     async function inicializarPagina() {
         const u = obterUsuario();
-        if (u) {
-            // Exibe o nome correto do utilizador no cabeçalho
+        if (!u || !u.email) {
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (u.email) {
             const elUserName = document.getElementById('userName');
             if (elUserName) {
-                elUserName.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+                elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
             }
         }
 
         const select = document.getElementById('selectEmpresa');
+        const boxSeletor = document.getElementById('boxSeletorEmpresa');
         const master = ehMaster();
 
         if (master) {
+            if (boxSeletor) boxSeletor.style.display = 'flex';
             const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            select.innerHTML = '';
-            if (data) {
+            if (select && data) {
+                select.innerHTML = '';
                 data.forEach(emp => {
                     const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
                     select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
                 });
+                const selAtual = localStorage.getItem('empresaSelecionada') || String(u.cliente_id || '1');
+                select.value = selAtual;
             }
-            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-            select.value = selAtual;
-            select.disabled = false;
         } else {
-            const cid = clienteIdAtual();
-            let nomeEmpresa = "Empresa Licenciada";
-            try {
-                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-                if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
-            } catch(e) {}
-
-            select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
-            select.value = cid;
-            select.disabled = true; // Trava absoluta LGPD
+            // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas para utilizadores comuns
+            if (boxSeletor) boxSeletor.style.display = 'none';
         }
 
         await carregarContasReceber();
@@ -309,8 +301,10 @@
     function trocarEmpresa() {
         if (!ehMaster()) return;
         const select = document.getElementById('selectEmpresa');
-        localStorage.setItem('empresaSelecionada', select.value);
-        carregarContasReceber();
+        if (select) {
+            localStorage.setItem('empresaSelecionada', select.value);
+            carregarContasReceber();
+        }
     }
 
     function sair() {
@@ -327,6 +321,11 @@
 
     async function carregarContasReceber() {
         const cid = clienteIdAtual();
+        if (!cid) {
+            document.getElementById('tbodyReceber').innerHTML = `<tr><td colspan="6" class="vazio">Erro: Cliente não identificado.</td></tr>`;
+            return;
+        }
+
         const tbody = document.getElementById('tbodyReceber');
         tbody.innerHTML = '<tr><td colspan="6" class="vazio">A carregar dados do Supabase...</td></tr>';
 
