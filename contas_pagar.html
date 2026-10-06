@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -25,7 +26,7 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO NOVO */
+        /* CABEÇALHO PADRÃO NOVO COM SEGURANÇA MULTI-TENANT */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -98,7 +99,7 @@
 </head>
 <body>
 
-<!-- CABEÇALHO PADRÃO NOVO -->
+<!-- CABEÇALHO PADRÃO NOVO COM SEGURANÇA MULTI-TENANT -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
@@ -114,7 +115,7 @@
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
+            <span id="userName">Utilizador</span>
         </div>
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -313,15 +314,20 @@ function clienteIdAtual() {
     if (!u) return 1;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    // Trava LGPD: Retorna estritamente o ID da empresa do utilizador comum
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
 }
 
 async function inicializarPagina() {
     const u = obterUsuario();
     if (u) {
-        document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        // Exibe o nome correto do utilizador logado no cabeçalho
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+        }
     }
 
     const select = document.getElementById('selectEmpresa');
@@ -336,12 +342,12 @@ async function inicializarPagina() {
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || '2';
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
         select.value = selAtual;
         select.disabled = false;
     } else {
         const cid = clienteIdAtual();
-        let nomeEmpresa = "Nanosignals Nanotecnologia";
+        let nomeEmpresa = "Empresa Licenciada";
         try {
             const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
             if (data) nomeEmpresa = data.nome_fantasia || data.razao_social;
@@ -349,7 +355,7 @@ async function inicializarPagina() {
 
         select.innerHTML = `<option value="${cid}">${nomeEmpresa}</option>`;
         select.value = cid;
-        select.disabled = true; // TRAVA DE SEGURANÇA LGPD
+        select.disabled = true; // Trava absoluta LGPD: Impede troca de empresa
     }
 
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
@@ -377,6 +383,16 @@ function formatBRL(v) {
 
 function formatarCodigoVirtual(id) {
     return "CP-" + String(id || 1).padStart(3, '0');
+}
+
+function atualizarCodigoVirtual() {
+    let proxId = 1;
+    if (contasCache.length > 0) {
+        let maxId = Math.max(...contasCache.map(x => parseInt(x.id) || 0));
+        proxId = maxId + 1;
+    }
+    const el = document.getElementById('codigo_virtual');
+    if(el) el.value = formatarCodigoVirtual(proxId);
 }
 
 async function carregarContas() {
