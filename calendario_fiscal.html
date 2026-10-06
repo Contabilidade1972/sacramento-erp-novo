@@ -116,7 +116,7 @@
       <div class="date-time" id="current_datetime">--/--/----, --:--</div>
       <div class="user-menu">
         <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
-        <span id="userInfo">Administrador</span>
+        <span id="userInfo">Utilizador</span>
       </div>
       <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
@@ -180,22 +180,20 @@
 
   function obterUsuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e){ return null; } }
   
-  function clienteIdAtual() {
-      const u = obterUsuario();
-      if (!u) return null;
-      const ehAdmin = !!(u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-      if (ehAdmin) {
-          try {
-              const sel = localStorage.getItem('empresaSelecionada');
-              if (sel) return parseInt(sel);
-          } catch(e) {}
-      }
-      return u.cliente_id ? parseInt(u.cliente_id) : null;
-  }
-
-  function ehMasterGlobal() {
+  function ehMaster() {
       const u = obterUsuario();
       return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+  }
+
+  function clienteIdAtual() {
+      const u = obterUsuario();
+      if (!u) return 1;
+      if (ehMaster()) {
+          try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+          return u.cliente_id ? parseInt(u.cliente_id) : 1;
+      }
+      // Trava LGPD: Retorna estritamente o ID da empresa do utilizador comum
+      return u.cliente_id ? parseInt(u.cliente_id) : 1;
   }
 
   const ROTULOS_STATUS = { pendente:'Pendente', em_elaboracao:'Em elaboração', transmitida:'Transmitida', validada:'Validada', rejeitada:'Rejeitada', atrasada:'Atrasada' };
@@ -221,6 +219,11 @@
 
   async function carregarEmpresas() {
     const u = obterUsuario();
+    if (u) {
+        const elUser = document.getElementById('userInfo');
+        if (elUser) elUser.innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+    }
+
     const select = document.getElementById('selectEmpresa');
     const selectHeader = document.getElementById('selectEmpresaHeader');
     select.innerHTML = '<option value="">Carregando...</option>';
@@ -228,22 +231,25 @@
     
     let empresas = [];
     try {
-      if (ehMasterGlobal()) {
+      if (ehMaster()) {
           const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
           empresas = data || [];
+          select.disabled = false;
+          selectHeader.disabled = false;
       } else {
-          const cid = u ? parseInt(u.cliente_id) : null;
+          const cid = clienteIdAtual();
           if (cid) {
               const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', cid);
               empresas = data || [];
           }
+          select.disabled = true; // Trava absoluta LGPD
+          selectHeader.disabled = true; // Trava absoluta LGPD
       }
     } catch(e) { console.error('Erro ao carregar empresas:', e); }
 
     if (empresas.length === 0) {
       select.innerHTML = '<option value="">Nenhuma empresa encontrada</option>';
       selectHeader.innerHTML = '<option value="">Nenhuma empresa encontrada</option>';
-      if(document.getElementById('userInfo')) document.getElementById('userInfo').innerText = (u && u.nome) || 'Administrador';
       await carregarCompetencias();
       return;
     }
@@ -263,29 +269,25 @@
     } else {
       select.value = select.options[0].value;
       selectHeader.value = select.options[0].value;
-      localStorage.setItem('empresaSelecionada', select.value);
+      if (ehMaster()) localStorage.setItem('empresaSelecionada', select.value);
     }
-
-    if(document.getElementById('userInfo')) document.getElementById('userInfo').innerText = (u && u.nome) || 'Administrador';
     
     await carregarCompetencias();
   }
 
   function sincronizarEmpresaHeader() {
+      if (!ehMaster()) return;
       const val = document.getElementById('selectEmpresaHeader').value;
       document.getElementById('selectEmpresa').value = val;
-      if (ehMasterGlobal()) {
-          localStorage.setItem('empresaSelecionada', String(val));
-      }
+      localStorage.setItem('empresaSelecionada', String(val));
       carregarCompetencias();
   }
 
   function trocarEmpresa() {
+      if (!ehMaster()) return;
       const val = document.getElementById('selectEmpresa').value;
       document.getElementById('selectEmpresaHeader').value = val;
-      if (ehMasterGlobal()) {
-          localStorage.setItem('empresaSelecionada', String(val));
-      }
+      localStorage.setItem('empresaSelecionada', String(val));
       carregarCompetencias();
   }
 
@@ -426,7 +428,7 @@
     const obs = document.getElementById('modalObs').value.trim();
     const data = document.getElementById('modalData').value;
     const arquivo = document.getElementById('modalArquivo').files[0];
-    const responsavel = (obterUsuario() && obterUsuario().nome) || 'Administrador';
+    const responsavel = (obterUsuario() && (obterUsuario().nome || obterUsuario().email)) || 'Utilizador';
     let arquivoUrl = null, arquivoNome = null;
     if (arquivo) {
       const path = contextoAtual.clienteId + '/' + contextoAtual.competencia + '/' + Date.now() + '_' + arquivo.name;
