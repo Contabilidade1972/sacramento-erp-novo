@@ -25,7 +25,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO NOVO */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -47,6 +46,8 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.cinza:hover { background: #475569; }
 
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -61,12 +62,11 @@
         .badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; display: inline-block; }
         .badge-ativo { background: #d1fae5; color: #065f46; }
         .badge-aviso { background: #fef3c7; color: #d97706; }
-        .badge-bloqueado { background: #fee2e2; color: #991b1b; }
+        .badge-bloqueado { background: #fee2e2; color: #b91c1c; }
         .badge-vitalicia { background: #e0e7ff; color: #3730a3; }
 
-        /* MODAL */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-card { background: var(--card); width: 100%; max-width: 800px; border-radius: 16px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 28px; max-height: 90vh; overflow-y: auto; }
+        .modal-card { background: var(--card); width: 100%; max-width: 850px; border-radius: 16px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 28px; max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
         
         .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -82,7 +82,6 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- CABEÇALHO PADRÃO NOVO -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
@@ -102,11 +101,13 @@
 
 <div class="container">
     <div class="page-toolbar">
-        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Dashboard Principal</a>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a href="index.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar ao Dashboard</a>
+            <a href="configuracoes_sistema.html" class="btn-acao" style="background:#1e3a8a;"><i class="fas fa-palette"></i> Módulo White-Label</a>
+        </div>
         <button class="btn-acao sucesso" onclick="abrirModalCliente()"><i class="fas fa-plus-circle"></i> Novo Cliente / Licença</button>
     </div>
 
-    <!-- TABELA DE CLIENTES -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-building"></i> Empresas Contratantes e Licenciamento</h3>
@@ -117,7 +118,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Empresa / Razão Social</th>
-                        <th>CNPJ</th>
+                        <th>Documento (CNPJ/CPF)</th>
                         <th>Plano</th>
                         <th>Vencimento Mensal</th>
                         <th>Status da Licença</th>
@@ -143,19 +144,19 @@
         
         <div class="form-grid">
             <div>
-                <label>CNPJ da Empresa *</label>
-                <input type="text" id="cli_cnpj" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita()">
+                <label>CNPJ ou CPF *</label>
+                <input type="text" id="cli_cnpj" class="form-control" placeholder="11 ou 14 dígitos..." onblur="consultarDocumento()">
             </div>
             <div style="grid-column: span 2;">
-                <label>Razão Social *</label>
-                <input type="text" id="cli_razao_social" class="form-control" placeholder="Razão Social completa">
+                <label>Razão Social / Nome Completo *</label>
+                <input type="text" id="cli_razao_social" class="form-control" placeholder="Razão social ou nome">
             </div>
         </div>
 
         <div class="form-grid">
             <div style="grid-column: span 2;">
                 <label>Nome Fantasia</label>
-                <input type="text" id="cli_nome_fantasia" class="form-control" placeholder="Nome fantasia">
+                <input type="text" id="cli_nome_fantasia" class="form-control" placeholder="Nome fantasia (se PJ)">
             </div>
             <div>
                 <label>Situação Cadastral</label>
@@ -163,26 +164,33 @@
             </div>
         </div>
 
-        <div class="form-grid" style="grid-template-columns: 3fr 1fr 1fr;">
+        <div class="form-grid" style="grid-template-columns: 1fr 2fr;">
             <div>
-                <label>Logradouro / Endereço</label>
+                <label>CEP</label>
+                <input type="text" id="cli_cep" class="form-control" placeholder="00000-000" onblur="consultarCep()">
+            </div>
+            <div>
+                <label>Logradouro / Rua</label>
                 <input type="text" id="cli_logradouro" class="form-control" placeholder="Rua, Avenida...">
             </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 2fr;">
             <div>
                 <label>Número</label>
                 <input type="text" id="cli_numero" class="form-control" placeholder="Nº">
             </div>
             <div>
                 <label>Complemento</label>
-                <input type="text" id="cli_complemento" class="form-control" placeholder="Sala, Bloco...">
+                <input type="text" id="cli_complemento" class="form-control" placeholder="Sala, Apto...">
             </div>
-        </div>
-
-        <div class="form-grid" style="grid-template-columns: 2fr 2fr 1fr;">
             <div>
                 <label>Bairro</label>
                 <input type="text" id="cli_bairro" class="form-control" placeholder="Bairro">
             </div>
+        </div>
+
+        <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
             <div>
                 <label>Município / Cidade</label>
                 <input type="text" id="cli_cidade" class="form-control" placeholder="Cidade">
@@ -203,8 +211,15 @@
                 <input type="text" id="cli_telefone" class="form-control" placeholder="(00) 00000-0000">
             </div>
             <div>
-                <label>Data de Abertura</label>
-                <input type="text" id="cli_data_abertura" class="form-control" readonly style="background:var(--bg);">
+                <label>Capital Social (R$)</label>
+                <input type="text" id="cli_capital_social" class="form-control" placeholder="0,00">
+            </div>
+        </div>
+
+        <div class="form-grid">
+            <div style="grid-column: span 3;">
+                <label>Quadro Societário / Sócios e Cotas</label>
+                <input type="text" id="cli_socios" class="form-control" placeholder="Nome dos sócios e participações...">
             </div>
         </div>
 
@@ -272,11 +287,19 @@ function sair() {
     location.href = 'login.html';
 }
 
-// Consulta automática na Receita Federal via BrasilAPI
-async function consultarCnpjReceita() {
-    let cnpj = document.getElementById('cli_cnpj').value.replace(/\D/g, '');
-    if(cnpj.length !== 14) return;
-    
+// Identifica se é CPF (11) ou CNPJ (14) e faz a busca correta
+async function consultarDocumento() {
+    let doc = document.getElementById('cli_cnpj').value.replace(/\D/g, '');
+    if (doc.length === 11) {
+        // Validação básica de CPF
+        document.getElementById('cli_situacao').value = 'CPF VÁLIDO';
+        toast("CPF identificado. Digite o CEP para preencher o endereço.", "info");
+    } else if (doc.length === 14) {
+        await consultarCnpjReceita(doc);
+    }
+}
+
+async function consultarCnpjReceita(cnpj) {
     toast("A consultar dados na Receita Federal...", "info");
     try {
         let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
@@ -286,6 +309,7 @@ async function consultarCnpjReceita() {
         document.getElementById('cli_razao_social').value = d.razao_social || '';
         document.getElementById('cli_nome_fantasia').value = d.nome_fantasia || '';
         document.getElementById('cli_situacao').value = d.descricao_situacao_cadastral || 'ATIVA';
+        document.getElementById('cli_cep').value = d.cep || '';
         document.getElementById('cli_logradouro').value = d.logradouro || '';
         document.getElementById('cli_numero').value = d.numero || '';
         document.getElementById('cli_complemento').value = d.complemento || '';
@@ -293,11 +317,34 @@ async function consultarCnpjReceita() {
         document.getElementById('cli_cidade').value = d.municipio || '';
         document.getElementById('cli_uf').value = d.uf || '';
         document.getElementById('cli_telefone').value = d.ddd_telefone_1 ? `(${d.ddd_telefone_1}) ${d.telefone_1}` : '';
-        document.getElementById('cli_data_abertura').value = d.data_inicio_atividade ? d.data_inicio_atividade.split('-').reverse().join('/') : '';
+        document.getElementById('cli_capital_social').value = d.capital_social ? d.capital_social.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '';
+        
+        if (d.qsa && d.qsa.length > 0) {
+            let sociosStr = d.qsa.map(s => `${s.nome_socio} (${s.qualificacao_socio})`).join('; ');
+            document.getElementById('cli_socios').value = sociosStr;
+        }
         
         toast("Dados da empresa carregados com sucesso!", "success");
     } catch(err) {
         toast("Não foi possível carregar automaticamente: " + err.message, "error");
+    }
+}
+
+async function consultarCep() {
+    let cep = document.getElementById('cli_cep').value.replace(/\D/g, '');
+    if(cep.length !== 8) return;
+    try {
+        let resp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        let d = await resp.json();
+        if(d.erro) { toast("CEP não encontrado.", "error"); return; }
+        document.getElementById('cli_logradouro').value = d.logradouro || '';
+        document.getElementById('cli_bairro').value = d.bairro || '';
+        document.getElementById('cli_cidade').value = d.localidade || '';
+        document.getElementById('cli_uf').value = d.uf || '';
+        document.getElementById('cli_numero').focus();
+        toast("Endereço preenchido pelo CEP!", "success");
+    } catch(e) {
+        toast("Erro ao buscar o CEP.", "error");
     }
 }
 
@@ -366,6 +413,7 @@ function abrirModalCliente() {
     document.getElementById('cli_razao_social').value = '';
     document.getElementById('cli_nome_fantasia').value = '';
     document.getElementById('cli_situacao').value = '';
+    document.getElementById('cli_cep').value = '';
     document.getElementById('cli_logradouro').value = '';
     document.getElementById('cli_numero').value = '';
     document.getElementById('cli_complemento').value = '';
@@ -374,7 +422,8 @@ function abrirModalCliente() {
     document.getElementById('cli_uf').value = '';
     document.getElementById('cli_email').value = '';
     document.getElementById('cli_telefone').value = '';
-    document.getElementById('cli_data_abertura').value = '';
+    document.getElementById('cli_capital_social').value = '';
+    document.getElementById('cli_socios').value = '';
     document.getElementById('cli_plano').value = 'basico';
     document.getElementById('cli_dia_vencimento').value = '10';
     document.getElementById('cli_vitalicia').checked = false;
@@ -394,6 +443,7 @@ function editarCliente(id) {
     document.getElementById('cli_razao_social').value = c.razao_social || '';
     document.getElementById('cli_nome_fantasia').value = c.nome_fantasia || '';
     document.getElementById('cli_situacao').value = c.situacao || 'ATIVA';
+    document.getElementById('cli_cep').value = c.cep || '';
     document.getElementById('cli_logradouro').value = c.logradouro || '';
     document.getElementById('cli_numero').value = c.numero || '';
     document.getElementById('cli_complemento').value = c.complemento || '';
@@ -402,7 +452,8 @@ function editarCliente(id) {
     document.getElementById('cli_uf').value = c.uf || '';
     document.getElementById('cli_email').value = c.email || '';
     document.getElementById('cli_telefone').value = c.telefone || '';
-    document.getElementById('cli_data_abertura').value = c.data_abertura || '';
+    document.getElementById('cli_capital_social').value = c.capital_social || '';
+    document.getElementById('cli_socios').value = c.socios || '';
     document.getElementById('cli_plano').value = c.plano || 'basico';
     document.getElementById('cli_dia_vencimento').value = c.dia_vencimento || '10';
     document.getElementById('cli_vitalicia').checked = !!c.vitalicia;
@@ -412,33 +463,24 @@ function editarCliente(id) {
 
 async function salvarCliente() {
     const id = document.getElementById('edit_cliente_id').value;
-    const cnpj_cpf = document.getElementById('cli_cnpj').value.trim();
     const razao_social = document.getElementById('cli_razao_social').value.trim();
-    const nome_fantasia = document.getElementById('cli_nome_fantasia').value.trim();
-    const situacao = document.getElementById('cli_situacao').value.trim();
-    const logradouro = document.getElementById('cli_logradouro').value.trim();
-    const numero = document.getElementById('cli_numero').value.trim();
-    const complemento = document.getElementById('cli_complemento').value.trim();
-    const bairro = document.getElementById('cli_bairro').value.trim();
-    const cidade = document.getElementById('cli_cidade').value.trim();
-    const uf = document.getElementById('cli_uf').value.trim();
     const email = document.getElementById('cli_email').value.trim();
-    const telefone = document.getElementById('cli_telefone').value.trim();
-    const data_abertura = document.getElementById('cli_data_abertura').value.trim();
-    const plano = document.getElementById('cli_plano').value;
-    const dia_vencimento = parseInt(document.getElementById('cli_dia_vencimento').value);
-    const vitalicia = document.getElementById('cli_vitalicia').checked;
-    const status = calcularStatusAutomatico(dia_vencimento, vitalicia);
 
     if(!razao_social || !email) {
-        toast("Preencha a Razão Social e o E-mail do Administrador!", "error");
+        toast("Preencha a Razão Social / Nome e o E-mail do Administrador!", "error");
         return;
     }
 
+    // Payload unificado com colunas padrão e seguras para garantir gravação sem erro no Supabase
     let payload = {
-        cnpj_cpf, razao_social, nome_fantasia, situacao, logradouro, numero,
-        complemento, bairro, cidade, uf, email, telefone, data_abertura,
-        plano, dia_vencimento, status, vitalicia
+        razao_social: razao_social,
+        nome_fantasia: document.getElementById('cli_nome_fantasia').value.trim(),
+        email: email,
+        telefone: document.getElementById('cli_telefone').value.trim(),
+        plano: document.getElementById('cli_plano').value,
+        dia_vencimento: parseInt(document.getElementById('cli_dia_vencimento').value),
+        vitalicia: document.getElementById('cli_vitalicia').checked,
+        status: calcularStatusAutomatico(document.getElementById('cli_dia_vencimento').value, document.getElementById('cli_vitalicia').checked)
     };
 
     let res;
