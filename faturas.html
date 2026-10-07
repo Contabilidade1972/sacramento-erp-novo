@@ -15,6 +15,23 @@
         :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
         body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
 
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
@@ -106,6 +123,27 @@
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <datalist id="lista-cfop">
     <option value="5.933 - Prestação de serviço tributado pelo ISSQN (Municipal/Estadual)"></option>
@@ -245,7 +283,7 @@
 
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_financeiro.html'"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</button>
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
     </div>
 
     <div class="card">
@@ -287,15 +325,23 @@ let parceirosCache = [];
 let logoUniversalBase64 = "";
 let nomeEmpresaGlobal = "Sacramento ERP";
 
-function obterUsuarioAtual() {
-    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
-    return null;
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function ehMaster() {
+    const u = obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
 function clienteIdAtual() {
-    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-    const u = obterUsuarioAtual();
-    return (u && u.cliente_id) ? u.cliente_id : 1;
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
 }
 
 function sbFiltroLeitura(tabela) {
@@ -307,7 +353,7 @@ function sbFiltroLeitura(tabela) {
 
 async function registrarLogAuditoria(acao, modulo, detalhes) {
     try {
-        let u = obterUsuarioAtual();
+        let u = obterUsuario();
         let usuarioNome = u ? `${u.nome} (${u.perfil || 'Usuário'})` : "Sistema / Visitante";
         let payloadLog = { acao: acao.toUpperCase(), modulo: modulo, usuario: usuarioNome, detalhes: detalhes };
         const cidLog = clienteIdAtual();
@@ -799,14 +845,6 @@ window.verDanfe = function(id) {
     }, 50);
 }
 
-async function inicializarPagina() {
-    let u = obterUsuarioAtual();
-    if(!u || !u.email) { location.href = 'login.html'; return; }
-    const cid = clienteIdAtual();
-    await carregarMarcaSistema(cid);
-    await carregarFaturas();
-}
-
 async function carregarMarcaSistema(clienteId) {
     try {
         const { data: clientes } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteId).maybeSingle();
@@ -819,6 +857,50 @@ async function carregarMarcaSistema(clienteId) {
             if (data[0].app_logo_url) logoUniversalBase64 = data[0].app_logo_url;
         }
     } catch(e) {}
+}
+
+async function inicializarPagina() {
+    let u = obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+    
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const select = document.getElementById('selectEmpresa');
+    const boxSeletor = document.getElementById('boxSeletorEmpresa');
+    const master = ehMaster();
+
+    if (master) {
+        if (boxSeletor) boxSeletor.style.display = 'flex';
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        if (boxSeletor) boxSeletor.style.display = 'none';
+    }
+
+    const cid = clienteIdAtual();
+    await carregarMarcaSistema(cid);
+    await carregarFaturas();
+}
+
+function trocarEmpresa() {
+    if (!ehMaster()) return;
+    const select = document.getElementById('selectEmpresa');
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarFaturas();
 }
 
 window.onload = inicializarPagina;
