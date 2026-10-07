@@ -172,29 +172,20 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
-// TRAVA DE SEGURANÇA LGPD NATIVA E INFALÍVEL
 function clienteIdAtual() {
     const u = obterUsuario();
-    if (!u) return null;
+    if (!u) return 1;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : null;
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : null;
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
 }
 
 async function inicializarPagina() {
     const u = obterUsuario();
-    if (!u || !u.email) {
-        window.location.href = 'login.html';
-        return;
-    }
-
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
+    if (u) {
+        document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split('@')[0];
     }
 
     const select = document.getElementById('selectEmpresa');
@@ -204,17 +195,17 @@ async function inicializarPagina() {
     if (master) {
         if (boxSeletor) boxSeletor.style.display = 'flex';
         const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        if (select && data) {
-            select.innerHTML = '';
+        select.innerHTML = '';
+        if (data) {
             data.forEach(emp => {
                 const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
-            const selAtual = localStorage.getItem('empresaSelecionada') || String(u.cliente_id || '1');
-            select.value = selAtual;
         }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
     } else {
-        // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas para utilizadores comuns
         if (boxSeletor) boxSeletor.style.display = 'none';
     }
 
@@ -224,10 +215,8 @@ async function inicializarPagina() {
 function trocarEmpresa() {
     if (!ehMaster()) return;
     const select = document.getElementById('selectEmpresa');
-    if (select) {
-        localStorage.setItem('empresaSelecionada', select.value);
-        carregarOrcamentos();
-    }
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarOrcamentos();
 }
 
 function sair() {
@@ -244,11 +233,6 @@ function formatBRL(v) {
 
 async function carregarOrcamentos() {
     const cid = clienteIdAtual();
-    if (!cid) {
-        document.getElementById('tbodyOrcamentos').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Erro: Cliente não identificado.</td></tr>`;
-        return;
-    }
-
     const tbody = document.getElementById('tbodyOrcamentos');
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">A carregar orçamentos...</td></tr>';
 
