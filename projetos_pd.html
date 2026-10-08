@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Projetos & P&D — Sacramento ERP</title>
+    <title>Gestão de Projetos de P&D — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -24,291 +23,366 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor por defeito. Só aparece se o body tiver a classe 'usuario-master' */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
-        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
 
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
 
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 16px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
 
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
 
-        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        
-        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+        .badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; display: inline-block; }
+        .badge-ativo { background: #d1fae5; color: #065f46; }
+        .badge-concluido { background: #e0e7ff; color: #3730a3; }
 
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
-        
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
-        .analitica-table tbody tr:hover { background: #f8fafc; }
+        .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
+        .btn-icon.excluir:hover { background: #fee2e2; color: var(--danger); border-color: var(--danger); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
-        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), button { display: none !important; }
+            body { background: #fff !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+        }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+        <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Tecnologia & P&D</a>
     </div>
 
-    <div>
-        <div class="page-title"><i class="fas fa-flask" style="color:var(--primary);"></i> Projetos & P&D</div>
-        <div class="page-subtitle">Gerenciamento de iniciativas de pesquisa, desenvolvimento e inovação tecnológica</div>
-    </div>
-
-    <div class="panel">
-        <div class="panel-header" style="border:none; margin-bottom:4px;">
-            <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Novo Projeto de P&D</span>
+    <!-- FORMULÁRIO DE CADASTRO / EDIÇÃO -->
+    <div class="card">
+        <div class="card-header">
+            <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Cadastrar Novo Projeto de P&amp;D</h3>
         </div>
         <input type="hidden" id="edit_id">
-        <div class="form-row">
+        <div class="form-grid">
             <div>
-                <label>Código / Sigla (Automático)</label>
-                <input type="text" id="projCodigo" class="form-control" readonly style="background:var(--bg); font-weight:bold; color:var(--primary);">
+                <label>Código do Projeto *</label>
+                <input type="text" id="codigo" class="form-control" placeholder="Ex: PRJ-2026-01">
             </div>
             <div style="grid-column: span 2;">
                 <label>Nome do Projeto *</label>
-                <input type="text" id="projNome" class="form-control" placeholder="Ex: Nanossensores Avançados">
+                <input type="text" id="nome" class="form-control" placeholder="Título do projeto de inovação tecnológica">
+            </div>
+        </div>
+        <div class="form-grid">
+            <div>
+                <label>Data de Início *</label>
+                <input type="date" id="inicio" class="form-control">
             </div>
             <div>
-                <label>Status *</label>
-                <select id="projStatus" class="form-control">
-                    <option value="Ativo" selected>Ativo</option>
-                    <option value="Planejamento">Planejamento</option>
+                <label>Status Operacional *</label>
+                <select id="status" class="form-control">
+                    <option value="Ativo">Ativo / Em Andamento</option>
                     <option value="Concluído">Concluído</option>
                     <option value="Suspenso">Suspenso</option>
                 </select>
             </div>
-        </div>
-        <div class="form-row">
             <div>
-                <label>Data de Início</label>
-                <input type="date" id="projInicio" class="form-control">
-            </div>
-            <div>
-                <label>Data de Término (Previsão)</label>
-                <input type="date" id="projFim" class="form-control">
-            </div>
-            <div style="grid-column: span 2;">
-                <label>Descrição / Escopo</label>
-                <input type="text" id="projDesc" class="form-control" placeholder="Resumo dos objetivos científicos e tecnológicos...">
+                <label>Orçamento Previsto (R\$)</label>
+                <input type="number" step="0.01" id="orcamento" class="form-control" placeholder="0.00">
             </div>
         </div>
-        <div style="display:flex; gap:10px; margin-top:4px;">
-            <button class="btn-primary" onclick="salvarProjeto()"><i class="fas fa-save"></i> Salvar Projeto</button>
-            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar</button>
+        <div style="margin-top: 10px; display:flex; gap:10px;">
+            <button class="btn-acao" id="btnSalvar" onclick="salvarProjeto()"><i class="fas fa-save"></i> Guardar Projeto</button>
+            <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;">Cancelar Edição</button>
         </div>
     </div>
 
-    <div class="panel">
-        <div class="panel-header">
-            <span><i class="fas fa-list"></i> Projetos Cadastrados</span>
+    <!-- TABELA DE GESTÃO -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Relatório de Projetos de P&amp;D</h2>
+            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
         </div>
-        <div id="listaProjetos" style="overflow-x:auto;">Carregando projetos...</div>
+        <div class="card-header">
+            <h3><i class="fas fa-list"></i> Projetos de P&amp;D Registados</h3>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nome do Projeto</th>
+                        <th>Início</th>
+                        <th>Orçamento</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyProjetos">
+                    <tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">A carregar projetos do Supabase...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<footer>
-    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
-</footer>
-
 <script>
-var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
-
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let projetosCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
 
-function sbFiltro(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+function ehMaster() {
+    const u = obterUsuario();
+    if (!u || !u.email) return false;
+    return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+}
+
+function clienteIdAtual() {
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
     return q;
 }
 
-function traduzirErro(mensagemOriginal) {
-    if(!mensagemOriginal) return "Ocorreu um erro desconhecido ao processar a solicitação.";
-    console.error("Erro técnico original do Supabase:", mensagemOriginal);
-    let msg = mensagemOriginal.toLowerCase();
-    if(msg.includes("could not find the") && msg.includes("column")) {
-        return "Erro de estrutura no banco de dados: coluna não encontrada (" + mensagemOriginal + ").";
-    }
-    if(msg.includes("violates foreign key constraint")) {
-        return "Erro de integridade: o registro está vinculado a outros dados dependentes.";
-    }
-    if(msg.includes("duplicate key value") || msg.includes("already exists")) {
-        return "Erro: já existe um registro cadastrado com estes mesmos dados.";
-    }
-    if(msg.includes("null value in column") || msg.includes("violates not-null constraint")) {
-        return "Erro: preencha todos os campos obrigatórios solicitados.";
-    }
-    return "Erro ao salvar: " + mensagemOriginal;
+function formatBRL(v) {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 }
 
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){
-        c=document.createElement('div');c.id='toastContainer';
-        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
-        document.body.appendChild(c);
-    }
-    x.className='toast '+type;
-    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
-    c.appendChild(x);
-    setTimeout(function(){x.remove();},5000);
-}
+document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
 
-function formatData(d){if(!d)return '-';return String(d).split('-').reverse().join('/');}
-
-function gerarProximoCodigo(){
-    let maxNum = 0;
-    projetosCache.forEach(p => {
-        if(p.codigo && p.codigo.startsWith('PD-')) {
-            let num = parseInt(p.codigo.replace('PD-', ''), 10);
-            if(!isNaN(num) && num > maxNum) maxNum = num;
-        }
-    });
-    return 'PD-' + String(maxNum + 1).padStart(3, '0');
-}
-
-async function carregarProjetos(){
-    const el = document.getElementById('listaProjetos');
-    try {
-        let q = sbFiltro('projetos_pd');
-        const { data, error } = await q.order('id', { ascending: false });
-        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+traduzirErro(error.message)+'</div>'; return; }
-        projetosCache = data || [];
-        
-        if(!document.getElementById('edit_id').value){
-            document.getElementById('projCodigo').value = gerarProximoCodigo();
-        }
-
-        if(!projetosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum projeto de P&D cadastrado.</div>'; return; }
-        
-        let html = '<table class="analitica-table"><thead><tr><th>Código</th><th>Nome do Projeto</th><th>Status</th><th>Início</th><th>Término</th><th>Descrição</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-        projetosCache.forEach(p => {
-            const dataInicio = p.data_inicio || p.inicio || '-';
-            const dataTermino = p.termino || p.data_termino || '-';
-            const descProj = p.descricao || p.escopo || '-';
-            html += `<tr>
-                <td><strong>${p.codigo || '-'}</strong></td>
-                <td><strong>${p.nome || '-'}</strong></td>
-                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${p.status || 'Ativo'}</span></td>
-                <td>${formatData(dataInicio)}</td>
-                <td>${formatData(dataTermino)}</td>
-                <td>${descProj}</td>
-                <td style="text-align:right; white-space:nowrap;">
-                    <button class="btn-secondary" onclick="editarProjeto(${p.id})" title="Editar"><i class="fas fa-pen"></i></button>
-                    <button class="btn-secondary" onclick="excluirProjeto(${p.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        html += '</tbody></table>';
-        el.innerHTML = html;
-    } catch(e) {
-        el.innerHTML = '<div class="empty-state">Erro ao carregar projetos.</div>';
-    }
-}
-
-async function salvarProjeto(){
-    const id = document.getElementById('edit_id').value;
-    const codigo = document.getElementById('projCodigo').value.trim();
-    const nome = document.getElementById('projNome').value.trim();
-    const status = document.getElementById('projStatus').value;
-    const inicio = document.getElementById('projInicio').value;
-    const termino = document.getElementById('projFim').value;
-    const desc = document.getElementById('projDesc').value.trim();
-
-    if(!nome) { toast("Informe o nome do projeto.", "error"); return; }
+async function carregarProjetos() {
     const cid = clienteIdAtual();
-    
-    // Payload mínimo essencial garantido para evitar erros de colunas inexistentes
-    const payload = {
-        cliente_id: cid,
-        codigo: codigo || gerarProximoCodigo(),
-        nome: nome,
-        status: status,
-        descricao: desc || null
-    };
-    if(inicio) payload.data_inicio = inicio;
-    if(termino) payload.termino = termino;
+    const tbody = document.getElementById('tbodyProjetos');
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados do Supabase...</td></tr>';
 
+    const { data, error } = await sb.from('projetos_pd').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        return;
+    }
+
+    projetosCache = data || [];
+    renderTabela();
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyProjetos');
+    if (!projetosCache.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum projeto de P&D encontrado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = '';
+    projetosCache.forEach(p => {
+        let st = (p.status || 'Ativo').toLowerCase();
+        let badgeClass = st.includes('conclu') ? 'badge-concluido' : 'badge-ativo';
+        let dtInicio = p.inicio ? p.inicio.split('-').reverse().join('/') : '—';
+
+        tbody.innerHTML += `
+            <tr>
+                <td><code>${p.codigo || '—'}</code></td>
+                <td><strong>${p.nome || '—'}</strong></td>
+                <td>${dtInicio}</td>
+                <td>${formatBRL(p.orcamento)}</td>
+                <td><span class="badge ${badgeClass}">${p.status || 'Ativo'}</span></td>
+                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;">
+                    <button class="btn-icon" onclick="editarProjeto(${p.id})" title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon excluir" onclick="excluirProjeto(${p.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function salvarProjeto() {
+    const id = document.getElementById('edit_id').value;
+    const codigo = document.getElementById('codigo').value.trim();
+    const nome = document.getElementById('nome').value.trim();
+    const inicio = document.getElementById('inicio').value;
+    const status = document.getElementById('status').value;
+    const orcamento = parseFloat(document.getElementById('orcamento').value) || 0;
+    const cliente_id = clienteIdAtual();
+
+    if(!codigo || !nome || !inicio) {
+        alert("Preencha o código, o nome e a data de início do projeto.");
+        return;
+    }
+
+    let payload = { cliente_id, codigo, nome, inicio, status, orcamento };
     let res;
+
     if(id) {
-        res = await sb.from('projetos_pd').update(payload).eq('id', id);
+        res = await sb.from('projetos_pd').update(payload).eq('id', id).eq('cliente_id', cliente_id);
     } else {
         res = await sb.from('projetos_pd').insert([payload]);
     }
 
-    if(res.error) {
-        toast(traduzirErro(res.error.message), "error");
-        return;
-    }
-    toast("Projeto salvo com sucesso!");
+    if(res.error) { alert("Erro ao salvar: " + res.error.message); return; }
+
+    alert(id ? "Projeto atualizado com sucesso!" : "Projeto cadastrado com sucesso!");
     cancelarEdicao();
     carregarProjetos();
 }
 
-function editarProjeto(id){
-    const p = projetosCache.find(x => x.id === id);
+window.editarProjeto = function(id) {
+    let p = projetosCache.find(x => String(x.id) === String(id));
     if(!p) return;
     document.getElementById('edit_id').value = p.id;
-    document.getElementById('projCodigo').value = p.codigo || '';
-    document.getElementById('projNome').value = p.nome || '';
-    document.getElementById('projStatus').value = p.status || 'Ativo';
-    document.getElementById('projInicio').value = p.data_inicio || p.inicio || '';
-    document.getElementById('projFim').value = p.termino || p.data_termino || '';
-    document.getElementById('projDesc').value = p.descricao || p.escopo || '';
+    document.getElementById('codigo').value = p.codigo || '';
+    document.getElementById('nome').value = p.nome || '';
+    document.getElementById('inicio').value = p.inicio || '';
+    document.getElementById('status').value = p.status || 'Ativo';
+    document.getElementById('orcamento').value = p.orcamento || '';
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Projeto (${p.codigo})`;
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Projeto';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
-function cancelarEdicao(){
+function cancelarEdicao() {
     document.getElementById('edit_id').value = '';
-    document.getElementById('projCodigo').value = gerarProximoCodigo();
-    document.getElementById('projNome').value = '';
-    document.getElementById('projStatus').value = 'Ativo';
-    document.getElementById('projInicio').value = '';
-    document.getElementById('projFim').value = '';
-    document.getElementById('projDesc').value = '';
+    document.getElementById('codigo').value = '';
+    document.getElementById('nome').value = '';
+    document.getElementById('inicio').value = '';
+    document.getElementById('status').value = 'Ativo';
+    document.getElementById('orcamento').value = '';
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cadastrar Novo Projeto de P&amp;D';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Guardar Projeto';
     document.getElementById('btnCancelar').style.display = 'none';
 }
 
-async function excluirProjeto(id){
-    if(!confirm("Deseja realmente excluir este projeto de P&D?")) return;
-    const { error } = await sb.from('projetos_pd').delete().eq('id', id);
-    if(error) { toast(traduzirErro(error.message), "error"); return; }
-    toast("Projeto excluído com sucesso!");
-    carregarProjetos();
+window.excluirProjeto = async function(id) {
+    if(confirm("Deseja realmente excluir este projeto de P&D?")) {
+        const cid = clienteIdAtual();
+        let res = await sb.from('projetos_pd').delete().eq('id', id).eq('cliente_id', cid);
+        if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
+        alert("Projeto excluído com sucesso!");
+        carregarProjetos();
+    }
 }
 
-async function inicializarPagina(){
-    let u = obterUsuarioAtual();
+function sair() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+}
+
+async function inicializarPagina() {
+    let u = obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     await carregarProjetos();
 }
 
