@@ -14,6 +14,12 @@
         :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
         body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
 
+        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor por defeito. Só aparece se o body tiver a classe 'usuario-master' */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -132,7 +138,10 @@
         </div>
     </div>
     <div class="site-nav-right">
-        <!-- O SELETOR DE EMPRESAS FOI REMOVIDO DAQUI E SÓ APARECERÁ PARA O MASTER VIA JS -->
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
             <span id="userName">Usuário</span>
@@ -870,16 +879,7 @@ async function inicializarPagina() {
     const master = ehMaster();
 
     if (master) {
-        // Se for Master, criamos o elemento seletor dinamicamente se ele não existir
-        let rightNav = document.querySelector('.site-nav-right');
-        if (rightNav && !document.getElementById('boxSeletorEmpresa')) {
-            let divSel = document.createElement('div');
-            divSel.className = 'empresa-selector';
-            divSel.id = 'boxSeletorEmpresa';
-            divSel.innerHTML = '<i class="fas fa-building" style="color: #93c5fd;"></i><select id="selectEmpresa" onchange="trocarEmpresa()"></select>';
-            rightNav.insertBefore(divSel, rightNav.firstChild);
-        }
-
+        document.body.classList.add('usuario-master');
         const select = document.getElementById('selectEmpresa');
         const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
         select.innerHTML = '';
@@ -892,6 +892,9 @@ async function inicializarPagina() {
         const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
         select.value = selAtual;
         select.disabled = false;
+    } else {
+        // Remove a classe master caso venha gravada e esconde via CSS global
+        document.body.classList.remove('usuario-master');
     }
 
     const cid = clienteIdAtual();
