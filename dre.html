@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -24,8 +23,31 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor por defeito. Só aparece se o body tiver a classe 'usuario-master' */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
@@ -75,6 +97,27 @@
 </head>
 <body>
 
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     
     <!-- BARRA DE FERRAMENTAS E ABAS DE PERÍODO -->
@@ -107,7 +150,7 @@
             <thead>
                 <tr>
                     <th>Conta / Descrição Contábil</th>
-                    <th class="num">Valor no Período (R$)</th>
+                    <th class="num">Valor no Período (R\$)</th>
                 </tr>
             </thead>
             <tbody id="tbodyDRE">
@@ -120,12 +163,27 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let periodoAtual = 'mensal';
 
+    function obterUsuario() {
+        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+    }
+
+    function ehMaster() {
+        const u = obterUsuario();
+        if (!u || !u.email) return false;
+        return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+    }
+
     function clienteIdAtual() {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch(e) {}
-        return 1;
+        const u = obterUsuario();
+        if (!u) return 1;
+        if (ehMaster()) {
+            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+            return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        }
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
 
     function formatarMoeda(valor) {
@@ -141,12 +199,20 @@
         carregarDRE();
     }
 
-    // Inicializa o input de mês com o mês atual (ex: 2026-09) se estiver vazio
+    // Inicializa o input de mês com o mês atual se estiver vazio
     if (!document.getElementById('filtroMes').value) {
         const agora = new Date();
         const ano = agora.getFullYear();
         const mes = String(agora.getMonth() + 1).padStart(2, '0');
         document.getElementById('filtroMes').value = `${ano}-${mes}`;
+    }
+
+    function sair() {
+        if (confirm('Deseja realmente sair?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
     }
 
     async function carregarDRE() {
@@ -264,7 +330,41 @@
         }
     }
 
-    window.onload = carregarDRE;
+    async function inicializarPagina() {
+        let u = obterUsuario();
+        if(!u || !u.email) { location.href = 'login.html'; return; }
+
+        if (u.email) {
+            const elUserName = document.getElementById('userName');
+            if (elUserName) {
+                elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+            }
+        }
+
+        const master = ehMaster();
+
+        if (master) {
+            document.body.classList.add('usuario-master');
+            const select = document.getElementById('selectEmpresa');
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+            select.innerHTML = '';
+            if (data) {
+                data.forEach(emp => {
+                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                    select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+                });
+            }
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+            select.value = selAtual;
+            select.disabled = false;
+        } else {
+            document.body.classList.remove('usuario-master');
+        }
+
+        carregarDRE();
+    }
+
+    window.onload = inicializarPagina;
 </script>
 </body>
 </html>
