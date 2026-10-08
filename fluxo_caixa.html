@@ -450,3 +450,455 @@ window.onload = inicializarPagina;
 </script>
 </body>
 </html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo de Caixa - Entradas e Saídas — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor por defeito. Só aparece se o body tiver a classe 'usuario-master' */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .dash-card { background: var(--card); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
+        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+        .dash-card h4 { font-size: 11px; color: var(--text-light); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; }
+        .dash-card .value { font-size: 20px; font-weight: 800; color: var(--secondary); }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .table-container { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
+
+        .valor-entrada { color: var(--success); font-weight: 700; }
+        .valor-saida { color: var(--danger); font-weight: 700; }
+        .badge { padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 10px; text-transform: uppercase; display: inline-block; }
+        .badge-entrada { background: #d1fae5; color: #065f46; }
+        .badge-saida { background: #fee2e2; color: #b91c1c; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button { display: none !important; }
+            body { background: #fff !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
+            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
+    </div>
+
+    <!-- CARDS DE RESUMO DO FLUXO DE CAIXA -->
+    <div class="dash-cards">
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-coins"></i></div>
+            <div>
+                <h4>Saldo Inicial</h4>
+                <div class="value" id="resumoSaldoInicial">R\$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--success)"><i class="fas fa-arrow-down"></i></div>
+            <div>
+                <h4>Total de Entradas</h4>
+                <div class="value" id="resumoEntradas" style="color:var(--success)">R\$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-arrow-up"></i></div>
+            <div>
+                <h4>Total de Saídas</h4>
+                <div class="value" id="resumoSaidas" style="color:var(--danger)">R\$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
+            <div>
+                <h4>Saldo Final</h4>
+                <div class="value" id="resumoSaldoFinal">R\$ 0,00</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RELATÓRIO OPERACIONAL DO FLUXO DE CAIXA -->
+    <div class="card" id="cardRelatorioModo">
+        <div class="print-header">
+            <h2>Relatório Operacional: Fluxo de Caixa</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Filtros: <span id="printFiltrosInfo">Todos</span></p>
+        </div>
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado)</h3>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+        </div>
+        <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(3, 1fr) auto; gap:12px; align-items:flex-end;">
+            <div>
+                <label>Data Início</label>
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Data Fim</label>
+                <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltros()">
+            </div>
+            <div>
+                <label>Centro de Custo / Projeto</label>
+                <select id="filtroCentro" class="form-control" onchange="aplicarFiltros()">
+                    <option value="todos">Todos os Centros de Custo</option>
+                </select>
+            </div>
+            <div>
+                <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Descrição / Referência</th>
+                        <th>Centro de Custo</th>
+                        <th>Entrada (R\$)</th>
+                        <th>Saída (R\$)</th>
+                        <th>Saldo Acumulado (R\$)</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyFluxo">
+                    <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados do Supabase...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+let movimentacoesCache = [];
+let saldoInicialReal = 0;
+
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function ehMaster() {
+    const u = obterUsuario();
+    if (!u || !u.email) return false;
+    return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+}
+
+function clienteIdAtual() {
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+}
+
+function sbFiltroLeitura(tabela) {
+    let q = sb.from(tabela).select('*');
+    const cid = clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    return q;
+}
+
+document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+
+function formatarMoeda(valor) {
+    let num = parseFloat(valor) || 0;
+    return 'R\$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function contaDisponivelEmpresa(r) {
+    let tipo = (r.tipo || '').toLowerCase();
+    let titularidade = (r.titularidade || '').toLowerCase();
+    if (tipo.includes('conta corrente pf') || tipo.includes('pf')) return false;
+    if (titularidade.includes('particular') || titularidade.includes('pf')) return false;
+    return true;
+}
+
+async function carregarCentrosCustoFiltro() {
+    try {
+        const { data } = await sbFiltroLeitura('centros_custo');
+        let sel = document.getElementById('filtroCentro');
+        if(data && sel) {
+            data.forEach(cc => {
+                let codigoCC = cc.codigo || cc.id || '';
+                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
+                let valOpt = `${codigoCC} - ${nomeCC}`;
+                sel.innerHTML += `<option value="${valOpt}">${valOpt}</option>`;
+            });
+        }
+    } catch(e) {}
+}
+
+async function carregarSaldoInicial() {
+    try {
+        const { data: contas } = await sbFiltroLeitura('contas_bancarias');
+        let soma = 0;
+        if(contas) {
+            contas.forEach(c => {
+                if(contaDisponivelEmpresa(c)) {
+                    soma += parseFloat(c.saldo_inicial || 0);
+                }
+            });
+        }
+        saldoInicialReal = soma;
+        document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
+    } catch(e) {}
+}
+
+async function carregarFluxo() {
+    const [resReceber, resPagar] = await Promise.all([
+        sbFiltroLeitura('contas_receber'),
+        sbFiltroLeitura('contas_pagar')
+    ]);
+    let receber = resReceber.data || [];
+    let pagar = resPagar.data || [];
+    let movs = [];
+
+    receber.forEach(r => {
+        let st = (r.status || '').toLowerCase();
+        if(st.includes('recebido') || st.includes('pago') || st.includes('quitado')) {
+            movs.push({
+                data: r.data_recebimento || r.vencimento || r.created_at,
+                tipo: 'entrada',
+                descricao: r.descricao || 'Recebimento',
+                referencia: r.cliente_nome || '',
+                centro: r.centro_custo || 'Não informado',
+                valor: parseFloat(r.valor) || 0
+            });
+        }
+    });
+
+    pagar.forEach(p => {
+        let st = (p.status || '').toLowerCase();
+        if(st.includes('pago') || st.includes('quitado')) {
+            movs.push({
+                data: p.data_pagamento || p.vencimento || p.created_at,
+                tipo: 'saida',
+                descricao: p.descricao || 'Pagamento',
+                referencia: p.fornecedor || '',
+                centro: p.centro_custo || 'Não informado',
+                valor: parseFloat(p.valor) || 0
+            });
+        }
+    });
+
+    movs.sort((a,b) => new Date(a.data) - new Date(b.data));
+    movimentacoesCache = movs;
+    await carregarSaldoInicial();
+    aplicarFiltros();
+}
+
+function aplicarFiltros() {
+    let dIni = document.getElementById('filtroDataInicio').value;
+    let dFim = document.getElementById('filtroDataFim').value;
+    let centroFiltro = document.getElementById('filtroCentro').value;
+
+    let filtrados = movimentacoesCache.filter(m => {
+        if (!m.data) return false;
+        let dataStr = (m.data || '').split('T')[0];
+        if (dIni && dataStr < dIni) return false;
+        if (dFim && dataStr > dFim) return false;
+        if (centroFiltro !== 'todos' && m.centro !== centroFiltro) return false;
+        return true;
+    });
+
+    let totalEntradas = 0, totalSaidas = 0;
+    filtrados.forEach(m => {
+        if(m.tipo === 'entrada') totalEntradas += m.valor;
+        else totalSaidas += m.valor;
+    });
+
+    let saldoFinal = saldoInicialReal + totalEntradas - totalSaidas;
+    document.getElementById('resumoEntradas').innerText = formatarMoeda(totalEntradas);
+    document.getElementById('resumoSaidas').innerText = formatarMoeda(totalSaidas);
+    document.getElementById('resumoSaldoFinal').innerText = formatarMoeda(saldoFinal);
+    document.getElementById('resumoSaldoFinal').style.color = saldoFinal >= 0 ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
+
+    let infoFiltros = [];
+    if(dIni) infoFiltros.push(`Início: ${dIni.split('-').reverse().join('/')}`);
+    if(dFim) infoFiltros.push(`Fim: ${dFim.split('-').reverse().join('/')}`);
+    if(centroFiltro !== 'todos') infoFiltros.push(`Centro: ${centroFiltro}`);
+    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+
+    const tbody = document.getElementById('tbodyFluxo');
+    tbody.innerHTML = '';
+    if(filtrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>`;
+        return;
+    }
+
+    let saldoAcumulado = saldoInicialReal;
+    filtrados.forEach(m => {
+        let dataFmt = m.data ? m.data.split('T')[0].split('-').reverse().join('/') : '-';
+        let ehEntrada = m.tipo === 'entrada';
+        let badge = ehEntrada ? '<span class="badge badge-entrada">Entrada</span>' : '<span class="badge badge-saida">Saída</span>';
+        let valorEntrada = ehEntrada ? formatarMoeda(m.valor) : '-';
+        let valorSaida = ehEntrada ? '-' : formatarMoeda(m.valor);
+        saldoAcumulado += ehEntrada ? m.valor : -m.valor;
+        let descCompleta = `${m.descricao}${m.referencia ? ' - ' + m.referencia : ''}`;
+
+        tbody.innerHTML += `<tr>
+            <td><strong>${dataFmt}</strong></td>
+            <td>${badge}</td>
+            <td>${descCompleta}</td>
+            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${m.centro}</span></td>
+            <td class="valor-entrada">${valorEntrada}</td>
+            <td class="valor-saida">${valorSaida}</td>
+            <td><strong>${formatarMoeda(saldoAcumulado)}</strong></td>
+        </tr>`;
+    });
+}
+
+function limparFiltros() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroCentro').value = 'todos';
+    aplicarFiltros();
+}
+
+function sair() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+}
+
+async function inicializarPagina() {
+    let u = obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
+    await carregarCentrosCustoFiltro();
+    await carregarFluxo();
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
