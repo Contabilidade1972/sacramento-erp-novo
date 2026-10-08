@@ -55,6 +55,8 @@
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -90,6 +92,19 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .panel:first-of-type, button { display: none !important; }
+            body { background: #fff !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
@@ -209,8 +224,13 @@
     </div>
 
     <div class="panel">
+        <div class="print-header">
+            <h2>Relatório de Contratos & Aportes (Fomento)</h2>
+            <p>Emitido em: <span id="printDataEmissao">--</span> via Sacramento ERP</p>
+        </div>
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Contratos cadastrados</span>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         <div id="listaContratos" style="overflow-x:auto;">Carregando contratos...</div>
     </div>
@@ -356,6 +376,7 @@ async function carregarContratos(){
                 <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
                 <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
+                    <button class="btn-secondary" onclick="imprimirContrato(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
                     <button class="btn-secondary" onclick="editarContrato(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
                     <button class="btn-secondary" onclick="excluirContrato(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
@@ -366,6 +387,34 @@ async function carregarContratos(){
     } catch(e) {
         el.innerHTML = '<div class="empty-state">Erro ao carregar contratos.</div>';
     }
+}
+
+function imprimirContrato(id) {
+    const c = contratosCache.find(x => x.id === id);
+    if (!c) return;
+    const nomeProj = projetosMap[c.projeto_id] || '—';
+    const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
+    const conteudo = `
+        <b>Número do Contrato:</b> ${c.numero_contrato || '—'}<br>
+        <b>Projeto Vinculado:</b> ${nomeProj}<br>
+        <b>Financiador / Origem:</b> ${c.financiador || '—'}<br>
+        <b>Valor Total:</b> ${formatBRL(c.valor_total)}<br>
+        <b>Data de Assinatura:</b> ${c.data_assinatura ? c.data_assinatura.split('-').reverse().join('/') : '—'}<br>
+        <b>Data de Vigência Final:</b> ${c.data_vigencia ? c.data_vigencia.split('-').reverse().join('/') : '—'}<br>
+        <b>Status:</b> ${c.status || 'Ativo'}<br>
+        <b>Tratamento Contábil:</b> ${natRotulo}
+    `;
+    const agora = new Date().toLocaleString('pt-BR');
+    const janela = window.open('', '_blank', 'width=700,height=600');
+    janela.document.write(`
+        <html>
+        <head><title>Comprovativo de Contrato — Sacramento ERP</title>
+        <style>body{font-family:Inter,sans-serif;padding:30px;color:#1e293b;}h2{color:#1e3a8a;border-bottom:2px solid #2563eb;padding-bottom:10px;margin-bottom:20px;font-size:18px;}.info-box{background:#f8fafc;border:1px solid #e2e8f0;padding:20px;border-radius:10px;font-size:14px;line-height:1.8;}.footer{margin-top:30px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:10px;}</style>
+        </head>
+        <body><h2>Comprovativo de Contrato / Fomento — Sacramento ERP</h2><div class="info-box">${conteudo}</div><div class="footer">Emitido em: ${agora}</div><script>window.print();<\/script></body>
+        </html>
+    `);
+    janela.document.close();
 }
 
 async function salvarContrato(){
@@ -494,6 +543,7 @@ async function inicializarPagina(){
         document.body.classList.remove('usuario-master');
     }
 
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
     await carregarProjetosSelect();
     await carregarContratos();
 }
