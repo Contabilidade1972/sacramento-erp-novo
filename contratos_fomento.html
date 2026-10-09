@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="erp-core.js"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -297,11 +297,13 @@ function parseValorBR(v){
     var n=parseFloat(s);
     return isNaN(n)?0:n;
 }
+
 function formatarCampoMoeda(el){
     if(el.value.trim()===''){el.value='';return;}
     var n=parseValorBR(el.value);
     el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
+
 function formatBRL(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0);}
 
 function selecionarDevolucao(val, btn){
@@ -375,9 +377,9 @@ async function carregarContratos(){
                 <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
                 <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
-                    <button class="btn-secondary" onclick="imprimirContrato(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
-                    <button class="btn-secondary" onclick="editarContrato(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
-                    <button class="btn-secondary" onclick="excluirContrato(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
+                    <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
+                    <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
+                    <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -388,7 +390,7 @@ async function carregarContratos(){
     }
 }
 
-function imprimirContrato(id) {
+window.imprimirContratoPorId = function(id) {
     const c = contratosCache.find(x => x.id === id);
     if (!c) return;
     const nomeProj = projetosMap[c.projeto_id] || '—';
@@ -414,9 +416,9 @@ function imprimirContrato(id) {
         </html>
     `);
     janela.document.close();
-}
+};
 
-async function salvarContrato(){
+window.salvarContrato = async function(){
     const id = document.getElementById('edit_id').value;
     const projId = document.getElementById('projetoId').value;
     const origRecurso = document.getElementById('financiador').value.trim();
@@ -455,11 +457,11 @@ async function salvarContrato(){
 
     if(res.error) { toast("Erro ao salvar contrato: " + res.error.message, "error"); return; }
     toast("Contrato salvo com sucesso!");
-    cancelarEdicao();
+    window.cancelarEdicao();
     carregarContratos();
-}
+};
 
-function editarContrato(id){
+window.editarContratoPorId = function(id){
     const c = contratosCache.find(x => x.id === id);
     if(!c) return;
     document.getElementById('edit_id').value = c.id;
@@ -487,9 +489,9 @@ function editarContrato(id){
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar contrato';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
     window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+};
 
-function cancelarEdicao(){
+window.cancelarEdicao = function(){
     document.getElementById('edit_id').value = '';
     document.getElementById('projetoId').value = '';
     document.getElementById('financiador').value = '';
@@ -501,15 +503,15 @@ function cancelarEdicao(){
     document.getElementById('statusContrato').value = 'Ativo';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar contrato';
     document.getElementById('btnCancelar').style.display = 'none';
-}
+};
 
-async function excluirContrato(id){
+window.excluirContratoPorId = async function(id){
     if(!confirm("Deseja realmente excluir este contrato?")) return;
     const { error } = await sb.from('contratos_fomento').delete().eq('id', id);
     if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
     toast("Contrato excluído com sucesso!");
     carregarContratos();
-}
+};
 
 async function inicializarPagina(){
     let u = obterUsuario();
