@@ -1,531 +1,326 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contratos & Aportes — Sacramento ERP Gestão Empresarial</title>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>
-  *{margin:0;padding:0;box-sizing:border-box}
-  :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f0f4f8;--card:#ffffff;--text-main:#1e293b;--text-light:#64748b;--border:#e2e8f0}
-  body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text-main);display:flex;min-height:100vh;flex-direction:row;}
-  
-  /* BLINDAGEM LGPD ABSOLUTA */
-  body:not(.usuario-master) .empresa-selector {
-      display: none !important;
-      visibility: hidden !important;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contratos & Aportes — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
 
-  .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;transition:width 0.3s ease, transform 0.3s ease;box-shadow:2px 0 12px rgba(15,23,42,0.15);}
-  .sidebar.collapsed { width: 70px !important; }
-  .sidebar.collapsed .logo-text-wrapper,
-  .sidebar.collapsed .logo-watermark,
-  .sidebar.collapsed .sidebar-logo img,
-  .sidebar.collapsed .nav-section,
-  .sidebar.collapsed .nav-item span,
-  .sidebar.collapsed .menu-busca,
-  .sidebar.collapsed .nav-seta { display: none !important; }
-  .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
-  .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;z-index:10;min-height:80px; gap:8px;}
-  .logo-watermark{position:absolute;right:-14px;top:50%;transform:translateY(-50%);font-size:110px;color:rgba(255,255,255,0.07);z-index:0;pointer-events:none;line-height:1;}
-  .logo-watermark i{filter:drop-shadow(0 0 8px rgba(37,99,235,0.4));}
-  .logo-text-wrapper{display:flex;flex-direction:column;overflow:hidden;flex:1;position:relative;z-index:1;}
-  .sidebar-logo h1{font-size:12px;font-weight:700;line-height:1.25;color:#fff;letter-spacing:0;text-transform:none;word-wrap:break-word;}
-  .sidebar-logo span{font-size:9px;color:#93c5fd;margin-top:3px;display:block;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;}
-  .btn-toggle-menu { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
-  .btn-toggle-menu:hover { color: #fff; }
-  .btn-tema { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; padding: 4px; transition: color 0.2s; }
-  .btn-tema:hover { color: #fff; }
-  .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding-right:20px;}
-  .nav-seta { font-size: 9px; color: #64748b; transition: transform 0.2s; }
-  .nav-seta.fechada { transform: rotate(-90deg); }
-  .sidebar.collapsed .nav-section { display: none !important; }
-  .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:.2s;border-left:3px solid transparent;}
-  .nav-item-left{display:flex;align-items:center;gap:12px;}
-  .sidebar.collapsed .nav-item-left { gap: 0; }
-  .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
-  .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
-  .menu-busca { padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-  .menu-busca .busca-wrapper { position: relative; }
-  .menu-busca .busca-wrapper i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #64748b; font-size: 12px; }
-  .menu-busca input { width: 100%; padding: 8px 10px 8px 30px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: #e2e8f0; font-size: 12px; outline: none; box-sizing: border-box; }
-  .menu-busca input::placeholder { color: #64748b; }
-  .menu-back-dashboard { border-top: 1px solid rgba(255,255,255,0.08); }
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
 
-  .main{margin-left:260px;flex:1;display:flex;flex-direction:column;min-width:0;width:calc(100% - 260px);transition:margin-left 0.3s ease, width 0.3s ease;}
-  .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
-  .header{height:60px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:900}
-  .header-title-wrapper{display:flex;align-items:center;gap:12px;}
-  .btn-home{background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;color:#fff;font-weight:700;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 4px rgba(37,99,235,0.2);transition:.2s;}
-  .btn-home:hover{transform:translateY(-1px);box-shadow:0 4px 8px rgba(37,99,235,0.3);}
-  .btn-mobile-toggle { background: var(--primary); border: none; color: #fff; width: 36px; height: 36px; border-radius: 8px; display: none; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; }
-  .header-title{font-size:16px;font-weight:700;color:var(--secondary)}
-  .header-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--text-light);font-weight:500;}
-  .date-time{color:var(--primary);font-weight:600;}
-  .empresa-selector{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
-  .empresa-selector i{color:var(--primary);font-size:13px;}
-  .empresa-selector select{border:none;background:transparent;font-size:12px;font-weight:600;color:var(--secondary);cursor:pointer;outline:none;max-width:200px;}
-  .user-menu{display:flex;align-items:center;gap:10px;cursor:pointer;padding-left:16px;border-left:1px solid var(--border);}
-  .user-menu:hover{color:var(--primary);}
-  
-  .content{padding:24px;display:flex;flex-direction:column;gap:20px}
-  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,0.08);margin-bottom:20px;}
-  .card h2{font-size:16px;margin-bottom:16px;color:var(--secondary);}
-  .grid{display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;}
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  .btn{background:var(--primary);color:#fff;border:none;padding:10px 18px;border-radius:8px;font-size:14px;cursor:pointer;font-weight:600;}
-  .btn:hover{background:#1d4ed8;}
-  .btn-cinza{background:#64748b;color:#fff;}
-  .btn-cinza:hover{background:#475569;}
-  table{width:100%;border-collapse:collapse;font-size:13px;}
-  th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--border);}
-  th{background:var(--bg);color:var(--text-light);font-size:11px;text-transform:uppercase;font-weight:700;}
-  .msg{padding:12px 16px;border-radius:8px;margin-bottom:14px;font-size:13px;display:none;font-weight:500;}
-  .msg.ok{background:#dcfce7;color:#166534;display:block;}
-  .msg.er{background:#fee2e2;color:#991b1b;display:block;}
-  .badge{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;display:inline-block;}
-  .b-passivo{background:#fee2e2;color:#991b1b;}
-  .b-receita{background:#dcfce7;color:#166534;}
-  .b-pl{background:#e0e7ff;color:#3730a3;}
-  .b-proprio{background:#fef9c3;color:#854d0e;}
-  .infocontrato{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-size:13px;color:var(--text-main);margin-top:14px;display:none;}
-  .infocontrato b{color:var(--secondary);}
-  .pill-group{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
-  .pill-btn{background:var(--bg);border:1.5px solid var(--border);padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;color:var(--text-main);cursor:pointer;transition:0.2s;}
-  .pill-btn.ativo{background:#eff6ff;border-color:var(--primary);color:var(--primary);font-weight:700;box-shadow:0 2px 5px rgba(37,99,235,0.1);}
-  .acoes{white-space:nowrap;}
-  .btn-acao{border:none;background:transparent;cursor:pointer;font-size:14px;padding:6px 9px;border-radius:6px;}
-  .btn-acao.editar{color:#2563eb;} .btn-acao.editar:hover{background:#dbeafe;}
-  .btn-acao.imprimir{color:#0ea5e9;} .btn-acao.imprimir:hover{background:#e0f2fe;}
-  .btn-acao.excluir{color:#ef4444;} .btn-acao.excluir:hover{background:#fee2e2;}
-  .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;margin-bottom:12px;background:var(--card);color:var(--text-main);outline:none;}
-  .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
-  .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.7);backdrop-filter:blur(3px);z-index:2000;display:none;align-items:center;justify-content:center;padding:16px;}
-  .modal-card{background:var(--card);width:100%;max-width:500px;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,0.3);padding:24px;}
-  .modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:12px;margin-bottom:16px;}
-  .sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 950; display: none; backdrop-filter: blur(2px); }
-  [data-tema="escuro"] { --bg: #0f172a !important; --card: #1e293b !important; --text-main: #e2e8f0 !important; --text-light: #94a3b8 !important; --border: #334155 !important; background: #0f172a !important; color: #e2e8f0 !important; }
-  [data-tema="escuro"] body { background: #0f172a !important; color: #e2e8f0 !important; }
-  [data-tema="escuro"] .header { background: #1e293b !important; border-bottom-color: #334155 !important; }
-  [data-tema="escuro"] .header-title { color: #f1f5f9 !important; }
-  [data-tema="escuro"] .empresa-selector { background: #0f172a !important; border-color: #334155 !important; }
-  [data-tema="escuro"] .empresa-selector select { color: #f1f5f9 !important; }
-  @media(max-width:900px){
-    .sidebar { transform: translateX(-100%); width: 260px !important; }
-    .sidebar.mobile-open { transform: translateX(0); }
-    .main { margin-left: 0 !important; width: 100% !important; }
-    .btn-mobile-toggle { display: flex !important; }
-  }
-</style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+        .pill-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .pill-btn { background: var(--bg); border: 1.5px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: 0.2s; }
+        .pill-btn.ativo { background: #eff6ff; border-color: var(--primary); color: var(--primary); font-weight: 700; box-shadow: 0 2px 5px rgba(37,99,235,0.1); }
+
+        .infocontrato { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 16px; font-size: 13px; color: #166534; margin-bottom: 16px; display: block; }
+        .infocontrato b { color: #14532d; }
+        
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        .print-header { display: none; }
+
+        @media print {
+            .site-header, .page-toolbar, .panel:first-of-type, button { display: none !important; }
+            body { background: #fff !important; }
+            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
+            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
+            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+            table { width: 100% !important; border-collapse: collapse !important; }
+            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; font-size: 11px !important; color: #000 !important; }
+            th { background: #1e3a8a !important; color: #fff !important; }
+        }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
 </head>
 <body>
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMenuMobile()"></div>
+<div class="toast-container" id="toastContainer"></div>
 
-<!-- MODAL ALTERAR SENHA -->
-<div class="modal-overlay" id="modalSenha" style="z-index: 3500;">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
-            <button onclick="document.getElementById('modalSenha').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer; color:var(--text-main);"><i class="fas fa-times"></i></button>
-        </div>
-        <div>
-            <label>Nova Senha</label>
-            <input type="password" id="novaSenha" class="form-control" placeholder="Digite a nova senha">
-            <label style="margin-top:10px;">Confirmar Nova Senha</label>
-            <input type="password" id="confirmaSenha" class="form-control" placeholder="Confirme a nova senha">
-            <button class="btn" style="width:100%; margin-top:14px;" onclick="salvarNovaSenha()"><i class="fas fa-save"></i> Atualizar Senha</button>
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
         </div>
     </div>
-</div>
-
-<!-- ===== MENU LATERAL ===== -->
-<aside class="sidebar" id="appSidebar">
-    <div class="sidebar-logo">
-        <div class="logo-watermark"><i class="fas fa-dna"></i></div>
-        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
-            <div class="logo-text-wrapper">
-                <h1 id="sidebarAppName">Sacramento ERP Gestão Empresarial</h1>
-                <span id="sidebarSubName">ERP Financeiro</span>
-            </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
         </div>
-        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema claro/escuro"><i class="fas fa-moon"></i></button>
-        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher / Expandir Menu"><i class="fas fa-bars"></i></button>
-    </div>
-    <div class="menu-busca">
-        <div class="busca-wrapper">
-            <i class="fas fa-search"></i>
-            <input type="text" id="menuBuscaGlobal" placeholder="Buscar no menu...">
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
         </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
-    <div class="nav-section">Principal <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-desktop"></i> <span>Dashboard</span></div></div>
-    <div class="nav-item" onclick="location.href='central_ajuda.html'"><div class="nav-item-left"><i class="fas fa-question-circle"></i> <span>Central de Ajuda</span></div></div>
-    <div class="nav-section">Cadastros <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='parceiros.html'"><div class="nav-item-left"><i class="fas fa-address-book"></i> <span>Parceiros</span></div></div>
-    <div class="nav-item" onclick="location.href='centros_custo.html'"><div class="nav-item-left"><i class="fas fa-sitemap"></i> <span>Centros de Custo</span></div></div>
-    <div class="nav-item" onclick="location.href='contas_bancarias.html'"><div class="nav-item-left"><i class="fas fa-university"></i> <span>Contas Bancárias / Caixa</span></div></div>
-    <div class="nav-item" onclick="location.href='produtos.html'"><div class="nav-item-left"><i class="fas fa-boxes"></i> <span>Produtos e Serviços</span></div></div>
-    <div class="nav-item" onclick="location.href='plano_contas.html'"><div class="nav-item-left"><i class="fas fa-list-alt"></i> <span>Plano de Contas</span></div></div>
-    <div class="nav-item" data-modulo="13" onclick="location.href='estoque.html'"><div class="nav-item-left"><i class="fas fa-warehouse"></i> <span>Inventário / Estoque</span></div></div>
-    <div class="nav-section">Transporte &amp; Logística <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" data-modulo="14" onclick="location.href='cte.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>CT-e</span></div></div>
-    <div class="nav-item" data-modulo="15" onclick="location.href='mdfe.html'"><div class="nav-item-left"><i class="fas fa-route"></i> <span>MDF-e</span></div></div>
-    <div class="nav-item" data-modulo="16" onclick="location.href='antt.html'"><div class="nav-item-left"><i class="fas fa-shield-alt"></i> <span>Registro ANTT</span></div></div>
-    <div class="nav-item" data-modulo="17" onclick="location.href='frota.html'"><div class="nav-item-left"><i class="fas fa-truck"></i> <span>Frota / Veículos</span></div></div>
-    <div class="nav-section">Tecnologia &amp; P&amp;D <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" data-modulo="20" onclick="location.href='projetos_pd.html'"><div class="nav-item-left"><i class="fas fa-flask"></i> <span>Projetos &amp; P&amp;D</span></div></div>
-    <div class="nav-item active" data-modulo="24" onclick="location.href='contratos_fomento.html'"><div class="nav-item-left"><i class="fas fa-file-signature"></i> <span>Contratos &amp; Aportes</span></div></div>
-    <div class="nav-item" data-modulo="25" onclick="location.href='aportes_pd.html'"><div class="nav-item-left"><i class="fas fa-money-bill-wave"></i> <span>Aportes Recebidos</span></div></div>
-    <div class="nav-item" data-modulo="26" onclick="location.href='custos_pd.html'"><div class="nav-item-left"><i class="fas fa-receipt"></i> <span>Gastos de P&amp;D</span></div></div>
-    <div class="nav-item" data-modulo="27" onclick="location.href='painel_saldos.html'"><div class="nav-item-left"><i class="fas fa-chart-pie"></i> <span>Painel de Saldos</span></div></div>
-    <div class="nav-item" data-modulo="21" onclick="location.href='ativos_equipamentos.html'"><div class="nav-item-left"><i class="fas fa-microscope"></i> <span>Ativos / Equipamentos</span></div></div>
-    <div class="nav-item" data-modulo="22" onclick="location.href='nfse_servicos.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturamento de Serviços (NFS-e)</span></div></div>
-    <div class="nav-item" data-modulo="23" onclick="location.href='relatorios_performance.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Relatórios de Performance</span></div></div>
-    <div class="nav-section">Contabilidade &amp; Escritório <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='certificados.html'"><div class="nav-item-left"><i class="fas fa-lock"></i> <span>Cofre de Certificados</span></div></div>
-    <div class="nav-item" onclick="location.href='calendario.html'"><div class="nav-item-left"><i class="fas fa-calendar-alt"></i> <span>Calendário Fiscal</span></div></div>
-    <div class="nav-item" data-modulo="30" onclick="location.href='contabilidade.html'"><div class="nav-item-left"><i class="fas fa-book"></i> <span>Contabilidade (ECD/ECF)</span></div></div>
-    <div class="nav-item" data-modulo="31" onclick="location.href='fiscal_contabil.html'"><div class="nav-item-left"><i class="fas fa-calculator"></i> <span>Fiscal (EFD/DCTF)</span></div></div>
-    <div class="nav-item" data-modulo="32" onclick="location.href='folha_rh.html'"><div class="nav-item-left"><i class="fas fa-users"></i> <span>Folha / RH (eSocial)</span></div></div>
-    <div class="nav-item" data-modulo="33" onclick="location.href='gestao_escritorio.html'"><div class="nav-item-left"><i class="fas fa-briefcase"></i> <span>Gestão do Escritório</span></div></div>
-    <div class="nav-item" data-modulo="34" onclick="location.href='juridico_auditoria.html'"><div class="nav-item-left"><i class="fas fa-gavel"></i> <span>Jurídico &amp; Auditoria</span></div></div>
-    <div class="nav-section">Financeiro &amp; Fiscal <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='contas_pagar.html'"><div class="nav-item-left"><i class="fas fa-file-invoice-dollar" style="color:#ef4444"></i> <span>Contas a Pagar</span></div></div>
-    <div class="nav-item" onclick="location.href='contas_receber.html'"><div class="nav-item-left"><i class="fas fa-hand-holding-usd" style="color:#10b981"></i> <span>Contas a Receber</span></div></div>
-    <div class="nav-item" onclick="location.href='transferencias.html'"><div class="nav-item-left"><i class="fas fa-exchange-alt"></i> <span>Transferências</span></div></div>
-    <div class="nav-item" onclick="location.href='extrato_bancario.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Extrato Bancário</span></div></div>
-    <div class="nav-item" onclick="location.href='conciliacao.html'"><div class="nav-item-left"><i class="fas fa-check-double"></i> <span>Conciliação OFX</span></div></div>
-    <div class="nav-item" onclick="location.href='fluxo_de_caixa.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>Fluxo de Caixa</span></div></div>
-    <div class="nav-item" onclick="location.href='dre.html'"><div class="nav-item-left"><i class="fas fa-chart-line"></i> <span>DRE Gerencial</span></div></div>
-    <div class="nav-item" onclick="location.href='faturas.html'"><div class="nav-item-left"><i class="fas fa-file-invoice"></i> <span>Faturas &amp; Emissão</span></div></div>
-    <div class="nav-item" onclick="location.href='orcamentos.html'"><div class="nav-item-left"><i class="fas fa-file-contract"></i> <span>Orçamentos &amp; Propostas</span></div></div>
-    <div class="nav-section">Relatórios &amp; Auditoria <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='relatorios.html'"><div class="nav-item-left"><i class="fas fa-chart-bar"></i> <span>Relatórios Gerais</span></div></div>
-    <div class="nav-item" onclick="location.href='logs.html'"><div class="nav-item-left"><i class="fas fa-history"></i> <span>Logs de Auditoria</span></div></div>
-    <div class="nav-section">Controle &amp; Segurança <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='backup.html'"><div class="nav-item-left"><i class="fas fa-database"></i> <span>Backup de Dados</span></div></div>
-    <div class="nav-section">Sistema (Master) <i class="fas fa-chevron-down nav-seta"></i></div>
-    <div class="nav-item" onclick="location.href='configuracoes_fiscais.html'"><div class="nav-item-left"><i class="fas fa-sliders-h"></i> <span>Parâmetros Fiscais</span></div></div>
-    <div class="nav-item" onclick="location.href='configuracoes_sistema.html'"><div class="nav-item-left"><i class="fas fa-cog" style="color:#f59e0b"></i> <span>White-Label (Master)</span></div></div>
-    <div class="nav-item" onclick="location.href='clientes_contratantes.html'"><div class="nav-item-left"><i class="fas fa-building" style="color:#f59e0b"></i> <span>Gestão de Clientes (Master)</span></div></div>
-    <div class="nav-item menu-back-dashboard" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-home"></i> <span>Voltar ao Dashboard</span></div></div>
-    <div class="nav-item" onclick="sair()"><div class="nav-item-left"><i class="fas fa-sign-out-alt" style="color:#ef4444"></i> <span>Sair do Sistema</span></div></div>
-    <div style="padding-bottom: 30px;"></div>
-</aside>
+</header>
 
-<!-- ===== ÁREA PRINCIPAL ===== -->
-<main class="main" id="appMain">
-  <header class="header">
-    <div class="header-title-wrapper" style="display:flex; align-items:center; gap:12px;">
-      <button class="btn-mobile-toggle" onclick="toggleMenuMobile()" title="Abrir Menu"><i class="fas fa-bars"></i></button>
-      <button class="btn-home" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Voltar ao Módulo P&D</button>
-      <div class="header-title">Contratos & Aportes (Fomento)</div>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Tecnologia & P&D</a>
     </div>
-    <div class="header-right" style="display:flex; align-items:center; gap:16px; font-size:12px; color:var(--text-light); font-weight:500;">
-      <div class="empresa-selector" id="empresaSelector" title="Alternar entre empresas">
-        <i class="fas fa-building"></i>
-        <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-      </div>
-      <div class="date-time" id="current_datetime" style="color:var(--primary); font-weight:600;">--/--/----, --:--</div>
-      <div class="user-menu" onclick="document.getElementById('modalSenha').style.display='flex'" title="Clique para alterar sua senha">
-        <i class="fas fa-user-circle" style="font-size:16px; color:var(--primary);"></i>
-        <span id="userInfo">Administrador</span>
-        <i class="fas fa-key" style="font-size:11px; color:#64748b; margin-left:4px;"></i>
-      </div>
-      <button class="btn-sair" onclick="sair()" title="Sair do sistema" style="background:#ef4444;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="fas fa-sign-out-alt"></i> Sair</button>
+
+    <div>
+        <div class="page-title"><i class="fas fa-file-signature" style="color:var(--primary);"></i> Contratos & Aportes (Fomento)</div>
+        <div class="page-subtitle">Controle de instrumentos de fomento, convênios, editais e repasses financeiros para inovação</div>
     </div>
-  </header>
 
-  <div class="content">
-    <div class="pagina" style="width:100%;">
-
-      <div id="msg" class="msg"></div>
-
-      <!-- ===== FORMULÁRIO ===== -->
-      <div class="card">
-        <h2 id="tituloForm">Cadastrar contrato / convênio de fomento</h2>
+    <div class="panel">
+        <div class="panel-header" style="border:none; margin-bottom:4px;">
+            <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar contrato / convênio de fomento</span>
+        </div>
         <input type="hidden" id="edit_id">
         <input type="hidden" id="naturezaContabil" value="subvencao_custeio">
 
-        <div class="grid">
-          <div>
-            <label>Projeto Vinculado *</label>
-            <select id="projetoId" class="form-control"><option value="">— Selecione o projeto —</option></select>
-          </div>
-          <div>
-            <label>Origem do Recurso *</label>
-            <input type="text" id="financiador" class="form-control" placeholder="Terceiro (financiador / parceiro / órgão de fomento)">
-          </div>
-          <div>
-            <label>Financiador / Origem *</label>
-            <input type="text" id="origemDetalhe" class="form-control" placeholder="Ex.: Finep, Fapesp, BNDES, empresa parceira">
-          </div>
-          <div>
-            <label>Número do Contrato / Convênio *</label>
-            <input type="text" id="numContrato" class="form-control" placeholder="Ex.: 1234/2026">
-          </div>
-          <div>
-            <label>Valor Total (R\$) *</label>
-            <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="formatarCampoMoeda(this)">
-          </div>
-          <div>
-            <label>Data de Assinatura *</label>
-            <input type="date" id="dataAssinatura" class="form-control">
-          </div>
-          <div>
-            <label>Data de Vigência Final *</label>
-            <input type="date" id="dataVigencia" class="form-control">
-          </div>
-          <div>
-            <label>Status *</label>
-            <select id="statusContrato" class="form-control">
-              <option value="Ativo" selected>Ativo</option>
-              <option value="Em Negociação">Em Negociação</option>
-              <option value="Encerrado">Encerrado</option>
-            </select>
-          </div>
+        <div class="form-row">
+            <div>
+                <label>Projeto Vinculado *</label>
+                <select id="projetoId" class="form-control"><option value="">— Selecione o projeto —</option></select>
+            </div>
+            <div>
+                <label>Origem do Recurso *</label>
+                <input type="text" id="financiador" class="form-control" placeholder="Terceiro (financiador / parceiro / órgão de fomento)">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Financiador / Orígem *</label>
+                <input type="text" id="origemDetalhe" class="form-control" placeholder="Ex.: Finep, Fapesp, BNDES, empresa parceira">
+            </div>
+            <div>
+                <label>Número do Contrato / Convênio *</label>
+                <input type="text" id="numContrato" class="form-control" placeholder="Ex.: 1234/2026">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Valor Total (R\$) *</label>
+                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="formatarCampoMoeda(this)">
+            </div>
+            <div>
+                <label>Data de Assinatura *</label>
+                <input type="date" id="dataAssinatura" class="form-control">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div>
+                <label>Data de Vigência Final *</label>
+                <input type="date" id="dataVigencia" class="form-control">
+            </div>
+            <div>
+                <label>Status *</label>
+                <select id="statusContrato" class="form-control">
+                    <option value="Ativo" selected>Ativo</option>
+                    <option value="Em Negociação">Em Negociação</option>
+                    <option value="Encerrado">Encerrado</option>
+                </select>
+            </div>
         </div>
 
         <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
-          <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px;">1. Esse dinheiro precisa ser devolvido?</label>
-          <div class="pill-group" id="grupoDevolucao">
-            <button type="button" class="pill-btn ativo" onclick="selecionarDevolucao('nao', this)">Não — é a fundo perdido (não devolve)</button>
-            <button type="button" class="pill-btn" onclick="selecionarDevolucao('sim', this)">Sim — terá que devolver</button>
-          </div>
+            <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px;">1. Esse dinheiro precisa ser devolvido?</label>
+            <div class="pill-group" id="grupoDevolucao">
+                <button type="button" class="pill-btn ativo" onclick="selecionarDevolucao('nao', this)">Não — é a fundo perdido (não devolve)</button>
+                <button type="button" class="pill-btn" onclick="selecionarDevolucao('sim', this)">Sim — terá que devolver</button>
+            </div>
 
-          <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px; margin-top: 12px;">2. É para cobrir gastos do dia a dia ou para comprar/construir algo durável?</label>
-          <div class="pill-group" id="grupoFinalidade">
-            <button type="button" class="pill-btn ativo" onclick="selecionarFinalidade('custeio', this)">Gastos do dia a dia (custeio)</button>
-            <button type="button" class="pill-btn" onclick="selecionarFinalidade('investimento', this)">Comprar / construir algo durável (investimento)</button>
-          </div>
+            <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px; margin-top: 12px;">2. É para cobrir gastos do dia a dia ou para comprar/construir algo durável?</label>
+            <div class="pill-group" id="grupoFinalidade">
+                <button type="button" class="pill-btn ativo" onclick="selecionarFinalidade('custeio', this)">Gastos do dia a dia (custeio)</button>
+                <button type="button" class="pill-btn" onclick="selecionarFinalidade('investimento', this)">Comprar / construir algo durável (investimento)</button>
+            </div>
 
-          <div id="infoContrato" class="infocontrato" style="display:block;">
-            <b>Tratamento contábil automático:</b> <span id="rotuloTratamento">Subvenção para Custeio — Receita por competência</span><br>
-            <span id="descTratamento">Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.</span>
-          </div>
+            <div id="infoContrato" class="infocontrato">
+                <b>Tratamento contábil automático:</b> <span id="rotuloTratamento">Subvenção para Custeio — Receita por competência</span><br>
+                <span id="descTratamento">Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.</span>
+            </div>
         </div>
 
-        <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn" id="btnSalvar" onclick="salvarContrato()">Salvar contrato</button>
-          <button class="btn btn-cinza" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar edição</button>
+        <div style="display:flex; gap:10px; margin-top:16px;">
+            <button class="btn-primary" type="button" onclick="window.salvarContrato()"><i class="fas fa-save"></i> Salvar contrato</button>
+            <button class="btn-secondary" type="button" id="btnCancelar" onclick="window.cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
-      </div>
-
-      <!-- ===== LISTA ===== -->
-      <div class="card">
-        <h2>Contratos cadastrados</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Contrato</th><th>Projeto</th><th>Financiador / Origem</th><th>Valor Total</th><th>Tratamento contábil</th><th>Status</th><th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tabela"></tbody>
-        </table>
-      </div>
-
     </div>
-  </div>
-</main>
+
+    <div class="panel">
+        <div class="print-header">
+            <h2>Relatório de Contratos & Aportes (Fomento)</h2>
+            <p>Emitido em: <span id="printDataEmissao">--</span> via Sacramento ERP</p>
+        </div>
+        <div class="panel-header">
+            <span><i class="fas fa-list"></i> Contratos cadastrados</span>
+            <button class="btn-acao sucesso" type="button" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        </div>
+        <div id="listaContratos" style="overflow-x:auto;">Carregando contratos...</div>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
 
 <script>
-  var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-  var contratosCache = [];
-  var projetosMap = {};
-  var decisaoDevolucao = 'nao';
-  var decisaoFinalidade = 'custeio';
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
 
-  function obterUsuarioAtual() {
-      try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
-      return null;
-  }
-  function clienteIdAtual() {
-      const u = obterUsuarioAtual();
-      if (!u) return null;
-      const ehAdmin = !!(u.email === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master'));
-      if (ehAdmin) {
-          try {
-              const sel = localStorage.getItem('empresaSelecionada');
-              if (sel) return parseInt(sel);
-          } catch(e) {}
-      }
-      return u.cliente_id ? parseInt(u.cliente_id) : 1;
-  }
-  function ehMasterGlobal() {
-      const u = obterUsuarioAtual();
-      return !!(u && (u.email || '').toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-  }
-  if (!window.sb) {
-    window.sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-  }
-  const sb = window.sb;
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let contratosCache = [];
+let projetosMap = {};
+let decisaoDevolucao = 'nao';
+let decisaoFinalidade = 'custeio';
 
-  function toggleMenuMobile() {
-      const sidebar = document.getElementById('appSidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      sidebar.classList.toggle('mobile-open');
-      overlay.style.display = sidebar.classList.contains('mobile-open') ? 'block' : 'none';
-  }
-  function toggleRecolherMenuPC() {
-    const sidebar = document.getElementById('appSidebar');
-    const main = document.getElementById('appMain');
-    sidebar.classList.toggle('collapsed');
-    main.classList.toggle('expanded');
-  }
-  function alternarTemaGlobal() {
-      let atual = 'claro';
-      try { atual = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
-      const novo = atual === 'escuro' ? 'claro' : 'escuro';
-      try { localStorage.setItem('erp_tema', novo); } catch(e) {}
-      aplicarTemaSalvo();
-  }
-  function aplicarTemaSalvo() {
-      let tema = 'claro';
-      try { tema = localStorage.getItem('erp_tema') || 'claro'; } catch(e) {}
-      document.documentElement.setAttribute('data-tema', tema);
-      const btn = document.getElementById('btnTemaGlobal');
-      if (btn) {
-          btn.innerHTML = tema === 'escuro' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-      }
-  }
-  function sair() {
-      if (confirm('Deseja realmente sair do sistema?')) { 
-          localStorage.removeItem('usuarioLogado'); 
-          localStorage.removeItem('empresaSelecionada'); 
-          location.href = 'login.html'; 
-      }
-  }
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
 
-  if (!window.__relogioIniciado) {
-      window.__relogioIniciado = true;
-      setInterval(() => {
-          let now = new Date();
-          const dt = document.getElementById('current_datetime');
-          if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-      }, 1000);
-  }
+function ehMaster() {
+    const u = obterUsuario();
+    if (!u || !u.email) return false;
+    return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+}
 
-  async function salvarNovaSenha() {
-      let nova = document.getElementById('novaSenha').value.trim();
-      let conf = document.getElementById('confirmaSenha').value.trim();
-      if(!nova || !conf) { alert("Preencha todos os campos da senha!"); return; }
-      if(nova !== conf) { alert("As senhas não coincidem!"); return; }
-      const { error } = await sb.auth.updateUser({ password: nova });
-      if(error) { alert("Erro ao atualizar senha: " + error.message); return; }
-      alert("Senha alterada com sucesso!");
-      document.getElementById('modalSenha').style.display = 'none';
-      document.getElementById('novaSenha').value = '';
-      document.getElementById('confirmaSenha').value = '';
-  }
+function clienteIdAtual() {
+    const u = obterUsuario();
+    if (!u) return 1;
+    if (ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+}
 
-  async function carregarSeletorEmpresa() {
-      const select = document.getElementById('selectEmpresa');
-      if(!select) return;
-      const u = obterUsuarioAtual();
-      const isMasterGlobal = ehMasterGlobal();
-      const perfil = ((u && u.perfil) || '').toLowerCase();
-      let portfolio = [];
-      try { portfolio = JSON.parse(localStorage.getItem('empresasPortfolio') || '[]'); } catch(e) {}
-      const isEscritorio = perfil.includes('contador') || perfil.includes('escritorio') || portfolio.length > 1;
-      if(!isMasterGlobal && !isEscritorio) {
-          document.getElementById('empresaSelector').style.display = 'none';
-          return;
-      }
-      try {
-          let empresasParaMostrar = [];
-          if(isMasterGlobal) {
-              const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-              empresasParaMostrar = data || [];
-          } else {
-              let ids = portfolio.map(p => p.cliente_id).filter(Boolean);
-              if(ids.length === 0) {
-                  const cid = clienteIdAtual();
-                  if(cid) ids = [cid];
-              }
-              if(ids.length > 0) {
-                  const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', ids).order('id');
-                  empresasParaMostrar = data || [];
-              }
-          }
-          if(empresasParaMostrar.length === 0) return;
-          select.innerHTML = '';
-          empresasParaMostrar.forEach(emp => {
-              const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-              const opt = document.createElement('option');
-              opt.value = emp.id;
-              opt.textContent = nomeEmp;
-              select.appendChild(opt);
-          });
-          document.getElementById('empresaSelector').style.display = 'flex';
-          const empSelecionada = localStorage.getItem('empresaSelecionada');
-          if(empSelecionada && [...select.options].some(o => o.value === empSelecionada)) {
-              select.value = empSelecionada;
-          } else {
-              select.value = select.options[0].value;
-          }
-      } catch(e) {}
-  }
-  function trocarEmpresa() {
-      const select = document.getElementById('selectEmpresa');
-      if(!select) return;
-      const cid = select.value;
-      const u = obterUsuarioAtual();
-      if(u) {
-          u.cliente_id = parseInt(cid);
-          localStorage.setItem('usuarioLogado', JSON.stringify(u));
-      }
-      localStorage.setItem('empresaSelecionada', String(cid));
-      location.reload();
-  }
+function sbFiltro(tabela){
+    let q=sb.from(tabela).select('*');
+    const cid=clienteIdAtual();
+    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+    return q;
+}
 
-  function parseValorBR(v) {
-    if (v === null || v === undefined) return 0;
-    var s = String(v).trim().replace(/[R$\s]/g, '');
-    if (!s) return 0;
-    if (s.indexOf(',') > -1) { s = s.replace(/\./g, '').replace(',', '.'); }
-    var n = parseFloat(s);
-    return isNaN(n) ? 0 : n;
-  }
-  function formatarCampoMoeda(el) {
-    if (el.value.trim() === '') { el.value = ''; return; }
-    var n = parseValorBR(el.value);
-    el.value = n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function formatBRL(n) {
-    return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  }
-  function formatarData(d) {
-    if (!d) return '—';
-    var p = String(d).split('-');
-    if (p.length === 3) return p[2] + '/' + p[1] + '/' + p[0];
-    return d;
-  }
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){
+        c=document.createElement('div');c.id='toastContainer';
+        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className='toast '+type;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
 
-  function mostrarMsg(txt, tipo) {
-    var m = document.getElementById('msg');
-    m.className = 'msg ' + (tipo || 'ok');
-    m.textContent = txt;
-    m.style.display = 'block';
-    setTimeout(function() { m.style.display = 'none'; }, 4000);
-  }
+function parseValorBR(v){
+    if(v===null||v===undefined)return 0;
+    var s=String(v).trim().replace(/[R\$\s]/g,'');
+    if(!s)return 0;
+    if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
+    var n=parseFloat(s);
+    return isNaN(n)?0:n;
+}
 
-  function selecionarDevolucao(val, btn){
+function formatarCampoMoeda(el){
+    if(el.value.trim()===''){el.value='';return;}
+    var n=parseValorBR(el.value);
+    el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function formatBRL(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0); }
+
+window.selecionarDevolucao = function(val, btn){
     decisaoDevolucao = val;
     document.querySelectorAll('#grupoDevolucao .pill-btn').forEach(b => b.classList.remove('ativo'));
     btn.classList.add('ativo');
     atualizarNaturezaAutomatica();
-  }
+};
 
-  function selecionarFinalidade(val, btn){
+window.selecionarFinalidade = function(val, btn){
     decisaoFinalidade = val;
     document.querySelectorAll('#grupoFinalidade .pill-btn').forEach(b => b.classList.remove('ativo'));
     btn.classList.add('ativo');
     atualizarNaturezaAutomatica();
-  }
+};
 
-  function atualizarNaturezaAutomatica(){
+function atualizarNaturezaAutomatica(){
     const inputNat = document.getElementById('naturezaContabil');
     const rotulo = document.getElementById('rotuloTratamento');
     const desc = document.getElementById('descTratamento');
@@ -545,127 +340,103 @@
             desc.textContent = 'Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.';
         }
     }
-  }
+}
 
-  async function carregarProjetosSelect(){
+async function carregarProjetosSelect(){
     const sel = document.getElementById('projetoId');
-    var cid = clienteIdAtual();
-    if(!cid) return;
     try {
-        var r = await window.sb.from('projetos_pd').select('id,codigo,nome').eq('cliente_id', cid).order('codigo');
-        if(!r.error) {
-            var dadosProj = r.data || [];
-            sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
-            projetosMap = {};
-            dadosProj.forEach(p => {
-                projetosMap[p.id] = (p.codigo ? p.codigo + ' · ' : '') + p.nome;
-                sel.innerHTML += `<option value="${p.id}">${projetosMap[p.id]}</option>`;
-            });
-        }
+        let q = sbFiltro('projetos_pd');
+        const { data } = await q.order('nome');
+        sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
+        projetosMap = {};
+        (data || []).forEach(p => {
+            projetosMap[p.id] = p.nome || ('Projeto #' + p.id);
+            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+        });
     } catch(e) {}
-  }
+}
 
-  async function carregarContratos(){
-    var cid = clienteIdAtual();
-    var tb = document.getElementById('tabela');
-    if(!cid) return;
-    var r = await window.sb.from('contratos_fomento').select('*').eq('cliente_id', cid).order('id', { ascending: false });
-    if (r.error) { mostrarMsg('Erro ao carregar contratos: ' + r.error.message, 'er'); return; }
-    contratosCache = r.data || [];
-    tb.innerHTML = '';
-    contratosCache.forEach(function(c){
-      var nomeProj = projetosMap[c.projeto_id] || '—';
-      var natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
-      var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td><strong>' + (c.numero_contrato || '—') + '</strong></td>' +
-        '<td>' + nomeProj + '</td>' +
-        '<td>' + (c.financiador || '—') + '</td>' +
-        '<td>R\$ ' + fmtBR(c.valor_total) + '</td>' +
-        '<td><span class="badge b-receita">' + natRotulo + '</span></td>' +
-        '<td><span class="badge b-receita">' + (c.status || 'Ativo') + '</span></td>' +
-        '<td class="acoes">' +
-          '<button class="btn-acao editar" title="Editar" onclick="editarContrato(\'' + c.id + '\')"><i class="fas fa-pen"></i></button>' +
-          '<button class="btn-acao imprimir" title="Imprimir" onclick="imprimirContrato(\'' + c.id + '\')"><i class="fas fa-print"></i></button>' +
-          '<button class="btn-acao excluir" title="Excluir" onclick="excluirContrato(\'' + c.id + '\')"><i class="fas fa-trash"></i></button>' +
-        '</td>';
-      tb.appendChild(tr);
-    });
-    if(!contratosCache.length) {
-      tb.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:20px">Nenhum contrato cadastrado.</td></tr>';
+async function carregarContratos(){
+    const el = document.getElementById('listaContratos');
+    try {
+        let q = sbFiltro('contratos_fomento');
+        const { data, error } = await q.order('id', { ascending: false });
+        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
+        contratosCache = data || [];
+        if(!contratosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum contrato cadastrado.</div>'; return; }
+        
+        let html = '<table class="analitica-table"><thead><tr><th>Contrato</th><th>Projeto</th><th>Financiador / Origem</th><th>Valor Total</th><th>Tratamento Contábil</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        contratosCache.forEach(c => {
+            const nomeProj = projetosMap[c.projeto_id] || '—';
+            const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
+            html += `<tr>
+                <td><strong>${c.numero_contrato || '-'}</strong></td>
+                <td>${nomeProj}</td>
+                <td>${c.financiador || '-'}</td>
+                <td style="font-weight:bold;">${formatBRL(c.valor_total)}</td>
+                <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
+                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
+                <td style="text-align:right; white-space:nowrap;">
+                    <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
+                    <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
+                    <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    } catch(e) {
+        el.innerHTML = '<div class="empty-state">Erro ao carregar contratos.</div>';
     }
-  }
+}
 
-  function editarContrato(id){
-    var c = null;
-    for (var i = 0; i < contratosCache.length; i++) { if (String(contratosCache[i].id) === String(id)) c = contratosCache[i]; }
+window.imprimirContratoPorId = function(id) {
+    const c = contratosCache.find(x => x.id === id);
     if (!c) return;
-    document.getElementById('edit_id').value = c.id;
-    document.getElementById('projetoId').value = c.projeto_id || '';
-    document.getElementById('financiador').value = c.financiador || '';
-    document.getElementById('origemDetalhe').value = c.financiador || '';
-    document.getElementById('numContrato').value = c.numero_contrato || '';
-    document.getElementById('valorTotal').value = c.valor_total ? fmtBR(c.valor_total) : '';
-    document.getElementById('dataAssinatura').value = c.data_assinatura || '';
-    document.getElementById('dataVigencia').value = c.data_vigencia || '';
-    document.getElementById('statusContrato').value = c.status || 'Ativo';
-    document.getElementById('naturezaContabil').value = c.natureza_contabil || 'subvencao_custeio';
+    const nomeProj = projetosMap[c.projeto_id] || '—';
+    const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
+    const conteudo = `
+        <b>Número do Contrato:</b> ${c.numero_contrato || '—'}<br>
+        <b>Projeto Vinculado:</b> ${nomeProj}<br>
+        <b>Financiador / Origem:</b> ${c.financiador || '—'}<br>
+        <b>Valor Total:</b> ${formatBRL(c.valor_total)}<br>
+        <b>Data de Assinatura:</b> ${c.data_assinatura ? c.data_assinatura.split('-').reverse().join('/') : '—'}<br>
+        <b>Data de Vigência Final:</b> ${c.data_vigencia ? c.data_vigencia.split('-').reverse().join('/') : '—'}<br>
+        <b>Status:</b> ${c.status || 'Ativo'}<br>
+        <b>Tratamento Contábil:</b> ${natRotulo}
+    `;
+    const agora = new Date().toLocaleString('pt-BR');
+    const janela = window.open('', '_blank', 'width=700,height=600');
+    janela.document.write(`
+        <html>
+        <head><title>Comprovativo de Contrato — Sacramento ERP</title>
+        <style>body{font-family:Inter,sans-serif;padding:30px;color:#1e293b;}h2{color:#1e3a8a;border-bottom:2px solid #2563eb;padding-bottom:10px;margin-bottom:20px;font-size:18px;}.info-box{background:#f8fafc;border:1px solid #e2e8f0;padding:20px;border-radius:10px;font-size:14px;line-height:1.8;}.footer{margin-top:30px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:10px;}</style>
+        </head>
+        <body><h2>Comprovativo de Contrato / Fomento — Sacramento ERP</h2><div class="info-box">${conteudo}</div><div class="footer">Emitido em: ${agora}</div><script>window.print();<\/script></body>
+        </html>
+    `);
+    janela.document.close();
+};
 
-    if(c.natureza_contabil === 'aporte_reembolsavel'){
-        document.querySelectorAll('#grupoDevolucao .pill-btn')[1].click();
-    } else {
-        document.querySelectorAll('#grupoDevolucao .pill-btn')[0].click();
-        if(c.natureza_contabil === 'subvencao_investimento'){
-            document.querySelectorAll('#grupoFinalidade .pill-btn')[1].click();
-        } else {
-            document.querySelectorAll('#grupoFinalidade .pill-btn')[0].click();
-        }
-    }
+window.salvarContrato = async function(){
+    const id = document.getElementById('edit_id').value;
+    const projId = document.getElementById('projetoId').value;
+    const origRecurso = document.getElementById('financiador').value.trim();
+    const financiador = document.getElementById('origemDetalhe').value.trim();
+    const num = document.getElementById('numContrato').value.trim();
+    const valor = parseValorBR(document.getElementById('valorTotal').value);
+    const assinatura = document.getElementById('dataAssinatura').value;
+    const vigencia = document.getElementById('dataVigencia').value;
+    const status = document.getElementById('statusContrato').value;
+    const natureza = document.getElementById('naturezaContabil').value;
 
-    document.getElementById('tituloForm').textContent = 'Editando contrato (' + (c.numero_contrato || '') + ')';
-    document.getElementById('btnSalvar').textContent = 'Atualizar contrato';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
+    if(!projId) { toast("Selecione o projeto vinculado.", "error"); return; }
+    if(!num) { toast("Informe o número do contrato.", "error"); return; }
+    if(valor <= 0) { toast("Informe um valor total válido.", "error"); return; }
+    if(!assinatura || !vigencia) { toast("Informe as datas de assinatura e vigência final.", "error"); return; }
 
-  function cancelarEdicao() {
-    document.getElementById('edit_id').value = '';
-    document.getElementById('projetoId').value = '';
-    document.getElementById('financiador').value = '';
-    document.getElementById('origemDetalhe').value = '';
-    document.getElementById('numContrato').value = '';
-    document.getElementById('valorTotal').value = '';
-    document.getElementById('dataAssinatura').value = '';
-    document.getElementById('dataVigencia').value = '';
-    document.getElementById('statusContrato').value = 'Ativo';
-    document.getElementById('tituloForm').textContent = 'Cadastrar contrato / convênio de fomento';
-    document.getElementById('btnSalvar').textContent = 'Salvar contrato';
-    document.getElementById('btnCancelar').style.display = 'none';
-  }
-
-  async function salvarContrato(){
-    var cid = clienteIdAtual();
-    if (!cid) { mostrarMsg('Cliente não identificado. Faça login.', 'er'); return; }
-
-    var projId = document.getElementById('projetoId').value;
-    if(!projId) { mostrarMsg("Selecione o projeto vinculado.", "error"); return; }
-
-    var origRecurso = document.getElementById('financiador').value.trim();
-    var financiador = document.getElementById('origemDetalhe').value.trim();
-    var num = document.getElementById('numContrato').value.trim();
-    if(!num) { mostrarMsg("Informe o número do contrato.", "error"); return; }
-
-    var valor = parseValorBR(document.getElementById('valorTotal').value);
-    if(valor <= 0) { mostrarMsg("Informe um valor total válido.", "error"); return; }
-
-    var assinatura = document.getElementById('dataAssinatura').value;
-    var vigencia = document.getElementById('dataVigencia').value;
-    if(!assinatura || !vigencia) { mostrarMsg("Informe as datas de assinatura e vigência final.", "error"); return; }
-
-    var status = document.getElementById('statusContrato').value;
-    var natureza = document.getElementById('naturezaContabil').value;
-
-    var payload = {
+    const cid = clienteIdAtual();
+    const payload = {
         cliente_id: cid,
         projeto_id: parseInt(projId),
         financiador: financiador || origRecurso || 'Órgão de Fomento',
@@ -677,73 +448,108 @@
         natureza_contabil: natureza
     };
 
-    var editId = document.getElementById('edit_id').value;
-    if(editId) {
-        var ru = await window.sb.from('contratos_fomento').update(payload).eq('id', editId);
-        if(ru.error) { mostrarMsg("Erro ao atualizar: " + ru.error.message, 'er'); return; }
-        mostrarMsg('Contrato atualizado com sucesso!');
-        cancelarEdicao();
+    let res;
+    if(id) {
+        res = await sb.from('contratos_fomento').update(payload).eq('id', id);
     } else {
-        var ri = await window.sb.from('contratos_fomento').insert([payload]);
-        if(ri.error) { mostrarMsg("Erro ao salvar: " + ri.error.message, 'er'); return; }
-        mostrarMsg('Contrato cadastrado com sucesso!');
-        cancelarEdicao();
+        res = await sb.from('contratos_fomento').insert([payload]);
     }
-    carregarContratos();
-  }
 
-  async function excluirContrato(id){
+    if(res.error) { toast("Erro ao salvar contrato: " + res.error.message, "error"); return; }
+    toast("Contrato salvo com sucesso!");
+    window.cancelarEdicao();
+    carregarContratos();
+};
+
+window.editarContratoPorId = function(id){
+    const c = contratosCache.find(x => x.id === id);
+    if(!c) return;
+    document.getElementById('edit_id').value = c.id;
+    document.getElementById('projetoId').value = c.projeto_id || '';
+    document.getElementById('financiador').value = c.financiador || '';
+    document.getElementById('origemDetalhe').value = c.financiador || '';
+    document.getElementById('numContrato').value = c.numero_contrato || '';
+    document.getElementById('valorTotal').value = c.valor_total ? formatBRL(c.valor_total).replace('R\$', '').trim() : '';
+    document.getElementById('dataAssinatura').value = c.data_assinatura || '';
+    document.getElementById('dataVigencia').value = c.data_vigencia || '';
+    document.getElementById('statusContrato').value = c.status || 'Ativo';
+    document.getElementById('naturezaContabil').value = c.natureza_contabil || 'subvencao_custeio';
+    
+    if(c.natureza_contabil === 'aporte_reembolsavel'){
+        document.querySelectorAll('#grupoDevolucao .pill-btn')[1].click();
+    } else {
+        document.querySelectorAll('#grupoDevolucao .pill-btn')[0].click();
+        if(c.natureza_contabil === 'subvencao_investimento'){
+            document.querySelectorAll('#grupoFinalidade .pill-btn')[1].click();
+        } else {
+            document.querySelectorAll('#grupoFinalidade .pill-btn')[0].click();
+        }
+    }
+
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar contrato';
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+window.cancelarEdicao = function(){
+    document.getElementById('edit_id').value = '';
+    document.getElementById('projetoId').value = '';
+    document.getElementById('financiador').value = '';
+    document.getElementById('origemDetalhe').value = '';
+    document.getElementById('numContrato').value = '';
+    document.getElementById('valorTotal').value = '';
+    document.getElementById('dataAssinatura').value = '';
+    document.getElementById('dataVigencia').value = '';
+    document.getElementById('statusContrato').value = 'Ativo';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar contrato';
+    document.getElementById('btnCancelar').style.display = 'none';
+};
+
+window.excluirContratoPorId = async function(id){
     if(!confirm("Deseja realmente excluir este contrato?")) return;
-    var r = await window.sb.from('contratos_fomento').delete().eq('id', id);
-    if(r.error) { mostrarMsg('Erro ao excluir: ' + r.error.message, 'er'); return; }
-    mostrarMsg('Contrato excluído com sucesso!');
+    const { error } = await sb.from('contratos_fomento').delete().eq('id', id);
+    if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
+    toast("Contrato excluído com sucesso!");
     carregarContratos();
-  }
+};
 
-  function imprimirContrato(id) {
-    var c = null;
-    for (var i = 0; i < contratosCache.length; i++) { if (String(contratosCache[i].id) === String(id)) c = contratosCache[i]; }
-    if (!c) return;
-    var nomeProj = projetosMap[c.projeto_id] || '—';
-    var natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
+async function inicializarPagina(){
+    let u = obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
 
-    var w = window.open('', '_blank');
-    w.document.write('<html><head><meta charset="UTF-8"><title>Comprovativo de Contrato</title>');
-    w.document.write('<style>body{font-family:Arial,Helvetica,sans-serif;padding:40px;color:#1e293b}h1{font-size:20px;margin-bottom:4px}.sub{color:#64748b;font-size:12px;margin-bottom:24px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #cbd5e1;padding:9px 12px;font-size:13px;text-align:left;vertical-align:top}th{background:#f0f4f8;width:220px;color:#334155}</style></head><body>');
-    w.document.write('<h1>Comprovativo de Contrato / Convênio de Fomento</h1>');
-    w.document.write('<div class="sub">Sacramento ERP Gestão Empresarial &middot; Módulo P&D &middot; emitido em ' + new Date().toLocaleDateString('pt-BR') + '</div>');
-    w.document.write('<table>');
-    w.document.write('<tr><th>Número do Contrato</th><td>' + (c.numero_contrato || '—') + '</td></tr>');
-    w.document.write('<tr><th>Projeto Vinculado</th><td>' + nomeProj + '</td></tr>');
-    w.document.write('<tr><th>Financiador / Origem</th><td>' + (c.financiador || '—') + '</td></tr>');
-    w.document.write('<tr><th>Valor Total</th><td>R\$ ' + fmtBR(c.valor_total) + '</td></tr>');
-    w.document.write('<tr><th>Data de Assinatura</th><td>' + formatarData(c.data_assinatura) + '</td></tr>');
-    w.document.write('<tr><th>Data de Vigência Final</th><td>' + formatarData(c.data_vigencia) + '</td></tr>');
-    w.document.write('<tr><th>Status</th><td>' + (c.status || 'Ativo') + '</td></tr>');
-    w.document.write('<tr><th>Tratamento Contábil</th><td>' + natRotulo + '</td></tr>');
-    w.document.write('</table>');
-    w.document.write('<div style="margin-top:60px;border-top:1px solid #cbd5e1;width:280px;padding-top:6px;font-size:12px;color:#64748b">Assinatura do responsável</div>');
-    w.document.write('</body></html>');
-    w.document.close();
-    w.focus();
-    setTimeout(function(){ w.print(); }, 300);
-  }
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
 
-  async function inicializarPagina() {
-      let u = obterUsuarioAtual();
-      if(!u || !u.email) {
-          location.href = 'login.html';
-          return;
-      }
-      var elUser = document.getElementById('userInfo');
-      if (elUser) elUser.innerText = (u.nome || u.email).split(' ')[0] + ' (' + (u.perfil || 'Usuário') + ')';
-      await carregarSeletorEmpresa();
-      aplicarTemaSalvo();
-      await carregarProjetos();
-      await carregarContratos();
-  }
+    const master = ehMaster();
 
-  window.onload = inicializarPagina;
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
+    await carregarProjetosSelect();
+    await carregarContratos();
+}
+
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
