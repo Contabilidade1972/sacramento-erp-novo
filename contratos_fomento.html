@@ -120,13 +120,13 @@
     <div class="site-nav-right">
         <div class="empresa-selector" id="boxSeletorEmpresa">
             <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
         </div>
         <div class="user-box">
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
             <span id="userName">Usuário</span>
         </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
     </div>
 </header>
 
@@ -172,7 +172,7 @@
         <div class="form-row">
             <div>
                 <label>Valor Total (R\$) *</label>
-                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="formatarCampoMoeda(this)">
+                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="window.formatarCampoMoeda(this)">
             </div>
             <div>
                 <label>Data de Assinatura *</label>
@@ -198,14 +198,14 @@
         <div style="margin-top: 16px; border-top: 1px solid var(--border); padding-top: 16px;">
             <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px;">1. Esse dinheiro precisa ser devolvido?</label>
             <div class="pill-group" id="grupoDevolucao">
-                <button type="button" class="pill-btn ativo" onclick="selecionarDevolucao('nao', this)">Não — é a fundo perdido (não devolve)</button>
-                <button type="button" class="pill-btn" onclick="selecionarDevolucao('sim', this)">Sim — terá que devolver</button>
+                <button type="button" class="pill-btn ativo" onclick="window.selecionarDevolucao('nao', this)">Não — é a fundo perdido (não devolve)</button>
+                <button type="button" class="pill-btn" onclick="window.selecionarDevolucao('sim', this)">Sim — terá que devolver</button>
             </div>
 
             <label style="font-weight: 800; color: var(--secondary); margin-bottom: 8px; margin-top: 12px;">2. É para cobrir gastos do dia a dia ou para comprar/construir algo durável?</label>
             <div class="pill-group" id="grupoFinalidade">
-                <button type="button" class="pill-btn ativo" onclick="selecionarFinalidade('custeio', this)">Gastos do dia a dia (custeio)</button>
-                <button type="button" class="pill-btn" onclick="selecionarFinalidade('investimento', this)">Comprar / construir algo durável (investimento)</button>
+                <button type="button" class="pill-btn ativo" onclick="window.selecionarFinalidade('custeio', this)">Gastos do dia a dia (custeio)</button>
+                <button type="button" class="pill-btn" onclick="window.selecionarFinalidade('investimento', this)">Comprar / construir algo durável (investimento)</button>
             </div>
 
             <div id="infoContrato" class="infocontrato">
@@ -247,34 +247,34 @@ let projetosMap = {};
 let decisaoDevolucao = 'nao';
 let decisaoFinalidade = 'custeio';
 
-function obterUsuario() {
+window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-}
+};
 
-function ehMaster() {
-    const u = obterUsuario();
+window.ehMaster = function() {
+    const u = window.obterUsuario();
     if (!u || !u.email) return false;
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
-}
+};
 
-function clienteIdAtual() {
-    const u = obterUsuario();
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
     if (!u) return 1;
-    if (ehMaster()) {
+    if (window.ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
     return u.cliente_id ? parseInt(u.cliente_id) : 2;
-}
+};
 
-function sbFiltro(tabela){
+window.sbFiltro = function(tabela){
     let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
+    const cid=window.clienteIdAtual();
     if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
     return q;
-}
+};
 
-function toast(msg,type='success'){
+window.toast = function(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){
         c=document.createElement('div');c.id='toastContainer';
@@ -285,40 +285,40 @@ function toast(msg,type='success'){
     x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
     c.appendChild(x);
     setTimeout(function(){x.remove();},3000);
-}
+};
 
-function parseValorBR(v){
+window.parseValorBR = function(v){
     if(v===null||v===undefined)return 0;
     var s=String(v).trim().replace(/[R\$\s]/g,'');
     if(!s)return 0;
     if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
     var n=parseFloat(s);
     return isNaN(n)?0:n;
-}
+};
 
-function formatarCampoMoeda(el){
+window.formatarCampoMoeda = function(el){
     if(el.value.trim()===''){el.value='';return;}
-    var n=parseValorBR(el.value);
+    var n=window.parseValorBR(el.value);
     el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-}
+};
 
-function formatBRL(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0); }
+window.formatBRL = function(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0); };
 
 window.selecionarDevolucao = function(val, btn){
     decisaoDevolucao = val;
     document.querySelectorAll('#grupoDevolucao .pill-btn').forEach(b => b.classList.remove('ativo'));
     btn.classList.add('ativo');
-    atualizarNaturezaAutomatica();
+    window.atualizarNaturezaAutomatica();
 };
 
 window.selecionarFinalidade = function(val, btn){
     decisaoFinalidade = val;
     document.querySelectorAll('#grupoFinalidade .pill-btn').forEach(b => b.classList.remove('ativo'));
     btn.classList.add('ativo');
-    atualizarNaturezaAutomatica();
+    window.atualizarNaturezaAutomatica();
 };
 
-function atualizarNaturezaAutomatica(){
+window.atualizarNaturezaAutomatica = function(){
     const inputNat = document.getElementById('naturezaContabil');
     const rotulo = document.getElementById('rotuloTratamento');
     const desc = document.getElementById('descTratamento');
@@ -338,12 +338,12 @@ function atualizarNaturezaAutomatica(){
             desc.textContent = 'Entra como recurso a apropriar e vira receita na mesma medida em que os gastos do projeto acontecem.';
         }
     }
-}
+};
 
 async function carregarProjetosSelect(){
     const sel = document.getElementById('projetoId');
     try {
-        let q = sbFiltro('projetos_pd');
+        let q = window.sbFiltro('projetos_pd');
         const { data } = await q.order('nome');
         sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
         projetosMap = {};
@@ -357,7 +357,7 @@ async function carregarProjetosSelect(){
 async function carregarContratos(){
     const el = document.getElementById('listaContratos');
     try {
-        let q = sbFiltro('contratos_fomento');
+        let q = window.sbFiltro('contratos_fomento');
         const { data, error } = await q.order('id', { ascending: false });
         if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
         contratosCache = data || [];
@@ -371,7 +371,7 @@ async function carregarContratos(){
                 <td><strong>${c.numero_contrato || '-'}</strong></td>
                 <td>${nomeProj}</td>
                 <td>${c.financiador || '-'}</td>
-                <td style="font-weight:bold;">${formatBRL(c.valor_total)}</td>
+                <td style="font-weight:bold;">${window.formatBRL(c.valor_total)}</td>
                 <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
                 <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
                 <td style="text-align:right; white-space:nowrap;">
@@ -397,7 +397,7 @@ window.imprimirContratoPorId = function(id) {
         <b>Número do Contrato:</b> ${c.numero_contrato || '—'}<br>
         <b>Projeto Vinculado:</b> ${nomeProj}<br>
         <b>Financiador / Origem:</b> ${c.financiador || '—'}<br>
-        <b>Valor Total:</b> ${formatBRL(c.valor_total)}<br>
+        <b>Valor Total:</b> ${window.formatBRL(c.valor_total)}<br>
         <b>Data de Assinatura:</b> ${c.data_assinatura ? c.data_assinatura.split('-').reverse().join('/') : '—'}<br>
         <b>Data de Vigência Final:</b> ${c.data_vigencia ? c.data_vigencia.split('-').reverse().join('/') : '—'}<br>
         <b>Status:</b> ${c.status || 'Ativo'}<br>
@@ -422,18 +422,18 @@ window.salvarContrato = async function(){
     const origRecurso = document.getElementById('financiador').value.trim();
     const financiador = document.getElementById('origemDetalhe').value.trim();
     const num = document.getElementById('numContrato').value.trim();
-    const valor = parseValorBR(document.getElementById('valorTotal').value);
+    const valor = window.parseValorBR(document.getElementById('valorTotal').value);
     const assinatura = document.getElementById('dataAssinatura').value;
     const vigencia = document.getElementById('dataVigencia').value;
     const status = document.getElementById('statusContrato').value;
     const natureza = document.getElementById('naturezaContabil').value;
 
-    if(!projId) { toast("Selecione o projeto vinculado.", "error"); return; }
-    if(!num) { toast("Informe o número do contrato.", "error"); return; }
-    if(valor <= 0) { toast("Informe um valor total válido.", "error"); return; }
-    if(!assinatura || !vigencia) { toast("Informe as datas de assinatura e vigência final.", "error"); return; }
+    if(!projId) { window.toast("Selecione o projeto vinculado.", "error"); return; }
+    if(!num) { window.toast("Informe o número do contrato.", "error"); return; }
+    if(valor <= 0) { window.toast("Informe um valor total válido.", "error"); return; }
+    if(!assinatura || !vigencia) { window.toast("Informe as datas de assinatura e vigência final.", "error"); return; }
 
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     const payload = {
         cliente_id: cid,
         projeto_id: parseInt(projId),
@@ -453,8 +453,8 @@ window.salvarContrato = async function(){
         res = await sb.from('contratos_fomento').insert([payload]);
     }
 
-    if(res.error) { toast("Erro ao salvar contrato: " + res.error.message, "error"); return; }
-    toast("Contrato salvo com sucesso!");
+    if(res.error) { window.toast("Erro ao salvar contrato: " + res.error.message, "error"); return; }
+    window.toast("Contrato salvo com sucesso!");
     window.cancelarEdicao();
     carregarContratos();
 };
@@ -467,7 +467,7 @@ window.editarContratoPorId = function(id){
     document.getElementById('financiador').value = c.financiador || '';
     document.getElementById('origemDetalhe').value = c.financiador || '';
     document.getElementById('numContrato').value = c.numero_contrato || '';
-    document.getElementById('valorTotal').value = c.valor_total ? formatBRL(c.valor_total).replace('R\$', '').trim() : '';
+    document.getElementById('valorTotal').value = c.valor_total ? window.formatBRL(c.valor_total).replace('R\$', '').trim() : '';
     document.getElementById('dataAssinatura').value = c.data_assinatura || '';
     document.getElementById('dataVigencia').value = c.data_vigencia || '';
     document.getElementById('statusContrato').value = c.status || 'Ativo';
@@ -506,13 +506,29 @@ window.cancelarEdicao = function(){
 window.excluirContratoPorId = async function(id){
     if(!confirm("Deseja realmente excluir este contrato?")) return;
     const { error } = await sb.from('contratos_fomento').delete().eq('id', id);
-    if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
-    toast("Contrato excluído com sucesso!");
+    if(error) { window.toast("Erro ao excluir: " + error.message, "error"); return; }
+    window.toast("Contrato excluído com sucesso!");
     carregarContratos();
 };
 
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    const val = select.value;
+    localStorage.setItem('empresaSelecionada', String(val));
+    location.reload();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
 async function inicializarPagina(){
-    let u = obterUsuario();
+    let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
     if (u.email) {
@@ -522,7 +538,7 @@ async function inicializarPagina(){
         }
     }
 
-    const master = ehMaster();
+    const master = window.ehMaster();
 
     if (master) {
         document.body.classList.add('usuario-master');
@@ -535,7 +551,7 @@ async function inicializarPagina(){
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
         select.value = selAtual;
         select.disabled = false;
     } else {
