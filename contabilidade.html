@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -24,8 +22,34 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -65,14 +89,39 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_contabil.html'"><i class="fas fa-arrow-left"></i> Módulo Contábil & Fiscal</button>
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
     </div>
 
     <div>
@@ -99,14 +148,14 @@
                     </div>
                     <div>
                         <label>Conta Débito</label>
-                        <select id="contaDebito" class="form-control"><option value="">Carregando plano...</option></select>
+                        <select id="contaDebito" class="form-control"><option value="">Selecione a conta de débito...</option></select>
                     </div>
                     <div>
                         <label>Conta Crédito</label>
-                        <select id="contaCredito" class="form-control"><option value="">Carregando plano...</option></select>
+                        <select id="contaCredito" class="form-control"><option value="">Selecione a conta de crédito...</option></select>
                     </div>
                     <div>
-                        <label>Valor (R$)</label>
+                        <label>Valor (R\$)</label>
                         <input type="number" id="lancValor" class="form-control" step="0.01" min="0.01" placeholder="0,00">
                     </div>
                     <div style="grid-column: 1 / -1;">
@@ -114,7 +163,7 @@
                         <input type="text" id="lancHistorico" class="form-control" placeholder="Ex: Pagamento de fornecedor, Recebimento de cliente...">
                     </div>
                 </div>
-                <button class="btn-primary" onclick="salvarLancamento()"><i class="fas fa-save"></i> Registrar Lançamento</button>
+                <button class="btn-primary" type="button" onclick="salvarLancamento()"><i class="fas fa-save"></i> Registrar Lançamento</button>
             </div>
 
             <div class="panel">
@@ -123,7 +172,7 @@
                     <div class="form-row" style="grid-template-columns: auto auto auto; align-items:end; gap:8px;">
                         <div><label>De</label><input type="date" id="filtroDataIni" class="form-control" style="margin-bottom:0;"></div>
                         <div><label>Até</label><input type="date" id="filtroDataFim" class="form-control" style="margin-bottom:0;"></div>
-                        <button class="btn-secondary" onclick="carregarLancamentos()"><i class="fas fa-filter"></i> Filtrar</button>
+                        <button class="btn-secondary" type="button" onclick="carregarLancamentos()"><i class="fas fa-filter"></i> Filtrar</button>
                     </div>
                 </div>
                 <div id="listaLancamentos" style="overflow-x:auto;">Carregando lançamentos...</div>
@@ -159,23 +208,43 @@
     </div>
 </div>
 
-<script>
-var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
 
+<script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-let planoContasMap = {};
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+let planoContasMap = {
+    '1.1.1.01': { nome: 'Caixa Geral', tipo: 'ativo' },
+    '1.1.1.02': { nome: 'Conta Bancária PJ', tipo: 'ativo' },
+    '1.1.2.01': { nome: 'Clientes a Receber', tipo: 'ativo' },
+    '2.1.1.01': { nome: 'Fornecedores Nacionais', tipo: 'passivo' },
+    '2.1.1.02': { nome: 'Salários a Pagar', tipo: 'passivo' },
+    '3.1.1.01': { nome: 'Capital Social', tipo: 'pl' },
+    '4.1.1.01': { nome: 'Receita de Vendas / Serviços', tipo: 'receita' },
+    '5.1.1.01': { nome: 'Despesas Operacionais', tipo: 'despesa' }
+};
 let lancamentosCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
 
-function sbFiltro(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
-    return q;
-}
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
 
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
@@ -213,25 +282,30 @@ async function carregarPlanoContas(){
     const selDeb=document.getElementById('contaDebito');
     const selCred=document.getElementById('contaCredito');
     try{
-        let q=sbFiltro('plano_contas');
+        let q = sb.from('plano_contas').select('*');
+        const cid = window.clienteIdAtual();
+        if (cid) q = q.eq('cliente_id', cid);
         const {data,error}=await q.order('codigo_reduzido',{ascending:true});
-        if(error) return;
-        planoContasMap={};
-        selDeb.innerHTML='<option value="">Selecione a conta de débito...</option>';
-        selCred.innerHTML='<option value="">Selecione a conta de crédito...</option>';
-        if(data&&data.length>0){
+        if(!error && data && data.length > 0){
+            planoContasMap={};
             data.forEach(c=>{
                 const codigo=String(campo(c,['codigo_reduzido','codigo','codigo_conta','conta','numero'])).trim();
                 const nome=campo(c,['descricao','nome','nome_conta','titulo'])||'Conta';
                 const tipo=campo(c,['tipo','natureza','classe','grupo'])||'';
                 if(!codigo)return;
                 planoContasMap[codigo]={nome:nome,tipo:tipo};
-                const label=codigo+' - '+nome;
-                selDeb.innerHTML+='<option value="'+codigo+'">'+label+'</option>';
-                selCred.innerHTML+='<option value="'+codigo+'">'+label+'</option>';
             });
         }
     }catch(e){}
+
+    selDeb.innerHTML='<option value="">Selecione a conta de débito...</option>';
+    selCred.innerHTML='<option value="">Selecione a conta de crédito...</option>';
+    Object.keys(planoContasMap).forEach(codigo => {
+        const item = planoContasMap[codigo];
+        const label = codigo + ' - ' + item.nome;
+        selDeb.innerHTML += '<option value="'+codigo+'">'+label+'</option>';
+        selCred.innerHTML += '<option value="'+codigo+'">'+label+'</option>';
+    });
 }
 
 function naturezaDaConta(codigo){
@@ -256,8 +330,8 @@ function naturezaDaConta(codigo){
 function nomeDaConta(codigo){return (planoContasMap[codigo]&&planoContasMap[codigo].nome)?planoContasMap[codigo].nome:codigo;}
 
 async function salvarLancamento(){
-    const u=obterUsuarioAtual();
-    if(!u||!u.email){toast("Sessão expirada. Faça login novamente.","error");return;}
+    let u = window.obterUsuario();
+    if(!u || !u.email){toast("Sessão expirada. Faça login novamente.","error");return;}
     const data=document.getElementById('lancData').value;
     const deb=document.getElementById('contaDebito').value;
     const cred=document.getElementById('contaCredito').value;
@@ -268,7 +342,7 @@ async function salvarLancamento(){
     if(deb===cred){toast("A conta de débito deve ser diferente da de crédito.","error");return;}
     if(!valor||valor<=0){toast("Informe um valor válido (maior que zero).","error");return;}
     if(!historico){toast("Informe o histórico do lançamento.","error");return;}
-    const cid=clienteIdAtual();
+    const cid = window.clienteIdAtual();
     const {error}=await sb.from('lancamentos_contabeis').insert({
         cliente_id:cid,
         data_lancamento:data,
@@ -288,7 +362,7 @@ async function salvarLancamento(){
 
 async function carregarLancamentos(){
     const p=periodoFiltro();
-    const cid=clienteIdAtual();
+    const cid = window.clienteIdAtual();
     try{
         let q=sb.from('lancamentos_contabeis').select('*').gte('data_lancamento',p.ini).lte('data_lancamento',p.fim);
         if(cid) q=q.eq('cliente_id',cid);
@@ -313,7 +387,7 @@ function renderizarTudo(p){
 function renderListaLancamentos(){
     const el=document.getElementById('listaLancamentos');
     if(!lancamentosCache.length){el.innerHTML='<div class="empty-state">Nenhum lançamento contábil no período.</div>';return;}
-    let html='<table class="analitica-table"><thead><tr><th>Data</th><th>Histórico</th><th>Débito</th><th>Crédito</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
+    let html='<table class="analitica-table"><thead><tr><th>Data</th><th>Histórico</th><th>Débito</th><th>Crédito</th><th style="text-align:right;">Valor (R\$)</th></tr></thead><tbody>';
     lancamentosCache.forEach(l=>{
         html+='<tr><td>'+fmtData(l.data_lancamento)+'</td><td>'+ (l.historico||'-') +'</td><td>'+nomeDaConta(l.conta_debito)+'</td><td>'+nomeDaConta(l.conta_credito)+'</td><td style="text-align:right;font-weight:bold;">'+formatBRL(l.valor)+'</td></tr>';
     });
@@ -343,7 +417,7 @@ function renderBalancete(){
     const el=document.getElementById('listaBalancete');
     const linhas=agruparSaldos();
     if(!linhas.length){el.innerHTML='<div class="empty-state">Sem lançamentos no período para gerar o balancete.</div>';return;}
-    let html='<table class="analitica-table"><thead><tr><th>Código</th><th>Conta</th><th style="text-align:right;">Débitos (R$)</th><th style="text-align:right;">Créditos (R$)</th><th style="text-align:right;">Saldo Devedor</th><th style="text-align:right;">Saldo Credor</th></tr></thead><tbody>';
+    let html='<table class="analitica-table"><thead><tr><th>Código</th><th>Conta</th><th style="text-align:right;">Débitos (R\$)</th><th style="text-align:right;">Créditos (R\$)</th><th style="text-align:right;">Saldo Devedor</th><th style="text-align:right;">Saldo Credor</th></tr></thead><tbody>';
     let totDeb=0,totCred=0;
     linhas.forEach(l=>{
         totDeb+=l.debito;totCred+=l.credito;
@@ -372,7 +446,7 @@ function renderDre(){
     function linha(label,valor,classe){
         return '<tr><td style="padding-left:'+ (classe==='sub'?'24px':'0') +';"><strong>'+label+'</strong></td><td style="text-align:right;'+(classe==='total'?'font-weight:800;':'')+ (valor<0?'color:var(--danger);':'') +'">'+formatBRL(valor)+'</td></tr>';
     }
-    let html='<table class="analitica-table"><thead><tr><th>Conta</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
+    let html='<table class="analitica-table"><thead><tr><th>Conta</th><th style="text-align:right;">Valor (R\$)</th></tr></thead><tbody>';
     html+=linha('Receita Bruta',receitaBruta,'total');
     html+=linha('Deduções da Receita',-deducoes,'sub');
     html+=linha('(=) Receita Líquida',receitaBruta-deducoes,'sub');
@@ -400,7 +474,7 @@ function renderBalanco(){
         itens.forEach(i=>{h+='<tr><td style="padding-left:24px;">'+i[0]+'</td><td style="text-align:right;font-weight:bold;">'+formatBRL(i[1])+'</td></tr>';});
         return h;
     }
-    let html='<table class="analitica-table"><thead><tr><th>Conta</th><th style="text-align:right;">Saldo (R$)</th></tr></thead><tbody>';
+    let html='<table class="analitica-table"><thead><tr><th>Conta</th><th style="text-align:right;">Saldo (R\$)</th></tr></thead><tbody>';
     html+=secao('ATIVO',[['Ativo Total',ativo]]);
     html+=secao('PASSIVO',[['Passivo Total',passivo]]);
     html+=secao('PATRIMÔNIO LÍQUIDO',[['Contas de PL',plContas],['Resultado do Período',resultado],['Patrimônio Líquido Total',plTotal]]);
@@ -409,9 +483,53 @@ function renderBalanco(){
     el.innerHTML=html;
 }
 
+window.trocarEmpresa = function() {
+    if (!window.ehMaster()) return;
+    const select = document.getElementById('selectEmpresa');
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarPlanoContas();
+    carregarLancamentos();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
 async function inicializarPagina(){
-    let u=obterUsuarioAtual();
-    if(!u||!u.email){location.href='login.html';return;}
+    let u = window.obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     const hoje=new Date().toISOString().split('T')[0];
     document.getElementById('lancData').value=hoje;
     document.getElementById('filtroDataFim').value=hoje;
