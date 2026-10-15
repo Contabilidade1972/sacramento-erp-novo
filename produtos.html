@@ -7,13 +7,51 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
-        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -68,7 +106,7 @@
         @media print {
             @page { size: landscape; margin: 15mm; }
             body { background: #fff !important; color: #000 !important; }
-            .card:not(#cardRelatorioModo), .toast-container, button, .btn-colapsar, .filtro-container-print { display: none !important; }
+            .site-header, .card:not(#cardRelatorioModo), .toast-container, button, .btn-colapsar, .filtro-container-print { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
             .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
             .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
@@ -78,10 +116,35 @@
             th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
             th { background: #1e3a8a !important; color: #fff !important; }
         }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <!-- MODAL DE CADASTRO RÁPIDO DE CENTRO DE CUSTO INLINE -->
 <div class="modal-overlay" id="modalCentroCustoRápido">
@@ -158,11 +221,11 @@
                     </select>
                 </div>
                 <div>
-                    <label>Preço de Custo (R$)</label>
+                    <label>Preço de Custo (R\$)</label>
                     <input type="text" id="preco_custo" class="form-control" placeholder="0,00">
                 </div>
                 <div>
-                    <label>Preço de Venda (R$)</label>
+                    <label>Preço de Venda (R\$)</label>
                     <input type="text" id="preco_venda" class="form-control" placeholder="0,00">
                 </div>
             </div>
@@ -186,8 +249,8 @@
                 </div>
             </div>
             <div style="margin-top: 15px;">
-                <button id="btnSalvar" class="btn btn-primary" onclick="salvarProduto()"><i class="fas fa-save"></i> Salvar Item</button>
-                <button id="btnCancelar" class="btn btn-outline" onclick="limparForm()" style="display:none; margin-left:10px;">Cancelar</button>
+                <button id="btnSalvar" class="btn btn-primary" type="button" onclick="salvarProduto()"><i class="fas fa-save"></i> Salvar Item</button>
+                <button id="btnCancelar" class="btn btn-outline" type="button" onclick="limparForm()" style="display:none; margin-left:10px;">Cancelar</button>
             </div>
         </div>
     </div>
@@ -201,7 +264,7 @@
         <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Produtos</h3>
             <div style="display:flex; align-items:center; gap:10px;">
-                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+                <button class="btn btn-success" type="button" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
                 <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
             </div>
         </div>
@@ -222,7 +285,7 @@
                     <input type="text" id="filtroBusca" class="form-control" placeholder="Código ou descrição..." oninput="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
-                    <button class="btn btn-outline" onclick="limparFiltrosRelatorio()" title="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
+                    <button class="btn btn-outline" type="button" onclick="limparFiltrosRelatorio()" title="Limpar Filtros"><i class="fas fa-eraser"></i> Limpar</button>
                 </div>
             </div>
             <div class="table-container">
@@ -277,29 +340,58 @@
     </div>
 </div>
 
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let listaProdutosCache = [];
+
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
+
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarCentrosCustoSelect();
+    carregar();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
 
 function alternarPainel(idCard) {
     const card = document.getElementById(idCard);
     if(card) card.classList.toggle('recolhido');
 }
 
-function obterUsuarioAtual() {
-    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
-    return null;
-}
-
-function clienteIdAtual() {
-    try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-    const u = obterUsuarioAtual();
-    return (u && u.cliente_id) ? u.cliente_id : 1;
-}
-
 function sbFiltroLeitura(tabela) {
     let q = sb.from(tabela).select('*');
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     if (cid) q = q.eq('cliente_id', cid);
     return q;
 }
@@ -314,10 +406,10 @@ function obterDataHoraLocalISO() {
 
 async function registrarLogAuditoria(acao, modulo, detalhes) {
     try {
-        let u = obterUsuarioAtual();
+        let u = window.obterUsuario();
         let usuarioNome = u ? `${u.nome} (${u.perfil || 'Usuário'})` : "Sistema / Visitante";
         let payloadLog = { acao: acao.toUpperCase(), modulo: modulo, usuario: usuarioNome, detalhes: detalhes };
-        const cidLog = clienteIdAtual();
+        const cidLog = window.clienteIdAtual();
         if (cidLog) payloadLog.cliente_id = cidLog;
         await sb.from('logs_auditoria').insert([payloadLog]);
     } catch (err) {}
@@ -341,6 +433,7 @@ async function carregarCentrosCustoSelect(selecionarCodigo = null) {
         const { data, error } = await sbFiltroLeitura('centros_custo');
         let selectEl = document.getElementById('centro_custo');
         if(!selectEl) return;
+        let atual = selectEl.value;
         selectEl.innerHTML = '<option value="">Selecione o Centro de Custo / Projeto...</option>';
         if(!error && data) {
             data.forEach(cc => {
@@ -351,6 +444,8 @@ async function carregarCentrosCustoSelect(selecionarCodigo = null) {
                 selectEl.innerHTML += `<option value="${valOpt}" ${selected}>${valOpt}</option>`;
             });
         }
+        if(selecionarCodigo) selectEl.value = selecionarCodigo;
+        else if(atual) selectEl.value = atual;
     } catch(err) {}
 }
 
@@ -369,7 +464,7 @@ async function salvarCentroCustoRapido() {
     const nome = document.getElementById('novo_cc_nome').value.trim();
     if(!nome) { toast("Digite o nome do Centro de Custo!", "error"); return; }
 
-    const payload = { codigo, nome, descricao: nome, cliente_id: clienteIdAtual() };
+    const payload = { codigo, nome, descricao: nome, cliente_id: window.clienteIdAtual() };
     const { data, error } = await sb.from('centros_custo').insert([payload]).select();
     if(error) { toast("Erro ao criar centro de custo: " + error.message, "error"); return; }
 
@@ -525,8 +620,8 @@ function renderTabela() {
                 <td>${dataReg}</td>
                 <td style="color:var(--text-light); font-size:11px;">${dataAlt}</td>
                 <td style="text-align:right;">
-                    <button class="btn-icon" onclick='prepararEdicao(${i.id}, ${JSON.stringify(i.codigo || "")}, ${JSON.stringify(i.codigo_barras || "")}, ${JSON.stringify(i.descricao || "")}, ${JSON.stringify(i.tipo || "")}, ${JSON.stringify(i.unidade || "")}, ${JSON.stringify(i.preco_custo || "")}, ${JSON.stringify(i.preco_venda || "")}, ${JSON.stringify(i.estoque || "")}, ${JSON.stringify(i.observacao || "")}, ${JSON.stringify(i.centro_custo || "")})' title="Editar"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon" onclick="apagar(${i.id})" title="Excluir"><i class="fas fa-trash"></i></button>
+                    <button class="btn-icon" type="button" onclick='prepararEdicao(${i.id}, ${JSON.stringify(i.codigo || "")}, ${JSON.stringify(i.codigo_barras || "")}, ${JSON.stringify(i.descricao || "")}, ${JSON.stringify(i.tipo || "")}, ${JSON.stringify(i.unidade || "")}, ${JSON.stringify(i.preco_custo || "")}, ${JSON.stringify(i.preco_venda || "")}, ${JSON.stringify(i.estoque || "")}, ${JSON.stringify(i.observacao || "")}, ${JSON.stringify(i.centro_custo || "")})' title="Editar"><i class="fas fa-edit"></i></button>
+                    <button class="btn-icon" type="button" onclick="apagar(${i.id})" title="Excluir"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>`;
         });
@@ -561,7 +656,7 @@ async function salvarProduto() {
     if(!codigo_barras) {
         codigo_barras = '789' + Math.floor(100000000 + Math.random() * 900000000);
     }
-    const cidAtual = clienteIdAtual();
+    const cidAtual = window.clienteIdAtual();
     let payload = { 
         codigo, codigo_barras, descricao, tipo, unidade, preco_custo, preco_venda, estoque, observacao, centro_custo,
         updated_at: obterDataHoraLocalISO()
@@ -629,7 +724,7 @@ window.apagar = async (id) => {
     if(confirm("Deseja realmente excluir este item?")) {
         let itemAlvo = listaProdutosCache.find(x => String(x.id) === String(id));
         let del = sb.from('produtos').delete().eq('id', id);
-        const cidDel = clienteIdAtual();
+        const cidDel = window.clienteIdAtual();
         if (cidDel) del = del.eq('cliente_id', cidDel);
         const { error } = await del;
         if(error) { toast("Erro ao excluir", "error"); return; }
@@ -640,8 +735,36 @@ window.apagar = async (id) => {
 };
 
 async function inicializarPagina() {
-    let u = obterUsuarioAtual();
+    let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     await carregarCentrosCustoSelect();
     await carregar();
 }
