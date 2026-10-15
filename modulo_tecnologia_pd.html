@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Módulo Tecnologia & P&D — Sacramento ERP</title>
+    <title>Módulo de Tecnologia & P&D — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -24,8 +22,35 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -36,26 +61,48 @@
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
 
-        .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-top: 10px; }
-        .hub-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; }
-        .hub-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); border-color: var(--primary); }
-
-        .hub-card-img { height: 140px; background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; padding: 12px 16px; }
-        .hub-card-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(15,23,42,0.6)); }
-        .hub-badge { position: relative; z-index: 2; background: rgba(255,255,255,0.9); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-
-        .hub-card-body { padding: 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
-        .hub-card-title { font-size: 16px; font-weight: 700; color: var(--secondary); }
-        .hub-card-desc { font-size: 12px; color: var(--text-light); line-height: 1.5; flex: 1; }
-        .hub-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 12px; }
+        /* GRID DE SUBSISTEMAS / CARDS */
+        .submodulos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-top: 10px; }
+        .sub-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; }
+        .sub-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0,0,0,0.06); border-color: var(--primary); }
+        
+        .sub-card-img { height: 130px; background-size: cover; background-position: center; position: relative; }
+        .sub-card-body { padding: 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .badge-tag { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; background: #eff6ff; color: var(--primary); width: fit-content; }
+        .sub-card-body h3 { font-size: 16px; font-weight: 800; color: var(--secondary); }
+        .sub-card-body p { font-size: 12px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .sub-card-footer { padding: 14px 20px; background: var(--bg); border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--primary); }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
+
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Painel Principal</a>
     </div>
 
     <div>
@@ -63,101 +110,71 @@
         <div class="page-subtitle">Gestão unificada de projetos de inovação, contratos de fomento, aportes, custos, ativos e faturamento</div>
     </div>
 
-    <div class="hub-grid">
-        <!-- 1. Projetos & P&D -->
-        <a href="projetos_pd.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1532094349884-543bc11b234d?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Inovação</span>
+    <div class="submodulos-grid">
+        <!-- Projetos & P&D -->
+        <a href="projetos_pd.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #2563eb, #1e3a8a); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-flask"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Inovação</span>
+                <h3>Projetos & P&D</h3>
+                <p>Gerenciamento de iniciativas de pesquisa, desenvolvimento e inovação tecnológica.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Projetos & P&D</div>
-                <div class="hub-card-desc">Gerenciamento de iniciativas de pesquisa, desenvolvimento e inovação tecnológica.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
 
-        <!-- 2. Contratos & Aportes -->
-        <a href="contratos_fomento.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Fomento</span>
+        <!-- Contratos & Aportes -->
+        <a href="contratos_fomento.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #3b82f6, #2563eb); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-file-signature"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Fomento</span>
+                <h3>Contratos & Aportes</h3>
+                <p>Controle de instrumentos de fomento, convênios, editais e repasses financeiros.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Contratos & Aportes</div>
-                <div class="hub-card-desc">Controle de instrumentos de fomento, convênios, editais e repasses financeiros.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
 
-        <!-- 3. Aportes Recebidos -->
-        <a href="aportes_pd.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Receitas</span>
+        <!-- Aportes Recebidos -->
+        <a href="aportes_pd.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #10b981, #059669); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-money-bill-wave"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Receitas</span>
+                <h3>Aportes Recebidos</h3>
+                <p>Registo de entradas de recursos vinculados a contratos de fomento e subvenções.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Aportes Recebidos</div>
-                <div class="hub-card-desc">Registo de entradas de recursos vinculados a projetos e subvenções.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
 
-        <!-- 4. Gastos de P&D -->
-        <a href="custos_pd.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Custos</span>
+        <!-- Gastos de P&D -->
+        <a href="custos_pd.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #f59e0b, #d97706); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-receipt"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Custos</span>
+                <h3>Gastos de P&D</h3>
+                <p>Apuração e rateio de despesas, insumos e custos operacionais dos projetos de P&D.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Gastos de P&D</div>
-                <div class="hub-card-desc">Apuração e rateio de despesas, insumos e custos operacionais dos projetos de P&D.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
 
-        <!-- 5. Painel de Saldos -->
-        <a href="painel_saldos.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Saldos</span>
+        <!-- Painel de Saldos -->
+        <a href="painel_saldos.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-chart-pie"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Saldos</span>
+                <h3>Painel de Saldos</h3>
+                <p>Visão consolidada de saldos de recursos aplicados versus aportes recebidos.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Painel de Saldos</div>
-                <div class="hub-card-desc">Visão consolidada de saldos de recursos aplicados versus aportes recebidos.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
 
-        <!-- 6. Ativos / Equipamentos -->
-        <a href="ativos_equipamentos.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Ativos</span>
+        <!-- Ativos / Equipamentos -->
+        <a href="ativos_equipamentos.html" class="sub-card">
+            <div class="sub-card-img" style="background: linear-gradient(135deg, #0ea5e9, #0284c7); display:flex; align-items:center; justify-content:center; color:#fff; font-size:36px;"><i class="fas fa-microscope"></i></div>
+            <div class="sub-card-body">
+                <span class="badge-tag">Ativos</span>
+                <h3>Ativos / Equipamentos</h3>
+                <p>Gestão de instrumentos laboratoriais, maquinário e equipamentos alocados à pesquisa.</p>
             </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Ativos / Equipamentos</div>
-                <div class="hub-card-desc">Gestão de instrumentos laboratoriais, maquinário e equipamentos alocados à pesquisa.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
-        </a>
-
-        <!-- 7. Faturamento de Serviços (NFS-e) -->
-        <a href="nfse_servicos.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Faturamento</span>
-            </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Faturamento de Serviços (NFS-e)</div>
-                <div class="hub-card-desc">Emissão e controle de Notas Fiscais de Serviços Eletrônicas para clientes de P&D.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
-        </a>
-
-        <!-- 8. Relatórios de Performance (IMAGEM CORRIGIDA) -->
-        <a href="relatorios_performance.html" class="hub-card">
-            <div class="hub-card-img" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80');">
-                <span class="hub-badge">Performance</span>
-            </div>
-            <div class="hub-card-body">
-                <div class="hub-card-title">Relatórios de Performance</div>
-                <div class="hub-card-desc">Indicadores analíticos de execução financeira e técnica dos projetos de inovação.</div>
-                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
-            </div>
+            <div class="sub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
         </a>
     </div>
 </div>
@@ -165,5 +182,80 @@
 <footer>
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
+
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    if (!u || !u.email) return false;
+    return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    const val = select.value;
+    localStorage.setItem('empresaSelecionada', String(val));
+    location.reload();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
+async function inicializarPagina(){
+    let u = window.obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+}
+
+window.onload = inicializarPagina;
+</script>
 </body>
 </html>
