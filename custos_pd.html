@@ -24,6 +24,12 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -129,7 +135,7 @@
 
         <div class="form-row">
             <div>
-                <label>Valor do Gasto (R$) *</label>
+                <label>Valor do Gasto (R\$) *</label>
                 <input id="valor" class="form-control" placeholder="Ex.: 12.500,00" onblur="formatarCampoMoeda(this)">
             </div>
             <div>
@@ -238,15 +244,30 @@ let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
 
 var CATEGORIAS = {
-    pessoal:            { rotulo: 'Pessoal (RH)',         classe: 'b-pesessoal' },
-    material_consumo:   { rotulo: 'Material / Insumos',   classe: 'b-material' },
+    pessoal:              { rotulo: 'Pessoal (RH)',         classe: 'b-pesessoal' },
+    material_consumo:     { rotulo: 'Material / Insumos',   classe: 'b-material' },
     servicos_terceiros: { rotulo: 'Serviços Terceiros',   classe: 'b-terceiro' },
-    equipamentos:       { rotulo: 'Equipamentos',         classe: 'b-outro' },
-    outros:             { rotulo: 'Outros Custos',        classe: 'b-outro' }
+    equipamentos:         { rotulo: 'Equipamentos',         classe: 'b-outro' },
+    outros:               { rotulo: 'Outros Custos',        classe: 'b-outro' }
 };
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+
+function ehMasterGlobal() {
+    const u = obterUsuarioAtual();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+
+function clienteIdAtual(){
+    const u = obterUsuarioAtual();
+    if (!u) return 1;
+    if (ehMasterGlobal()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    // BLINDAGEM LGPD: Força estritamente o próprio cliente_id do utilizador comum
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+}
 
 function sbFiltro(tabela){
     let q=sb.from(tabela).select('*');
@@ -270,7 +291,7 @@ function toast(msg,type='success'){
 
 function parseValorBR(v){
     if(v===null||v===undefined)return 0;
-    var s=String(v).trim().replace(/[R$\s]/g,'');
+    var s=String(v).trim().replace(/[R\$\s]/g,'');
     if(!s)return 0;
     if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
     var n=parseFloat(s);
@@ -516,7 +537,7 @@ async function carregarCustos(){
             '<td><span class="badge '+catInfo.classe+'">'+catInfo.rotulo+'</span></td>'+
             '<td><strong>'+(c.descricao||'—')+'</strong></td>'+
             '<td>'+(c.documento_fiscal||'—')+'</td>'+
-            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(c.valor)+'</td>'+
+            '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(c.valor)+'</td>'+
             '<td>'+comprovanteHTML+'</td>'+
             '<td style="text-align:right; white-space:nowrap;">'+
                 '<button class="btn-secondary" onclick="editarCusto(\''+c.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
@@ -627,7 +648,7 @@ async function salvarCusto(){
     }else{
         var ri=await sb.from('custos_pd').insert([dados]);
         if(ri.error){toast('Erro ao salvar: '+ri.error.message,'error');return;}
-        toast('Gasto registrado com sucesso! R$ '+fmtBR(valor));
+        toast('Gasto registrado com sucesso! R\$ '+fmtBR(valor));
         cancelarEdicao();
     }
     carregarCustos();
@@ -641,9 +662,53 @@ async function excluirCusto(id){
     carregarCustos();
 }
 
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    const val = select.value;
+    localStorage.setItem('empresaSelecionada', String(val));
+    location.reload();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
 async function inicializarPagina(){
     let u=obterUsuarioAtual();
     if(!u||!u.email){location.href='login.html';return;}
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = ehMasterGlobal();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     await carregarParceiros();
     await carregarProjetosSelect();
     await carregarContratosSelect();
