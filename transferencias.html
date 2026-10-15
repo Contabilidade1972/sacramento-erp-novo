@@ -34,7 +34,7 @@
         .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
         .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; }
         .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
         .empresa-selector select option { color: #000; }
         .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
@@ -99,7 +99,6 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
@@ -142,7 +141,7 @@
 
 <div class="container">
     <div class="page-toolbar">
-        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Painel Principal</a>
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
     <div>
@@ -163,7 +162,7 @@
         <div class="form-row">
             <div>
                 <label>Conta de Origem (Sai o Dinheiro) *</label>
-                <input type="text" id="conta_origem" class="form-control" placeholder="Digite ou selecione..." list="listaContras">
+                <input type="text" id="conta_origem" class="form-control" placeholder="Digite ou selecione..." list="listaContas">
                 <datalist id="listaContas"></datalist>
             </div>
             <div>
@@ -342,7 +341,7 @@ function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.valu
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 async function carregarCombosEParceiros(){
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     if(!cid) return;
 
     const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
@@ -403,7 +402,7 @@ async function cadastrarFavorecidoRapido(){
     let nome = document.getElementById('favorecido_nome').value.trim();
     let cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
     if(!nome || !cnpj_cpf){ toast("Informe pelo menos o Nome e o CPF/CNPJ!", "error"); return; }
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     let payload = { cliente_id: cid, nome: nome, tipo_cadastro: 'Fornecedor', cnpj_cpf: cnpj_cpf, banco: document.getElementById('favorecido_banco').value.trim(), agencia: document.getElementById('favorecido_agencia').value.trim(), conta_corrente: document.getElementById('favorecido_conta').value.trim() };
     const { error } = await sb.from('parceiros').insert([payload]);
     if(error){ toast("Erro ao cadastrar: "+error.message, "error"); return; }
@@ -419,7 +418,7 @@ async function salvarTransferencia(){
     const valor = parseValorBR(document.getElementById('valor').value);
     const data = document.getElementById('data').value;
     const centro_custo = document.getElementById('centro_custo').value;
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
 
     if(!conta_origem || !valor || !data || !centro_custo || (!conta_destino && !document.getElementById('favorecido_nome').value)){
         toast("Preencha os campos obrigatórios!", "error"); return;
@@ -450,7 +449,7 @@ async function salvarTransferencia(){
 }
 
 async function carregarTransferencias(){
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
     if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar.</div>'; return; }
     transferenciasCache = r.data || [];
@@ -568,7 +567,7 @@ function limparForm(){
 
 async function excluirMovimento(id){
     if(!confirm("Tem certeza que deseja excluir esta movimentação?")) return;
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     const { error } = await sb.from('transferencias').delete().eq('id', id).eq('cliente_id', cid);
     if(error){ toast("Erro ao excluir: "+error.message, "error"); return; }
     toast("Movimentação excluída com sucesso!");
@@ -607,7 +606,7 @@ window.abrirModalCentroCusto = function(){
 window.salvarNovoCentroCusto = async function(){
     const nome = document.getElementById('cc_nome').value.trim();
     if(!nome){ toast("Informe o nome.", "error"); return; }
-    const cid = clienteIdAtual();
+    const cid = window.clienteIdAtual();
     const { error } = await sb.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
     if(error){ toast("Erro: "+error.message, "error"); return; }
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
