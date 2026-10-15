@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central de Ajuda & Manuais — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1380px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .layout { display: flex; gap: 24px; align-items: flex-start; width: 100%; }
+        .sidebar-ajuda { width: 280px; flex-shrink: 0; background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); padding: 20px; position: sticky; top: 90px; max-height: calc(100vh - 120px); overflow-y: auto; }
+        .sidebar-ajuda h3 { font-size: 11px; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; font-weight: 700; }
+        .busca { width: 100%; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; margin-bottom: 16px; background: var(--bg); color: var(--text-main); outline: none; }
+        .busca:focus { border-color: var(--primary); background: #fff; }
+        
+        .menu-modulos { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+        .menu-modulos a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: var(--text-main); font-size: 13px; font-weight: 500; transition: 0.15s; }
+        .menu-modulos a:hover { background: var(--bg); color: var(--primary); }
+        .menu-modulos a.ativo { background: var(--primary); color: #fff; font-weight: 600; }
+        .menu-modulos a i { width: 18px; text-align: center; }
+
+        .conteudo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+        .card-ajuda { background: var(--card); border: 1px solid var(--border); border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); padding: 28px; }
+        .card-ajuda h2 { font-size: 20px; margin-bottom: 6px; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .card-ajuda .subtitulo { color: var(--text-light); font-size: 13px; margin-bottom: 20px; }
+        .card-ajuda h4 { font-size: 14px; color: var(--secondary); margin: 18px 0 8px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .card-ajuda p, .card-ajuda li { font-size: 13.5px; line-height: 1.6; color: var(--text-main); }
+        .card-ajuda ul { padding-left: 20px; margin: 6px 0; }
+        
+        .dica { background: #f0fdf4; border-left: 4px solid var(--success); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13px; color: #166534; }
+        .atencao { background: #fffbeb; border-left: 4px solid var(--warning); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13px; color: #92400e; }
+        .passo { display: flex; gap: 12px; margin: 10px 0; align-items: flex-start; }
+        .passo .num { background: var(--primary); color: #fff; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+        
+        .sem-resultado { text-align: center; color: var(--text-light); padding: 40px; display: none; background: var(--card); border-radius: 16px; border: 1px solid var(--border); }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        /* BOTÃO FLUTUANTE DE AJUDA */
+        .btn-flutuante-ajuda {
+            position: fixed; bottom: 24px; right: 24px; z-index: 3000;
+            width: 50px; height: 50px; border-radius: 50%; background: var(--primary); color: #fff;
+            border: none; font-size: 20px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(37,99,235,0.4); display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        }
+        .btn-flutuante-ajuda:hover { background: var(--primary-dark); transform: scale(1.05); }
+    </style>
+</head>
+<body>
+
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="btn-flutuante-ajuda" onclick="location.href='central_ajuda.html'" title="Central de Ajuda"><i class="fas fa-question"></i></button>
+
+<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="layout">
+        <!-- SIDEBAR DE NAVEGAÇÃO RÁPIDA -->
+        <aside class="sidebar-ajuda">
+            <h3>Filtrar Tópicos</h3>
+            <input type="text" id="busca" class="busca" placeholder="Digite para buscar..." oninput="filtrarBusca(this.value)">
+            <h3>Módulos &amp; Assuntos</h3>
+            <ul class="menu-modulos" id="menuModulos">
+                <li><a href="#dashboard" class="ativo"><i class="fas fa-desktop"></i> Dashboard &amp; BI</a></li>
+                <li><a href="#parceiros"><i class="fas fa-address-book"></i> Parceiros &amp; Clientes</a></li>
+                <li><a href="#centros-custo"><i class="fas fa-sitemap"></i> Centros de Custo &amp; P&amp;D</a></li>
+                <li><a href="#produtos"><i class="fas fa-boxes"></i> Produtos &amp; Estoque</a></li>
+                <li><a href="#financeiro"><i class="fas fa-wallet"></i> Financeiro &amp; Contas</a></li>
+                <li><a href="#tms"><i class="fas fa-truck"></i> Transporte (CT-e / MDF-e)</a></li>
+                <li><a href="#contabilidade"><i class="fas fa-book"></i> Contabilidade &amp; Fiscal</a></li>
+            </ul>
+        </aside>
+
+        <!-- CONTEÚDO DOS MANUAIS -->
+        <main class="conteudo" id="conteudo">
+            <div class="sem-resultado" id="semResultado">Nenhum resultado encontrado para a sua busca.</div>
+
+            <!-- DASHBOARD -->
+            <section class="card-ajuda" id="dashboard">
+                <h2><i class="fas fa-desktop" style="color:var(--primary);"></i> Dashboard Executivo &amp; BI</h2>
+                <p class="subtitulo">Visão unificada da saúde financeira e orçamentária da empresa.</p>
+                <h4>O que você encontra</h4>
+                <p>O painel principal reúne indicadores em tempo real (KPIs) de saldo consolidado, contas a pagar, receber, resultado líquido e gráficos interativos de fluxo de caixa gerados via Chart.js.</p>
+                <h4>Como usar</h4>
+                <div class="passo"><div class="num">1</div><p>Selecione a empresa desejada no seletor corporativo no topo (para utilizadores Master).</p></div>
+                <div class="passo"><div class="num">2</div><p>Filtre os dados por centro de custo para análises direcionadas de projetos específicos de P&amp;D ou unidades operacionais.</p></div>
+                <div class="dica">💡 Todos os dados dos gráficos respeitam estritamente a empresa selecionada, garantindo total segurança de informações.</div>
+            </section>
+
+            <!-- PARCEIROS -->
+            <section class="card-ajuda" id="parceiros">
+                <h2><i class="fas fa-address-book" style="color:var(--primary);"></i> Gestão de Parceiros</h2>
+                <p class="subtitulo">Diretório unificado de clientes, fornecedores e prestadores de serviço.</p>
+                <h4>Consulta Automática Receita Federal</h4>
+                <div class="passo"><div class="num">1</div><p>Ao inserir um CNPJ válido de 14 dígitos, o sistema consulta automaticamente a BrasilAPI e preenche razão social, endereço, CNAE e Inscrição Estadual.</p></div>
+                <div class="passo"><div class="num">2</div><p>Vincule obrigatoriamente um Centro de Custo para rastreabilidade financeira.</p></div>
+                <div class="atencao">⚠️ O sistema impede cadastros duplicados alertando caso o CNPJ/CPF já conste na base.</div>
+            </section>
+
+            <!-- CENTROS DE CUSTO -->
+            <section class="card-ajuda" id="centros-custo">
+                <h2><i class="fas fa-sitemap" style="color:var(--primary);"></i> Centros de Custo &amp; P&amp;D</h2>
+                <p class="subtitulo">Controle orçamentário por projetos de inovação e departamentos.</p>
+                <h4>Funcionamento</h4>
+                <p>Permite apurar custos operacionais, insumos, pessoal e rateios em projetos de Pesquisa e Desenvolvimento, integrando saldos com contratos de fomento e aportes recebidos.</p>
+                <div class="dica">💡 Utilize o cadastro rápido inline disponível nos formulários de despesas para criar novos centros de custo sem sair da tela.</div>
+            </section>
+
+            <!-- PRODUTOS -->
+            <section class="card-ajuda" id="produtos">
+                <h2><i class="fas fa-boxes" style="color:var(--primary);"></i> Produtos, Insumos e Serviços</h2>
+                <p class="subtitulo">Catálogo gerencial com suporte a código de barras (JsBarcode).</p>
+                <h4>Leitura e Cadastro Inteligente</h4>
+                <div class="passo"><div class="num">1</div><p>Insira ou bipe um código de barras EAN; o sistema consulta bases globais de produtos automaticamente.</p></div>
+                <div class="passo"><div class="num">2</div><p>O sistema gera etiquetas gráficas de código de barras em tempo real na tabela de listagem.</p></div>
+            </section>
+
+            <!-- FINANCEIRO -->
+            <section class="card-ajuda" id="financeiro">
+                <h2><i class="fas fa-wallet" style="color:var(--primary);"></i> Módulo Financeiro &amp; Bancário</h2>
+                <p class="subtitulo">Contas a pagar, receber, transferências e conciliação OFX.</p>
+                <h4>Principais Rotinas</h4>
+                <ul>
+                    <li><strong>Contas a Pagar / Receber:</strong> Gestão de títulos, vencimentos e recibos RPA para autônomos.</li>
+                    <li><strong>Transferências:</strong> Movimentações entre contas PJ e aportes de capital próprio com isolamento contábil de passivos.</li>
+                    <li><strong>Conciliação OFX:</strong> Importação de extratos bancários para validação automática de lançamentos.</li>
+                </ul>
+            </section>
+
+            <!-- TMS -->
+            <section class="card-ajuda" id="tms">
+                <h2><i class="fas fa-truck" style="color:var(--primary);"></i> Transporte e Logística (TMS)</h2>
+                <p class="subtitulo">Emissão de CT-e, MDF-e, ANTT e gestão de frota.</p>
+                <h4>Emissão de CT-e e DACTE</h4>
+                <p>Permite importar arquivos XML de NF-e, calcular fretes, gerar Conhecimentos de Transporte Eletrônico e imprimir o DACTE oficial em formato retrato A4 com validação SEFAZ.</p>
+            </section>
+
+            <!-- CONTABILIDADE -->
+            <section class="card-ajuda" id="contabilidade">
+                <h2><i class="fas fa-book" style="color:var(--primary);"></i> Contabilidade &amp; Escritório</h2>
+                <p class="subtitulo">Escrituração em partidas dobradas, balancete, DRE e balanço patrimonial.</p>
+                <h4>Escrituração ECD / ECF</h4>
+                <p>Gera automaticamente balancetes de verificação, apuração de resultados (DRE gerencial) e balanço patrimonial com base no plano de contas parametrizado.</p>
+            </section>
+        </main>
+    </div>
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+
+const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
+
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    location.reload();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
+// Navegação e Filtro da Ajuda
+var links = document.querySelectorAll('.menu-modulos a');
+var secoes = document.querySelectorAll('.card-ajuda');
+
+window.addEventListener('scroll', function () {
+    var pos = window.scrollY + 120;
+    var atual = null;
+    secoes.forEach(function (s) { if (s.offsetTop <= pos) atual = s.id; });
+    links.forEach(function (l) { l.classList.toggle('ativo', l.getAttribute('href') === '#' + atual); });
+});
+
+function filtrarBusca(termo) {
+    termo = termo.toLowerCase().trim();
+    var achou = false;
+    secoes.forEach(function (s) {
+        var visivel = !termo || s.textContent.toLowerCase().indexOf(termo) !== -1;
+        s.style.display = visivel ? '' : 'none';
+        if (visivel) achou = true;
+    });
+    document.getElementById('semResultado').style.display = achou ? 'none' : 'block';
+}
+
+async function inicializarPagina(){
+    let u = window.obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+}
+
+window.onload = inicializarPagina;
+</script>
+</body>
+</html>
