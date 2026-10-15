@@ -5,7 +5,7 @@
 
 (async function () {
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-    const paginaAtual = window.location.pathname.split("/").pop();
+    const paginaAtual = window.location.pathname.split("/").pop().toLowerCase();
 
     // Páginas públicas livres de autenticação
     const paginasPublicas = ['login.html', 'cadastro.html', 'recuperar.html'];
@@ -49,6 +49,29 @@
         const elUserName = document.getElementById('userName');
         if (elUserName) {
             elUserName.innerText = (usuario.nome || usuario.email || 'Utilizador').split('@')[0];
+        }
+
+        // INJEÇÃO GLOBAL DO BOTÃO FLUTUANTE DE AJUDA
+        if (!paginaAtual.includes('central_ajuda.html')) {
+            if (!document.getElementById('btnAjudaGlobalFlutuante')) {
+                const btn = document.createElement('button');
+                btn.id = 'btnAjudaGlobalFlutuante';
+                btn.title = 'Central de Ajuda';
+                btn.innerHTML = '<i class="fas fa-question"></i>';
+                btn.style.cssText = `
+                    position: fixed; bottom: 24px; right: 24px; z-index: 999999;
+                    width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff;
+                    border: none; font-size: 22px; font-weight: bold; cursor: pointer;
+                    box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; 
+                    justify-content: center; transition: all 0.2s ease;
+                `;
+                btn.onmouseover = () => { btn.style.background = '#1d4ed8'; btn.style.transform = 'scale(1.08)'; };
+                btn.onmouseout = () => { btn.style.background = '#2563eb'; btn.style.transform = 'scale(1)'; };
+                btn.onclick = function () { 
+                    window.location.href = 'central_ajuda.html'; 
+                };
+                document.body.appendChild(btn);
+            }
         }
 
         // BLINDAGEM VISUAL LGPD: Se NÃO for o Master, oculta e destrói qualquer seletor de empresas do cabeçalho
