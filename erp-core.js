@@ -301,26 +301,32 @@
     }
 })();
 
-// Injetor Global do Botão Flutuante de Ajuda para o Novo Sistema
+// ==========================================================
+// INJETOR GLOBAL DO BOTÃO FLUTUANTE DE AJUDA — SACRAMENTO ERP
+// ==========================================================
 (function () {
     // Não exibe o botão flutuante se já estiver na própria Central de Ajuda
-    if (window.location.pathname.includes('central_ajuda.html')) return;
+    if (window.location.pathname.toLowerCase().includes('central_ajuda.html')) return;
 
-    if (!document.getElementById('btnAjudaGlobalFlutuante')) {
-        const btn = document.createElement('button');
-        btn.id = 'btnAjudaGlobalFlutuante';
-        btn.title = 'Central de Ajuda';
-        btn.innerHTML = '<i class="fas fa-question"></i>';
-        btn.style.cssText = `
-            position: fixed; bottom: 24px; right: 24px; z-index: 3000;
-            width: 50px; height: 50px; border-radius: 50%; background: #2563eb; color: #fff;
-            border: none; font-size: 20px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 15px rgba(37,99,235,0.4); display: flex; align-items: center; 
-            justify-content: center; transition: 0.2s;
-        `;
-        btn.onmouseover = () => { btn.style.background = '#1d4ed8'; btn.style.transform = 'scale(1.05)'; };
-        btn.onmouseout = () => { btn.style.background = '#2563eb'; btn.style.transform = 'scale(1)'; };
-        btn.onclick = function () { location.href = 'central_ajuda.html'; };
-        document.body.appendChild(btn);
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+        if (!document.getElementById('btnAjudaGlobalFlutuante')) {
+            const btn = document.createElement('button');
+            btn.id = 'btnAjudaGlobalFlutuante';
+            btn.title = 'Central de Ajuda';
+            btn.innerHTML = '<i class="fas fa-question"></i>';
+            btn.style.cssText = `
+                position: fixed; bottom: 24px; right: 24px; z-index: 999999;
+                width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff;
+                border: none; font-size: 22px; font-weight: bold; cursor: pointer;
+                box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; 
+                justify-content: center; transition: all 0.2s ease;
+            `;
+            btn.onmouseover = () => { btn.style.background = '#1d4ed8'; btn.style.transform = 'scale(1.08)'; };
+            btn.onmouseout = () => { btn.style.background = '#2563eb'; btn.style.transform = 'scale(1)'; };
+            btn.onclick = function () { 
+                window.location.href = 'central_ajuda.html'; 
+            };
+            document.body.appendChild(btn);
+        }
+    });
 })();
