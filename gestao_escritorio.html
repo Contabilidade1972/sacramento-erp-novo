@@ -7,18 +7,42 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
+
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
+        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.cinza { background: #64748b; }
@@ -63,6 +87,29 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
         <div>
@@ -70,7 +117,7 @@
             <div class="page-subtitle">Carteira de clientes, calendário com Reforma Tributária (CBS/IBS) e protocolo de entregas</div>
         </div>
         <div>
-            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+            <a href="index.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Painel Principal</a>
         </div>
     </div>
 
@@ -91,7 +138,7 @@
                     <label>Consultar CNPJ na Receita Federal / Base Licenciada</label>
                     <input type="text" id="busca_cnpj" class="form-control" placeholder="Digite o CNPJ para preenchimento automático..." style="background:#fff;">
                 </div>
-                <button class="btn-acao" onclick="consultarCnpjAutomatico()"><i class="fas fa-search"></i> Consultar Web</button>
+                <button class="btn-acao" type="button" onclick="consultarCnpjAutomatico()"><i class="fas fa-search"></i> Consultar Web</button>
             </div>
 
             <div class="form-row">
@@ -135,7 +182,7 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                <button class="btn-acao sucesso" onclick="salvarClienteContabil()"><i class="fas fa-save"></i> Adicionar à Carteira Contábil</button>
+                <button class="btn-acao sucesso" type="button" onclick="salvarClienteContabil()"><i class="fas fa-save"></i> Adicionar à Carteira Contábil</button>
             </div>
         </div>
 
@@ -162,7 +209,7 @@
         </div>
     </div>
 
-    <!-- ABA 2: CALENDÁRIO DE OBRIGAÇÕES (TOTALMENTE EDITÁVEL E CUSTOMIZÁVEL) -->
+    <!-- ABA 2: CALENDÁRIO DE OBRIGAÇÕES -->
     <div id="aba-calendario" class="aba-conteudo">
         <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
             <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-plus-circle"></i> Registrar Nova Obrigação / Ajustar Prazos (Reforma Tributária e Atual)</span></div>
@@ -185,7 +232,7 @@
                 </div>
             </div>
             <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                <button class="btn-acao sucesso" onclick="cadastrar Obrigacao()"><i class="fas fa-save"></i> Adicionar ao Calendário</button>
+                <button class="btn-acao sucesso" type="button" onclick="cadastrarObrigacao()"><i class="fas fa-save"></i> Adicionar ao Calendário</button>
             </div>
         </div>
 
@@ -200,10 +247,10 @@
                         <tr><th>Competência</th><th>Obrigações / Entrega</th><th>Órgão / Destino</th><th>Prazo Legal</th><th>Status</th><th style="text-align:right;">Ações</th></tr>
                     </thead>
                     <tbody id="tbodyObrigacoes">
-                        <tr><td>09/2026</td><td><strong>Apuração IVA Dual (CBS / IBS - Transição)</strong></td><td>Receita Federal / Comitê Gestor</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
-                        <tr><td>09/2026</td><td>DCTFWeb Mensal</td><td>Receita Federal</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
-                        <tr><td>09/2026</td><td>PGDAS-D (Simples Nacional)</td><td>Portal Simples</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
-                        <tr><td>09/2026</td><td>ISSQN Municipal Próprio</td><td>Prefeitura BH</td><td>10/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td><strong>Apuração IVA Dual (CBS / IBS - Transição)</strong></td><td>Receita Federal / Comitê Gestor</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" type="button" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>DCTFWeb Mensal</td><td>Receita Federal</td><td>15/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" type="button" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>PGDAS-D (Simples Nacional)</td><td>Portal Simples</td><td>20/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" type="button" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
+                        <tr><td>09/2026</td><td>ISSQN Municipal Próprio</td><td>Prefeitura BH</td><td>10/10/2026</td><td><span class="badge-status">Pendente</span></td><td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" type="button" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td></tr>
                     </tbody>
                 </table>
             </div>
@@ -228,7 +275,7 @@
                     <input type="date" id="prot_data" class="form-control">
                 </div>
                 <div>
-                    <button class="btn-acao" onclick="registarProtocolo()"><i class="fas fa-check"></i> Emitir Protocolo</button>
+                    <button class="btn-acao" type="button" onclick="registarProtocolo()"><i class="fas fa-check"></i> Emitir Protocolo</button>
                 </div>
             </div>
             <div class="table-container" style="margin-top:20px;">
@@ -247,10 +294,42 @@
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let clientesContabeisCache = [];
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
+
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    carregarClientesContabeis();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
 
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
@@ -324,7 +403,7 @@ function cadastrarObrigacao() {
         <td>${orgao}</td>
         <td>${prazoFmt}</td>
         <td><span class="badge-status">Pendente</span></td>
-        <td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
+        <td style="text-align:right;"><button class="btn-acao perigo" style="padding:4px 8px; font-size:10px;" type="button" onclick="this.closest('tr').remove()"><i class="fas fa-trash"></i></button></td>
     </tr>`;
 
     toast("Obrigação adicionada ao calendário com sucesso!");
@@ -334,7 +413,7 @@ function cadastrarObrigacao() {
 }
 
 async function carregarClientesContabeis() {
-    var cid = clienteIdAtual();
+    var cid = window.clienteIdAtual();
     if(!cid) return;
     var { data, error } = await sb.from('clientes_contabeis').select('*').eq('cliente_id', cid).order('id', { ascending: false });
     if(error) return;
@@ -360,14 +439,14 @@ function renderTabelaClientes() {
             <td>${c.cnae || '—'}</td>
             <td>${c.municipio || 'Belo Horizonte - MG'}</td>
             <td style="text-align:right;">
-                <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" onclick="excluirCliente(${c.id})"><i class="fas fa-trash"></i></button>
+                <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" type="button" onclick="excluirCliente(${c.id})"><i class="fas fa-trash"></i></button>
             </td>
         </tr>`;
     });
 }
 
 async function salvarClienteContabil() {
-    var cid = clienteIdAtual();
+    var cid = window.clienteIdAtual();
     let cnpj = document.getElementById('cli_cnpj').value.trim();
     let razao_social = document.getElementById('cli_razao').value.trim();
     let regime_tributario = document.getElementById('cli_regime').value;
@@ -428,9 +507,41 @@ function registarProtocolo() {
     document.getElementById('prot_data').value = '';
 }
 
-window.onload = function(){
+async function inicializarPagina() {
+    let u = window.obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     carregarClientesContabeis();
-};
+}
+
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
