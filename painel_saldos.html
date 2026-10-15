@@ -9,7 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
+    <script src="filtro_cliente.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -25,8 +25,35 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -68,11 +95,10 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* ESTILO EXCLUSIVO PARA IMPRESSÃO EM PAISAGEM (LAYOUT EXECUTIVO PERFEITO) */
         @media print {
             @page { size: A4 landscape; margin: 12mm; }
             body { background: #fff; color: #0f172a; font-size: 12px; }
-            .page-toolbar, .panel:has(.filtros-grid), footer { display: none !important; }
+            .site-header, .page-toolbar, .panel:has(.filtros-grid), footer { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 16px !important; }
             .charts-grid { display: grid !important; grid-template-columns: 2fr 1fr !important; gap: 16px !important; }
             .chart-card { height: 260px !important; padding: 14px !important; border: 1px solid var(--border) !important; box-shadow: none !important; page-break-inside: avoid; }
@@ -84,9 +110,32 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM DE SEGURANÇA -->
+<header class="site-header">
+    <div class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </div>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+        <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
         <div>
             <span style="font-size: 12px; color: var(--text-light); margin-right: 15px;"><i class="far fa-clock"></i> <span id="relogioTopo"></span></span>
             <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório</button>
@@ -184,31 +233,68 @@ let chartRGInstance = null;
 let chartCatInstance = null;
 let chartEvolInstance = null;
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
 
-function sbFiltro(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    if (!u || !u.email) return false;
+    return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    // BLINDAGEM LGPD: Força estritamente o próprio cliente_id do utilizador comum
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+window.sbFiltro = function(tabela){
+    let q = sb.from(tabela).select('*');
+    const cid = window.clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) {
+        q = q.eq('cliente_id', cid);
+    }
     return q;
-}
+};
+
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    const val = select.value;
+    localStorage.setItem('empresaSelecionada', String(val));
+    location.reload();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 setInterval(function(){
     var d = new Date();
-    document.getElementById('relogioTopo').textContent = d.toLocaleDateString('pt-BR') + ', ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+    var elRelogio = document.getElementById('relogioTopo');
+    if(elRelogio) elRelogio.textContent = d.toLocaleDateString('pt-BR') + ', ' + d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
 }, 1000);
 
 async function carregarDadosGerais(){
-    var cid = clienteIdAtual();
+    var cid = window.clienteIdAtual();
     if(!cid) return;
 
-    var pRes = await sbFiltro('projetos_pd');
-    var cRes = await sbFiltro('contratos_fomento');
-    var aRes = await sbFiltro('aportes_pd');
-    var gRes = await sbFiltro('custos_pd');
+    var pRes = await window.sbFiltro('projetos_pd');
+    var cRes = await window.sbFiltro('contratos_fomento');
+    var aRes = await window.sbFiltro('aportes_pd');
+    var gRes = await window.sbFiltro('custos_pd');
 
     projetosCache = pRes.data || [];
     contratosCache = cRes.data || [];
@@ -279,9 +365,9 @@ function renderizarTabelaAnalitica(fProj, aportes, custos){
 
         html += '<tr>'+
             '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
-            '<td style="text-align:right; color:var(--success);">R$ ' + fmtBR(totalA) + '</td>'+
-            '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(totalG) + '</td>'+
-            '<td style="text-align:right; font-weight:bold; color:' + (disponivel >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R$ ' + fmtBR(disponivel) + '</td>'+
+            '<td style="text-align:right; color:var(--success);">R\$ ' + fmtBR(totalA) + '</td>'+
+            '<td style="text-align:right; color:var(--warning);">R\$ ' + fmtBR(totalG) + '</td>'+
+            '<td style="text-align:right; font-weight:bold; color:' + (disponivel >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R\$ ' + fmtBR(disponivel) + '</td>'+
             '<td>'+
                 '<div style="font-size:11px; font-weight:700; margin-bottom:2px;">' + pct.toFixed(1) + '%</div>'+
                 '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%; background:' + (pct > 90 ? 'var(--danger)' : 'var(--primary)') + ';"></div></div>'+
@@ -308,7 +394,6 @@ function renderizarGraficos(fProj, aportes, custos){
         dataGasto.push(tG);
     });
 
-    // 1. Gráfico Recebido x Gasto
     if(chartRGInstance) chartRGInstance.destroy();
     var ctxRG = document.getElementById('chartRecebidoGasto').getContext('2d');
     chartRGInstance = new Chart(ctxRG, {
@@ -323,7 +408,6 @@ function renderizarGraficos(fProj, aportes, custos){
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // 2. Gráfico Gastos por Categoria
     var catTotais = { pessoal: 0, material_consumo: 0, servicos_terceiros: 0, equipamentos: 0, outros: 0 };
     custos.forEach(function(g){
         if(catTotais[g.categoria] !== undefined) catTotais[g.categoria] += Number(g.valor || 0);
@@ -344,11 +428,10 @@ function renderizarGraficos(fProj, aportes, custos){
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
-    // 3. Gráfico Evolução Mensal
     var mesesMap = {};
     custos.forEach(function(g){
         if(g.data_gasto){
-            var mes = g.data_gasto.substring(0, 7); // AAAA-MM
+            var mes = g.data_gasto.substring(0, 7);
             mesesMap[mes] = (mesesMap[mes] || 0) + Number(g.valor || 0);
         }
     });
@@ -362,7 +445,7 @@ function renderizarGraficos(fProj, aportes, custos){
         data: {
             labels: mesesOrdenados.length ? mesesOrdenados : ['Nenhum período'],
             datasets: [{
-                label: 'Gastos Acumulados (R$)',
+                label: 'Gastos Acumulados (R\$)',
                 data: valoresEvolucao.length ? valoresEvolucao : [0],
                 borderColor: '#2563eb',
                 backgroundColor: 'rgba(37, 99, 235, 0.1)',
@@ -375,8 +458,36 @@ function renderizarGraficos(fProj, aportes, custos){
 }
 
 async function inicializarPagina(){
-    let u = obterUsuarioAtual();
+    let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     await carregarDadosGerais();
 }
 
