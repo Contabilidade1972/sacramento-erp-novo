@@ -1,5 +1,5 @@
 /**
- * Sacramento ERP — Auth Guard, Blindagem Multi-Tenant (LGPD) & Assistente Contextual Global
+ * Sacramento ERP — Auth Guard, Blindagem Multi-Tenant (LGPD) & Assistente Contextual Interativo Pro
  */
 
 (async function () {
@@ -43,20 +43,19 @@
 
     // 3. Execução automática ao carregar o conteúdo da página (DOM)
     window.addEventListener('DOMContentLoaded', async () => {
-        // Exibe o nome correto do utilizador no cabeçalho
         const elUserName = document.getElementById('userName');
         if (elUserName) {
             elUserName.innerText = (usuario.nome || usuario.email || 'Utilizador').split('@')[0];
         }
 
         // ==========================================================
-        // INJEÇÃO DO ASSISTENTE CONTEXTUAL INTELIGENTE (EM TODAS AS SUBPÁGINAS)
+        // INJEÇÃO DO ASSISTENTE VIRTUAL INTERATIVO & CONTEXTUAL (PRO)
         // ==========================================================
         if (!paginaAtual.includes('central_ajuda.html')) {
-            injetarAssistenteContextual(paginaAtual);
+            injetarAssistenteInterativoPro(paginaAtual);
         }
 
-        // BLINDAGEM VISUAL LGPD: Se NÃO for o Master, oculta e destrói qualquer seletor de empresas do cabeçalho
+        // BLINDAGEM VISUAL LGPD: Se NÃO foi Master, oculta seletores de empresa
         if (!ehMaster) {
             const seletores = document.querySelectorAll('#selectEmpresa, #selectEmpresaHeader, .empresa-selector, #boxSeletorEmpresa');
             seletores.forEach(sel => {
@@ -94,7 +93,7 @@
         return;
     }
 
-    // 4. Validação de Inadimplência e Licença via Supabase para Empresas Comuns
+    // 4. Validação de Inadimplência e Licença via Supabase
     try {
         if (typeof supabase === 'undefined') return;
 
@@ -136,109 +135,161 @@
     }
 
     // ==========================================================
-    // MOTOR DO ASSISTENTE CONTEXTUAL INTELIGENTE
+    // MOTOR DO ASSISTENTE VIRTUAL INTERATIVO (CONTEXTUAL POR PÁGINA)
     // ==========================================================
-    function injetarAssistenteContextual(pagina) {
-        if (document.getElementById('containerAssistenteContextual')) return;
+    function injetarAssistenteInterativoPro(pagina) {
+        if (document.getElementById('containerAssistenteInterativo')) return;
 
-        // Base de conhecimento detalhada por página do ERP
-        const baseConhecimento = {
-            'cte.html': {
-                titulo: 'Guia Inteligente: CT-e (Transporte)',
-                descricao: 'Emissão e escrituração de Conhecimento de Transporte Eletrônico conforme SEFAZ.',
-                sugestoes: [
-                    '💡 **Importação de XML:** Clique na zona de upload para carregar o XML da NF-e vinculada e preencher os dados instantaneamente.',
-                    '🔍 **Validação de CNPJ:** Utilize a lupa no campo Remetente/Destinatário para buscar os dados direto na Receita Federal.',
-                    '⚖️ **Pesos e Valores:** Certifique-se de informar o peso bruto em KG e o valor total do frete antes de autorizar.'
-                ]
-            },
-            'parceiros.html': {
-                titulo: 'Guia Inteligente: Parceiros & Clientes',
-                descricao: 'Diretório unificado de clientes, fornecedores e prestadores.',
-                sugestoes: [
-                    '⚡ **Preenchimento Automático:** Digite o CNPJ ou CPF com 14/11 dígitos para puxar os dados da BrasilAPI automaticamente.',
-                    '🏷️ **Centro de Custo:** É obrigatório associar um Centro de Custo para garantir a rastreabilidade contábil.',
-                    '🛡️ **Segurança LGPD:** Os dados dos parceiros são restritos estritamente à empresa logada (Multi-Tenant).'
-                ]
-            },
-            'produtos.html': {
-                titulo: 'Guia Inteligente: Produtos e Serviços',
-                descricao: 'Gestão de catálogo, custos, preços de venda e código de barras.',
-                sugestoes: [
-                    'barcode **Código de Barras:** Bipe o código EAN no campo correspondente para consultar a base global de produtos.',
-                    '📊 **Margem de Lucro:** Preencha o preço de custo e o preço de venda para manter o DRE atualizado.',
-                    '🏷️ **Etiquetas:** O sistema gera o gráfico do código de barras (JsBarcode) automaticamente na tabela.'
-                ]
-            },
+        // Base de conhecimento detalhada com orientações exatas por página
+        const baseContextos = {
             'contas_pagar.html': {
-                titulo: 'Guia Inteligente: Contas a Pagar',
-                descricao: 'Controle de despesas, vencimentos e baixas de títulos.',
-                sugestoes: [
-                    '📅 **Vencimentos:** Mantenha a data correta para alimentar o fluxo de caixa preventivo.',
-                    '🏦 **Baixa de Títulos:** Ao pagar o fornecedor, registre a baixa para debitar o saldo da conta bancária.',
-                    '📋 **Centro de Custo:** Indique o departamento ou projeto responsável pela despesa.'
-                ]
+                titulo: 'Assistente: Contas a Pagar',
+                saudacao: 'Olá! Estou a monitorar a sua tela de Contas a Pagar. Como posso ajudar com este lançamento ou fornecedor?',
+                sugestoesRapidas: [
+                    'Como preencher o fornecedor?',
+                    'Qual a importância do Centro de Custo?',
+                    'O que acontece se atrasar o título?'
+                ],
+                respostasDinamicas: {
+                    'fornecedor': 'Digite o CNPJ no campo correspondente; o sistema consome a BrasilAPI para preencher razão social e endereço automaticamente. Nunca pague despesas sem documento fiscal válido.',
+                    'centro de custo': 'O Centro de Custo é obrigatório para direcionar a despesa na DRE gerencial e apurar a rentabilidade correta dos seus projetos.',
+                    'atrasar': 'Atrasos geram multas e juros contratuais não provisionados, além de impactar negativamente o fluxo de caixa projetado e o rating com fornecedores.'
+                }
             },
             'contas_receber.html': {
-                titulo: 'Guia Inteligente: Contas a Receber',
-                descricao: 'Gestão de receitas, faturamento e cobranças.',
-                sugestoes: [
-                    '💰 **Valores e Juros:** Informe o valor líquido acordado com o cliente.',
-                    '✅ **Conciliação:** Confirme o recebimento assim que o montante aparecer no extrato bancário.',
-                    '📊 **Inadimplência:** Títulos vencidos aparecem destacados em alertas executivos.'
-                ]
+                titulo: 'Assistente: Contas a Receber',
+                saudacao: 'Olá! Estou a auxiliar no Contas a Receber. Tem dúvidas sobre faturas, prazos ou inadimplência?',
+                sugestoesRapidas: [
+                    'Como registrar um recebimento?',
+                    'Como gerenciar títulos vencidos?',
+                    'Qual o impacto no fluxo de caixa?'
+                ],
+                respostasDinamicas: {
+                    'recebimento': 'Selecione o título em aberto, confira o valor líquido e clique em dar baixa informando a conta bancária de destino.',
+                    'vencidos': 'Títulos vencidos aparecem destacados em vermelho no painel. Acione o setor comercial para régua de cobrança preventiva.',
+                    'fluxo de caixa': 'O recebimento pontual garante liquidez para honrar os compromissos de folha e fornecedores sem recorrer a empréstimos bancários.'
+                }
+            },
+            'cte.html': {
+                titulo: 'Assistente: Emissão de CT-e',
+                saudacao: 'Olá! Posso auxiliar na emissão do Conhecimento de Transporte Eletrônico e validação SEFAZ?',
+                sugestoesRapidas: [
+                    'Como importar o XML da NF-e?',
+                    'Quais os cuidados com a ANTT?',
+                    'Como emitir o DACTE?'
+                ],
+                respostasDinamicas: {
+                    'xml': 'Clique na área de upload de XML para extrair automaticamente remetente, destinatário, peso e valores da mercadoria.',
+                    'antt': 'Certifique-se de que o RNTRC da frota e do motorista estão regulares para evitar apreensão do veículo em barreiras fiscais.',
+                    'dacte': 'Após a autorização da SEFAZ, o botão de impressão do DACTE em formato A4 retrato fica liberado na tabela.'
+                }
+            },
+            'parceiros.html': {
+                titulo: 'Assistente: Gestão de Parceiros',
+                saudacao: 'Olá! Estou a acompanhar o diretório de parceiros e a conformidade com a LGPD.',
+                sugestoesRapidas: [
+                    'Como funciona a consulta por CNPJ?',
+                    'Os dados estão seguros (LGPD)?',
+                    'Posso cadastrar fornecedores?'
+                ],
+                respostasDinamicas: {
+                    'cnpj': 'Basta digitar o CNPJ com 14 dígitos e o sistema preenche os dados oficiais da Receita Federal em segundos.',
+                    'lgpd': 'Sim! O ERP possui blindagem Multi-Tenant estrita. Os dados cadastrais pertencem exclusivamente à sua empresa (`cliente_id`) e não são compartilhados.',
+                    'fornecedores': 'Sim, o mesmo diretório centraliza clientes, fornecedores e parceiros de negócio.'
+                }
             }
         };
 
-        // Guia padrão caso a página não esteja na base detalhada
-        const guiaPadrao = {
+        const contextoPadrao = {
             titulo: 'Assistente Inteligente Sacramento ERP',
-            descricao: 'Orientações operacionais para o ecrã atual.',
-            sugestoes: [
-                '📌 **Navegação Segura:** Utilize o menu lateral ou a pesquisa global para alternar entre módulos.',
-                '🔒 **Conformidade LGPD:** Suas operações são criptografadas e isoladas por empresa.',
-                '❓ **Suporte Completo:** Clique no balão abaixo a qualquer momento para abrir a Central de Ajuda com os manuais detalhados.'
-            ]
+            saudacao: `Olá! Estou a auxiliar no ecrã atual. Como posso ajudar com preenchimentos, regras de negócio ou conformidade fiscal?`,
+            sugestoesRapidas: [
+                'Para que serve este módulo?',
+                'Quais os campos obrigatórios?',
+                'Como consultar a Central de Ajuda?'
+            ],
+            respostasDinamicas: {
+                'modulo': 'Este módulo faz parte do ecossistema de alta performance do Sacramento ERP, com total isolamento multi-tenant e segurança jurídica.',
+                'obrigatorios': 'Preencha sempre os campos sinalizados com asterisco (*). O sistema valida automaticamente dados de CNPJ e valores.',
+                'central': 'Clique no link de manuais no cabeçalho ou digite na barra de busca superior para localizar tutoriais detalhados.'
+            }
         };
 
-        const info = baseConhecimento[pagina] || guiaPadrao;
+        const ctx = baseContextos[pagina] || contextoPadrao;
 
-        // Criação visual do Widget Flutuante
+        // Criação do Elemento HTML do Chat Flutuante Interativo
         const container = document.createElement('div');
-        container.id = 'containerAssistenteContextual';
+        container.id = 'containerAssistenteInterativo';
         container.innerHTML = `
-            <div id="painelAjudaContextual" style="display:none; position:fixed; bottom:90px; right:24px; width:340px; background:#fff; border-radius:14px; box-shadow:0 15px 40px rgba(15,23,42,0.25); border:1px solid #cbd5e1; z-index:999998; overflow:hidden; font-family:'Inter',sans-serif;">
-                <div style="background:#1e3a8a; color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center;">
-                    <strong style="font-size:13.5px; display:flex; align-items:center; gap:8px;"><i class="fas fa-robot" style="color:#60a5fa;"></i> ${info.titulo}</strong>
-                    <button onclick="document.getElementById('painelAjudaContextual').style.display='none'" style="background:none; border:none; color:#cbd5e1; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+            <div id="painelChatInterativo" style="display:none; position:fixed; bottom:90px; right:24px; width:360px; background:#fff; border-radius:16px; box-shadow:0 20px 50px rgba(15,23,42,0.3); border:1px solid #cbd5e1; z-index:999998; overflow:hidden; font-family:'Inter',sans-serif; display:none; flex-direction:column;">
+                <div style="background:#1e3a8a; color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:13.5px; display:flex; align-items:center; gap:8px;"><i class="fas fa-robot" style="color:#60a5fa;"></i> ${ctx.titulo}</strong>
+                    <button id="fecharChatInterativo" style="background:none; border:none; color:#cbd5e1; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
                 </div>
-                <div style="padding:16px; max-height:300px; overflow-y:auto; font-size:12.5px; color:#334155; line-height:1.5;">
-                    <p style="font-weight:600; color:#1e293b; margin-bottom:10px;">${info.descricao}</p>
-                    <ul style="padding-left:16px; display:flex; flex-direction:column; gap:8px;">
-                        ${info.sugestoes.map(s => `<li>\${s}</li>`).join('')}
-                    </ul>
+                <div id="corpoChatInterativo" style="padding:16px; height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; background:#f8fafc; font-size:12.5px; color:#334155;">
+                    <div style="background:#fff; border:1px solid #e2e8f0; padding:10px 14px; border-radius:10px; max-width:90%; align-self:flex-start; box-shadow:0 2px 5px rgba(0,0,0,0.02); line-height:1.5;">
+                        ${ctx.saudacao}
+                    </div>
                 </div>
-                <div style="padding:10px 16px; background:#f8fafc; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; font-size:11.5px;">
-                    <span style="color:#64748b;">Precisa de mais detalhes?</span>
-                    <a href="central_ajuda.html" style="color:#2563eb; font-weight:700; text-decoration:none;"><i class="fas fa-book"></i> Ver Manual Completo</a>
+                <div style="padding:10px 14px; background:#fff; border-top:1px solid #e2e8f0; display:flex; gap:6px; flex-wrap:wrap;" id="sugestoesRapidasBox">
+                    ${ctx.sugestoesRapidas.map(s => `<button class="sugestao-pill" style="background:#eff6ff; border:1px solid #bfdbfe; color:#1d4ed8; padding:5px 10px; border-radius:12px; font-size:11px; cursor:pointer; font-weight:600; transition:0.15s;">\${s}</button>`).join('')}
+                </div>
+                <div style="padding:12px 14px; background:#fff; border-top:1px solid #e2e8f0; display:flex; gap:8px;">
+                    <input type="text" id="inputChatInterativo" placeholder="Digite sua dúvida sobre esta página..." style="flex:1; height:38px; border:1px solid #cbd5e1; border-radius:8px; padding:0 12px; font-size:12.5px; outline:none;">
+                    <button id="enviarChatInterativo" style="background:#2563eb; color:#fff; border:none; width:38px; height:38px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
-            <button id="btnBotaoAjudaContextual" title="Assistente Inteligente & Ajuda" style="position:fixed; bottom:24px; right:24px; z-index:999999; width:52px; height:52px; border-radius:50%; background:#2563eb; color:#fff; border:none; font-size:22px; cursor:pointer; box-shadow:0 6px 20px rgba(37,99,235,0.45); display:flex; align-items:center; justify-content:center; transition:all 0.2s ease;">
-                <i class="fas fa-question"></i>
+            <button id="btnDisparadorInterativo" title="Assistente Interativo Sacramento ERP" style="position:fixed; bottom:24px; right:24px; z-index:999999; width:54px; height:54px; border-radius:50%; background:#2563eb; color:#fff; border:none; font-size:22px; cursor:pointer; box-shadow:0 6px 20px rgba(37,99,235,0.45); display:flex; align-items:center; justify-content:center; transition:all 0.2s ease;">
+                <i class="fas fa-robot"></i>
             </button>
         `;
 
         document.body.appendChild(container);
 
-        // Comportamento do Botão (Alterna entre abrir o painel de dicas ou ir para a Central de Ajuda com duplo clique)
-        const btn = document.getElementById('btnBotaoAjudaContextual');
-        const painel = document.getElementById('painelAjudaContextual');
+        const btn = document.getElementById('btnDisparadorInterativo');
+        const painel = document.getElementById('painelChatInterativo');
+        const fechar = document.getElementById('fecharChatInterativo');
+        const input = document.getElementById('inputChatInterativo');
+        const enviar = document.getElementById('enviarChatInterativo');
+        const corpo = document.getElementById('corpoChatInterativo');
 
         btn.onclick = () => {
-            painel.style.display = painel.style.display === 'block' ? 'none' : 'block';
+            painel.style.display = painel.style.display === 'flex' ? 'none' : 'flex';
         };
+        fechar.onclick = () => { painel.style.display = 'none'; };
         btn.onmouseover = () => { btn.style.background = '#1d4ed8'; btn.style.transform = 'scale(1.08)'; };
         btn.onmouseout = () => { btn.style.background = '#2563eb'; btn.style.transform = 'scale(1)'; };
+
+        function processarMensagem(texto) {
+            if (!texto.trim()) return;
+            
+            // Adiciona mensagem do utilizador
+            corpo.innerHTML += `<div style="background:#2563eb; color:#fff; padding:10px 14px; border-radius:10px; max-width:90%; align-self:flex-end; word-break:break-word;">${texto}</div>`;
+            input.value = '';
+            corpo.scrollTop = corpo.scrollHeight;
+
+            setTimeout(() => {
+                let resposta = "Compreendi a sua dúvida. Para este campo, certifique-se de seguir o padrão nacional de preenchimento e manter os dados fiscais rigorosamente atualizados.";
+                
+                const tLower = texto.toLowerCase();
+                for (let chave in ctx.respostasDinamicas) {
+                    if (tLower.includes(chave)) {
+                        resposta = ctx.respostasDinamicas[chave];
+                        break;
+                    }
+                }
+
+                corpo.innerHTML += `<div style="background:#fff; border:1px solid #e2e8f0; padding:10px 14px; border-radius:10px; max-width:90%; align-self:flex-start; box-shadow:0 2px 5px rgba(0,0,0,0.02); line-height:1.5;">${resposta}</div>`;
+                corpo.scrollTop = corpo.scrollHeight;
+            }, 500);
+        }
+
+        enviar.onclick = () => processarMensagem(input.value);
+        input.onkeypress = (e) => { if (e.key === 'Enter') processarMensagem(input.value); };
+
+        document.querySelectorAll('.sugestao-pill').forEach(pill => {
+            pill.onclick = () => processarMensagem(pill.innerText);
+        });
     }
 
 })();
