@@ -46,11 +46,14 @@
         .btn-voltar { background: #64748b; color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; }
         .btn-voltar:hover { background: #475569; }
 
-        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; width: 100%; }
         .filtro-group { display: flex; flex-direction: column; gap: 6px; }
         .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
-        .filtro-group input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
-        .filtro-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .filtro-group input, .filtro-group select { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
+        .filtro-group input:focus, .filtro-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
 
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
         .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
@@ -71,6 +74,8 @@
 
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-secundario:hover { background: #cbd5e1; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
@@ -104,27 +109,54 @@
         <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
     </div>
 
-    <!-- BARRA DE DATA -->
+    <!-- BARRA DE FILTROS AVANÇADA -->
     <div class="toolbar">
-        <div class="filtro-group">
-            <label>Data de Fechamento (Dia de Apuração)</label>
-            <input type="date" id="filtroDataCaixa" onchange="carregarFechamento()">
+        <div class="filtro-grid">
+            <div class="filtro-group">
+                <label>Data Inicial</label>
+                <input type="date" id="filtroDataInicio">
+            </div>
+            <div class="filtro-group">
+                <label>Data Final</label>
+                <input type="date" id="filtroDataFim">
+            </div>
+            <div class="filtro-group">
+                <label>Tipo de Movimento</label>
+                <select id="filtroTipo">
+                    <option value="todos">Todos (Entradas e Saídas)</option>
+                    <option value="receber">Apenas Entradas (Receitas)</option>
+                    <option value="pagar">Apenas Saídas (Despesas)</option>
+                </select>
+            </div>
+            <div class="filtro-group">
+                <label>Centro de Custo</label>
+                <select id="filtroCentroCusto">
+                    <option value="todos">Todos os Centros de Custo</option>
+                    <option value="1.02 - Administrativo">1.02 - Administrativo</option>
+                    <option value="2.01 - Comercial & Vendas">2.01 - Comercial & Vendas</option>
+                    <option value="3.02 - P&D e Inovação">3.02 - P&D e Inovação</option>
+                </select>
+            </div>
         </div>
-        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Fechamento</button>
+        <div class="toolbar-actions">
+            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            <button class="btn-acao" onclick="carregarFechamento()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+        </div>
     </div>
 
     <!-- KPIS DE CAIXA -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <span class="kpi-label">Total Entradas do Dia</span>
+            <span class="kpi-label">Total Entradas do Período</span>
             <span id="kpiEntradas" class="kpi-value" style="color:var(--success);">R\$ 0,00</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Total Saídas do Dia</span>
+            <span class="kpi-label">Total Saídas do Período</span>
             <span id="kpiSaidas" class="kpi-value" style="color:var(--danger);">R\$ 0,00</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-label">Saldo Líquido do Dia</span>
+            <span class="kpi-label">Saldo Líquido do Período</span>
             <span id="kpiSaldo" class="kpi-value">R\$ 0,00</span>
         </div>
     </div>
@@ -133,7 +165,7 @@
     <div class="card-table">
         <div style="margin-bottom: 20px;">
             <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Movimentações Caixa & Bancos Apuradas</h3>
-            <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Títulos liquidados e movimentados na data de referência selecionada.</p>
+            <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Títulos liquidados e movimentados no intervalo de datas selecionado.</p>
         </div>
         <table>
             <thead>
@@ -142,11 +174,12 @@
                     <th>Tipo</th>
                     <th>Histórico / Descrição</th>
                     <th>Favorecido / Pagador</th>
+                    <th>Centro de Custo</th>
                     <th class="num">Valor (R\$)</th>
                 </tr>
             </thead>
             <tbody id="tbodyCaixa">
-                <tr><td colspan="5" class="vazio">A carregar lançamentos...</td></tr>
+                <tr><td colspan="6" class="vazio">A carregar lançamentos...</td></tr>
             </tbody>
         </table>
     </div>
@@ -186,13 +219,27 @@
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    // Inicializa com a data atual correta do sistema (ano 2026)
-    if (!document.getElementById('filtroDataCaixa').value) {
-        const hoje = new Date();
-        const ano = hoje.getFullYear();
-        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
-        const dia = String(hoje.getDate()).padStart(2, '0');
-        document.getElementById('filtroDataCaixa').value = `${ano}-${mes}-${dia}`;
+    // Inicializa datas com o mês corrente
+    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+    }
+
+    function limparFiltros() {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+        document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroCentroCusto').value = 'todos';
+        carregarFechamento();
     }
 
     function sair() {
@@ -205,47 +252,76 @@
 
     async function carregarFechamento() {
         const cid = clienteIdAtual();
-        const dataRef = document.getElementById('filtroDataCaixa').value;
+        const dataInicio = document.getElementById('filtroDataInicio').value;
+        const dataFim = document.getElementById('filtroDataFim').value;
+        const tipoFiltro = document.getElementById('filtroTipo').value;
+        const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
+
         const tbody = document.getElementById('tbodyCaixa');
-        tbody.innerHTML = `<tr><td colspan="5" class="vazio">A apurar dados de caixa...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="vazio">A apurar dados de caixa...</td></tr>`;
 
         try {
-            const [resRec, resPag] = await Promise.all([
-                sb.from('contas_receber').select('*').eq('cliente_id', cid).eq('vencimento', dataRef),
-                sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('vencimento', dataRef)
-            ]);
+            let promessas = [];
+            if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
+                let qRec = sb.from('contas_receber').select('*').eq('cliente_id', cid);
+                if (dataInicio) qRec = qRec.gte('vencimento', dataInicio);
+                if (dataFim) qRec = qRec.lte('vencimento', dataFim);
+                promessas.push(qRec);
+            } else {
+                promessas.push(Promise.resolve({ data: [] }));
+            }
 
+            if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
+                let qPag = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+                if (dataInicio) qPag = qPag.gte('vencimento', dataInicio);
+                if (dataFim) qPag = qPag.lte('vencimento', dataFim);
+                promessas.push(qPag);
+            } else {
+                promessas.push(Promise.resolve({ data: [] }));
+            }
+
+            const [resRec, resPag] = await Promise.all(promessas);
             let lista = [];
-            let totalEntradas = 0;
-            let totalSaidas = 0;
 
             if (resRec.data) {
                 resRec.data.forEach(r => {
-                    let v = parseFloat(r.valor) || 0;
-                    totalEntradas += v;
                     lista.push({
-                        data: r.vencimento,
+                        data: r.vencimento || '',
                         tipo: 'Entrada',
                         descricao: r.descricao || 'Recebimento',
                         favorecido: r.cliente || 'Cliente',
-                        valor: v
+                        centroCusto: r.centro_custo || 'N/A',
+                        valor: parseFloat(r.valor) || 0
                     });
                 });
             }
 
             if (resPag.data) {
                 resPag.data.forEach(p => {
-                    let v = parseFloat(p.valor) || 0;
-                    totalSaidas += v;
                     lista.push({
-                        data: p.vencimento,
+                        data: p.vencimento || '',
                         tipo: 'Saída',
                         descricao: p.descricao || 'Pagamento',
                         favorecido: p.fornecedor || 'Fornecedor',
-                        valor: v
+                        centroCusto: p.centro_custo || 'N/A',
+                        valor: parseFloat(p.valor) || 0
                     });
                 });
             }
+
+            // Filtro por centro de custo em memória
+            let listaFiltrada = lista.filter(item => {
+                return (centroCustoFiltro === 'todos' || (item.centroCusto && item.centroCusto.toLowerCase().includes(centroCustoFiltro.toLowerCase())));
+            });
+
+            listaFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+            listaFiltrada.forEach(item => {
+                if (item.tipo === 'Entrada') totalEntradas += item.valor;
+                else totalSaidas += item.valor;
+            });
 
             document.getElementById('kpiEntradas').innerText = formatarMoeda(totalEntradas);
             document.getElementById('kpiSaidas').innerText = formatarMoeda(totalSaidas);
@@ -254,13 +330,13 @@
             kpiSaldo.innerText = formatarMoeda(saldo);
             kpiSaldo.style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
 
-            if (lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum movimento registrado para a data selecionada.</td></tr>`;
+            if (listaFiltrada.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum movimento registrado para o período e filtros selecionados.</td></tr>`;
                 return;
             }
 
             let html = '';
-            lista.forEach(item => {
+            listaFiltrada.forEach(item => {
                 let badgeClass = item.tipo === 'Entrada' ? 'badge-entrada' : 'badge-saida';
                 let valorCor = item.tipo === 'Entrada' ? 'color:var(--success);' : 'color:var(--danger);';
                 let valorSinal = item.tipo === 'Entrada' ? '+ ' : '- ';
@@ -271,6 +347,7 @@
                     <td><span class="badge-tipo ${badgeClass}">${item.tipo}</span></td>
                     <td><strong>${item.descricao}</strong></td>
                     <td>${item.favorecido}</td>
+                    <td>${item.centroCusto}</td>
                     <td class="num" style="font-weight:700; ${valorCor}">${valorSinal}${formatarMoeda(item.valor)}</td>
                 </tr>`;
             });
@@ -278,7 +355,7 @@
             tbody.innerHTML = html;
 
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="vazio" style="color:var(--danger);">Erro ao apurar fechamento: ${err.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="vazio" style="color:var(--danger);">Erro ao apurar fechamento: ${err.message}</td></tr>`;
         }
     }
 
