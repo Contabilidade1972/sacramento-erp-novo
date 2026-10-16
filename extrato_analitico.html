@@ -40,14 +40,21 @@
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-sair:hover { background: #b91c1c; }
 
-        .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
+        .container { max-width: 1350px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
-        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .filtro-box { display: flex; align-items: center; gap: 12px; font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; flex-wrap: wrap; }
-        .filtro-box input, .filtro-box select { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
+        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; width: 100%; }
+        .filtro-group { display: flex; flex-direction: column; gap: 6px; }
+        .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+        .filtro-group input, .filtro-group select { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
+        .filtro-group input:focus, .filtro-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; margin-top: 4px; border-top: 1px solid var(--border); padding-top: 14px; }
         
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-secundario:hover { background: #cbd5e1; }
 
         .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -89,26 +96,56 @@
 
 <div class="container">
     
-    <!-- BARRA DE FILTROS -->
+    <!-- BARRA DE FILTROS AVANÇADA -->
     <div class="toolbar">
-        <div class="filtro-box">
-            <span>Mês de Referência:</span>
-            <input type="month" id="filtroMes" onchange="carregarExtrato()">
-            <span>Tipo:</span>
-            <select id="filtroTipo" onchange="carregarExtrato()">
-                <option value="todos">Todos os Lançamentos</option>
-                <option value="receber">Apenas Entradas (Receitas)</option>
-                <option value="pagar">Apenas Saídas (Despesas)</option>
-            </select>
+        <div class="filtro-grid">
+            <div class="filtro-group">
+                <label>Data Inicial</label>
+                <input type="date" id="filtroDataInicio">
+            </div>
+            <div class="filtro-group">
+                <label>Data Final</label>
+                <input type="date" id="filtroDataFim">
+            </div>
+            <div class="filtro-group">
+                <label>Tipo de Lançamento</label>
+                <select id="filtroTipo">
+                    <option value="todos">Todos (Entradas e Saídas)</option>
+                    <option value="receber">Apenas Entradas (Receitas)</option>
+                    <option value="pagar">Apenas Saídas (Despesas)</option>
+                </select>
+            </div>
+            <div class="filtro-group">
+                <label>Centro de Custo</label>
+                <select id="filtroCentroCusto">
+                    <option value="todos">Todos os Centros de Custo</option>
+                    <option value="1.02 - Administrativo">1.02 - Administrativo</option>
+                    <option value="2.01 - Comercial & Vendas">2.01 - Comercial & Vendas</option>
+                    <option value="3.02 - P&D e Inovação">3.02 - P&D e Inovação</option>
+                </select>
+            </div>
+            <div class="filtro-group">
+                <label>Pesquisar (Histórico / Favorecido)</label>
+                <input type="text" id="filtroTexto" placeholder="Ex: Google, Contábeis...">
+            </div>
         </div>
-        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        <div class="toolbar-actions">
+            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            <button class="btn-acao" onclick="carregarExtrato()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+        </div>
     </div>
 
     <!-- TABELA DE EXTRATO -->
     <div class="card-table">
-        <div style="margin-bottom: 20px;">
-            <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Extrato Analítico Consolidado</h3>
-            <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade de todas as entradas e saídas financeiras da empresa.</p>
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Extrato Analítico Consolidado</h3>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade completa de todas as movimentações financeiras da empresa.</p>
+            </div>
+            <div id="resumoTotais" style="font-size: 13px; font-weight: 700; color: var(--secondary);">
+                --
+            </div>
         </div>
         <table>
             <thead>
@@ -162,11 +199,30 @@
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
-    if (!document.getElementById('filtroMes').value) {
+    // Inicializa datas com o mês corrente (dia 01 até o último dia)
+    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
         const agora = new Date();
         const ano = agora.getFullYear();
         const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        document.getElementById('filtroMes').value = `${ano}-${mes}`;
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        
+        // Último dia do mês
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+    }
+
+    function limparFiltros() {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+        document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroCentroCusto').value = 'todos';
+        document.getElementById('filtroTexto').value = '';
+        carregarExtrato();
     }
 
     function sair() {
@@ -179,24 +235,31 @@
 
     async function carregarExtrato() {
         const cid = clienteIdAtual();
-        let mesAno = document.getElementById('filtroMes').value;
-        let tipoFiltro = document.getElementById('filtroTipo').value;
-        if (!mesAno) return;
+        const dataInicio = document.getElementById('filtroDataInicio').value;
+        const dataFim = document.getElementById('filtroDataFim').value;
+        const tipoFiltro = document.getElementById('filtroTipo').value;
+        const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
+        const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
 
-        let prefixoVenc = `${mesAno}%`;
         const tbody = document.getElementById('tbodyExtrato');
         tbody.innerHTML = `<tr><td colspan="6" class="vazio">A consultar base de dados...</td></tr>`;
 
         try {
             let promessas = [];
             if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
-                promessas.push(sb.from('contas_receber').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc));
+                let query = sb.from('contas_receber').select('*').eq('cliente_id', cid);
+                if (dataInicio) query = query.gte('vencimento', dataInicio);
+                if (dataFim) query = query.lte('vencimento', dataFim);
+                promessas.push(query);
             } else {
                 promessas.push(Promise.resolve({ data: [] }));
             }
 
             if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
-                promessas.push(sb.from('contas_pagar').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc));
+                let query = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+                if (dataInicio) query = query.gte('vencimento', dataInicio);
+                if (dataFim) query = query.lte('vencimento', dataFim);
+                promessas.push(query);
             } else {
                 promessas.push(Promise.resolve({ data: [] }));
             }
@@ -230,22 +293,38 @@
                 });
             }
 
-            // Ordena por data (mais recente ou cronológica)
-            lista.sort((a, b) => new Date(a.data) - new Date(b.data));
+            // Aplicação de filtros em memória (Centro de Custo e Texto)
+            let listaFiltrada = lista.filter(item => {
+                let matchCC = (centroCustoFiltro === 'todos' || (item.centroCusto && item.centroCusto.toLowerCase().includes(centroCustoFiltro.toLowerCase())));
+                let matchTexto = (!textoFiltro || item.descricao.toLowerCase().includes(textoFiltro) || item.favorecido.toLowerCase().includes(textoFiltro));
+                return matchCC && matchTexto;
+            });
 
-            if (lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum lançamento encontrado para o período selecionado.</td></tr>`;
+            // Ordena por data cronológica
+            listaFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            if (listaFiltrada.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum lançamento encontrado para os filtros selecionados.</td></tr>`;
+                document.getElementById('resumoTotais').innerText = `Total Entradas: R$ 0,00 | Total Saídas: R$ 0,00`;
                 return;
             }
 
+            let totalEntradas = 0;
+            let totalSaidas = 0;
             let html = '';
-            lista.forEach(item => {
+
+            listaFiltrada.forEach(item => {
+                if (item.tipo === 'Entrada') totalEntradas += item.valor;
+                else totalSaidas += item.valor;
+
                 let badgeClass = item.tipo === 'Entrada' ? 'badge-entrada' : 'badge-saida';
                 let valorCor = item.tipo === 'Entrada' ? 'color:var(--success);' : 'color:var(--danger);';
                 let valorSinal = item.tipo === 'Entrada' ? '+ ' : '- ';
 
+                let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '--/--/----';
+
                 html += `<tr>
-                    <td>${item.data.split('-').reverse().join('/')}</td>
+                    <td>${dataFormatada}</td>
                     <td><span class="badge-tipo ${badgeClass}">${item.tipo}</span></td>
                     <td><strong>${item.descricao}</strong></td>
                     <td>${item.favorecido}</td>
@@ -255,6 +334,11 @@
             });
 
             tbody.innerHTML = html;
+            document.getElementById('resumoTotais').innerHTML = `
+                <span style="color:var(--success);">Entradas: ${formatarMoeda(totalEntradas)}</span> &nbsp;|&nbsp; 
+                <span style="color:var(--danger);">Saídas: ${formatarMoeda(totalSaidas)}</span> &nbsp;|&nbsp; 
+                <span>Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}</span>
+            `;
 
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="6" class="vazio" style="color:var(--danger);">Erro ao carregar extrato: ${err.message}</td></tr>`;
