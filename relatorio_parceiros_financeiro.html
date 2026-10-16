@@ -226,22 +226,38 @@
         labelParceiro.innerText = tipo === 'receber' ? 'Selecionar Cliente' : 'Selecionar Fornecedor';
 
         try {
+            // Tenta buscar primeiro na tabela unificada 'parceiros' (se existir)
+            let nomes = new Set();
+            const resParc = await sb.from('parceiros').select('razao_social, nome_fantasia, nome').eq('cliente_id', cid);
+            if (resParc.data && resParc.data.length > 0) {
+                resParc.data.forEach(p => {
+                    let n = p.razao_social || p.nome_fantasia || p.nome;
+                    if (n) nomes.add(n.trim());
+                });
+            }
+
+            // Fallback ou complemento: busca nas tabelas de contas a pagar e receber diretamente
             const tabela = tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
             const coluna = tipo === 'receber' ? 'cliente' : 'fornecedor';
 
-            const { data, error } = await sb.from(tabela).select(coluna).eq('cliente_id', cid);
-            if (error || !data) return;
+            const resMov = await sb.from(tabela).select(coluna).eq('cliente_id', cid);
+            if (resMov.data) {
+                resMov.data.forEach(item => {
+                    let val = item[coluna];
+                    if (val) nomes.add(val.trim());
+                });
+            }
 
-            let unicos = [...new Set(data.map(item => item[coluna]).filter(Boolean))];
-            unicos.sort();
-
+            let unicos = Array.from(nomes).sort();
             unicos.forEach(nome => {
                 let opt = document.createElement('option');
                 opt.value = nome;
                 opt.textContent = nome;
                 selectParceiro.appendChild(opt);
             });
-        } catch(e) {}
+        } catch(e) {
+            console.error("Erro ao popular parceiros:", e);
+        }
     }
 
     function aoMudarTipo() {
