@@ -100,7 +100,7 @@
 
 <div class="container">
     
-    <!-- BARRA DE TOPO COM BOTÃO DE RETORNO -->
+    <!-- BOTÃO DE RETORNO AO MÓDULO -->
     <div class="page-toolbar">
         <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
     </div>
@@ -110,14 +110,14 @@
         <div class="filtro-grid">
             <div class="filtro-group">
                 <label>Módulo / Tipo de Posição</label>
-                <select id="filtroTipo" onchange="carregarRelatorio()">
+                <select id="filtroTipo" onchange="aoMudarTipo()">
                     <option value="receber">Contas a Receber (Clientes)</option>
                     <option value="pagar">Contas a Pagar (Fornecedores)</option>
                 </select>
             </div>
             <div class="filtro-group">
                 <label>Status do Título</label>
-                <select id="filtroStatus" onchange="carregarRelatorio()">
+                <select id="filtroStatus">
                     <option value="todos">Todos os Títulos em Aberto</option>
                     <option value="atrasado">Apenas Vencidos / Atrasados</option>
                 </select>
@@ -140,8 +140,10 @@
                 </select>
             </div>
             <div class="filtro-group">
-                <label>Pesquisar (Nome do Parceiro)</label>
-                <input type="text" id="filtroTexto" placeholder="Ex: Google, Cliente A...">
+                <label id="labelParceiroSelect">Selecionar Parceiro</label>
+                <select id="filtroParceiroSelect">
+                    <option value="todos">Todos os Parceiros Cadastrados</option>
+                </select>
             </div>
         </div>
         <div class="toolbar-actions">
@@ -156,7 +158,7 @@
         <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
                 <h3 id="tituloRelatorio" style="font-size:18px; font-weight:800; color:var(--secondary);">Posição Analítica por Cliente (Contas a Receber)</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Consolidado de títulos pendentes, valores em aberto e dias em atraso com filtros avançados.</p>
+                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Consolidado de títulos pendentes, valores em aberto e dias em atraso com seleção de parceiro cadastrado.</p>
             </div>
             <div id="resumoTotalParceiro" style="font-size: 13px; font-weight: 700; color: var(--secondary);">
                 --
@@ -214,13 +216,47 @@
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
 
+    async function popularSelectParceiros() {
+        const cid = clienteIdAtual();
+        const tipo = document.getElementById('filtroTipo').value;
+        const selectParceiro = document.getElementById('filtroParceiroSelect');
+        const labelParceiro = document.getElementById('labelParceiroSelect');
+
+        selectParceiro.innerHTML = `<option value="todos">Todos os Parceiros Cadastrados</option>`;
+        labelParceiro.innerText = tipo === 'receber' ? 'Selecionar Cliente' : 'Selecionar Fornecedor';
+
+        try {
+            const tabela = tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
+            const coluna = tipo === 'receber' ? 'cliente' : 'fornecedor';
+
+            const { data, error } = await sb.from(tabela).select(coluna).eq('cliente_id', cid);
+            if (error || !data) return;
+
+            let unicos = [...new Set(data.map(item => item[coluna]).filter(Boolean))];
+            unicos.sort();
+
+            unicos.forEach(nome => {
+                let opt = document.createElement('option');
+                opt.value = nome;
+                opt.textContent = nome;
+                selectParceiro.appendChild(opt);
+            });
+        } catch(e) {}
+    }
+
+    function aoMudarTipo() {
+        popularSelectParceiros();
+        carregarRelatorio();
+    }
+
     function limparFiltros() {
         document.getElementById('filtroTipo').value = 'receber';
         document.getElementById('filtroStatus').value = 'todos';
         document.getElementById('filtroDataInicio').value = '';
         document.getElementById('filtroDataFim').value = '';
         document.getElementById('filtroCentroCusto').value = 'todos';
-        document.getElementById('filtroTexto').value = '';
+        document.getElementById('filtroParceiroSelect').value = 'todos';
+        popularSelectParceiros();
         carregarRelatorio();
     }
 
@@ -239,7 +275,7 @@
         const dataInicio = document.getElementById('filtroDataInicio').value;
         const dataFim = document.getElementById('filtroDataFim').value;
         const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
-        const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
+        const parceiroSelecionado = document.getElementById('filtroParceiroSelect').value;
 
         const tbody = document.getElementById('tbodyParceiros');
         tbody.innerHTML = `<tr><td colspan="6" class="vazio">A consultar base de dados...</td></tr>`;
@@ -289,11 +325,10 @@
 
                 if (statusFiltro === 'atrasado' && !atrasado) return;
 
-                // Filtro em memória de centro de custo e texto
                 let matchCC = (centroCustoFiltro === 'todos' || (cc && cc.toLowerCase().includes(centroCustoFiltro.toLowerCase())));
-                let matchTexto = (!textoFiltro || parceiro.toLowerCase().includes(textoFiltro) || desc.toLowerCase().includes(textoFiltro));
+                let matchParceiro = (parceiroSelecionado === 'todos' || parceiro === parceiroSelecionado);
 
-                if (matchCC && matchTexto) {
+                if (matchCC && matchParceiro) {
                     lista.push({
                         parceiro: parceiro,
                         descricao: desc,
@@ -305,7 +340,6 @@
                 }
             });
 
-            // Ordena por vencimento
             lista.sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento));
 
             if (lista.length === 0) {
@@ -370,6 +404,7 @@
             document.body.classList.remove('usuario-master');
         }
 
+        await popularSelectParceiros();
         carregarRelatorio();
     }
 
