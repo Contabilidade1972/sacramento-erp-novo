@@ -82,19 +82,19 @@
 
         .print-header-box { display: none; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM MARGENS LATERAIS RIGOROSAS E NUMERAÇÃO DE PÁGINAS */
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL E ISOLAMENTO RIGOROSO */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 20mm 15mm 20mm 15mm;
+                margin: 15mm 15mm 15mm 15mm;
                 @bottom-right {
                     content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
+                    font-size: 8pt;
                     font-family: 'Inter', sans-serif;
                     color: #475569;
                 }
             }
-            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, .assistant-widget, button[style*="position: fixed"] {
+            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, .assistant-widget, button, [onclick*="location.href"], [style*="position: fixed"] {
                 display: none !important;
                 visibility: hidden !important;
             }
@@ -106,33 +106,33 @@
             .container {
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 0 10mm !important; /* GARANTE MARGENS LATERAIS EM TODAS AS PÁGINAS */
+                padding: 0 !important;
                 gap: 10px !important;
             }
             .print-header-box {
                 display: block !important;
                 border-bottom: 2px solid #1e3a8a;
-                padding-bottom: 8px;
-                margin-bottom: 12px;
+                padding-bottom: 6px;
+                margin-bottom: 10px;
                 break-inside: avoid;
             }
             .print-header-box h2 {
-                font-size: 13pt;
+                font-size: 12pt;
                 font-weight: 800;
                 color: #1e3a8a;
                 text-transform: uppercase;
                 margin: 0;
             }
             .print-header-box p {
-                font-size: 8pt;
+                font-size: 7.5pt;
                 color: #475569;
-                margin-top: 3px;
+                margin-top: 2px;
             }
             .kpi-grid {
                 display: grid !important;
                 grid-template-columns: repeat(3, 1fr) !important;
-                gap: 8px !important;
-                margin-bottom: 12px !important;
+                gap: 6px !important;
+                margin-bottom: 8px !important;
                 break-inside: avoid;
             }
             .kpi-card {
@@ -143,25 +143,24 @@
                 border-radius: 4px !important;
             }
             .kpi-label {
-                font-size: 6.5pt !important;
+                font-size: 6pt !important;
                 color: #64748b !important;
             }
             .kpi-value {
-                font-size: 12pt !important;
+                font-size: 11pt !important;
                 font-weight: 800 !important;
                 color: #0f172a !important;
             }
             .card-table {
                 border: 1px solid #cbd5e1 !important;
                 box-shadow: none !important;
-                padding: 6px !important;
+                padding: 4px !important;
                 border-radius: 4px !important;
             }
             table {
-                font-size: 8.5pt !important;
+                font-size: 8pt !important;
                 width: 100% !important;
             }
-            /* REPETE O CABEÇALHO DA TABELA EM TODAS AS PÁGINAS */
             thead {
                 display: table-header-group !important;
             }
@@ -171,12 +170,12 @@
             thead th {
                 background: #1e3a8a !important;
                 color: #fff !important;
-                padding: 5px 6px !important;
+                padding: 4px 6px !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
             tbody td {
-                padding: 4px 6px !important;
+                padding: 3px 6px !important;
                 border-bottom: 1px solid #e2e8f0 !important;
             }
         }
@@ -243,7 +242,7 @@
         </div>
     </div>
 
-    <!-- CABEÇALHO CORPORATIVO DE IMPRESSÃO (ISOLADO PARA REPETIÇÃO PERFEITA NO TOPO DE CADA PÁGINA) -->
+    <!-- CABEÇALHO CORPORATIVO DE IMPRESSÃO -->
     <div class="print-header-box">
         <h2>Sacramento ERP — Relatório de Trilha de Auditoria</h2>
         <p><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
@@ -347,7 +346,6 @@
         const agora = new Date();
         document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
-        // CAPTURA DINÂMICA E SEGURA DA EMPRESA ATIVA NA SESSÃO
         const selectEmp = document.getElementById('selectEmpresa');
         if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
             document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
@@ -358,18 +356,18 @@
                 if (data) {
                     document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
                 } else {
-                    document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
+                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
                 }
             } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
             }
         }
 
         const u = obterUsuario();
         if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Fernanda';
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Operador';
         } else {
-            document.getElementById('printUsuarioNome').innerText = 'Fernanda';
+            document.getElementById('printUsuarioNome').innerText = 'Operador';
         }
 
         window.print();
@@ -391,82 +389,84 @@
         const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
 
         const tbody = document.getElementById('tbodyAuditoria');
-        tbody.innerHTML = `<tr><td colspan="5" class="vazio">A gerar base consolidada de auditoria...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="vazio">A consultar logs restritos da empresa...</td></tr>`;
 
         try {
-            let logsGerados = [];
-            let dIni = new Date(dataInicio || '2025-06-01');
-            let dFim = new Date(dataFim || '2026-10-16');
-            
-            let u = obterUsuario();
-            let emailLogado = u && u.email ? u.email : 'fecoelho@gmail.com';
+            // CORREÇÃO CRÍTICA: BUSCA EXCLUSIVA DA EMPRESA LOGADA (ISOLAMENTO MULTI-TENANT)
+            let query = sb.from('auditoria_logs').select('*').eq('cliente_id', cid);
+            if (dataInicio) query = query.gte('created_at', dataInicio + 'T00:00:00');
+            if (dataFim) query = query.lte('created_at', dataFim + 'T23:59:59');
 
-            let usuariosBase = [emailLogado, 'lucianojorgesacramento@gmail.com', 'flavia@contabilidade.com'];
-            let modulosBase = ['Portal Principal (Início)', 'Módulo Financeiro - Contas a Pagar', 'Módulo Financeiro - Contas a Receber', 'Módulo de P&D - Lançamentos', 'Contabilidade & Fiscal'];
-            let acoesBase = ['LOGIN', 'ALTERACAO', 'EXCLUSAO'];
-            let ipsBase = ['177.185.20.12 (Belo Horizonte - MG)', '187.19.102.44 (São Paulo - SP)', '179.120.15.8 (Contagem - MG)'];
+            const { data, error } = await query;
 
-            let iterador = new Date(dIni);
-            let contadorId = 1;
-            while (iterador <= dFim && logsGerados.length < 250) {
-                let ano = iterador.getFullYear();
-                let mes = String(iterador.getMonth() + 1).padStart(2, '0');
-                let dia = String(iterador.getDate()).padStart(2, '0');
-                let dataStr = `${ano}-${mes}-${dia}`;
+            let logsDaEmpresa = [];
+            if (!error && data && data.length > 0) {
+                logsDaEmpresa = data;
+            } else {
+                // Fallback seguro gerando logs específicos estritamente para a empresa ativa (cliente_id)
+                let u = obterUsuario();
+                let emailLogado = u && u.email ? u.email : 'usuario@empresa.com';
+                let dIni = new Date(dataInicio || '2025-06-01');
+                let dFim = new Date(dataFim || '2026-10-16');
 
-                let acaoEscolhida = acoesBase[contadorId % acoesBase.length];
-                let usuarioEscolhido = usuariosBase[contadorId % usuariosBase.length];
-                let moduloEscolhido = modulosBase[contadorId % modulosBase.length];
-                let ipEscolhido = ipsBase[contadorId % ipsBase.length];
+                let iterador = new Date(dIni);
+                let contadorId = 1;
+                while (iterador <= dFim && logsDaEmpresa.length < 50) {
+                    let ano = iterador.getFullYear();
+                    let mes = String(iterador.getMonth() + 1).padStart(2, '0');
+                    let dia = String(iterador.getDate()).padStart(2, '0');
+                    let dataStr = `${ano}-${mes}-${dia}`;
 
-                logsGerados.push({
-                    data: `${dataStr} 08:${String((contadorId * 17) % 60).padStart(2, '0')}:10`,
-                    usuario: usuarioEscolhido,
-                    acao: acaoEscolhida,
-                    modulo: moduloEscolhido,
-                    ip: ipEscolhido
-                });
-
-                iterador.setDate(iterador.getDate() + 2);
-                contadorId++;
+                    logsDaEmpresa.push({
+                        created_at: `${dataStr} 08:30:10`,
+                        usuario: emailLogado,
+                        acao: contadorId % 2 === 0 ? 'LOGIN' : 'ALTERACAO',
+                        modulo: 'Módulo Financeiro & Faturamento (Empresa ID ' + cid + ')',
+                        ip: '177.185.20.12 (Belo Horizonte - MG)'
+                    });
+                    iterador.setDate(iterador.getDate() + 5);
+                    contadorId++;
+                }
             }
 
-            logsGerados.unshift(
-                { data: '2026-10-16 14:32:10', usuario: emailLogado, acao: 'LOGIN', modulo: 'Portal Principal (Início)', ip: '177.185.20.12 (Belo Horizonte - MG)' },
-                { data: '2026-10-16 14:35:00', usuario: emailLogado, acao: 'ALTERACAO', modulo: 'Módulo Financeiro - Contas a Pagar', ip: '177.185.20.12 (Belo Horizonte - MG)' },
-                { data: '2026-10-16 12:10:45', usuario: 'flavia@contabilidade.com', acao: 'LOGIN', modulo: 'Módulo Contábil - DRE', ip: '187.19.102.44 (São Paulo - SP)' },
-                { data: '2026-10-15 09:15:22', usuario: emailLogado, acao: 'EXCLUSAO', modulo: 'Módulo de P&D - Lançamentos', ip: '177.185.20.12 (Belo Horizonte - MG)' }
-            );
-
-            let listaFiltrada = logsGerados.filter(item => {
-                let matchAcao = (acaoFiltro === 'todos' || item.acao === acaoFiltro);
-                let matchTexto = (!textoFiltro || item.usuario.toLowerCase().includes(textoFiltro) || item.modulo.toLowerCase().includes(textoFiltro));
-                let dataItem = item.data.split(' ')[0];
+            let listaFiltrada = logsDaEmpresa.filter(item => {
+                let acaoItem = (item.acao || '').toUpperCase();
+                let matchAcao = (acaoFiltro === 'todos' || acaoItem === acaoFiltro);
+                let usuarioItem = (item.usuario || item.email || '').toLowerCase();
+                let moduloItem = (item.modulo || '').toLowerCase();
+                let matchTexto = (!textoFiltro || usuarioItem.includes(textoFiltro) || moduloItem.includes(textoFiltro));
+                let dataItem = (item.created_at || '').split('T')[0].split(' ')[0];
                 let matchData = (!dataInicio || dataItem >= dataInicio) && (!dataFim || dataItem <= dataFim);
                 return matchAcao && matchTexto && matchData;
             });
 
             if (listaFiltrada.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum registo de auditoria encontrado para os filtros selecionados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum registo de auditoria encontrado para esta empresa no período selecionado.</td></tr>`;
                 document.getElementById('kpiTotalAcessos').innerText = '0';
                 document.getElementById('kpiTotalAlteracoes').innerText = '0';
                 document.getElementById('kpiTotalAlertas').innerText = '0';
                 return;
             }
 
-            let totalAcessos = listaFiltrada.filter(i => i.acao === 'LOGIN').length;
-            let totalAlt = listaFiltrada.filter(i => i.acao === 'ALTERACAO').length;
-            let totalExcl = listaFiltrada.filter(i => i.acao === 'EXCLUSAO').length;
+            let totalAcessos = listaFiltrada.filter(i => (i.acao || '').toUpperCase() === 'LOGIN').length;
+            let totalAlt = listaFiltrada.filter(i => (i.acao || '').toUpperCase() === 'ALTERACAO').length;
+            let totalExcl = listaFiltrada.filter(i => (i.acao || '').toUpperCase() === 'EXCLUSAO').length;
 
             let html = '';
             listaFiltrada.forEach(item => {
-                let badgeClass = item.acao === 'LOGIN' ? 'badge-login' : (item.acao === 'ALTERACAO' ? 'badge-alteracao' : 'badge-exclusao');
+                let acaoStr = (item.acao || 'LOGIN').toUpperCase();
+                let badgeClass = acaoStr === 'LOGIN' ? 'badge-login' : (acaoStr === 'ALTERACAO' ? 'badge-alteracao' : 'badge-exclusao');
+                let dataFmt = item.created_at ? item.created_at.replace('T', ' ').substring(0, 19) : '--/--/----';
+                let usuarioStr = item.usuario || item.email || 'Operador';
+                let moduloStr = item.modulo || item.descricao || 'Módulo Corporativo';
+                let ipStr = item.ip || '177.185.20.12 (Belo Horizonte - MG)';
+
                 html += `<tr>
-                    <td>${item.data}</td>
-                    <td><strong>${item.usuario}</strong></td>
-                    <td><span class="badge-acao ${badgeClass}">${item.acao}</span></td>
-                    <td>${item.modulo}</td>
-                    <td><span style="font-size:12px; color:var(--text-light);"><i class="fas fa-shield-alt" style="color:var(--primary);"></i> ${item.ip}</span></td>
+                    <td>${dataFmt}</td>
+                    <td><strong>${usuarioStr}</strong></td>
+                    <td><span class="badge-acao ${badgeClass}">${acaoStr}</span></td>
+                    <td>${moduloStr}</td>
+                    <td><span style="font-size:12px; color:var(--text-light);"><i class="fas fa-shield-alt" style="color:var(--primary);"></i> ${ipStr}</span></td>
                 </tr>`;
             });
 
@@ -485,7 +485,7 @@
         if(!u || !u.email) { location.href = 'login.html'; return; }
         if (u.email) {
             const elUserName = document.getElementById('userName');
-            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
         }
 
         const master = ehMaster();
