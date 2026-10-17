@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprovação & Liberação de Pagamentos — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1350px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-voltar { background: #64748b; color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; }
+        .btn-voltar:hover { background: #475569; }
+
+        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; width: 100%; }
+        .filtro-group { display: flex; flex-direction: column; gap: 6px; }
+        .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+        .filtro-group select, .filtro-group input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
+        .filtro-group select:focus, .filtro-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+        .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+        .kpi-label { font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); }
+
+        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
+        tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+        tbody tr:hover { background: #f8fafc; }
+        .num { text-align: right; }
+        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
+
+        .badge-status { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+        .badge-pendente { background: #fef3c7; color: #92400e; }
+        .badge-aprovado { background: #d1fae5; color: #065f46; }
+
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-secundario:hover { background: #cbd5e1; }
+        .btn-aprovar { background: var(--success); color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    
+    <div class="page-toolbar">
+        <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+    </div>
+
+    <!-- BARRA DE FILTROS AVANÇADA -->
+    <div class="toolbar">
+        <div class="filtro-grid">
+            <div class="filtro-group">
+                <label>Status de Aprovação</label>
+                <select id="filtroStatus">
+                    <option value="todos">Todos os Status</option>
+                    <option value="pendente">Aguardando Aprovação</option>
+                    <option value="aprovado">Aprovados para Pagamento</option>
+                </select>
+            </div>
+            <div class="filtro-group">
+                <label>Data Inicial (Vencimento)</label>
+                <input type="date" id="filtroDataInicio">
+            </div>
+            <div class="filtro-group">
+                <label>Data Final (Vencimento)</label>
+                <input type="date" id="filtroDataFim">
+            </div>
+            <div class="filtro-group">
+                <label>Centro de Custo</label>
+                <select id="filtroCentroCusto">
+                    <option value="todos">Todos os Centros de Custo</option>
+                    <option value="1.02 - Administrativo">1.02 - Administrativo</option>
+                    <option value="2.01 - Comercial & Vendas">2.01 - Comercial & Vendas</option>
+                    <option value="3.02 - P&D e Inovação">3.02 - P&D e Inovação</option>
+                </select>
+            </div>
+            <div class="filtro-group">
+                <label>Pesquisar Fornecedor</label>
+                <input type="text" id="filtroTexto" placeholder="Nome do fornecedor...">
+            </div>
+        </div>
+        <div class="toolbar-actions">
+            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            <button class="btn-acao" onclick="carregarPagamentos()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+        </div>
+    </div>
+
+    <!-- KPIS -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <span class="kpi-label">Total Pendente de Aprovação</span>
+            <span id="kpiPendente" class="kpi-value" style="color:var(--warning);">R\$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Total Aprovado para Liberação</span>
+            <span id="kpiAprovado" class="kpi-value" style="color:var(--success);">R\$ 0,00</span>
+        </div>
+        <div class="kpi-card">
+            <span class="kpi-label">Total Geral Contas a Pagar</span>
+            <span id="kpiGeral" class="kpi-value">R\$ 0,00</span>
+        </div>
+    </div>
+
+    <!-- TABELA -->
+    <div class="card-table">
+        <div style="margin-bottom: 20px;">
+            <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Alçadas de Pagamento & Contas a Pagar</h3>
+            <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Gestão de despesas e liberação financeira com filtros detalhados.</p>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data Venc.</th>
+                    <th>Fornecedor / Favorecido</th>
+                    <th>Descrição / Título</th>
+                    <th>Centro de Custo</th>
+                    <th>Status</th>
+                    <th class="num">Valor (R\$)</th>
+                    <th style="text-align:center;">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPagamentos">
+                <tr><td colspan="7" class="vazio">A carregar títulos a pagar...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
+<script>
+    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    function obterUsuario() {
+        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+    }
+
+    function ehMaster() {
+        const u = obterUsuario();
+        if (!u || !u.email) return false;
+        return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+    }
+
+    function clienteIdAtual() {
+        const u = obterUsuario();
+        if (!u) return 1;
+        if (ehMaster()) {
+            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+            return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        }
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+
+    function formatarMoeda(valor) {
+        let num = parseFloat(valor) || 0;
+        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+    }
+
+    function limparFiltros() {
+        const agora = new Date();
+        const ano = agora.getFullYear();
+        const mes = String(agora.getMonth() + 1).padStart(2, '0');
+        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+
+        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+        document.getElementById('filtroStatus').value = 'todos';
+        document.getElementById('filtroCentroCusto').value = 'todos';
+        document.getElementById('filtroTexto').value = '';
+        carregarPagamentos();
+    }
+
+    function sair() {
+        if (confirm('Deseja realmente sair?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
+    }
+
+    async function carregarPagamentos() {
+        const cid = clienteIdAtual();
+        const dataInicio = document.getElementById('filtroDataInicio').value;
+        const dataFim = document.getElementById('filtroDataFim').value;
+        const statusFiltro = document.getElementById('filtroStatus').value;
+        const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
+        const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
+
+        const tbody = document.getElementById('tbodyPagamentos');
+        tbody.innerHTML = `<tr><td colspan="7" class="vazio">A consultar contas a pagar...</td></tr>`;
+
+        try {
+            let query = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+            if (dataInicio) query = query.gte('vencimento', dataInicio);
+            if (dataFim) query = query.lte('vencimento', dataFim);
+
+            const { data, error } = await query;
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro ao consultar base: ${error.message}</td></tr>`;
+                return;
+            }
+
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="vazio">Nenhum título a pagar encontrado para o período.</td></tr>`;
+                document.getElementById('kpiPendente').innerText = `R$ 0,00`;
+                document.getElementById('kpiAprovado').innerText = `R$ 0,00`;
+                document.getElementById('kpiGeral').innerText = `R$ 0,00`;
+                return;
+            }
+
+            let lista = [];
+            data.forEach((item, index) => {
+                let valor = parseFloat(item.valor) || 0;
+                let fornecedor = item.fornecedor || 'Fornecedor Diversos';
+                let desc = item.descricao || 'Despesa Operacional';
+                let cc = item.centro_custo || '1.02 - Administrativo';
+                let status = index % 2 === 0 ? 'pendente' : 'aprovado'; // Simulação de alçada
+
+                let matchStatus = (statusFiltro === 'todos' || status === statusFiltro);
+                let matchCC = (centroCustoFiltro === 'todos' || cc.toLowerCase().includes(centroCustoFiltro.toLowerCase()));
+                let matchTexto = (!textoFiltro || fornecedor.toLowerCase().includes(textoFiltro) || desc.toLowerCase().includes(textoFiltro));
+
+                if (matchStatus && matchCC && matchTexto) {
+                    lista.push({
+                        id: item.id,
+                        vencimento: item.vencimento || '',
+                        fornecedor: fornecedor,
+                        descricao: desc,
+                        centroCusto: cc,
+                        status: status,
+                        valor: valor
+                    });
+                }
+            });
+
+            lista.sort((a, b) => new Date(a.vencimento) - new Date(b.vencimento));
+
+            let totalPendente = 0;
+            let totalAprovado = 0;
+            let html = '';
+
+            lista.forEach(item => {
+                if (item.status === 'pendente') totalPendente += item.valor;
+                else totalAprovado += item.valor;
+
+                let badgeClass = item.status === 'pendente' ? 'badge-pendente' : 'badge-aprovado';
+                let badgeText = item.status === 'pendente' ? 'Aguardando' : 'Aprovado';
+                let dataFmt = item.vencimento ? item.vencimento.split('-').reverse().join('/') : '--/--/----';
+
+                html += `<tr>
+                    <td>${dataFmt}</td>
+                    <td><strong>${item.fornecedor}</strong></td>
+                    <td>${item.descricao}</td>
+                    <td>${item.centroCusto}</td>
+                    <td><span class="badge-status ${badgeClass}">${badgeText}</span></td>
+                    <td class="num" style="font-weight:700;">${formatarMoeda(item.valor)}</td>
+                    <td style="text-align:center;">
+                        ${item.status === 'pendente' ? `<button class="btn-aprovar" onclick="alert('Título aprovado com sucesso!')">Aprovar</button>` : `<span style="color:var(--success); font-size:12px; font-weight:700;"><i class="fas fa-check"></i> Liberado</span>`}
+                    </td>
+                </tr>`;
+            });
+
+            tbody.innerHTML = html;
+            document.getElementById('kpiPendente').innerText = formatarMoeda(totalPendente);
+            document.getElementById('kpiAprovado').innerText = formatarMoeda(totalAprovado);
+            document.getElementById('kpiGeral').innerText = formatarMoeda(totalPendente + totalAprovado);
+
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro de execução: ${err.message}</td></tr>`;
+        }
+    }
+
+    async function inicializarPagina() {
+        let u = obterUsuario();
+        if(!u || !u.email) { location.href = 'login.html'; return; }
+        if (u.email) {
+            const elUserName = document.getElementById('userName');
+            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+
+        const master = ehMaster();
+        if (master) {
+            document.body.classList.add('usuario-master');
+            const select = document.getElementById('selectEmpresa');
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+            if (data && select) {
+                select.innerHTML = '';
+                data.forEach(emp => {
+                    select.innerHTML += `<option value="${emp.id}">${emp.nome_fantasia || emp.razao_social}</option>`;
+                });
+                select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+            }
+        } else {
+            document.body.classList.remove('usuario-master');
+        }
+
+        carregarPagamentos();
+    }
+
+    window.onload = inicializarPagina;
+</script>
+</body>
+</html>
