@@ -172,7 +172,7 @@
 
 <div class="container">
     
-    <!-- BOTÃO DE RETORNO CORRIGIDO -->
+    <!-- BOTÃO DE RETORNO -->
     <div class="page-toolbar">
         <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
     </div>
@@ -302,6 +302,14 @@
         carregarRelatorioPD();
     }
 
+    function sair() {
+        if (confirm('Deseja realmente sair?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
+        }
+    }
+
     async function executarImpressao() {
         const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
         const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
@@ -310,7 +318,6 @@
         const agora = new Date();
         document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
-        // CAPTURA DINÂMICA E SEGURA DA EMPRESA ATIVA (LGPD / MULTI-TENANT)
         const selectEmp = document.getElementById('selectEmpresa');
         if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
             document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
@@ -341,14 +348,6 @@
         window.print();
     }
 
-    function sair() {
-        if (confirm('Deseja realmente sair?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
-        }
-    }
-
     async function carregarRelatorioPD() {
         const cid = clienteIdAtual();
         const dataInicio = document.getElementById('filtroDataInicio').value;
@@ -360,10 +359,10 @@
         tbody.innerHTML = `<tr><td colspan="5" class="vazio">A consultar base de P&D...</td></tr>`;
 
         try {
+            // BUSCA AMPLA POR CLIENTE_ID (ISOLAMENTO MULTI-TENANT LGPD) SEM TRAVAR NO ILIKE DO CENTRO DE CUSTO
             let promessas = [];
-            // ISOLAMENTO RIGOROSO MULTI-TENANT POR CLIENTE_ID (LGPD)
             if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
-                let query = sb.from('contas_receber').select('*').eq('cliente_id', cid).ilike('centro_custo', '%P&D%');
+                let query = sb.from('contas_receber').select('*').eq('cliente_id', cid);
                 if (dataInicio) query = query.gte('vencimento', dataInicio);
                 if (dataFim) query = query.lte('vencimento', dataFim);
                 promessas.push(query);
@@ -372,7 +371,7 @@
             }
 
             if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
-                let query = sb.from('contas_pagar').select('*').eq('cliente_id', cid).ilike('centro_custo', '%P&D%');
+                let query = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
                 if (dataInicio) query = query.gte('vencimento', dataInicio);
                 if (dataFim) query = query.lte('vencimento', dataFim);
                 promessas.push(query);
@@ -385,27 +384,36 @@
 
             if (resRec.data) {
                 resRec.data.forEach(r => {
-                    lista.push({
-                        data: r.vencimento || '',
-                        natureza: 'Aporte / Receita P&D',
-                        tipo: 'Entrada',
-                        descricao: r.descricao || 'Subvenção / Aporte Externo',
-                        parceiro: r.cliente || 'Financiador Diversos',
-                        valor: parseFloat(r.valor) || 0
-                    });
+                    let cc = (r.centro_custo || '').toLowerCase();
+                    let desc = (r.descricao || '').toLowerCase();
+                    // Filtra se pertencer a P&D ou Inovação ou Pesquisa
+                    if (cc.includes('p&d') || cc.includes('inov') || cc.includes('pesq') || desc.includes('p&d') || desc.includes('inov')) {
+                        lista.push({
+                            data: r.vencimento || '',
+                            natureza: 'Aporte / Receita P&D',
+                            tipo: 'Entrada',
+                            descricao: r.descricao || 'Subvenção / Aporte Externo',
+                            parceiro: r.cliente || 'Financiador Diversos',
+                            valor: parseFloat(r.valor) || 0
+                        });
+                    }
                 });
             }
 
             if (resPag.data) {
                 resPag.data.forEach(p => {
-                    lista.push({
-                        data: p.vencimento || '',
-                        natureza: 'Custo / Despesa P&D',
-                        tipo: 'Saída',
-                        descricao: p.descricao || 'Insumo / Pesquisa',
-                        parceiro: p.fornecedor || 'Fornecedor P&D',
-                        valor: parseFloat(p.valor) || 0
-                    });
+                    let cc = (p.centro_custo || '').toLowerCase();
+                    let desc = (p.descricao || '').toLowerCase();
+                    if (cc.includes('p&d') || cc.includes('inov') || cc.includes('pesq') || desc.includes('p&d') || desc.includes('inov')) {
+                        lista.push({
+                            data: p.vencimento || '',
+                            natureza: 'Custo / Despesa P&D',
+                            tipo: 'Saída',
+                            descricao: p.descricao || 'Insumo / Pesquisa',
+                            parceiro: p.fornecedor || 'Fornecedor P&D',
+                            valor: parseFloat(p.valor) || 0
+                        });
+                    }
                 });
             }
 
