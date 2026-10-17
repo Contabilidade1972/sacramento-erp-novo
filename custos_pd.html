@@ -274,10 +274,10 @@
         </div>
 
         <div>
-            <label>Comprovante (Opcional)</label>
+            <label>Comprovante (Opcional - Pode gravar sem documento)</label>
             <div class="upload-box" onclick="document.getElementById('inputArquivo').click()">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--primary); margin-bottom: 6px;"></i>
-                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para anexar o comprovante (PDF, JPG ou PNG)</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para anexar o comprovante (Opcional)</div>
             </div>
             <input type="file" id="inputArquivo" style="display:none;" onchange="atualizarNomeArquivo(this)">
         </div>
@@ -555,18 +555,16 @@ function atualizarNomeArquivo(input){
 async function fazerUploadSupabase(file) {
     try {
         var cid = clienteIdAtual();
-        // Nome limpo e seguro para evitar conflitos no Storage
         var fileName = 'cliente_' + cid + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
         var res = await sb.storage.from('comprovantes').upload(fileName, file, { upsert: true });
         if (res.error) {
-            console.error("Erro storage:", res.error);
-            toast('Erro no upload do ficheiro: ' + res.error.message, 'error');
+            console.warn("Aviso Storage:", res.error.message);
             return null;
         }
         var urlRes = sb.storage.from('comprovantes').getPublicUrl(fileName);
         return urlRes.data.publicUrl;
     } catch(e) {
-        console.error("Exceção no upload:", e);
+        console.warn("Exceção Storage:", e);
         return null;
     }
 }
@@ -655,7 +653,7 @@ async function carregarCustos(){
             if(c.comprovante.startsWith('http')) {
                 comprovanteHTML = `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
             } else {
-                comprovanteHTML = `<span style="color:var(--warning); font-size:11px;">Pendente</span>`;
+                comprovanteHTML = `<span style="color:var(--text-light)">Registrado</span>`;
             }
         }
 
@@ -750,7 +748,7 @@ function cancelarEdicao(){
     document.getElementById('descricao').value='';
     document.getElementById('painelPreCadastro').style.display='none';
     document.getElementById('inputArquivo').value='';
-    document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
+    document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (Opcional)';
     arquivoAnexadoUrl = null;
     arquivoAnexadoNome = null;
     arquivoSelecionadoObj = null;
@@ -785,12 +783,14 @@ async function salvarCusto(){
     var doc=document.getElementById('documento_fiscal').value.trim();
     if(!doc){doc = gerarProximoNumeroDocumento();}
 
-    toast('A guardar registo e a enviar comprovante...', 'info');
+    toast('A guardar registo...', 'info');
 
     if(arquivoSelecionadoObj){
         var urlStorage = await fazerUploadSupabase(arquivoSelecionadoObj);
         if(urlStorage){
             arquivoAnexadoUrl = urlStorage;
+        } else {
+            toast('Aviso: O registo será salvo sem o anexo devido a restrição no Storage.', 'info');
         }
     }
 
