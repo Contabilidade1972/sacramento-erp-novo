@@ -80,22 +80,21 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        .print-header { display: none; }
-
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM REPETIÇÃO EM TODAS AS PÁGINAS */
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM MARGENS, NUMERAÇÃO DE PÁGINAS E BLOQUEIO DE ELEMENTOS FLUTUANTES */
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 15mm 15mm 15mm 15mm;
-                @top-right {
-                    content: "Página " counter(page) " / " counter(pages);
-                    font-size: 9pt;
+                margin: 20mm 18mm 20mm 18mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
                     font-family: 'Inter', sans-serif;
                     color: #475569;
                 }
             }
-            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, button[title="Central de Ajuda"], .assistant-widget {
+            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, button[title="Central de Ajuda"], .assistant-widget, button[style*="position: fixed"] {
                 display: none !important;
+                visibility: hidden !important;
             }
             body {
                 background: #fff !important;
@@ -106,33 +105,16 @@
                 max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                gap: 0 !important;
-            }
-            .print-header {
-                display: block !important;
-                border-bottom: 2px solid #1e3a8a;
-                padding-bottom: 6px;
-                margin-bottom: 10px;
-            }
-            .print-header h2 {
-                font-size: 13pt;
-                font-weight: 800;
-                color: #1e3a8a;
-                text-transform: uppercase;
-            }
-            .print-header p {
-                font-size: 8pt;
-                color: #475569;
-                margin-top: 2px;
+                gap: 10px !important;
             }
             .kpi-grid {
                 display: grid !important;
                 grid-template-columns: repeat(3, 1fr) !important;
-                gap: 6px !important;
-                margin-bottom: 8px !important;
+                gap: 8px !important;
+                margin-bottom: 12px !important;
             }
             .kpi-card {
-                padding: 6px 10px !important;
+                padding: 8px 10px !important;
                 border: 1px solid #cbd5e1 !important;
                 box-shadow: none !important;
                 background: #f8fafc !important;
@@ -156,7 +138,7 @@
                 font-size: 8.5pt !important;
                 width: 100% !important;
             }
-            /* FAZ O CABEÇALHO DA TABELA REPETIR EM TODAS AS PÁGINAS */
+            /* REPETE O CABEÇALHO CORPORATIVO E O TÍTULO DA TABELA EM CADA PÁGINA IMPRESSA */
             thead {
                 display: table-header-group !important;
             }
@@ -254,18 +236,18 @@
         </div>
     </div>
 
-    <!-- TABELA COM CABEÇALHO CORPORATIVO EMBUTIDO PARA REPETIÇÃO EM TODAS AS PÁGINAS -->
+    <!-- TABELA COM CABEÇALHO CORPORATIVO EMBUTIDO PARA REPETIÇÃO PERFEITA EM TODAS AS PÁGINAS -->
     <div class="card-table">
-        <div style="margin-bottom: 20px;" class="ocultar-print">
+        <div style="margin-bottom: 20px;">
             <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Registo Consolidado de Trilha de Auditoria</h3>
             <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade completa de transações, acessos e operações críticas de usuários.</p>
         </div>
         <table>
             <thead>
-                <!-- CABEÇALHO CORPORATIVO REPETIDO EM TODAS AS PÁGINAS IMPRESSAS -->
-                <tr class="print-header-tr">
-                    <th colspan="5" style="background: #fff !important; padding: 0 0 12px 0 !important; border: none !important;">
-                        <div class="print-header" style="display: block; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+                <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
+                <tr>
+                    <th colspan="5" style="background: #fff !important; padding: 0 0 10px 0 !important; border: none !important;">
+                        <div style="border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
                             <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Trilha de Auditoria</h2>
                             <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
                             <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span></p>
@@ -345,7 +327,7 @@
         const agora = new Date();
         document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
-        // CAPTURA DINÂMICA E IMEDIATA DA EMPRESA E OPERADOR REAIS DA SESSÃO
+        // CAPTURA DINÂMICA E SEGURA DA EMPRESA ATIVA NA SESSÃO
         const selectEmp = document.getElementById('selectEmpresa');
         if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
             document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
@@ -356,18 +338,18 @@
                 if (data) {
                     document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
                 } else {
-                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+                    document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
                 }
             } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+                document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
             }
         }
 
         const u = obterUsuario();
         if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Fernanda';
         } else {
-            document.getElementById('printUsuarioNome').innerText = 'Operador Autorizado';
+            document.getElementById('printUsuarioNome').innerText = 'Fernanda';
         }
 
         window.print();
