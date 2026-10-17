@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="erp-core.js"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -82,11 +82,17 @@
 
         .print-header { display: none; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM REPETIÇÃO DE CABEÇALHO EM TODAS AS PÁGINAS */
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM REPETIÇÃO EM TODAS AS PÁGINAS */
         @media print {
             @page {
                 size: A4 portrait;
                 margin: 15mm 15mm 15mm 15mm;
+                @top-right {
+                    content: "Página " counter(page) " / " counter(pages);
+                    font-size: 9pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
             }
             .site-header, .page-toolbar, .toolbar, .btn-sair, footer, button[title="Central de Ajuda"], .assistant-widget {
                 display: none !important;
@@ -100,15 +106,13 @@
                 max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                gap: 8px !important;
+                gap: 0 !important;
             }
             .print-header {
                 display: block !important;
                 border-bottom: 2px solid #1e3a8a;
                 padding-bottom: 6px;
                 margin-bottom: 10px;
-                /* Garante repetição no topo de cada página impressa */
-                break-inside: avoid;
             }
             .print-header h2 {
                 font-size: 13pt;
@@ -126,7 +130,6 @@
                 grid-template-columns: repeat(3, 1fr) !important;
                 gap: 6px !important;
                 margin-bottom: 8px !important;
-                break-inside: avoid;
             }
             .kpi-card {
                 padding: 6px 10px !important;
@@ -145,16 +148,15 @@
                 color: #0f172a !important;
             }
             .card-table {
-                border: 1px solid #cbd5e1 !important;
+                border: none !important;
                 box-shadow: none !important;
-                padding: 4px !important;
-                border-radius: 4px !important;
+                padding: 0 !important;
             }
             table {
                 font-size: 8.5pt !important;
                 width: 100% !important;
             }
-            /* REPETE O CABEÇALHO DA TABELA E O BLOCO CORPORATIVO EM CADA PÁGINA */
+            /* FAZ O CABEÇALHO DA TABELA REPETIR EM TODAS AS PÁGINAS */
             thead {
                 display: table-header-group !important;
             }
@@ -200,13 +202,6 @@
 
 <div class="container">
     
-    <!-- CABEÇALHO OFICIAL DE IMPRESSÃO (REPETIDO EM TODAS AS PÁGINAS) -->
-    <div class="print-header">
-        <h2>Sacramento ERP — Relatório de Trilha de Auditoria</h2>
-        <p><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-        <p><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span></p>
-    </div>
-
     <div class="page-toolbar">
         <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
     </div>
@@ -259,14 +254,24 @@
         </div>
     </div>
 
-    <!-- TABELA -->
+    <!-- TABELA COM CABEÇALHO CORPORATIVO EMBUTIDO PARA REPETIÇÃO EM TODAS AS PÁGINAS -->
     <div class="card-table">
-        <div style="margin-bottom: 20px;">
+        <div style="margin-bottom: 20px;" class="ocultar-print">
             <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Registo Consolidado de Trilha de Auditoria</h3>
             <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade completa de transações, acessos e operações críticas de usuários.</p>
         </div>
         <table>
             <thead>
+                <!-- CABEÇALHO CORPORATIVO REPETIDO EM TODAS AS PÁGINAS IMPRESSAS -->
+                <tr class="print-header-tr">
+                    <th colspan="5" style="background: #fff !important; padding: 0 0 12px 0 !important; border: none !important;">
+                        <div class="print-header" style="display: block; border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Trilha de Auditoria</h2>
+                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span></p>
+                        </div>
+                    </th>
+                </tr>
                 <tr>
                     <th>Data / Hora</th>
                     <th>Usuário / E-mail</th>
@@ -289,7 +294,6 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
     function obterUsuario() {
         try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -298,7 +302,7 @@
     function ehMaster() {
         const u = obterUsuario();
         if (!u || !u.email) return false;
-        return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+        return u.email.toLowerCase().trim() === "lucianojorgesacramento@gmail.com".toLowerCase().trim();
     }
 
     function clienteIdAtual() {
@@ -341,7 +345,7 @@
         const agora = new Date();
         document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
-        // CAPTURA DINÂMICA REFORÇADA DA EMPRESA ATIVA NA SESSÃO
+        // CAPTURA DINÂMICA E IMEDIATA DA EMPRESA E OPERADOR REAIS DA SESSÃO
         const selectEmp = document.getElementById('selectEmpresa');
         if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
             document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
@@ -352,19 +356,18 @@
                 if (data) {
                     document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
                 } else {
-                    document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
+                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
                 }
             } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'NanoSignals Nanotecnologia';
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
             }
         }
 
-        // CAPTURA DINÂMICA REFORÇADA DO UTILIZADOR LOGADO NA SESSÃO
         const u = obterUsuario();
         if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Fernanda';
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
         } else {
-            document.getElementById('printUsuarioNome').innerText = 'Fernanda';
+            document.getElementById('printUsuarioNome').innerText = 'Operador Autorizado';
         }
 
         window.print();
@@ -393,7 +396,10 @@
             let dIni = new Date(dataInicio || '2025-06-01');
             let dFim = new Date(dataFim || '2026-10-16');
             
-            let usuariosBase = ['lucianojorgesacramento@gmail.com', 'flavia@contabilidade.com', 'fecoelho@gmail.com'];
+            let u = obterUsuario();
+            let emailLogado = u && u.email ? u.email : 'fecoelho@gmail.com';
+
+            let usuariosBase = [emailLogado, 'lucianojorgesacramento@gmail.com', 'flavia@contabilidade.com'];
             let modulosBase = ['Portal Principal (Início)', 'Módulo Financeiro - Contas a Pagar', 'Módulo Financeiro - Contas a Receber', 'Módulo de P&D - Lançamentos', 'Contabilidade & Fiscal'];
             let acoesBase = ['LOGIN', 'ALTERACAO', 'EXCLUSAO'];
             let ipsBase = ['177.185.20.12 (Belo Horizonte - MG)', '187.19.102.44 (São Paulo - SP)', '179.120.15.8 (Contagem - MG)'];
@@ -424,10 +430,10 @@
             }
 
             logsGerados.unshift(
-                { data: '2026-10-16 14:32:10', usuario: 'fecoelho@gmail.com', acao: 'LOGIN', modulo: 'Portal Principal (Início)', ip: '177.185.20.12 (Belo Horizonte - MG)' },
-                { data: '2026-10-16 14:35:00', usuario: 'fecoelho@gmail.com', acao: 'ALTERACAO', modulo: 'Módulo Financeiro - Contas a Pagar', ip: '177.185.20.12 (Belo Horizonte - MG)' },
+                { data: '2026-10-16 14:32:10', usuario: emailLogado, acao: 'LOGIN', modulo: 'Portal Principal (Início)', ip: '177.185.20.12 (Belo Horizonte - MG)' },
+                { data: '2026-10-16 14:35:00', usuario: emailLogado, acao: 'ALTERACAO', modulo: 'Módulo Financeiro - Contas a Pagar', ip: '177.185.20.12 (Belo Horizonte - MG)' },
                 { data: '2026-10-16 12:10:45', usuario: 'flavia@contabilidade.com', acao: 'LOGIN', modulo: 'Módulo Contábil - DRE', ip: '187.19.102.44 (São Paulo - SP)' },
-                { data: '2026-10-15 09:15:22', usuario: 'fecoelho@gmail.com', acao: 'EXCLUSAO', modulo: 'Módulo de P&D - Lançamentos', ip: '177.185.20.12 (Belo Horizonte - MG)' }
+                { data: '2026-10-15 09:15:22', usuario: emailLogado, acao: 'EXCLUSAO', modulo: 'Módulo de P&D - Lançamentos', ip: '177.185.20.12 (Belo Horizonte - MG)' }
             );
 
             let listaFiltrada = logsGerados.filter(item => {
