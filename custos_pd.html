@@ -33,6 +33,23 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
@@ -80,22 +97,114 @@
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
+        .print-corporative-header {
+            display: none !important;
+        }
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm 15mm 15mm 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+            .site-header, .page-toolbar, .panel:not(:last-child), .toast-container, footer, 
+            .assistant-widget, .assistant-avatar, .assistant-bubble, 
+            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 9.5pt;
+            }
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                gap: 10px !important;
+            }
+            .panel {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+            }
+            table {
+                font-size: 9pt !important;
+                width: 100% !important;
+            }
+            thead {
+                display: table-header-group !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+            }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 10px !important;
+                border-bottom: 2px solid #1e3a8a !important;
+            }
+            thead th {
+                background: #1e3a8a !important;
+                color: #fff !important;
+                padding: 6px 8px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody td {
+                padding: 5px 8px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+        }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <div class="container">
     <div class="page-toolbar">
         <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
     </div>
 
-    <div>
+    <div class="ocultar-print">
         <div class="page-title"><i class="fas fa-receipt" style="color:var(--primary);"></i> Gastos de P&D</div>
         <div class="page-subtitle">Apuração e rateio de despesas, insumos, pessoal e custos operacionais dos projetos de P&D</div>
     </div>
 
-    <div class="panel">
+    <div class="panel ocultar-print">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
             <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto</span>
         </div>
@@ -220,10 +329,37 @@
     </div>
 
     <div class="panel">
-        <div class="panel-header">
+        <div class="panel-header ocultar-print">
             <span><i class="fas fa-list"></i> Gastos registrados</span>
+            <button class="btn-primary" style="background: var(--success); padding: 7px 14px;" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
-        <div id="listaCustos" style="overflow-x:auto;">Carregando gastos...</div>
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th colspan="8" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                            <div class="print-corporative-header">
+                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Gastos de P&D</h2>
+                                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>Data</th>
+                        <th>Projeto</th>
+                        <th>Categoria</th>
+                        <th>Descrição</th>
+                        <th>Documento</th>
+                        <th style="text-align:right;">Valor</th>
+                        <th>Comprovante</th>
+                        <th style="text-align:right;" class="ocultar-print">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyCustos">
+                    <tr><td colspan="8" class="empty-state">Carregando gastos...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -265,7 +401,6 @@ function clienteIdAtual(){
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
-    // BLINDAGEM LGPD: Força estritamente o próprio cliente_id do utilizador comum
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
 }
 
@@ -515,15 +650,15 @@ function gerarReciboRPA(){
 }
 
 async function carregarCustos(){
-    var el=document.getElementById('listaCustos');
+    var tbody=document.getElementById('tbodyCustos');
     var cid=clienteIdAtual();
-    if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
+    if(!cid){tbody.innerHTML='<tr><td colspan="8" class="empty-state">Cliente não identificado.</td></tr>';return;}
     var r=await sbFiltro('custos_pd');
-    if(r.error){el.innerHTML='<div class="empty-state">Erro: '+r.error.message+'</div>';return;}
+    if(r.error){tbody.innerHTML='<tr><td colspan="8" class="empty-state">Erro: '+r.error.message+'</td></tr>';return;}
     custosCache=r.data||[];
-    if(!custosCache.length){el.innerHTML='<div class="empty-state">Nenhum gasto registrado.</div>';return;}
+    if(!custosCache.length){tbody.innerHTML='<tr><td colspan="8" class="empty-state">Nenhum gasto registrado.</td></tr>';return;}
     
-    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Projeto</th><th>Categoria</th><th>Descrição</th><th>Documento</th><th style="text-align:right;">Valor</th><th>Comprovante</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    var html='';
     custosCache.forEach(function(c){
         var proj = null;
         for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(c.projeto_id)) proj = projetosCache[i]; }
@@ -539,14 +674,44 @@ async function carregarCustos(){
             '<td>'+(c.documento_fiscal||'—')+'</td>'+
             '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(c.valor)+'</td>'+
             '<td>'+comprovanteHTML+'</td>'+
-            '<td style="text-align:right; white-space:nowrap;">'+
+            '<td style="text-align:right; white-space:nowrap;" class="ocultar-print">'+
                 '<button class="btn-secondary" onclick="editarCusto(\''+c.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
                 '<button class="btn-secondary" onclick="excluirCusto(\''+c.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
-    html+='</tbody></table>';
-    el.innerHTML=html;
+    tbody.innerHTML=html;
+}
+
+async function executarImpressao(){
+    const agora = new Date();
+    document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+    const selectEmp = document.getElementById('selectEmpresa');
+    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+    } else {
+        const cid = clienteIdAtual();
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) {
+                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+            } else {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+            }
+        } catch(e) {
+            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+        }
+    }
+
+    const u = obterUsuarioAtual();
+    if (u) {
+        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+    } else {
+        document.getElementById('printUsuarioNome').innerText = 'Operador';
+    }
+
+    window.print();
 }
 
 function editarCusto(id){
@@ -717,8 +882,8 @@ async function inicializarPagina(){
 
 window.onload=inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
