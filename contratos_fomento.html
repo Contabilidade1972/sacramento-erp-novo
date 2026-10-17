@@ -57,6 +57,8 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.secundario { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); box-shadow: none; }
+        .btn-acao.secundario:hover { background: #f1f5f9; border-color: var(--primary); }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -75,6 +77,7 @@
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
 
         .pill-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .pill-btn { background: var(--bg); border: 1.5px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: 0.2s; }
@@ -250,10 +253,56 @@
 
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Contratos cadastrados</span>
-            <button class="btn-acao sucesso ocultar-print" type="button" onclick="window.executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <h3><i class="fas fa-list"></i> Contratos cadastrados e relatórios</h3>
+            <button class="btn-acao sucesso ocultar-print" type="button" onclick="window.executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
-        <div id="listaContratos" style="overflow-x:auto;">Carregando contratos...</div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS -->
+        <div class="filter-grid ocultar-print">
+            <div>
+                <label>Pesquisar (Contrato / Financiador)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar por nº contrato ou financiador..." oninput="window.renderTabela()">
+            </div>
+            <div>
+                <label>Situação / Status</label>
+                <select id="filtroStatus" class="form-control" onchange="window.renderTabela()">
+                    <option value="">— Todas as situações —</option>
+                    <option value="Ativo">Ativo</option>
+                    <option value="Em Negociação">Em Negociação</option>
+                    <option value="Encerrado">Encerrado</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao secundario" style="width:100%; height:42px;" onclick="window.limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                            <div class="print-corporative-header">
+                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Contratos & Aportes (Fomento)</h2>
+                                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>Contrato</th>
+                        <th>Projeto</th>
+                        <th>Financiador / Origem</th>
+                        <th>Valor Total</th>
+                        <th>Tratamento Contábil</th>
+                        <th>Status</th>
+                        <th style="text-align:right;" class="ocultar-print">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="listaContratosTbody">
+                    <tr><td colspan="7" class="empty-state">Carregando contratos...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -381,59 +430,64 @@ async function carregarProjetosSelect(){
 }
 
 async function carregarContratos(){
-    const el = document.getElementById('listaContratos');
+    const el = document.getElementById('listaContratosTbody');
     try {
         let q = window.sbFiltro('contratos_fomento');
         const { data, error } = await q.order('id', { ascending: false });
-        if(error) { el.innerHTML = '<div class="empty-state">Erro: '+error.message+'</div>'; return; }
+        if(error) { el.innerHTML = '<tr><td colspan="7" class="empty-state">Erro: '+error.message+'</td></tr>'; return; }
         contratosCache = data || [];
-        if(!contratosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum contrato cadastrado.</div>'; return; }
-        
-        let html = `<table class="analitica-table">
-            <thead>
-                <tr>
-                    <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                        <div class="print-corporative-header">
-                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Contratos & Aportes (Fomento)</h2>
-                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
-                    <th>Contrato</th>
-                    <th>Projeto</th>
-                    <th>Financiador / Origem</th>
-                    <th>Valor Total</th>
-                    <th>Tratamento Contábil</th>
-                    <th>Status</th>
-                    <th style="text-align:right;" class="ocultar-print">Ações</th>
-                </tr>
-            </thead>
-            <tbody>`;
-        
-        contratosCache.forEach(c => {
-            const nomeProj = projetosMap[c.projeto_id] || '—';
-            const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
-            html += `<tr>
-                <td><strong>${c.numero_contrato || '-'}</strong></td>
-                <td>${nomeProj}</td>
-                <td>${c.financiador || '-'}</td>
-                <td style="font-weight:bold;">${window.formatBRL(c.valor_total)}</td>
-                <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
-                <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
-                <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
-                    <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
-                    <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
-                    <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>`;
-        });
-        html += '</tbody></table>';
-        el.innerHTML = html;
+        window.renderTabela();
     } catch(e) {
-        el.innerHTML = '<div class="empty-state">Erro ao carregar contratos.</div>';
+        el.innerHTML = '<tr><td colspan="7" class="empty-state">Erro ao carregar contratos.</td></tr>';
     }
 }
+
+window.renderTabela = function(){
+    const tbody = document.getElementById('listaContratosTbody');
+    const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const statusFiltro = document.getElementById('filtroStatus').value;
+
+    let dadosFiltrados = contratosCache.filter(c => {
+        let numContrato = (c.numero_contrato || '').toLowerCase();
+        let financiador = (c.financiador || '').toLowerCase();
+        let matchTexto = !termo || numContrato.includes(termo) || financiador.includes(termo);
+        
+        let matchStatus = !statusFiltro || (c.status || 'Ativo').toLowerCase() === statusFiltro.toLowerCase();
+
+        return matchTexto && matchStatus;
+    });
+
+    if(!dadosFiltrados.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhum contrato encontrado com os filtros aplicados.</td></tr>';
+        return;
+    }
+
+    let html = '';
+    dadosFiltrados.forEach(c => {
+        const nomeProj = projetosMap[c.projeto_id] || '—';
+        const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
+        html += `<tr>
+            <td><strong>${c.numero_contrato || '-'}</strong></td>
+            <td>${nomeProj}</td>
+            <td>${c.financiador || '-'}</td>
+            <td style="font-weight:bold;">${window.formatBRL(c.valor_total)}</td>
+            <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
+            <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
+            <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
+                <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
+                <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    });
+    tbody.innerHTML = html;
+};
+
+window.limparFiltros = function(){
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroStatus').value = '';
+    window.renderTabela();
+};
 
 window.imprimirContratoPorId = function(id) {
     const c = contratosCache.find(x => x.id === id);
