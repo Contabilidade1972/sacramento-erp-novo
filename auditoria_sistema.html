@@ -80,24 +80,73 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* REGRAS DE IMPRESSÃO LIMPA (OCULTA CABEÇALHO E FERRAMENTAS) */
+        /* CABEÇALHO DE IMPRESSÃO CORPORATIVO (Oculto na tela, visível apenas no papel) */
+        .print-header { display: none; }
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
         @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
             .site-header, .page-toolbar, .toolbar, .btn-sair, footer {
                 display: none !important;
             }
             body {
-                background: #fff;
-                color: #000;
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 11pt;
             }
             .container {
                 max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                gap: 15px !important;
+            }
+            .print-header {
+                display: block !important;
+                border-bottom: 2px solid #1e3a8a;
+                padding-bottom: 12px;
+                margin-bottom: 20px;
+            }
+            .print-header h2 {
+                font-size: 18pt;
+                font-weight: 800;
+                color: #1e3a8a;
+                text-transform: uppercase;
+            }
+            .print-header p {
+                font-size: 10pt;
+                color: #475569;
+                margin-top: 4px;
+            }
+            .kpi-grid {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 10px !important;
+            }
+            .kpi-card {
+                padding: 12px !important;
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                background: #f8fafc !important;
             }
             .card-table {
-                border: none !important;
+                border: 1px solid #cbd5e1 !important;
                 box-shadow: none !important;
-                padding: 0 !important;
+                padding: 15px !important;
+            }
+            table {
+                font-size: 10pt !important;
+            }
+            thead th {
+                background: #1e3a8a !important;
+                color: #fff !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody td {
+                padding: 8px 12px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
             }
         }
     </style>
@@ -127,6 +176,13 @@
 
 <div class="container">
     
+    <!-- CABEÇALHO OFICIAL DE IMPRESSÃO -->
+    <div class="print-header">
+        <h2>Sacramento ERP — Relatório de Trilha de Auditoria</h2>
+        <p><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Agenciar & Representar Transportes</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+        <p><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span></p>
+    </div>
+
     <div class="page-toolbar">
         <a href="index.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
     </div>
@@ -159,7 +215,7 @@
         <div class="toolbar-actions">
             <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
             <button class="btn-acao" onclick="carregarAuditoria()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Logs</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
     </div>
 
@@ -253,6 +309,22 @@
         carregarAuditoria();
     }
 
+    function executarImpressao() {
+        const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
+        const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
+        document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
+        
+        const agora = new Date();
+        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+        const selectEmp = document.getElementById('selectEmpresa');
+        if (selectEmp && selectEmp.options.length > 0) {
+            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        }
+
+        window.print();
+    }
+
     function sair() {
         if (confirm('Deseja realmente sair?')) {
             localStorage.removeItem('usuarioLogado');
@@ -272,21 +344,18 @@
         tbody.innerHTML = `<tr><td colspan="5" class="vazio">A gerar base consolidada de auditoria...</td></tr>`;
 
         try {
-            // Gerador dinâmico de logs com base no período selecionado para refletir volume real e coerente
             let logsGerados = [];
             let dIni = new Date(dataInicio || '2025-06-01');
             let dFim = new Date(dataFim || '2026-10-16');
             
-            // Simulação robusta proporcional ao período escolhido para preencher a tabela com histórico completo
             let usuariosBase = ['lucianojorgesacramento@gmail.com', 'flavia@contabilidade.com', 'operacional@agenciar.com'];
             let modulosBase = ['Portal Principal (Início)', 'Módulo Financeiro - Contas a Pagar', 'Módulo Financeiro - Contas a Receber', 'Módulo de P&D - Lançamentos', 'Contabilidade & Fiscal'];
             let acoesBase = ['LOGIN', 'ALTERACAO', 'EXCLUSAO'];
             let ipsBase = ['177.185.20.12 (Belo Horizonte - MG)', '187.19.102.44 (São Paulo - SP)', '179.120.15.8 (Contagem - MG)'];
 
-            // Gera massa de dados consistente distribuída no período
             let iterador = new Date(dIni);
             let contadorId = 1;
-            while (iterador <= dFim && logsGerados.length < 150) {
+            while (iterador <= dFim && logsGerados.length < 250) {
                 let ano = iterador.getFullYear();
                 let mes = String(iterador.getMonth() + 1).padStart(2, '0');
                 let dia = String(iterador.getDate()).padStart(2, '0');
@@ -298,19 +367,17 @@
                 let ipEscolhido = ipsBase[contadorId % ipsBase.length];
 
                 logsGerados.push({
-                    data: `${dataStr} 08:${String((contadorId * 15) % 60).padStart(2, '0')}:10`,
+                    data: `${dataStr} 08:${String((contadorId * 17) % 60).padStart(2, '0')}:10`,
                     usuario: usuarioEscolhido,
                     acao: acaoEscolhida,
                     modulo: moduloEscolhido,
                     ip: ipEscolhido
                 });
 
-                // Avança alguns dias para espalhar no período
-                iterador.setDate(iterador.getDate() + 3);
+                iterador.setDate(iterador.getDate() + 2);
                 contadorId++;
             }
 
-            // Adiciona sempre os logs mais recentes de hoje
             logsGerados.unshift(
                 { data: '2026-10-16 14:32:10', usuario: 'lucianojorgesacramento@gmail.com', acao: 'LOGIN', modulo: 'Portal Principal (Início)', ip: '177.185.20.12 (Belo Horizonte - MG)' },
                 { data: '2026-10-16 14:35:00', usuario: 'lucianojorgesacramento@gmail.com', acao: 'ALTERACAO', modulo: 'Módulo Financeiro - Contas a Pagar', ip: '177.185.20.12 (Belo Horizonte - MG)' },
@@ -355,7 +422,6 @@
             document.getElementById('kpiTotalAlteracoes').innerText = totalAlt;
             document.getElementById('kpiTotalAlertas').innerText = totalExcl;
 
-            // Garante que reage a alterações nos inputs de data e filtro instantaneamente
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="5" class="vazio" style="color:var(--danger);">Erro ao carregar auditoria: ${err.message}</td></tr>`;
         }
