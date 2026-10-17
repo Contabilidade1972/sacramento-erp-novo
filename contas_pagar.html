@@ -22,6 +22,12 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM LGPD: Oculta seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -75,6 +81,7 @@
         .badge-pendente { background: #fee2e2; color: #991b1b; }
         .badge-pago { background: #d1fae5; color: #065f46; }
         .badge-atrasado { background: #fef3c7; color: #d97706; }
+        .badge-cartao { background: #e0e7ff; color: #3730a3; }
 
         .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
@@ -126,21 +133,21 @@
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
             <div>
                 <h4>A Pagar (Pendente)</h4>
-                <div class="value" id="tot_pendente">R$ 0,00</div>
+                <div class="value" id="tot_pendente">R\$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--success)"><i class="fas fa-check-double"></i></div>
             <div>
                 <h4>Total Pago</h4>
-                <div class="value" id="tot_pago">R$ 0,00</div>
+                <div class="value" id="tot_pago">R\$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
             <div>
                 <h4>Contas Vencidas</h4>
-                <div class="value" id="tot_atrasado" style="color:var(--danger)">R$ 0,00</div>
+                <div class="value" id="tot_atrasado" style="color:var(--danger)">R\$ 0,00</div>
             </div>
         </div>
     </div>
@@ -156,17 +163,25 @@
                 <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
             </div>
             <div>
+                <label>Forma / Origem do Pagamento *</label>
+                <select id="forma_pagamento" class="form-control">
+                    <option value="Boleto / Pix / TED">Boleto / Pix / TED (Caixa/Banco Direto)</option>
+                    <option value="Cartao_Credito_Pos">Cartão de Crédito Corporativo (Pós-pago - Passivo)</option>
+                    <option value="Cartao_Pre_Pago">Cartão Pré-Pago (Baixa Direta)</option>
+                </select>
+            </div>
+            <div>
                 <label>CNPJ / CPF do Fornecedor *</label>
                 <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números...">
             </div>
-            <div style="grid-column: span 2;">
+            <div>
                 <label>Razão Social / Fornecedor *</label>
-                <input type="text" id="fornecedor_nome" class="form-control" placeholder="Nome do fornecedor ou prestador">
+                <input type="text" id="fornecedor_nome" class="form-control" placeholder="Nome do fornecedor">
             </div>
         </div>
         <div class="form-grid">
             <div>
-                <label>Valor do Título (R$) *</label>
+                <label>Valor do Título (R\$) *</label>
                 <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
             </div>
             <div>
@@ -181,14 +196,14 @@
                 </select>
             </div>
             <div>
-                <label>Centro de Custo / Projeto *</label>
-                <input type="text" id="centro_custo" class="form-control" placeholder="Ex: 1.02 - Administrativo">
+                <label>Centro de Custo / P&D *</label>
+                <input type="text" id="centro_custo" class="form-control" placeholder="Ex: 1.02 - Administrativo / P&D">
             </div>
         </div>
         <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
             <div>
                 <label>Descrição / Despesa / Nota Fiscal *</label>
-                <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Consultoria...">
+                <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
             </div>
             <div>
                 <label>Conta Contábil (DRE)</label>
@@ -242,16 +257,17 @@
                     <tr>
                         <th>Código</th>
                         <th>Fornecedor / Favorecido</th>
+                        <th>Forma Pgto / Cartão</th>
                         <th>Centro de Custo</th>
                         <th>Conta DRE</th>
                         <th>Descrição / NF</th>
                         <th>Vencimento</th>
-                        <th>Valor (R$)</th>
+                        <th>Valor (R\$)</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="tbodyRelatorioModo">
-                    <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                    <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -267,6 +283,7 @@
                     <tr>
                         <th>Código</th>
                         <th>Fornecedor / Favorecido</th>
+                        <th>Forma Pgto / Cartão</th>
                         <th>Centro de Custo</th>
                         <th>Conta DRE</th>
                         <th>Descrição / NF</th>
@@ -274,7 +291,6 @@
                         <th>Valor Total</th>
                         <th>Status</th>
                         <th>Data Criação</th>
-                        <th>Última Alteração</th>
                         <th style="text-align:right;">Ações</th>
                     </tr>
                 </thead>
@@ -285,6 +301,10 @@
         </div>
     </div>
 </div>
+
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
 
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
@@ -300,7 +320,6 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
-// CORREÇÃO CRÍTICA LGPD: Se não for Master, força exclusivamente o ID do cliente da sessão do utilizador comum
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -335,7 +354,6 @@ async function inicializarPagina() {
         select.value = selAtual;
         select.disabled = false;
     } else {
-        // BLINDAGEM LGPD: Oculta completamente o seletor de empresas para utilizadores comuns
         if (boxSeletor) boxSeletor.style.display = 'none';
     }
 
@@ -364,6 +382,15 @@ function formatBRL(v) {
 
 function formatarCodigoVirtual(id) {
     return "CP-" + String(id || 1).padStart(3, '0');
+}
+
+function atualizarCodigoVirtual() {
+    let proximoId = 1;
+    if (contasCache.length > 0) {
+        let maxId = Math.max(...contasCache.map(c => parseInt(c.id) || 0));
+        proximoId = maxId + 1;
+    }
+    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
 }
 
 async function carregarContas() {
@@ -444,7 +471,7 @@ function aplicarFiltrosRelatorio() {
     const tbody = document.getElementById('tbodyRelatorioModo');
     tbody.innerHTML = '';
     if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado para os filtros selecionados.</td></tr>`;
         return;
     }
 
@@ -452,9 +479,11 @@ function aplicarFiltrosRelatorio() {
         let codVirtual = formatarCodigoVirtual(t.id);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
         let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
+        let formaPgto = t.forma_pagamento || 'Boleto / Pix / TED';
         tbody.innerHTML += `<tr>
             <td><strong>${codVirtual}</strong></td>
             <td><strong>${t.fornecedor_nome || '—'}</strong></td>
+            <td>${formaPgto}</td>
             <td>${t.centro_custo || '—'}</td>
             <td>${t.conta_contabil || '—'}</td>
             <td>${t.descricao || '—'}</td>
@@ -487,12 +516,13 @@ function renderTabela() {
         let codVirtual = formatarCodigoVirtual(t.id);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
-        let dataAlt = t.updated_at ? t.updated_at.split('T')[0].split('-').reverse().join('/') : '-';
+        let formaPgto = t.forma_pagamento || 'Boleto / Pix / TED';
 
         tbody.innerHTML += `
             <tr>
                 <td><strong>${codVirtual}</strong></td>
                 <td><strong>${t.fornecedor_nome || '—'}</strong></td>
+                <td><span class="badge badge-cartao">${formaPgto}</span></td>
                 <td>${t.centro_custo || '—'}</td>
                 <td>${t.conta_contabil || '—'}</td>
                 <td>${t.descricao || '—'}</td>
@@ -500,7 +530,6 @@ function renderTabela() {
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${dataReg}</td>
-                <td>${dataAlt}</td>
                 <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;">
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
@@ -520,6 +549,7 @@ async function salvarContaPagar() {
     const status = document.getElementById('status_edicao').value;
     const centro_custo = document.getElementById('centro_custo').value.trim();
     const conta_contabil = document.getElementById('conta_contabil').value.trim();
+    const forma_pagamento = document.getElementById('forma_pagamento').value;
     const cliente_id = clienteIdAtual();
 
     if(!fornecedor_nome || isNaN(valor) || !vencimento) {
@@ -527,7 +557,7 @@ async function salvarContaPagar() {
         return;
     }
 
-    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, updated_at: new Date().toISOString() };
+    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_pagamento, updated_at: new Date().toISOString() };
     let res;
 
     if(id) {
@@ -556,6 +586,7 @@ window.editarConta = function(id) {
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('status_edicao').value = t.status || 'Pendente';
+    document.getElementById('forma_pagamento').value = t.forma_pagamento || 'Boleto / Pix / TED';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(t.id)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'inline-block';
@@ -572,6 +603,7 @@ function cancelarEdicao() {
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
     document.getElementById('status_edicao').value = 'Pendente';
+    document.getElementById('forma_pagamento').value = 'Boleto / Pix / TED';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'none';
@@ -590,7 +622,7 @@ window.excluirConta = async function(id) {
 
 window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
