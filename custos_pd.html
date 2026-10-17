@@ -24,7 +24,6 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -98,12 +97,8 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
-        .print-corporative-header {
-            display: none !important;
-        }
+        .print-corporative-header { display: none !important; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
         @media print {
             @page {
                 size: A4 portrait;
@@ -123,32 +118,12 @@
                 opacity: 0 !important;
                 pointer-events: none !important;
             }
-            body {
-                background: #fff !important;
-                color: #000 !important;
-                font-size: 9.5pt;
-            }
-            .container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                gap: 10px !important;
-            }
-            .panel {
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-            }
-            table {
-                font-size: 9pt !important;
-                width: 100% !important;
-            }
-            thead {
-                display: table-header-group !important;
-            }
-            tr {
-                page-break-inside: avoid !important;
-            }
+            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 10px !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { font-size: 9pt !important; width: 100% !important; }
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; }
             .print-corporative-header {
                 display: block !important;
                 background: #fff !important;
@@ -156,17 +131,8 @@
                 margin-bottom: 10px !important;
                 border-bottom: 2px solid #1e3a8a !important;
             }
-            thead th {
-                background: #1e3a8a !important;
-                color: #fff !important;
-                padding: 6px 8px !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            tbody td {
-                padding: 5px 8px !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-            }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
         }
     </style>
 </head>
@@ -264,7 +230,6 @@
             </div>
         </div>
 
-        <!-- PAINEL DE PRÉ-CADASTRO CASO NÃO EXISTA NA BASE -->
         <div id="painelPreCadastro" class="precadastro-box">
             <div style="font-size: 13px; font-weight: 700; color: #166534; margin-bottom: 10px;">
                 <i class="fas fa-user-plus"></i> Prestador não encontrado na base. Preencha o pré-cadastro rápido:
@@ -378,6 +343,7 @@ let contratosCache = [];
 let parceirosCache = [];
 let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
+let arquivoSelecionadoObj = null;
 
 var CATEGORIAS = {
     pessoal:              { rotulo: 'Pessoal (RH)',         classe: 'b-pesessoal' },
@@ -580,9 +546,26 @@ function aoSelecionarProjeto(){
 function atualizarNomeArquivo(input){
     if(input.files && input.files[0]){
         var file = input.files[0];
+        arquivoSelecionadoObj = file;
         arquivoAnexadoNome = file.name;
-        arquivoAnexadoUrl = URL.createObjectURL(file);
         document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Ficheiro pronto: <b>' + arquivoAnexadoNome + '</b>';
+    }
+}
+
+async function fazerUploadSupabase(file) {
+    try {
+        var cid = clienteIdAtual();
+        var fileName = cid + '_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        var res = await sb.storage.from('comprovantes').upload(fileName, file);
+        if (res.error) {
+            console.error("Erro storage:", res.error);
+            return null;
+        }
+        var urlRes = sb.storage.from('comprovantes').getPublicUrl(fileName);
+        return urlRes.data.publicUrl;
+    } catch(e) {
+        console.error("Exceção no upload:", e);
+        return null;
     }
 }
 
@@ -664,7 +647,15 @@ async function carregarCustos(){
         for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(c.projeto_id)) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var catInfo = CATEGORIAS[c.categoria] || CATEGORIAS.outros;
-        var comprovanteHTML = c.comprovante ? `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>` : '<span style="color:var(--text-light)">—</span>';
+        
+        var comprovanteHTML = '<span style="color:var(--text-light)">—</span>';
+        if(c.comprovante) {
+            if(c.comprovante.startsWith('http')) {
+                comprovanteHTML = `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
+            } else {
+                comprovanteHTML = `<span style="color:var(--warning); font-size:11px;" title="Caminho local inválido">Anexo Pendente</span>`;
+            }
+        }
 
         html+='<tr>'+
             '<td>'+formatDataBR(c.data_gasto)+'</td>'+
@@ -733,6 +724,9 @@ function editarCusto(id){
     document.getElementById('descricao').value=c.descricao||'';
     document.getElementById('painelPreCadastro').style.display='none';
     arquivoAnexadoUrl = c.comprovante || null;
+    if(c.comprovante){
+        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Comprovante já registado';
+    }
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar gasto';
@@ -757,6 +751,7 @@ function cancelarEdicao(){
     document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (PDF, JPG ou PNG)';
     arquivoAnexadoUrl = null;
     arquivoAnexadoNome = null;
+    arquivoSelecionadoObj = null;
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registrar gasto';
@@ -787,6 +782,15 @@ async function salvarCusto(){
 
     var doc=document.getElementById('documento_fiscal').value.trim();
     if(!doc){doc = gerarProximoNumeroDocumento();}
+
+    toast('A guardar registo e comprovante...', 'info');
+
+    if(arquivoSelecionadoObj){
+        var urlStorage = await fazerUploadSupabase(arquivoSelecionadoObj);
+        if(urlStorage){
+            arquivoAnexadoUrl = urlStorage;
+        }
+    }
 
     var dados={
         cliente_id: cid,
