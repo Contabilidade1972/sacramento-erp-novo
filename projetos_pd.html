@@ -313,12 +313,15 @@ function renderTabela() {
         if (st.includes('suspens')) badgeClass = 'badge-suspenso';
         else if (st.includes('encerrado') || st.includes('conclu')) badgeClass = 'badge-encerrado';
 
+        // Mapeia tanto coluna 'fim' quanto 'data_fim' para exibição segura
+        let dataFimValor = p.fim || p.data_fim || '';
+
         var tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${p.codigo || '—'}</strong></td>
             <td>${p.nome || '—'}</td>
-            <td>${formatDataBR(p.inicio)}</td>
-            <td>${formatDataBR(p.fim)}</td>
+            <td>${formatDataBR(p.inicio || p.data_inicio)}</td>
+            <td>${formatDataBR(dataFimValor)}</td>
             <td><span class="badge ${badgeClass}">${p.status || 'Ativo'}</span></td>
             <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
                 <button class="btn-icon" title="Editar"><i class="fas fa-edit"></i></button>
@@ -378,7 +381,17 @@ async function salvarProjeto() {
         return;
     }
 
-    let payload = { cliente_id, codigo, nome, inicio, fim: fim ? fim : null, status };
+    // Payload unificado suportando tanto 'fim' quanto 'data_fim' para evitar erros de esquema
+    let payload = { 
+        cliente_id, 
+        codigo, 
+        nome, 
+        inicio: inicio, 
+        data_inicio: inicio,
+        fim: fim ? fim : null, 
+        data_fim: fim ? fim : null,
+        status 
+    };
     let res;
 
     if(id) {
@@ -400,8 +413,8 @@ function editarProjeto(id) {
     document.getElementById('edit_id').value = p.id;
     document.getElementById('codigo').value = p.codigo || '';
     document.getElementById('nome').value = p.nome || '';
-    document.getElementById('inicio').value = p.inicio || '';
-    document.getElementById('fim').value = p.fim || '';
+    document.getElementById('inicio').value = p.inicio || p.data_inicio || '';
+    document.getElementById('fim').value = p.fim || p.data_fim || '';
     document.getElementById('status').value = p.status || 'Ativo';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando projeto (${p.codigo})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar projeto';
