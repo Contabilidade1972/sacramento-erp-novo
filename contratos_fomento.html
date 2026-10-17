@@ -77,7 +77,7 @@
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
-        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
 
         .pill-group { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
         .pill-btn { background: var(--bg); border: 1.5px solid var(--border); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-main); cursor: pointer; transition: 0.2s; }
@@ -101,7 +101,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 15mm 15mm 15mm 15mm;
+                margin: 20mm 15mm 20mm 15mm;
                 @bottom-right {
                     content: "Página " counter(page) " de " counter(pages);
                     font-size: 8.5pt;
@@ -117,7 +117,7 @@
                 pointer-events: none !important;
             }
             body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; width: 100% !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 10mm !important; gap: 0 !important; width: 100% !important; }
             .panel:not(:first-of-type) { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
             table { font-size: 9pt !important; width: 100% !important; }
             thead { display: table-header-group !important; }
@@ -126,11 +126,11 @@
                 display: block !important;
                 background: #fff !important;
                 padding-bottom: 8px !important;
-                margin-bottom: 10px !important;
+                margin-bottom: 12px !important;
                 border-bottom: 2px solid #1e3a8a !important;
             }
             thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
+            tbody td { padding: 6px 8px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
@@ -257,11 +257,17 @@
             <button class="btn-acao sucesso ocultar-print" type="button" onclick="window.executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
 
-        <!-- PAINEL DE FILTROS AVANÇADOS -->
+        <!-- PAINEL DE FILTROS AVANÇADOS COMPLETOS -->
         <div class="filter-grid ocultar-print">
             <div>
                 <label>Pesquisar (Contrato / Financiador)</label>
-                <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar por nº contrato ou financiador..." oninput="window.renderTabela()">
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Nº contrato ou financiador..." oninput="window.renderTabela()">
+            </div>
+            <div>
+                <label>Projeto Vinculado</label>
+                <select id="filtroProjeto" class="form-control" onchange="window.renderTabela()">
+                    <option value="">— Todos os projetos —</option>
+                </select>
             </div>
             <div>
                 <label>Situação / Status</label>
@@ -270,6 +276,15 @@
                     <option value="Ativo">Ativo</option>
                     <option value="Em Negociação">Em Negociação</option>
                     <option value="Encerrado">Encerrado</option>
+                </select>
+            </div>
+            <div>
+                <label>Tratamento Contábil</label>
+                <select id="filtroNatureza" class="form-control" onchange="window.renderTabela()">
+                    <option value="">— Todos os tratamentos —</option>
+                    <option value="subvencao_custeio">Subvenção para Custeio</option>
+                    <option value="subvencao_investimento">Subvenção para Investimento</option>
+                    <option value="aporte_reembolsavel">Aporte Reembolsável</option>
                 </select>
             </div>
             <div style="display:flex; align-items:flex-end;">
@@ -417,14 +432,18 @@ window.atualizarNaturezaAutomatica = function(){
 
 async function carregarProjetosSelect(){
     const sel = document.getElementById('projetoId');
+    const filtroProj = document.getElementById('filtroProjeto');
     try {
         let q = window.sbFiltro('projetos_pd');
         const { data } = await q.order('nome');
         sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
+        filtroProj.innerHTML = '<option value="">— Todos os projetos —</option>';
         projetosMap = {};
         (data || []).forEach(p => {
             projetosMap[p.id] = p.nome || ('Projeto #' + p.id);
-            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+            let opt = `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+            sel.innerHTML += opt;
+            filtroProj.innerHTML += opt;
         });
     } catch(e) {}
 }
@@ -445,16 +464,20 @@ async function carregarContratos(){
 window.renderTabela = function(){
     const tbody = document.getElementById('listaContratosTbody');
     const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const projFiltro = document.getElementById('filtroProjeto').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
+    const natFiltro = document.getElementById('filtroNatureza').value;
 
     let dadosFiltrados = contratosCache.filter(c => {
         let numContrato = (c.numero_contrato || '').toLowerCase();
         let financiador = (c.financiador || '').toLowerCase();
         let matchTexto = !termo || numContrato.includes(termo) || financiador.includes(termo);
         
+        let matchProj = !projFiltro || String(c.projeto_id) === String(projFiltro);
         let matchStatus = !statusFiltro || (c.status || 'Ativo').toLowerCase() === statusFiltro.toLowerCase();
+        let matchNat = !natFiltro || (c.natureza_contabil || '') === natFiltro;
 
-        return matchTexto && matchStatus;
+        return matchTexto && matchProj && matchStatus && matchNat;
     });
 
     if(!dadosFiltrados.length) {
@@ -462,11 +485,13 @@ window.renderTabela = function(){
         return;
     }
 
-    let html = '';
+    tbody.innerHTML = '';
     dadosFiltrados.forEach(c => {
         const nomeProj = projetosMap[c.projeto_id] || '—';
         const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
-        html += `<tr>
+        
+        var tr = document.createElement('tr');
+        tr.innerHTML = `
             <td><strong>${c.numero_contrato || '-'}</strong></td>
             <td>${nomeProj}</td>
             <td>${c.financiador || '-'}</td>
@@ -474,18 +499,25 @@ window.renderTabela = function(){
             <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
             <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
             <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
-                <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
-                <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
-                <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
+                <button class="btn-secondary btn-imprimir" type="button" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
+                <button class="btn-secondary btn-editar" type="button" title="Editar"><i class="fas fa-pen"></i></button>
+                <button class="btn-secondary btn-excluir" type="button" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
             </td>
-        </tr>`;
+        `;
+
+        tr.querySelector('.btn-imprimir').onclick = function() { window.imprimirContratoPorId(c.id); };
+        tr.querySelector('.btn-editar').onclick = function() { window.editarContratoPorId(c.id); };
+        tr.querySelector('.btn-excluir').onclick = function() { window.excluirContratoPorId(c.id); };
+
+        tbody.appendChild(tr);
     });
-    tbody.innerHTML = html;
 };
 
 window.limparFiltros = function(){
     document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroProjeto').value = '';
     document.getElementById('filtroStatus').value = '';
+    document.getElementById('filtroNatureza').value = '';
     window.renderTabela();
 };
 
