@@ -8,7 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <script src="filtro_cliente.js"></script>
+    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -59,6 +59,10 @@
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.secundario { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); box-shadow: none; }
+        .btn-acao.secundario:hover { background: #f1f5f9; border-color: var(--primary); }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -77,6 +81,7 @@
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-ativo { background: #dcfce7; color: #166534; }
@@ -94,6 +99,80 @@
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
+        .print-corporative-header {
+            display: none !important;
+        }
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 20mm 15mm 20mm 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+            .site-header, .page-toolbar, .panel:not(:last-child), .toast-container, footer, 
+            .assistant-widget, .assistant-avatar, .assistant-bubble, 
+            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 9.5pt;
+            }
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 10mm !important;
+                gap: 0 !important;
+                width: 100% !important;
+            }
+            .panel {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+            }
+            table {
+                font-size: 9pt !important;
+                width: 100% !important;
+            }
+            thead {
+                display: table-header-group !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+            }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 12px !important;
+                border-bottom: 2px solid #1e3a8a !important;
+            }
+            thead th {
+                background: #1e3a8a !important;
+                color: #fff !important;
+                padding: 6px 8px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody td {
+                padding: 6px 8px !important;
+                border-bottom: 1px solid #cbd5e1 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -123,16 +202,16 @@
 </header>
 
 <div class="container">
-    <div class="page-toolbar">
+    <div class="page-toolbar ocultar-print">
         <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
     </div>
 
-    <div>
+    <div class="ocultar-print">
         <div class="page-title"><i class="fas fa-microscope" style="color:var(--primary);"></i> Gestão de Ativos e Equipamentos de P&D</div>
         <div class="page-subtitle">Controle de instrumentos laboratoriais, maquinário, depreciação e alocação em projetos de inovação</div>
     </div>
 
-    <div class="panel">
+    <div class="panel ocultar-print">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
             <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo / equipamento</span>
         </div>
@@ -190,9 +269,62 @@
 
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Ativos e Equipamentos Alocados</span>
+            <h3><i class="fas fa-list"></i> Ativos e Equipamentos Alocados</h3>
+            <button class="btn-acao sucesso ocultar-print" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
-        <div id="listaAtivos" style="overflow-x:auto;">A carregar ativos...</div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS COMPLETOS -->
+        <div class="filter-grid ocultar-print">
+            <div>
+                <label>Pesquisar (Ativo / Patrimônio)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Nome do ativo ou patrimônio..." oninput="renderTabelaAtivos()">
+            </div>
+            <div>
+                <label>Projeto Vinculado</label>
+                <select id="filtroProjeto" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os projetos —</option>
+                </select>
+            </div>
+            <div>
+                <label>Status Operacional</label>
+                <select id="filtroStatus" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os status —</option>
+                    <option value="operacional">Operacional</option>
+                    <option value="manutencao">Manutenção</option>
+                    <option value="baixado">Baixado</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao secundario" style="width:100%; height:42px; margin-bottom: 12px;" onclick="limparFiltrosAtivos()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                            <div class="print-corporative-header">
+                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Gestão de Ativos e Equipamentos de P&D</h2>
+                                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>Equipamento / Ativo</th>
+                        <th>Patrimônio</th>
+                        <th>Projeto Alocado</th>
+                        <th>Aquisição</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Valor (R\$)</th>
+                        <th style="text-align:right;" class="ocultar-print">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyAtivos">
+                    <tr><td colspan="7" class="empty-state">A carregar ativos...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -293,44 +425,112 @@ async function carregarProjetosSelect(){
     if(!r.error) {
         projetosCache = r.data || [];
         var sel = document.getElementById('projeto_id');
+        var filtroProj = document.getElementById('filtroProjeto');
         sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
+        filtroProj.innerHTML = '<option value="">— Todos os projetos —</option>';
         projetosCache.forEach(p => {
-            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+            var txt = (p.codigo ? p.codigo + ' · ' : '') + p.nome;
+            sel.innerHTML += `<option value="${p.id}">${txt}</option>`;
+            filtroProj.innerHTML += `<option value="${p.id}">${txt}</option>`;
         });
     }
 }
 
 async function carregarAtivos(){
-    var el=document.getElementById('listaAtivos');
     var cid=window.clienteIdAtual();
-    if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
+    var tbody=document.getElementById('tbodyAtivos');
+    if(!cid){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Cliente não identificado.</td></tr>';return;}
     var r=await sbFiltro('ativos_equipamentos');
-    if(r.error){el.innerHTML='<div class="empty-state">Tabela em configuração ou vazia.</div>';return;}
+    if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Tabela em configuração ou vazia.</td></tr>';return;}
     ativosCache=r.data||[];
-    if(!ativosCache.length){el.innerHTML='<div class="empty-state">Nenhum ativo ou equipamento registrado.</div>';return;}
+    renderTabelaAtivos();
+}
+
+function renderTabelaAtivos(){
+    var tbody=document.getElementById('tbodyAtivos');
+    const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const projFiltro = document.getElementById('filtroProjeto').value;
+    const statusFiltro = document.getElementById('filtroStatus').value;
+
+    let dadosFiltrados = ativosCache.filter(a => {
+        let nome = (a.nome_ativo || '').toLowerCase();
+        let pat = (a.patrimonio || '').toLowerCase();
+        let matchTexto = !termo || nome.includes(termo) || pat.includes(termo);
+        
+        let matchProj = !projFiltro || String(a.projeto_id) === String(projFiltro);
+        let matchStatus = !statusFiltro || (a.status_ativo || 'operacional') === statusFiltro;
+
+        return matchTexto && matchProj && matchStatus;
+    });
+
+    if(!dadosFiltrados.length){
+        tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento encontrado com os filtros aplicados.</td></tr>';
+        return;
+    }
     
-    var html='<table class="analitica-table"><thead><tr><th>Equipamento / Ativo</th><th>Patrimônio</th><th>Projeto Alocado</th><th>Aquisição</th><th>Status</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-    ativosCache.forEach(function(a){
+    tbody.innerHTML = '';
+    dadosFiltrados.forEach(function(a){
         var proj = null;
         for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(a.projeto_id)) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var st = STATUS_MAP[a.status_ativo] || STATUS_MAP.operacional;
 
-        html+='<tr>'+
+        var tr = document.createElement('tr');
+        tr.innerHTML=''+
             '<td><strong>'+(a.nome_ativo||'—')+'</strong><br><small style="color:var(--text-light)">'+(a.especificacoes||'')+'</small></td>'+
             '<td>'+(a.patrimonio||'—')+'</td>'+
             '<td>'+nomeProj+'</td>'+
             '<td>'+formatDataBR(a.data_aquisicao)+'</td>'+
             '<td><span class="badge '+st.classe+'">'+st.rotulo+'</span></td>'+
             '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(a.valor_aquisicao)+'</td>'+
-            '<td style="text-align:right; white-space:nowrap;">'+
-                '<button class="btn-secondary" onclick="editarAtivo(\''+a.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
-                '<button class="btn-secondary" onclick="excluirAtivo(\''+a.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
-            '</td>'+
-        '</tr>';
+            '<td style="text-align:right; white-space:nowrap;" class="ocultar-print">'+
+                '<button class="btn-secondary btn-editar" title="Editar"><i class="fas fa-pen"></i></button>'+
+                '<button class="btn-secondary btn-excluir" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>';
+
+        tr.querySelector('.btn-editar').onclick = function() { editarAtivo(a.id); };
+        tr.querySelector('.btn-excluir').onclick = function() { excluirAtivo(a.id); };
+
+        tbody.appendChild(tr);
     });
-    html+='</tbody></table>';
-    el.innerHTML=html;
+}
+
+function limparFiltrosAtivos(){
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroProjeto').value = '';
+    document.getElementById('filtroStatus').value = '';
+    renderTabelaAtivos();
+}
+
+async function executarImpressao(){
+    const agora = new Date();
+    document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+    const selectEmp = document.getElementById('selectEmpresa');
+    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+    } else {
+        const cid = window.clienteIdAtual();
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) {
+                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+            } else {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+            }
+        } catch(e) {
+            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+        }
+    }
+
+    const u = window.obterUsuario();
+    if (u) {
+        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+    } else {
+        document.getElementById('printUsuarioNome').innerText = 'Operador';
+    }
+
+    window.print();
 }
 
 function editarAtivo(id){
@@ -457,8 +657,8 @@ async function inicializarPagina(){
 
 window.onload=inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
