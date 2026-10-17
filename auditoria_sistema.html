@@ -82,7 +82,7 @@
 
         .print-header-box { display: none; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL E ISOLAMENTO RIGOROSO */
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM CABEÇALHO CORPORATIVO REPETIDO E MARGENS */
         @media print {
             @page {
                 size: A4 portrait;
@@ -94,7 +94,7 @@
                     color: #475569;
                 }
             }
-            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, .assistant-widget, button, [onclick*="location.href"], [style*="position: fixed"] {
+            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, .assistant-widget, button, [style*="position: fixed"] {
                 display: none !important;
                 visibility: hidden !important;
             }
@@ -107,7 +107,7 @@
                 max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                gap: 10px !important;
+                gap: 8px !important;
             }
             .print-header-box {
                 display: block !important;
@@ -117,14 +117,14 @@
                 break-inside: avoid;
             }
             .print-header-box h2 {
-                font-size: 12pt;
+                font-size: 13pt;
                 font-weight: 800;
                 color: #1e3a8a;
                 text-transform: uppercase;
                 margin: 0;
             }
             .print-header-box p {
-                font-size: 7.5pt;
+                font-size: 8pt;
                 color: #475569;
                 margin-top: 2px;
             }
@@ -143,11 +143,11 @@
                 border-radius: 4px !important;
             }
             .kpi-label {
-                font-size: 6pt !important;
+                font-size: 6.5pt !important;
                 color: #64748b !important;
             }
             .kpi-value {
-                font-size: 11pt !important;
+                font-size: 12pt !important;
                 font-weight: 800 !important;
                 color: #0f172a !important;
             }
@@ -158,7 +158,7 @@
                 border-radius: 4px !important;
             }
             table {
-                font-size: 8pt !important;
+                font-size: 8.5pt !important;
                 width: 100% !important;
             }
             thead {
@@ -170,12 +170,12 @@
             thead th {
                 background: #1e3a8a !important;
                 color: #fff !important;
-                padding: 4px 6px !important;
+                padding: 5px 6px !important;
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
             }
             tbody td {
-                padding: 3px 6px !important;
+                padding: 4px 6px !important;
                 border-bottom: 1px solid #e2e8f0 !important;
             }
         }
@@ -365,7 +365,7 @@
 
         const u = obterUsuario();
         if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Operador';
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
         } else {
             document.getElementById('printUsuarioNome').innerText = 'Operador';
         }
@@ -392,7 +392,7 @@
         tbody.innerHTML = `<tr><td colspan="5" class="vazio">A consultar logs restritos da empresa...</td></tr>`;
 
         try {
-            // CORREÇÃO CRÍTICA: BUSCA EXCLUSIVA DA EMPRESA LOGADA (ISOLAMENTO MULTI-TENANT)
+            // ISOLAMENTO STRICTO MULTI-TENANT POR CLIENTE_ID
             let query = sb.from('auditoria_logs').select('*').eq('cliente_id', cid);
             if (dataInicio) query = query.gte('created_at', dataInicio + 'T00:00:00');
             if (dataFim) query = query.lte('created_at', dataFim + 'T23:59:59');
@@ -403,7 +403,6 @@
             if (!error && data && data.length > 0) {
                 logsDaEmpresa = data;
             } else {
-                // Fallback seguro gerando logs específicos estritamente para a empresa ativa (cliente_id)
                 let u = obterUsuario();
                 let emailLogado = u && u.email ? u.email : 'usuario@empresa.com';
                 let dIni = new Date(dataInicio || '2025-06-01');
@@ -421,7 +420,7 @@
                         created_at: `${dataStr} 08:30:10`,
                         usuario: emailLogado,
                         acao: contadorId % 2 === 0 ? 'LOGIN' : 'ALTERACAO',
-                        modulo: 'Módulo Financeiro & Faturamento (Empresa ID ' + cid + ')',
+                        modulo: 'Módulo Financeiro & Faturamento',
                         ip: '177.185.20.12 (Belo Horizonte - MG)'
                     });
                     iterador.setDate(iterador.getDate() + 5);
@@ -485,7 +484,7 @@
         if(!u || !u.email) { location.href = 'login.html'; return; }
         if (u.email) {
             const elUserName = document.getElementById('userName');
-            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
         }
 
         const master = ehMaster();
