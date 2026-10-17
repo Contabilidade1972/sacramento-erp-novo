@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -32,11 +31,32 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.secundario { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); box-shadow: none; }
+        .btn-acao.secundario:hover { background: #f1f5f9; border-color: var(--primary); }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -55,6 +75,7 @@
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
         .b-ativo { background: #dcfce7; color: #166534; }
@@ -82,7 +103,7 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 15mm 15mm 15mm 15mm;
+                margin: 20mm 15mm 20mm 15mm;
                 @bottom-right {
                     content: "Página " counter(page) " de " counter(pages);
                     font-size: 8.5pt;
@@ -90,7 +111,7 @@
                     color: #475569;
                 }
             }
-            .page-toolbar, .panel:not(:last-child), .toast-container, footer, 
+            .site-header, .page-toolbar, .panel:not(:last-child), .toast-container, footer, 
             .assistant-widget, .assistant-avatar, .assistant-bubble, 
             button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
                 display: none !important;
@@ -106,13 +127,16 @@
             .container {
                 max-width: 100% !important;
                 margin: 0 !important;
-                padding: 0 !important;
-                gap: 10px !important;
+                padding: 0 10mm !important;
+                gap: 0 !important;
+                width: 100% !important;
             }
             .panel {
                 border: none !important;
                 box-shadow: none !important;
                 padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
             }
             table {
                 font-size: 9pt !important;
@@ -128,7 +152,7 @@
                 display: block !important;
                 background: #fff !important;
                 padding-bottom: 8px !important;
-                margin-bottom: 10px !important;
+                margin-bottom: 12px !important;
                 border-bottom: 2px solid #1e3a8a !important;
             }
             thead th {
@@ -139,8 +163,8 @@
                 print-color-adjust: exact;
             }
             tbody td {
-                padding: 5px 8px !important;
-                border-bottom: 1px solid #e2e8f0 !important;
+                padding: 6px 8px !important;
+                border-bottom: 1px solid #cbd5e1 !important;
             }
         }
     </style>
@@ -148,8 +172,29 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<header class="site-header">
+    <a href="modulo_tecnologia_pd.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
-    <div class="page-toolbar">
+    <div class="page-toolbar ocultar-print">
         <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
     </div>
 
@@ -215,10 +260,37 @@
     </div>
 
     <div class="panel">
-        <div class="panel-header ocultar-print">
-            <span><i class="fas fa-list"></i> Ativos e Equipamentos Alocados</span>
-            <button class="btn-primary" style="background: var(--success); padding: 7px 14px;" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        <div class="panel-header">
+            <h3><i class="fas fa-list"></i> Ativos e Equipamentos Alocados</h3>
+            <button class="btn-primary ocultar-print" style="background: var(--success); padding: 7px 14px;" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS COMPLETOS -->
+        <div class="filter-grid ocultar-print">
+            <div>
+                <label>Pesquisar (Ativo / Patrimônio)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Nome do ativo ou patrimônio..." oninput="renderTabelaAtivos()">
+            </div>
+            <div>
+                <label>Projeto Vinculado</label>
+                <select id="filtroProjeto" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os projetos —</option>
+                </select>
+            </div>
+            <div>
+                <label>Status Operacional</label>
+                <select id="filtroStatus" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os status —</option>
+                    <option value="operacional">Operacional</option>
+                    <option value="manutencao">Manutenção</option>
+                    <option value="baixado">Baixado</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao secundario" style="width:100%; height:42px; margin-bottom: 12px;" onclick="limparFiltrosAtivos()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            </div>
+        </div>
+
         <div style="overflow-x:auto;">
             <table class="analitica-table">
                 <thead>
@@ -241,7 +313,7 @@
                     </tr>
                 </thead>
                 <tbody id="tbodyAtivos">
-                    <tr><td colspan="7" class="vazio">A carregar ativos...</td></tr>
+                    <tr><td colspan="7" class="empty-state">A carregar ativos...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -267,6 +339,7 @@ var STATUS_MAP = {
 };
 
 function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
+function ehMaster(){const u=obterUsuarioAtual();if(!u||!u.email)return false;return u.email.toLowerCase().trim()===EMAIL_MASTER.toLowerCase().trim();}
 function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
 
 function sbFiltro(tabela){
@@ -310,30 +383,58 @@ async function carregarProjetosSelect(){
     if(!r.error) {
         projetosCache = r.data || [];
         var sel = document.getElementById('projeto_id');
+        var filtroProj = document.getElementById('filtroProjeto');
         sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
+        filtroProj.innerHTML = '<option value="">— Todos os projetos —</option>';
         projetosCache.forEach(p => {
-            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+            var txt = (p.codigo ? p.codigo + ' · ' : '') + p.nome;
+            sel.innerHTML += `<option value="${p.id}">${txt}</option>`;
+            filtroProj.innerHTML += `<option value="${p.id}">${txt}</option>`;
         });
     }
 }
 
 async function carregarAtivos(){
-    var tbody=document.getElementById('tbodyAtivos');
     var cid=clienteIdAtual();
+    var tbody=document.getElementById('tbodyAtivos');
     if(!cid){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Cliente não identificado.</td></tr>';return;}
     var r=await sbFiltro('ativos_pd');
     if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Tabela em configuração ou vazia.</td></tr>';return;}
     ativosCache=r.data||[];
-    if(!ativosCache.length){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento registrado.</td></tr>';return;}
+    renderTabelaAtivos();
+}
+
+function renderTabelaAtivos(){
+    var tbody=document.getElementById('tbodyAtivos');
+    const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const projFiltro = document.getElementById('filtroProjeto').value;
+    const statusFiltro = document.getElementById('filtroStatus').value;
+
+    let dadosFiltrados = ativosCache.filter(a => {
+        let nome = (a.nome_ativo || '').toLowerCase();
+        let pat = (a.patrimonio || '').toLowerCase();
+        let matchTexto = !termo || nome.includes(termo) || pat.includes(termo);
+        
+        let matchProj = !projFiltro || String(a.projeto_id) === String(projFiltro);
+        let matchStatus = !statusFiltro || (a.status_ativo || 'operacional') === statusFiltro;
+
+        return matchTexto && matchProj && matchStatus;
+    });
+
+    if(!dadosFiltrados.length){
+        tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento encontrado com os filtros aplicados.</td></tr>';
+        return;
+    }
     
     var html='';
-    ativosCache.forEach(function(a){
+    dadosFiltrados.forEach(function(a){
         var proj = null;
         for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(a.projeto_id)) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
         var st = STATUS_MAP[a.status_ativo] || STATUS_MAP.operacional;
 
-        html+='<tr>'+
+        var tr = document.createElement('tr');
+        tr.innerHTML=''+
             '<td><strong>'+(a.nome_ativo||'—')+'</strong><br><small style="color:var(--text-light)">'+(a.especificacoes||'')+'</small></td>'+
             '<td>'+(a.patrimonio||'—')+'</td>'+
             '<td>'+nomeProj+'</td>'+
@@ -341,12 +442,22 @@ async function carregarAtivos(){
             '<td><span class="badge '+st.classe+'">'+st.rotulo+'</span></td>'+
             '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(a.valor_aquisicao)+'</td>'+
             '<td style="text-align:right; white-space:nowrap;" class="ocultar-print">'+
-                '<button class="btn-secondary" onclick="editarAtivo(\''+a.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
-                '<button class="btn-secondary" onclick="excluirAtivo(\''+a.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
-            '</td>'+
-        '</tr>';
+                '<button class="btn-secondary btn-editar" title="Editar"><i class="fas fa-pen"></i></button>'+
+                '<button class="btn-secondary btn-excluir" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>';
+
+        tr.querySelector('.btn-editar').onclick = function() { editarAtivo(a.id); };
+        tr.querySelector('.btn-excluir').onclick = function() { excluirAtivo(a.id); };
+
+        tbody.appendChild(tr);
     });
-    tbody.innerHTML=html;
+}
+
+function limparFiltrosAtivos(){
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroProjeto').value = '';
+    document.getElementById('filtroStatus').value = '';
+    renderTabelaAtivos();
 }
 
 async function executarImpressao(){
@@ -470,6 +581,34 @@ async function excluirAtivo(id){
 async function inicializarPagina(){
     let u=obterUsuarioAtual();
     if(!u||!u.email){location.href='login.html';return;}
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
     await carregarProjetosSelect();
     await carregarAtivos();
 }
