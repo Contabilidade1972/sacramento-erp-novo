@@ -55,14 +55,18 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.secundario { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); box-shadow: none; }
+        .btn-acao.secundario:hover { background: #f1f5f9; border-color: var(--primary); }
 
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
         .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
 
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+        
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); background: #fff; }
 
         .table-container { overflow-x: auto; }
@@ -193,19 +197,46 @@
         </div>
     </div>
 
-    <!-- TABELA DE GESTÃO -->
+    <!-- TABELA DE GESTÃO E RELATÓRIO COM FILTROS -->
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
-            <h3><i class="fas fa-list"></i> Projetos cadastrados</h3>
-            <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <h3><i class="fas fa-list"></i> Projetos cadastrados e relatórios</h3>
+            <div style="display:flex; gap:8px;">
+                <button class="btn-acao sucesso" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+            </div>
         </div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS -->
+        <div class="filter-grid ocultar-print">
+            <div>
+                <label>Pesquisar (Nome / Código)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar por nome ou código..." oninput="renderTabela()">
+            </div>
+            <div>
+                <label>Situação / Status</label>
+                <select id="filtroStatus" class="form-control" onchange="renderTabela()">
+                    <option value="">— Todas as situações —</option>
+                    <option value="Ativo">Ativo</option>
+                    <option value="Suspenso">Suspenso</option>
+                    <option value="Encerrado">Encerrado</option>
+                </select>
+            </div>
+            <div>
+                <label>Data Início (A partir de)</label>
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="renderTabela()">
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao secundario" style="width:100%; height:42px;" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            </div>
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
                             <div class="print-corporative-header">
-                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Projetos de P&D</h2>
+                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Projetos de P&D</h2>
                                 <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
                             </div>
                         </th>
@@ -301,13 +332,36 @@ async function carregarProjetos() {
 
 function renderTabela() {
     const tbody = document.getElementById('tbodyProjetos');
-    if (!projetosCache.length) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum projeto de P&D encontrado.</td></tr>';
+    
+    // Captura valores dos filtros
+    const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const statusFiltro = document.getElementById('filtroStatus').value;
+    const dataInicioFiltro = document.getElementById('filtroDataInicio').value;
+
+    // Aplica os filtros em memória sobre o cache
+    let dadosFiltrados = projetosCache.filter(p => {
+        let codigo = (p.codigo || '').toLowerCase();
+        let nome = (p.nome || '').toLowerCase();
+        let matchTexto = !termo || codigo.includes(termo) || nome.includes(termo);
+        
+        let matchStatus = !statusFiltro || (p.status || 'Ativo').toLowerCase() === statusFiltro.toLowerCase();
+        
+        let matchData = true;
+        if (dataInicioFiltro) {
+            let pInicio = p.inicio || p.data_inicio || '';
+            if (!pInicio || pInicio < dataInicioFiltro) matchData = false;
+        }
+
+        return matchTexto && matchStatus && matchData;
+    });
+
+    if (!dadosFiltrados.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum projeto encontrado com os filtros aplicados.</td></tr>';
         return;
     }
 
     tbody.innerHTML = '';
-    projetosCache.forEach(p => {
+    dadosFiltrados.forEach(p => {
         let st = (p.status || 'Ativo').toLowerCase();
         let badgeClass = 'badge-ativo';
         if (st.includes('suspens')) badgeClass = 'badge-suspenso';
@@ -331,6 +385,13 @@ function renderTabela() {
 
         tbody.appendChild(tr);
     });
+}
+
+function limparFiltros() {
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroStatus').value = '';
+    document.getElementById('filtroDataInicio').value = '';
+    renderTabela();
 }
 
 async function executarImpressao() {
@@ -376,7 +437,6 @@ async function salvarProjeto() {
         return;
     }
 
-    // Payload blindado: APENAS AS COLUNAS ESSENCIAIS que sabemos com 100% de certeza que existem na tabela (cliente_id, codigo, nome, status)
     let payload = { 
         cliente_id: cliente_id, 
         codigo: codigo, 
