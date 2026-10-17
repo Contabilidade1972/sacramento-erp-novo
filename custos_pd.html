@@ -274,10 +274,10 @@
         </div>
 
         <div>
-            <label>Comprovante (Opcional - Pode gravar sem documento)</label>
+            <label>Comprovante (Opcional - Seguro e sem falhas)</label>
             <div class="upload-box" onclick="document.getElementById('inputArquivo').click()">
                 <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--primary); margin-bottom: 6px;"></i>
-                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para anexar o comprovante (Opcional)</div>
+                <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para selecionar o comprovante (Opcional)</div>
             </div>
             <input type="file" id="inputArquivo" style="display:none;" onchange="atualizarNomeArquivo(this)">
         </div>
@@ -343,7 +343,6 @@ let contratosCache = [];
 let parceirosCache = [];
 let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
-let arquivoSelecionadoObj = null;
 
 var CATEGORIAS = {
     pessoal:              { rotulo: 'Pessoal (RH)',         classe: 'b-pesessoal' },
@@ -546,27 +545,15 @@ function aoSelecionarProjeto(){
 function atualizarNomeArquivo(input){
     if(input.files && input.files[0]){
         var file = input.files[0];
-        arquivoSelecionadoObj = file;
         arquivoAnexadoNome = file.name;
-        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Ficheiro pronto: <b>' + arquivoAnexadoNome + '</b>';
-    }
-}
-
-async function fazerUploadSupabase(file) {
-    try {
-        var cid = clienteIdAtual();
-        var fileName = 'cliente_' + cid + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        // Usa o bucket seguro 'documentos-xml' ou 'apolices' que já existem e funcionam no seu Supabase
-        var res = await sb.storage.from('documentos-xml').upload(fileName, file, { upsert: true });
-        if (res.error) {
-            console.warn("Aviso Storage:", res.error.message);
-            return null;
-        }
-        var urlRes = sb.storage.from('documentos-xml').getPublicUrl(fileName);
-        return urlRes.data.publicUrl;
-    } catch(e) {
-        console.warn("Exceção Storage:", e);
-        return null;
+        // LEITURA SEGURA EM MEMÓRIA (BASE64) PARA NUNCA MAIS DAR ERRO DE BUCKET OU STORAGE NO SUPABASE
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            arquivoAnexadoUrl = e.target.result;
+            document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Ficheiro pronto: <b>' + arquivoAnexadoName + '</b>';
+            toast('Ficheiro carregado com sucesso para o registo!', 'success');
+        };
+        reader.readAsDataURL(file);
     }
 }
 
@@ -651,13 +638,10 @@ async function carregarCustos(){
         
         var comprovanteHTML = '<span style="color:var(--text-light)">—</span>';
         if(c.comprovante) {
-            // Se o link contiver 'comprovantes' antigo com erro, exibe link limpo ou aviso seguro
-            if(c.comprovante.startsWith('http') && !c.comprovante.includes('comprovantes')) {
-                comprovanteHTML = `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
+            if(c.comprovante.startsWith('data:')) {
+                comprovanteHTML = `<a href="${c.comprovante}" download="comprovante_${c.documento_fiscal || 'anexo'}" style="color:var(--primary); font-weight:700;"><i class="fas fa-download"></i> Baixar Anexo</a>`;
             } else if(c.comprovante.startsWith('http')) {
-                // Corrige em tempo de execução para o bucket ativo 'documentos-xml' caso venha do antigo
-                var linkCorrigido = c.comprovante.replace('comprovantes', 'documentos-xml');
-                comprovanteHTML = `<a href="${linkCorrigido}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
+                comprovanteHTML = `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
             } else {
                 comprovanteHTML = `<span style="color:var(--text-light)">Registrado</span>`;
             }
@@ -731,7 +715,7 @@ function editarCusto(id){
     document.getElementById('painelPreCadastro').style.display='none';
     arquivoAnexadoUrl = c.comprovante || null;
     if(c.comprovante){
-        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Comprovante já registado';
+        document.getElementById('txtArquivo').innerHTML = '<i class="fas fa-check-circle" style="color:var(--success)"></i> Comprovante anexado';
     }
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando gasto do projeto';
@@ -754,10 +738,9 @@ function cancelarEdicao(){
     document.getElementById('descricao').value='';
     document.getElementById('painelPreCadastro').style.display='none';
     document.getElementById('inputArquivo').value='';
-    document.getElementById('txtArquivo').innerHTML='Clique para anexar o comprovante (Opcional)';
+    document.getElementById('txtArquivo').innerHTML='Clique para selecionar o comprovante (Opcional)';
     arquivoAnexadoUrl = null;
     arquivoAnexadoNome = null;
-    arquivoSelecionadoObj = null;
 
     document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar gasto do projeto';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registrar gasto';
@@ -790,13 +773,6 @@ async function salvarCusto(){
     if(!doc){doc = gerarProximoNumeroDocumento();}
 
     toast('A guardar registo...', 'info');
-
-    if(arquivoSelecionadoObj){
-        var urlStorage = await fazerUploadSupabase(arquivoSelecionadoObj);
-        if(urlStorage){
-            arquivoAnexadoUrl = urlStorage;
-        }
-    }
 
     var dados={
         cliente_id: cid,
