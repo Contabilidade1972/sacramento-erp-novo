@@ -313,19 +313,23 @@ function renderTabela() {
         if (st.includes('suspens')) badgeClass = 'badge-suspenso';
         else if (st.includes('encerrado') || st.includes('conclu')) badgeClass = 'badge-encerrado';
 
-        tbody.innerHTML += `
-            <tr>
-                <td><strong>${p.codigo || '—'}</strong></td>
-                <td>${p.nome || '—'}</td>
-                <td>${formatDataBR(p.inicio)}</td>
-                <td>${formatDataBR(p.fim)}</td>
-                <td><span class="badge ${badgeClass}">${p.status || 'Ativo'}</span></td>
-                <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
-                    <button class="btn-icon" onclick="editarProjeto(${p.id})" title="Editar"><i class="fas fa-edit"></i></button>
-                    <button class="btn-icon excluir" onclick="excluirProjeto(${p.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
+        var tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${p.codigo || '—'}</strong></td>
+            <td>${p.nome || '—'}</td>
+            <td>${formatDataBR(p.inicio)}</td>
+            <td>${formatDataBR(p.fim)}</td>
+            <td><span class="badge ${badgeClass}">${p.status || 'Ativo'}</span></td>
+            <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
+                <button class="btn-icon" title="Editar"><i class="fas fa-edit"></i></button>
+                <button class="btn-icon excluir" title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
         `;
+
+        tr.querySelector('.btn-icon:not(.excluir)').onclick = function() { editarProjeto(p.id); };
+        tr.querySelector('.btn-icon.excluir').onclick = function() { excluirProjeto(p.id); };
+
+        tbody.appendChild(tr);
     });
 }
 
@@ -390,7 +394,7 @@ async function salvarProjeto() {
     carregarProjetos();
 }
 
-window.editarProjeto = function(id) {
+function editarProjeto(id) {
     let p = projetosCache.find(x => String(x.id) === String(id));
     if(!p) return;
     document.getElementById('edit_id').value = p.id;
@@ -417,7 +421,7 @@ function cancelarEdicao() {
     document.getElementById('btnCancelar').style.display = 'none';
 }
 
-window.excluirProjeto = async function(id) {
+async function excluirProjeto(id) {
     if(confirm("Deseja realmente excluir este projeto de P&D?")) {
         const cid = clienteIdAtual();
         let res = await sb.from('projetos_pd').delete().eq('id', id).eq('cliente_id', cid);
