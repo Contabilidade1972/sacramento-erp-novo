@@ -22,7 +22,6 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -31,7 +30,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -95,17 +93,41 @@
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
-        .print-header { display: none; }
+        .print-corporative-header { display: none !important; }
 
         @media print {
-            .site-header, .page-toolbar, .panel:first-of-type, button { display: none !important; }
-            body { background: #fff !important; }
-            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
-            table { width: 100% !important; border-collapse: collapse !important; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; font-size: 11px !important; color: #000 !important; }
-            th { background: #1e3a8a !important; color: #fff !important; }
+            @page {
+                size: A4 portrait;
+                margin: 15mm 15mm 15mm 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+            .site-header, .page-toolbar, .panel:first-of-type, .toast-container, footer, 
+            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 10px !important; }
+            .panel:not(:first-of-type) { border: none !important; box-shadow: none !important; padding: 0 !important; }
+            table { font-size: 9pt !important; width: 100% !important; }
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 10px !important;
+                border-bottom: 2px solid #1e3a8a !important;
+            }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
         }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
@@ -137,16 +159,16 @@
 </header>
 
 <div class="container">
-    <div class="page-toolbar">
+    <div class="page-toolbar ocultar-print">
         <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Tecnologia & P&D</a>
     </div>
 
-    <div>
+    <div class="ocultar-print">
         <div class="page-title"><i class="fas fa-file-signature" style="color:var(--primary);"></i> Contratos & Aportes (Fomento)</div>
         <div class="page-subtitle">Controle de instrumentos de fomento, convênios, editais e repasses financeiros para inovação</div>
     </div>
 
-    <div class="panel">
+    <div class="panel ocultar-print">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
             <span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar contrato / convênio de fomento</span>
         </div>
@@ -227,13 +249,9 @@
     </div>
 
     <div class="panel">
-        <div class="print-header">
-            <h2>Relatório de Contratos & Aportes (Fomento)</h2>
-            <p>Emitido em: <span id="printDataEmissao">--</span> via Sacramento ERP</p>
-        </div>
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Contratos cadastrados</span>
-            <button class="btn-acao sucesso" type="button" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-acao sucesso ocultar-print" type="button" onclick="window.executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         <div id="listaContratos" style="overflow-x:auto;">Carregando contratos...</div>
     </div>
@@ -371,7 +389,28 @@ async function carregarContratos(){
         contratosCache = data || [];
         if(!contratosCache.length) { el.innerHTML = '<div class="empty-state">Nenhum contrato cadastrado.</div>'; return; }
         
-        let html = '<table class="analitica-table"><thead><tr><th>Contrato</th><th>Projeto</th><th>Financiador / Origem</th><th>Valor Total</th><th>Tratamento Contábil</th><th>Status</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        let html = `<table class="analitica-table">
+            <thead>
+                <tr>
+                    <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                        <div class="print-corporative-header">
+                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Contratos & Aportes (Fomento)</h2>
+                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                        </div>
+                    </th>
+                </tr>
+                <tr>
+                    <th>Contrato</th>
+                    <th>Projeto</th>
+                    <th>Financiador / Origem</th>
+                    <th>Valor Total</th>
+                    <th>Tratamento Contábil</th>
+                    <th>Status</th>
+                    <th style="text-align:right;" class="ocultar-print">Ações</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
         contratosCache.forEach(c => {
             const nomeProj = projetosMap[c.projeto_id] || '—';
             const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
@@ -382,7 +421,7 @@ async function carregarContratos(){
                 <td style="font-weight:bold;">${window.formatBRL(c.valor_total)}</td>
                 <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
                 <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
-                <td style="text-align:right; white-space:nowrap;">
+                <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
                     <button class="btn-secondary" type="button" onclick="window.imprimirContratoPorId(${c.id})" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
                     <button class="btn-secondary" type="button" onclick="window.editarContratoPorId(${c.id})" title="Editar"><i class="fas fa-pen"></i></button>
                     <button class="btn-secondary" type="button" onclick="window.excluirContratoPorId(${c.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
@@ -422,6 +461,40 @@ window.imprimirContratoPorId = function(id) {
         </html>
     `);
     janela.document.close();
+};
+
+window.executarImpressao = async function() {
+    const agora = new Date();
+    const elData = document.getElementById('printDataEmissao');
+    if(elData) elData.innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+    const selectEmp = document.getElementById('selectEmpresa');
+    const elEmpName = document.getElementById('printEmpresaNome');
+    if (elEmpName) {
+        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+            elEmpName.innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        } else {
+            const cid = window.clienteIdAtual();
+            try {
+                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+                if (data) {
+                    elEmpName.innerText = data.nome_fantasia || data.razao_social;
+                } else {
+                    elEmpName.innerText = 'Empresa Contratante ID ' + cid;
+                }
+            } catch(e) {
+                elEmpName.innerText = 'Empresa Corporativa';
+            }
+        }
+    }
+
+    const elUserName = document.getElementById('printUsuarioNome');
+    if (elUserName) {
+        const u = window.obterUsuario();
+        elUserName.innerText = u ? (u.nome || u.email || 'Usuário Atual') : 'Operador';
+    }
+
+    window.print();
 };
 
 window.salvarContrato = async function(){
@@ -566,15 +639,14 @@ async function inicializarPagina(){
         document.body.classList.remove('usuario-master');
     }
 
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
     await carregarProjetosSelect();
     await carregarContratos();
 }
 
 window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
