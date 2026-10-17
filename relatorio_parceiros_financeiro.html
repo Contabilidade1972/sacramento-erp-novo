@@ -73,6 +73,66 @@
         .badge-aberto { background: #e0f2fe; color: #0369a1; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 COM CABEÇALHO CORPORATIVO REPETIDO E NUMERAÇÃO DE PÁGINA */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm 15mm 15mm 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, 
+            .assistant-widget, .assistant-avatar, .assistant-bubble, 
+            button, [style*="position: fixed"], [style*="z-index"] {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 9.5pt;
+            }
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                gap: 10px !important;
+            }
+            .card-table {
+                border: 1px solid #cbd5e1 !important;
+                box-shadow: none !important;
+                padding: 4px !important;
+                border-radius: 4px !important;
+            }
+            table {
+                font-size: 9pt !important;
+                width: 100% !important;
+            }
+            thead {
+                display: table-header-group !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+            }
+            thead th {
+                background: #1e3a8a !important;
+                color: #fff !important;
+                padding: 6px 8px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody td {
+                padding: 5px 8px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -149,13 +209,13 @@
         <div class="toolbar-actions">
             <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
             <button class="btn-acao" onclick="carregarRelatorio()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir</button>
         </div>
     </div>
 
-    <!-- TABELA DE RESULTADOS -->
+    <!-- TABELA DE RESULTADOS COM CABEÇALHO CORPORATIVO INTEGRADO NO THEAD -->
     <div class="card-table">
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;" class="ocultar-print">
             <div>
                 <h3 id="tituloRelatorio" style="font-size:18px; font-weight:800; color:var(--secondary);">Posição Analítica por Cliente (Contas a Receber)</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Consolidado de títulos pendentes, valores em aberto e dias em atraso com seleção de parceiro cadastrado.</p>
@@ -166,6 +226,16 @@
         </div>
         <table>
             <thead>
+                <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
+                <tr>
+                    <th colspan="6" style="background: #fff !important; padding: 0 0 10px 0 !important; border: none !important;">
+                        <div style="border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+                            <h2 id="printTituloHeader" style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Posição Financeira por Parceiro</h2>
+                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros / Período:</strong> <span id="printPeriodoFiltro">Geral</span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
+                        </div>
+                    </th>
+                </tr>
                 <tr>
                     <th id="thParceiro">Cliente / Favorecido</th>
                     <th>Descrição do Título</th>
@@ -226,7 +296,6 @@
         labelParceiro.innerText = tipo === 'receber' ? 'Selecionar Cliente' : 'Selecionar Fornecedor';
 
         try {
-            // Tenta buscar primeiro na tabela unificada 'parceiros' (se existir)
             let nomes = new Set();
             const resParc = await sb.from('parceiros').select('razao_social, nome_fantasia, nome').eq('cliente_id', cid);
             if (resParc.data && resParc.data.length > 0) {
@@ -236,7 +305,6 @@
                 });
             }
 
-            // Fallback ou complemento: busca nas tabelas de contas a pagar e receber diretamente
             const tabela = tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
             const coluna = tipo === 'receber' ? 'cliente' : 'fornecedor';
 
@@ -276,6 +344,53 @@
         carregarRelatorio();
     }
 
+    async function executarImpressao() {
+        const tipo = document.getElementById('filtroTipo').value;
+        const tituloTexto = tipo === 'receber' ? 'Posição Analítica por Cliente (Contas a Receber)' : 'Posição Analítica por Fornecedor (Contas a Pagar)';
+        document.getElementById('printTituloHeader').innerText = `Sacramento ERP — ${tituloTexto}`;
+
+        const dIni = document.getElementById('filtroDataInicio').value;
+        const dFim = document.getElementById('filtroDataFim').value;
+        if (dIni && dFim) {
+            document.getElementById('printPeriodoFiltro').innerText = `${dIni.split('-').reverse().join('/')} até ${dFim.split('-').reverse().join('/')}`;
+        } else {
+            document.getElementById('printPeriodoFiltro').innerText = 'Todos os Períodos';
+        }
+        
+        const agora = new Date();
+        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+        // CAPTURA DINÂMICA E SEGURA DA EMPRESA ATIVA (LGPD / MULTI-TENANT)
+        const selectEmp = document.getElementById('selectEmpresa');
+        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        } else {
+            const cid = clienteIdAtual();
+            try {
+                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+                if (data) {
+                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+                } else {
+                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+                }
+            } catch(e) {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+            }
+        }
+
+        const u = obterUsuario();
+        if (u) {
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+        } else {
+            document.getElementById('printUsuarioNome').innerText = 'Operador';
+        }
+
+        const resumoTexto = document.getElementById('resumoTotalParceiro').innerText;
+        document.getElementById('printResumoTotais').innerText = resumoTexto;
+
+        window.print();
+    }
+
     function sair() {
         if (confirm('Deseja realmente sair?')) {
             localStorage.removeItem('usuarioLogado');
@@ -308,6 +423,7 @@
         }
 
         try {
+            // ISOLAMENTO RIGOROSO MULTI-TENANT POR CLIENTE_ID (LGPD)
             const tabela = tipo === 'receber' ? 'contas_receber' : 'contas_pagar';
             let query = sb.from(tabela).select('*').eq('cliente_id', cid);
 
