@@ -169,7 +169,7 @@
         </div>
         <div class="form-grid">
             <div>
-                <label>Data de Início *</label>
+                <label>Data de Início (Opcional)</label>
                 <input type="date" id="inicio" class="form-control">
             </div>
             <div>
@@ -313,15 +313,12 @@ function renderTabela() {
         if (st.includes('suspens')) badgeClass = 'badge-suspenso';
         else if (st.includes('encerrado') || st.includes('conclu')) badgeClass = 'badge-encerrado';
 
-        // Mapeia tanto coluna 'fim' quanto 'data_fim' para exibição segura
-        let dataFimValor = p.fim || p.data_fim || '';
-
         var tr = document.createElement('tr');
         tr.innerHTML = `
             <td><strong>${p.codigo || '—'}</strong></td>
             <td>${p.nome || '—'}</td>
             <td>${formatDataBR(p.inicio || p.data_inicio)}</td>
-            <td>${formatDataBR(dataFimValor)}</td>
+            <td>${formatDataBR(p.fim || p.data_fim)}</td>
             <td><span class="badge ${badgeClass}">${p.status || 'Ativo'}</span></td>
             <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
                 <button class="btn-icon" title="Editar"><i class="fas fa-edit"></i></button>
@@ -376,24 +373,23 @@ async function salvarProjeto() {
     const status = document.getElementById('status').value;
     const cliente_id = clienteIdAtual();
 
-    if(!nome || !inicio) {
-        toast("Preencha o nome e a data de início do projeto.", "error");
+    if(!nome) {
+        toast("Preencha o nome do projeto.", "error");
         return;
     }
 
-    // Payload unificado suportando tanto 'fim' quanto 'data_fim' para evitar erros de esquema
+    // Payload seguro contendo apenas as colunas essenciais garantidas na base de dados
     let payload = { 
-        cliente_id, 
-        codigo, 
-        nome, 
-        inicio: inicio, 
-        data_inicio: inicio,
-        fim: fim ? fim : null, 
-        data_fim: fim ? fim : null,
-        status 
+        cliente_id: cliente_id, 
+        codigo: codigo, 
+        nome: nome, 
+        status: status 
     };
-    let res;
 
+    if(inicio) payload.inicio = inicio;
+    if(fim) payload.fim = fim;
+
+    let res;
     if(id) {
         res = await sb.from('projetos_pd').update(payload).eq('id', id).eq('cliente_id', cliente_id);
     } else {
