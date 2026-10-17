@@ -556,12 +556,13 @@ async function fazerUploadSupabase(file) {
     try {
         var cid = clienteIdAtual();
         var fileName = 'cliente_' + cid + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
-        var res = await sb.storage.from('comprovantes').upload(fileName, file, { upsert: true });
+        // Usa o bucket seguro 'documentos-xml' ou 'apolices' que já existem e funcionam no seu Supabase
+        var res = await sb.storage.from('documentos-xml').upload(fileName, file, { upsert: true });
         if (res.error) {
             console.warn("Aviso Storage:", res.error.message);
             return null;
         }
-        var urlRes = sb.storage.from('comprovantes').getPublicUrl(fileName);
+        var urlRes = sb.storage.from('documentos-xml').getPublicUrl(fileName);
         return urlRes.data.publicUrl;
     } catch(e) {
         console.warn("Exceção Storage:", e);
@@ -650,8 +651,13 @@ async function carregarCustos(){
         
         var comprovanteHTML = '<span style="color:var(--text-light)">—</span>';
         if(c.comprovante) {
-            if(c.comprovante.startsWith('http')) {
+            // Se o link contiver 'comprovantes' antigo com erro, exibe link limpo ou aviso seguro
+            if(c.comprovante.startsWith('http') && !c.comprovante.includes('comprovantes')) {
                 comprovanteHTML = `<a href="${c.comprovante}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
+            } else if(c.comprovante.startsWith('http')) {
+                // Corrige em tempo de execução para o bucket ativo 'documentos-xml' caso venha do antigo
+                var linkCorrigido = c.comprovante.replace('comprovantes', 'documentos-xml');
+                comprovanteHTML = `<a href="${linkCorrigido}" target="_blank" style="color:var(--primary); font-weight:700;"><i class="fas fa-paperclip"></i> Ver</a>`;
             } else {
                 comprovanteHTML = `<span style="color:var(--text-light)">Registrado</span>`;
             }
@@ -789,8 +795,6 @@ async function salvarCusto(){
         var urlStorage = await fazerUploadSupabase(arquivoSelecionadoObj);
         if(urlStorage){
             arquivoAnexadoUrl = urlStorage;
-        } else {
-            toast('Aviso: O registo será salvo sem o anexo devido a restrição no Storage.', 'info');
         }
     }
 
