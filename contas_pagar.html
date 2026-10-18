@@ -120,8 +120,8 @@
             .print-corporative-header {
                 display: block !important;
                 background: #fff !important;
-                padding-bottom: 6px !important;
-                margin-bottom: 8px !important;
+                padding-bottom: 6mm !important;
+                margin-bottom: 8mm !important;
                 border-bottom: 2px solid #1e3a8a !important;
                 width: 100% !important;
             }
@@ -233,7 +233,7 @@
                 </div>
                 <div>
                     <label>CNPJ / CPF do Fornecedor *</label>
-                    <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números...">
+                    <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
                 </div>
                 <div>
                     <label>Razão Social / Fornecedor *</label>
@@ -478,6 +478,43 @@ function atualizarCodigoVirtual() {
         proximoId = maxId + 1;
     }
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
+}
+
+// BUSCA INTELIGENTE DE FORNECEDOR / CNPJ (BASE LOCAL + RECEITA FEDERAL)
+async function consultarCnpjReceita(doc) {
+    let limpo = doc.replace(/\D/g, '');
+    if (!limpo) return;
+    const cid = clienteIdAtual();
+
+    try {
+        const { data } = await sb.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
+        if (data && (data.razao_social || data.nome)) {
+            document.getElementById('fornecedor_nome').value = data.razao_social || data.nome;
+            return;
+        }
+    } catch(e) {}
+
+    if (limpo.length === 14) {
+        try {
+            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${limpo}`);
+            if (resp.ok) {
+                let json = await resp.json();
+                if (json.razao_social) {
+                    document.getElementById('fornecedor_nome').value = json.razao_social;
+                    await sb.from('parceiros').insert([{
+                        cliente_id: cid,
+                        tipo: 'Fornecedor',
+                        razao_social: json.razao_social,
+                        nome_fantasia: json.nome_fantasia || json.razao_social,
+                        cnpj_cpf: limpo,
+                        telefone: json.ddd_telefone_1 || '',
+                        email: json.email || ''
+                    }]);
+                    return;
+                }
+            }
+        } catch(err) {}
+    }
 }
 
 async function carregarContas() {
