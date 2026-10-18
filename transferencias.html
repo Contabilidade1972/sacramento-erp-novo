@@ -23,7 +23,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -44,10 +43,12 @@
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-sair:hover { background: #b91c1c; }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1380px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); }
+        .btn-acao.sucesso:hover { background: #059669; }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -86,13 +87,30 @@
         .modal-card { background: var(--card); width: 100%; max-width: 420px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        .print-corporative-header { display: none !important; }
 
         @media print {
-            body { background: #fff; color: #000; }
-            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; }
-            .panel { border: none !important; box-shadow: none !important; }
+            @page {
+                size: A4 portrait;
+                margin: 10mm;
+            }
+            body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
+            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 5mm !important; width: 100% !important; display: block !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 6mm !important;
+                margin-bottom: 8mm !important;
+                border-bottom: 2px solid #1e3a8a !important;
+                width: 100% !important;
+            }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; table-layout: fixed !important; margin: 0 auto !important; }
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
+            tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
@@ -199,7 +217,14 @@
                 <label>Banco</label>
                 <input type="text" id="favorecido_banco" class="form-control" placeholder="Banco..." list="listaBancos">
                 <datalist id="listaBancos">
-                    <option value="001 - Banco do Brasil S.A."><option value="033 - Banco Santander"><option value="104 - Caixa Econômica Federal"><option value="237 - Bradesco"><option value="341 - Itaú Unibanco"><option value="260 - Nubank"><option value="077 - Banco Inter"><option value="756 - Sicoob">
+                    <option value="001 - Banco do Brasil S.A.">
+                    <option value="033 - Banco Santander">
+                    <option value="104 - Caixa Econômica Federal">
+                    <option value="237 - Bradesco">
+                    <option value="341 - Itaú Unibanco">
+                    <option value="260 - Nubank">
+                    <option value="077 - Banco Inter">
+                    <option value="756 - Sicoob">
                 </datalist>
             </div>
             <div><label>Agência</label><input type="text" id="favorecido_agencia" class="form-control" placeholder="0000"></div>
@@ -239,13 +264,13 @@
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO COM BOTÕES DE AÇÃO -->
-    <div class="panel">
+    <!-- TABELA DE HISTÓRICO COM IMPRESSÃO CORPORATIVA CENTRALIZADA A4 -->
+    <div class="panel" id="cardRelatorioModo">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
-            <button class="btn-acao" onclick="window.print()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-acao" onclick="executarImpressao()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
-        <div id="listaTransferencias" style="overflow-x:auto;">A carregar transferências...</div>
+        <div class="table-container" id="listaTransferencias">A carregar transferências...</div>
     </div>
 </div>
 
@@ -258,27 +283,27 @@ let transferenciasCache = [];
 let contasBancariasCache = [];
 let listaParceirosCache = [];
 
-window.obterUsuario = function() {
+function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-};
+}
 
-window.ehMaster = function() {
-    const u = window.obterUsuario();
+function ehMaster() {
+    const u = obterUsuario();
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-};
+}
 
-window.clienteIdAtual = function() {
-    const u = window.obterUsuario();
+function clienteIdAtual() {
+    const u = obterUsuario();
     if (!u) return 1;
-    if (window.ehMaster()) {
+    if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
-};
+}
 
 async function inicializarPagina() {
-    let u = window.obterUsuario();
+    let u = obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
     if (u.email) {
@@ -288,7 +313,7 @@ async function inicializarPagina() {
         }
     }
 
-    const master = window.ehMaster();
+    const master = ehMaster();
 
     if (master) {
         document.body.classList.add('usuario-master');
@@ -301,7 +326,7 @@ async function inicializarPagina() {
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
         select.value = selAtual;
         select.disabled = false;
     } else {
@@ -341,7 +366,7 @@ function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.valu
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 async function carregarCombosEParceiros(){
-    const cid = window.clienteIdAtual();
+    const cid = clienteIdAtual();
     if(!cid) return;
 
     const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
@@ -375,12 +400,32 @@ async function carregarCombosEParceiros(){
     }
 }
 
-function buscarPorDocumento(docDigitado){
+async function buscarPorDocumento(docDigitado){
     let busca = docDigitado.trim().replace(/\D/g, '');
     if(busca.length < 3) return;
+    const cid = clienteIdAtual();
+
+    // 1. Tenta base local de parceiros
     let achado = listaParceirosCache.find(p => (p.cnpj_cpf||'').toString().replace(/\D/g,'') === busca);
-    if(achado){ preencherCamposFavorecido(achado); toast("Favorecido carregado!", "success"); document.getElementById('divCadastrarRapido').style.display='none'; }
-    else { document.getElementById('divCadastrarRapido').style.display='block'; }
+    if(achado){ preencherCamposFavorecido(achado); toast("Favorecido carregado da base local!", "success"); document.getElementById('divCadastrarRapido').style.display='none'; return; }
+
+    // 2. Se for CNPJ, busca na Receita Federal via BrasilAPI
+    if (busca.length === 14) {
+        try {
+            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${busca}`);
+            if (resp.ok) {
+                let json = await resp.json();
+                if (json.razao_social) {
+                    document.getElementById('favorecido_nome').value = json.razao_social;
+                    document.getElementById('favorecido_banco').value = json.bancos?.[0]?.nome_banco || '';
+                    document.getElementById('divCadastrarRapido').style.display = 'block';
+                    toast("Dados encontrados na Receita Federal!", "success");
+                    return;
+                }
+            }
+        } catch(err) {}
+    }
+    document.getElementById('divCadastrarRapido').style.display = 'block';
 }
 
 function buscarPorNome(nomeDigitado){
@@ -402,7 +447,7 @@ async function cadastrarFavorecidoRapido(){
     let nome = document.getElementById('favorecido_nome').value.trim();
     let cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
     if(!nome || !cnpj_cpf){ toast("Informe pelo menos o Nome e o CPF/CNPJ!", "error"); return; }
-    const cid = window.clienteIdAtual();
+    const cid = clienteIdAtual();
     let payload = { cliente_id: cid, nome: nome, tipo_cadastro: 'Fornecedor', cnpj_cpf: cnpj_cpf, banco: document.getElementById('favorecido_banco').value.trim(), agencia: document.getElementById('favorecido_agencia').value.trim(), conta_corrente: document.getElementById('favorecido_conta').value.trim() };
     const { error } = await sb.from('parceiros').insert([payload]);
     if(error){ toast("Erro ao cadastrar: "+error.message, "error"); return; }
@@ -418,7 +463,7 @@ async function salvarTransferencia(){
     const valor = parseValorBR(document.getElementById('valor').value);
     const data = document.getElementById('data').value;
     const centro_custo = document.getElementById('centro_custo').value;
-    const cid = window.clienteIdAtual();
+    const cid = clienteIdAtual();
 
     if(!conta_origem || !valor || !data || !centro_custo || (!conta_destino && !document.getElementById('favorecido_nome').value)){
         toast("Preencha os campos obrigatórios!", "error"); return;
@@ -449,19 +494,29 @@ async function salvarTransferencia(){
 }
 
 async function carregarTransferencias(){
-    const cid = window.clienteIdAtual();
+    const cid = clienteIdAtual();
     const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
     if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar.</div>'; return; }
     transferenciasCache = r.data || [];
-    renderTabelaHistorico();
+    renderTabelaHistorico(transferenciasCache);
 }
 
-function renderTabelaHistorico(){
+function renderTabelaHistorico(lista){
     const el = document.getElementById('listaTransferencias');
-    if(!transferenciasCache.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
+    if(!lista.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
 
-    let html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-    transferenciasCache.forEach(t => {
+    let html = '<table class="analitica-table"><thead>';
+    html += `<tr>
+        <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
+            <div class="print-corporative-header">
+                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Transferências & Movimentações</h2>
+                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+            </div>
+        </th>
+    </tr>`;
+    html += '<tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
+    
+    lista.forEach(t => {
         let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
         html += `<tr>
             <td>${t.data}</td>
@@ -469,7 +524,7 @@ function renderTabelaHistorico(){
             <td>${t.centro_custo || '—'}</td>
             <td>${t.observacao || '—'}</td>
             <td style="text-align:right; font-weight:bold;">R$ ${fmtBR(t.valor)}</td>
-            <td style="text-align:right; white-space:nowrap;">
+            <td style="text-align:right; white-space:nowrap;" class="col-acoes">
                 <button class="btn-icon" onclick='prepararEdicao(${JSON.stringify(t)})' title="Editar"><i class="fas fa-edit"></i></button>
                 <button class="btn-icon imprimir" onclick='imprimirComprovante(${JSON.stringify(t)})' title="Imprimir Comprovante"><i class="fas fa-print"></i></button>
                 <button class="btn-icon excluir" onclick='excluirMovimento(${t.id})' title="Excluir"><i class="fas fa-trash"></i></button>
@@ -497,34 +552,43 @@ function aplicarFiltrosRelatorio() {
         return true;
     });
 
-    const el = document.getElementById('listaTransferencias');
-    if(!filtradas.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada com os filtros aplicados.</div>'; return; }
-
-    let html = '<table class="analitica-table"><thead><tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-    filtradas.forEach(t => {
-        let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
-        html += `<tr>
-            <td>${t.data}</td>
-            <td><strong>${t.conta_origem}</strong>${dest}</td>
-            <td>${t.centro_custo || '—'}</td>
-            <td>${t.observacao || '—'}</td>
-            <td style="text-align:right; font-weight:bold;">R$ ${fmtBR(t.valor)}</td>
-            <td style="text-align:right; white-space:nowrap;">
-                <button class="btn-icon" onclick='prepararEdicao(${JSON.stringify(t)})' title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon imprimir" onclick='imprimirComprovante(${JSON.stringify(t)})' title="Imprimir Comprovante"><i class="fas fa-print"></i></button>
-                <button class="btn-icon excluir" onclick='excluirMovimento(${t.id})' title="Excluir"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    el.innerHTML = html;
+    renderTabelaHistorico(filtradas);
 }
 
 function limparFiltrosRelatorio() {
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     document.getElementById('filtroBusca').value = '';
-    renderTabelaHistorico();
+    renderTabelaHistorico(transferenciasCache);
+}
+
+async function executarImpressao() {
+    const selectEmp = document.getElementById('selectEmpresa');
+    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+    } else {
+        const cid = clienteIdAtual();
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) {
+                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+            } else {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+            }
+        } catch(e) {
+            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+        }
+    }
+
+    const u = obterUsuario();
+    if (u) {
+        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+    } else {
+        document.getElementById('printUsuarioNome').innerText = 'Operador';
+    }
+
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
+    window.print();
 }
 
 function prepararEdicao(t){
@@ -616,7 +680,7 @@ window.salvarNovoCentroCusto = async function(){
 
 window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
