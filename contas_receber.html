@@ -95,26 +95,26 @@
         @media print {
             @page {
                 size: A4 portrait;
-                margin: 15mm;
+                margin: 20mm 15mm 20mm 15mm;
             }
-            body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
+            body { background: #fff !important; color: #000 !important; font-size: 9pt; }
             .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; gap: 0 !important; width: 100% !important; display: block !important; }
+            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 !important; width: 100% !important; display: block !important; }
             .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
             .print-corporative-header {
                 display: block !important;
                 background: #fff !important;
-                padding-bottom: 6px !important;
-                margin-bottom: 8px !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 12px !important;
                 border-bottom: 2px solid #1e3a8a !important;
                 width: 100% !important;
             }
             .table-container { width: 100% !important; overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; table-layout: fixed !important; margin: 0 auto !important; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt !important; table-layout: fixed !important; margin: 0 auto !important; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
-            tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
@@ -192,7 +192,7 @@
                 </div>
                 <div>
                     <label>CNPJ / CPF do Cliente *</label>
-                    <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números...">
+                    <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
                 </div>
                 <div>
                     <label>Razão Social / Cliente *</label>
@@ -277,9 +277,9 @@
                         <tr>
                             <th colspan="9" style="background: #fff !important; padding: 0 !important; border: none !important;">
                                 <div class="print-corporative-header">
-                                    <h2 style="font-size: 12pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório Operacional de Contas a Receber</h2>
-                                    <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                    <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros Aplicados:</strong> <span id="printFiltrosInfo">Todos</span></p>
+                                    <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório Operacional de Contas a Receber</h2>
+                                    <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                                    <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros Aplicados:</strong> <span id="printFiltrosInfo">Todos</span></p>
                                 </div>
                             </th>
                         </tr>
@@ -323,7 +323,7 @@
                             <th>Valor Total</th>
                             <th>Status</th>
                             <th>Data Criação</th>
-                            <th style="text-align:right;">Ações</th>
+                            <th style="text-align:right;" class="col-acoes">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
@@ -446,6 +446,46 @@ function atualizarCodigoVirtual() {
         proximoId = maxId + 1;
     }
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
+}
+
+// BUSCA INTELIGENTE DE CLIENTE / CNPJ (BASE LOCAL + RECEITA FEDERAL)
+async function consultarCnpjReceita(doc) {
+    let limpo = doc.replace(/\D/g, '');
+    if (!limpo) return;
+    const cid = clienteIdAtual();
+
+    // 1. Tenta buscar na base local de parceiros
+    try {
+        const { data } = await sb.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
+        if (data && (data.razao_social || data.nome)) {
+            document.getElementById('cliente_nome').value = data.razao_social || data.nome;
+            return;
+        }
+    } catch(e) {}
+
+    // 2. Se for CNPJ válido (14 dígitos), consulta API externa da Receita Federal (BrasilAPI)
+    if (limpo.length === 14) {
+        try {
+            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${limpo}`);
+            if (resp.ok) {
+                let json = await resp.json();
+                if (json.razao_social) {
+                    document.getElementById('cliente_nome').value = json.razao_social;
+                    // Opcional: já cadastra automaticamente na tabela parceiros para futuras consultas
+                    await sb.from('parceiros').insert([{
+                        cliente_id: cid,
+                        tipo: 'Cliente',
+                        razao_social: json.razao_social,
+                        nome_fantasia: json.nome_fantasia || json.razao_social,
+                        cnpj_cpf: limpo,
+                        telefone: json.ddd_telefone_1 || '',
+                        email: json.email || ''
+                    }]);
+                    return;
+                }
+            }
+        } catch(err) {}
+    }
 }
 
 async function carregarContas() {
@@ -585,7 +625,7 @@ function renderTabela() {
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${dataReg}</td>
-                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;">
+                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;" class="col-acoes">
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
