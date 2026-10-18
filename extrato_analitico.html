@@ -1,495 +1,988 @@
 <!DOCTYPE html>
+
 <html lang="pt-BR">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Extrato Analítico & Movimentações — Sacramento ERP</title>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script src="erp-core.js"></script>
+
     <style>
+
         :root {
+
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+
         }
+
+
 
         body:not(.usuario-master) .empresa-selector {
+
             display: none !important;
+
             visibility: hidden !important;
+
         }
+
+
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
+
+
         .site-header {
+
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+
         }
+
         .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+
         .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+
         .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+
         .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
+
+
         .site-nav-right { display: flex; align-items: center; gap: 14px; }
+
         .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+
         .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+
         .empresa-selector select option { color: #000; }
+
         .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+
         .btn-sair:hover { background: #b91c1c; }
+
+
 
         .container { max-width: 1350px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
+
+
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+
         .btn-voltar { background: #64748b; color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; }
+
         .btn-voltar:hover { background: #475569; }
 
+
+
         .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
+
         .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; width: 100%; }
+
         .filtro-group { display: flex; flex-direction: column; gap: 6px; }
+
         .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
+
         .filtro-group input, .filtro-group select { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
+
         .filtro-group input:focus, .filtro-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
 
+
+
         .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
+
         
+
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+
         .btn-acao:hover { background: var(--primary-dark); }
+
         .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+
         .btn-secundario:hover { background: #cbd5e1; }
 
+
+
         .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
         thead th { background: var(--bg); text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
+
         tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
+
         tbody tr:hover { background: #f8fafc; }
+
         .num { text-align: right; }
+
         .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
 
+
+
         .badge-tipo { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+
         .badge-entrada { background: #d1fae5; color: #065f46; }
+
         .badge-saida { background: #ffeeef; color: #991b1b; }
+
+
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM BLINDAGEM DE MARGENS E REMOÇÃO DE WIDGETS */
+
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL COM OCULTAÇÃO TOTAL DE BOTÕES FLUTUANTES */
+
         @media print {
+
             @page {
+
                 size: A4 portrait;
-                margin: 15mm;
+
+                margin: 15mm 15mm 15mm 15mm;
+
                 @bottom-right {
+
                     content: "Página " counter(page) " de " counter(pages);
+
                     font-size: 8.5pt;
+
                     font-family: 'Inter', sans-serif;
+
                     color: #475569;
+
                 }
+
             }
+
             .site-header, .page-toolbar, .toolbar, .btn-sair, footer, 
-            button, [style*="position: fixed"], [style*="z-index"], button[title="Central de Ajuda"] {
+
+            .assistant-widget, .assistant-avatar, .assistant-bubble, 
+
+            button, [style*="position: fixed"], [style*="z-index"] {
+
                 display: none !important;
+
                 visibility: hidden !important;
+
                 opacity: 0 !important;
+
                 pointer-events: none !important;
+
             }
+
             body {
+
                 background: #fff !important;
+
                 color: #000 !important;
+
                 font-size: 9.5pt;
+
             }
+
             .container {
+
                 max-width: 100% !important;
+
                 margin: 0 !important;
+
                 padding: 0 !important;
+
                 gap: 10px !important;
+
             }
+
             .card-table {
-                border: none !important;
+
+                border: 1px solid #cbd5e1 !important;
+
                 box-shadow: none !important;
-                padding: 0 !important;
-                border-radius: 0 !important;
+
+                padding: 4px !important;
+
+                border-radius: 4px !important;
+
             }
+
             table {
+
                 font-size: 9pt !important;
+
                 width: 100% !important;
+
             }
+
             thead {
+
                 display: table-header-group !important;
+
             }
+
             tr {
+
                 page-break-inside: avoid !important;
+
             }
+
             thead th {
+
                 background: #1e3a8a !important;
+
                 color: #fff !important;
+
                 padding: 6px 8px !important;
+
                 -webkit-print-color-adjust: exact;
+
                 print-color-adjust: exact;
+
             }
+
             tbody td {
+
                 padding: 5px 8px !important;
+
                 border-bottom: 1px solid #e2e8f0 !important;
+
             }
+
         }
+
     </style>
+
 </head>
+
 <body>
 
+
+
 <header class="site-header">
+
     <a href="index.html" class="site-brand">
+
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+
         <div class="brand-info">
+
             <h1>Sacramento ERP</h1>
+
             <span>Portal Corporativo</span>
+
         </div>
+
     </a>
+
     <div class="site-nav-right">
+
         <div class="empresa-selector" id="boxSeletorEmpresa">
+
             <i class="fas fa-building" style="color: #93c5fd;"></i>
+
             <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+
         </div>
+
         <div class="user-box">
+
             <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+
             <span id="userName">Usuário</span>
+
         </div>
+
         <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+
     </div>
+
 </header>
 
+
+
 <div class="container">
+
     
+
     <!-- BOTÃO DE RETORNO AO MÓDULO -->
+
     <div class="page-toolbar">
+
         <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+
     </div>
+
+
 
     <!-- BARRA DE FILTROS AVANÇADA -->
+
     <div class="toolbar">
+
         <div class="filtro-grid">
+
             <div class="filtro-group">
+
                 <label>Data Inicial</label>
+
                 <input type="date" id="filtroDataInicio">
+
             </div>
+
             <div class="filtro-group">
+
                 <label>Data Final</label>
+
                 <input type="date" id="filtroDataFim">
+
             </div>
+
             <div class="filtro-group">
+
                 <label>Tipo de Lançamento</label>
+
                 <select id="filtroTipo">
+
                     <option value="todos">Todos (Entradas e Saídas)</option>
+
                     <option value="receber">Apenas Entradas (Receitas)</option>
+
                     <option value="pagar">Apenas Saídas (Despesas)</option>
+
                 </select>
+
             </div>
+
             <div class="filtro-group">
+
                 <label>Centro de Custo</label>
+
                 <select id="filtroCentroCusto">
+
                     <option value="todos">Todos os Centros de Custo</option>
+
                     <option value="1.02 - Administrativo">1.02 - Administrativo</option>
+
                     <option value="2.01 - Comercial & Vendas">2.01 - Comercial & Vendas</option>
+
                     <option value="3.02 - P&D e Inovação">3.02 - P&D e Inovação</option>
+
                 </select>
+
             </div>
+
             <div class="filtro-group">
+
                 <label>Pesquisar (Histórico)</label>
+
                 <input type="text" id="filtroTexto" placeholder="Ex: Google, Contábeis...">
+
             </div>
+
         </div>
+
         <div class="toolbar-actions">
+
             <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+
             <button class="btn-acao" onclick="carregarExtrato()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
+
             <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir</button>
+
         </div>
+
     </div>
 
-    <!-- TABELA DE EXTRATO COM CABEÇALHO CORPORATIVO INTEGRADO NO THEAD -->
+
+
+    <!-- TABELA DE EXTRATO COM CABEÇALHO CORPORATIVO INTEGRADO NO THEAD (REPETIÇÃO PERFEITA EM TODAS AS PÁGINAS) -->
+
     <div class="card-table">
+
         <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;" class="ocultar-print">
+
             <div>
+
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Extrato Analítico Consolidado</h3>
+
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade completa de todas as movimentações financeiras da empresa.</p>
+
             </div>
+
             <div id="resumoTotais" style="font-size: 13px; font-weight: 700; color: var(--secondary);">
+
                 --
+
             </div>
+
         </div>
+
         <table>
+
             <thead>
+
                 <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
+
                 <tr>
+
                     <th colspan="6" style="background: #fff !important; padding: 0 0 10px 0 !important; border: none !important;">
+
                         <div style="border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+
                             <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Extrato Analítico Consolidado</h2>
+
                             <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+
                             <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
+
                         </div>
+
                     </th>
+
                 </tr>
+
                 <tr>
+
                     <th>Data Venc.</th>
+
                     <th>Tipo</th>
+
                     <th>Descrição / Histórico</th>
+
                     <th>Favorecido / Pagador</th>
+
                     <th>Centro de Custo</th>
+
                     <th class="num">Valor (R\$)</th>
+
                 </tr>
+
             </thead>
+
             <tbody id="tbodyExtrato">
+
                 <tr><td colspan="6" class="vazio">A carregar lançamentos do Supabase...</td></tr>
+
             </tbody>
+
         </table>
+
     </div>
+
+
 
 </div>
 
+
+
 <footer>
+
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+
 </footer>
 
+
+
 <script>
+
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
+
+
     function obterUsuario() {
+
         try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+
     }
+
+
 
     function ehMaster() {
+
         const u = obterUsuario();
+
         if (!u || !u.email) return false;
+
         return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+
     }
+
+
 
     function clienteIdAtual() {
+
         const u = obterUsuario();
+
         if (!u) return 1;
+
         if (ehMaster()) {
+
             try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+
             return u.cliente_id ? parseInt(u.cliente_id) : 2;
+
         }
+
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
+
     }
+
+
 
     function formatarMoeda(valor) {
+
         let num = parseFloat(valor) || 0;
+
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
     }
+
+
 
     if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
+
         const agora = new Date();
+
         const ano = agora.getFullYear();
+
         const mes = String(agora.getMonth() + 1).padStart(2, '0');
+
         document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+
         const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
+
         document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+
     }
+
+
 
     function limparFiltros() {
+
         const agora = new Date();
+
         const ano = agora.getFullYear();
+
         const mes = String(agora.getMonth() + 1).padStart(2, '0');
+
         const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
 
+
+
         document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
+
         document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+
         document.getElementById('filtroTipo').value = 'todos';
+
         document.getElementById('filtroCentroCusto').value = 'todos';
+
         document.getElementById('filtroTexto').value = '';
+
         carregarExtrato();
+
     }
+
+
 
     async function executarImpressao() {
+
         const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
+
         const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
+
         document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
+
         
+
         const agora = new Date();
+
         document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
+
+
+        // CAPTURA DINÂMICA E SEGURA DA EMPRESA ATIVA (LGPD / MULTI-TENANT)
+
         const selectEmp = document.getElementById('selectEmpresa');
+
         if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+
             document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+
         } else {
+
             const cid = clienteIdAtual();
+
             try {
+
                 const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+
                 if (data) {
+
                     document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+
                 } else {
+
                     document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+
                 }
+
             } catch(e) {
+
                 document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+
             }
+
         }
+
+
 
         const u = obterUsuario();
+
         if (u) {
+
             document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+
         } else {
+
             document.getElementById('printUsuarioNome').innerText = 'Operador';
+
         }
+
+
 
         const resumoTexto = document.getElementById('resumoTotais').innerText;
+
         document.getElementById('printResumoTotais').innerText = resumoTexto;
 
+
+
         window.print();
+
     }
+
+
 
     function sair() {
+
         if (confirm('Deseja realmente sair?')) {
+
             localStorage.removeItem('usuarioLogado');
+
             localStorage.removeItem('empresaSelecionada');
+
             location.href = 'login.html';
+
         }
+
     }
 
+
+
     async function carregarExtrato() {
+
         const cid = clienteIdAtual();
+
         const dataInicio = document.getElementById('filtroDataInicio').value;
+
         const dataFim = document.getElementById('filtroDataFim').value;
+
         const tipoFiltro = document.getElementById('filtroTipo').value;
+
         const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
+
         const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
 
+
+
         const tbody = document.getElementById('tbodyExtrato');
+
         tbody.innerHTML = `<tr><td colspan="6" class="vazio">A consultar base de dados...</td></tr>`;
 
+
+
         try {
+
             let promessas = [];
+
+            // ISOLAMENTO RIGOROSO MULTI-TENANT POR CLIENTE_ID (LGPD)
+
             if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
+
                 let query = sb.from('contas_receber').select('*').eq('cliente_id', cid);
+
                 if (dataInicio) query = query.gte('vencimento', dataInicio);
+
                 if (dataFim) query = query.lte('vencimento', dataFim);
+
                 promessas.push(query);
+
             } else {
+
                 promessas.push(Promise.resolve({ data: [] }));
+
             }
+
+
 
             if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
+
                 let query = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
+
                 if (dataInicio) query = query.gte('vencimento', dataInicio);
+
                 if (dataFim) query = query.lte('vencimento', dataFim);
+
                 promessas.push(query);
+
             } else {
+
                 promessas.push(Promise.resolve({ data: [] }));
+
             }
+
+
 
             const [resRec, resPag] = await Promise.all(promessas);
+
             const lista = [];
 
+
+
             if (resRec.data) {
+
                 resRec.data.forEach(r => {
+
                     lista.push({
+
                         data: r.vencimento || '',
+
                         tipo: 'Entrada',
+
                         descricao: r.descricao || 'Recebimento de Fatura',
+
                         favorecido: r.cliente || 'Cliente Diversos',
+
                         centroCusto: r.centro_custo || 'N/A',
+
                         valor: parseFloat(r.valor) || 0
+
                     });
+
                 });
+
             }
+
+
 
             if (resPag.data) {
+
                 resPag.data.forEach(p => {
+
                     lista.push({
+
                         data: p.vencimento || '',
+
                         tipo: 'Saída',
+
                         descricao: p.descricao || 'Pagamento de Despesa',
+
                         favorecido: p.fornecedor || 'Fornecedor Diversos',
+
                         centroCusto: p.centro_custo || 'N/A',
+
                         valor: parseFloat(p.valor) || 0
+
                     });
+
                 });
+
             }
 
+
+
             let listaFiltrada = lista.filter(item => {
+
                 let matchCC = (centroCustoFiltro === 'todos' || (item.centroCusto && item.centroCusto.toLowerCase().includes(centroCustoFiltro.toLowerCase())));
+
                 let matchTexto = (!textoFiltro || item.descricao.toLowerCase().includes(textoFiltro) || item.favorecido.toLowerCase().includes(textoFiltro));
+
                 return matchCC && matchTexto;
+
             });
+
+
 
             listaFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
 
+
+
             if (listaFiltrada.length === 0) {
+
                 tbody.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum lançamento encontrado para os filtros selecionados.</td></tr>`;
+
                 document.getElementById('resumoTotais').innerText = `Total Entradas: R$ 0,00 | Total Saídas: R$ 0,00`;
+
                 return;
+
             }
+
+
 
             let totalEntradas = 0;
+
             let totalSaidas = 0;
+
             let html = '';
 
+
+
             listaFiltrada.forEach(item => {
+
                 if (item.tipo === 'Entrada') totalEntradas += item.valor;
+
                 else totalSaidas += item.valor;
 
+
+
                 let badgeClass = item.tipo === 'Entrada' ? 'badge-entrada' : 'badge-saida';
+
                 let valorCor = item.tipo === 'Entrada' ? 'color:var(--success);' : 'color:var(--danger);';
+
                 let valorSinal = item.tipo === 'Entrada' ? '+ ' : '- ';
+
                 let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '--/--/----';
 
+
+
                 html += `<tr>
+
                     <td>${dataFormatada}</td>
+
                     <td><span class="badge-tipo ${badgeClass}">${item.tipo}</span></td>
+
                     <td><strong>${item.descricao}</strong></td>
+
                     <td>${item.favorecido}</td>
+
                     <td>${item.centroCusto}</td>
+
                     <td class="num" style="font-weight:700; ${valorCor}">${valorSinal}${formatarMoeda(item.valor)}</td>
+
                 </tr>`;
+
             });
 
+
+
             tbody.innerHTML = html;
+
             document.getElementById('resumoTotais').innerHTML = `
+
                 <span style="color:var(--success);">Entradas: ${formatarMoeda(totalEntradas)}</span> &nbsp;|&nbsp; 
+
                 <span style="color:var(--danger);">Saídas: ${formatarMoeda(totalSaidas)}</span> &nbsp;|&nbsp; 
+
                 <span>Saldo: ${formatarMoeda(totalEntradas - totalSaidas)}</span>
+
             `;
 
+
+
         } catch (err) {
+
             tbody.innerHTML = `<tr><td colspan="6" class="vazio" style="color:var(--danger);">Erro ao carregar extrato: ${err.message}</td></tr>`;
+
         }
+
     }
+
+
 
     async function inicializarPagina() {
+
         let u = obterUsuario();
+
         if(!u || !u.email) { location.href = 'login.html'; return; }
 
+
+
         if (u.email) {
+
             const elUserName = document.getElementById('userName');
+
             if (elUserName) {
+
                 elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+
             }
+
         }
+
+
 
         const master = ehMaster();
+
         if (master) {
+
             document.body.classList.add('usuario-master');
+
             const select = document.getElementById('selectEmpresa');
+
             const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+
             if (data && select) {
+
                 select.innerHTML = '';
+
                 data.forEach(emp => {
+
                     select.innerHTML += `<option value="${emp.id}">${emp.nome_fantasia || emp.razao_social}</option>`;
+
                 });
+
                 select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+
             }
+
         } else {
+
             document.body.classList.remove('usuario-master');
+
         }
 
+
+
         carregarExtrato();
+
     }
 
+
+
     window.onload = inicializarPagina;
+
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
+
 </body>
-</html>
+
+</html> 
+
