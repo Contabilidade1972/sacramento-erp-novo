@@ -96,7 +96,7 @@
                 margin: 10mm;
             }
             body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, button[title="Central de Ajuda"] { display: none !important; }
             
             .container { 
                 max-width: 100% !important; 
@@ -223,7 +223,8 @@
             <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado)</h3>
             <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
-        <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(3, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+        <!-- BARRA DE FILTROS AMPLIADA -->
+        <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(5, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
             <div>
                 <label>Data Início</label>
                 <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltros()">
@@ -233,10 +234,22 @@
                 <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltros()">
             </div>
             <div>
+                <label>Tipo de Lançamento</label>
+                <select id="filtroTipo" class="form-control" onchange="aplicarFiltros()">
+                    <option value="todos">Entradas e Saídas</option>
+                    <option value="entrada">Apenas Entradas</option>
+                    <option value="saida">Apenas Saídas</option>
+                </select>
+            </div>
+            <div>
                 <label>Centro de Custo / Projeto</label>
                 <select id="filtroCentro" class="form-control" onchange="aplicarFiltros()">
-                    <option value="todos">Todos os Centros de Custo</option>
+                    <option value="todos">Todos os Centros</option>
                 </select>
+            </div>
+            <div>
+                <label>Buscar Descrição</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Cliente, ref..." oninput="aplicarFiltros()">
             </div>
             <div>
                 <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button>
@@ -399,14 +412,21 @@ async function carregarFluxo() {
 function aplicarFiltros() {
     let dIni = document.getElementById('filtroDataInicio').value;
     let dFim = document.getElementById('filtroDataFim').value;
+    let tipoFiltro = document.getElementById('filtroTipo').value;
     let centroFiltro = document.getElementById('filtroCentro').value;
+    let textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
 
     let filtrados = movimentacoesCache.filter(m => {
         if (!m.data) return false;
         let dataStr = (m.data || '').split('T')[0];
         if (dIni && dataStr < dIni) return false;
         if (dFim && dataStr > dFim) return false;
+        if (tipoFiltro !== 'todos' && m.tipo !== tipoFiltro) return false;
         if (centroFiltro !== 'todos' && m.centro !== centroFiltro) return false;
+        if (textoFiltro) {
+            let linha = (m.descricao + ' ' + m.referencia + ' ' + m.centro).toLowerCase();
+            if (!linha.includes(textoFiltro)) return false;
+        }
         return true;
     });
 
@@ -426,7 +446,9 @@ function aplicarFiltros() {
     let infoFiltros = [];
     if(dIni) infoFiltros.push(`Início: ${dIni.split('-').reverse().join('/')}`);
     if(dFim) infoFiltros.push(`Fim: ${dFim.split('-').reverse().join('/')}`);
+    if(tipoFiltro !== 'todos') infoFiltros.push(`Tipo: ${tipoFiltro.toUpperCase()}`);
     if(centroFiltro !== 'todos') infoFiltros.push(`Centro: ${centroFiltro}`);
+    if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
 
     const tbody = document.getElementById('tbodyFluxo');
@@ -490,7 +512,9 @@ async function executarImpressao() {
 function limparFiltros() {
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroTipo').value = 'todos';
     document.getElementById('filtroCentro').value = 'todos';
+    document.getElementById('filtroTexto').value = '';
     aplicarFiltros();
 }
 
