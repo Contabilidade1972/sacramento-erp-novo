@@ -71,6 +71,65 @@
         .btn-secundario:hover { background: #cbd5e1; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        /* REGRAS DE IMPRESSÃO CORPORATIVA A4 COM CABEÇALHO REPETIDO */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, 
+            button, [style*="position: fixed"], [style*="z-index"], button[title="Central de Ajuda"], .ocultar-print {
+                display: none !important;
+                visibility: hidden !important;
+                opacity: 0 !important;
+                pointer-events: none !important;
+            }
+            body {
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 9.5pt;
+            }
+            .container {
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                gap: 10px !important;
+            }
+            .card-table {
+                border: none !important;
+                box-shadow: none !important;
+                padding: 0 !important;
+                border-radius: 0 !important;
+            }
+            table {
+                font-size: 9pt !important;
+                width: 100% !important;
+            }
+            thead {
+                display: table-header-group !important;
+            }
+            tr {
+                page-break-inside: avoid !important;
+            }
+            thead th {
+                background: #1e3a8a !important;
+                color: #fff !important;
+                padding: 6px 8px !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            tbody td {
+                padding: 5px 8px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -126,13 +185,13 @@
         <div class="toolbar-actions">
             <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
             <button class="btn-acao" onclick="carregarRecebiveisCartoes()"><i class="fas fa-filter"></i> Consultar Recebíveis</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
     </div>
 
     <!-- TABELA DE RESULTADOS -->
     <div class="card-table">
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;" class="ocultar-print">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Conciliação de Recebíveis Digitais</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Monitoramento de liquidação de vendas via gateways, taxas MDR e repasses.</p>
@@ -143,6 +202,16 @@
         </div>
         <table>
             <thead>
+                <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
+                <tr>
+                    <th colspan="7" style="background: #fff !important; padding: 0 0 10px 0 !important; border: none !important;">
+                        <div style="border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Conciliação de Recebíveis & Gateways</h2>
+                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
+                        </div>
+                    </th>
+                </tr>
                 <tr>
                     <th>Data Venc.</th>
                     <th>Canal / Meio</th>
@@ -215,6 +284,44 @@
         carregarRecebiveisCartoes();
     }
 
+    async function executarImpressao() {
+        const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
+        const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
+        document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
+        
+        const agora = new Date();
+        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+        const selectEmp = document.getElementById('selectEmpresa');
+        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        } else {
+            const cid = clienteIdAtual();
+            try {
+                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+                if (data) {
+                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+                } else {
+                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+                }
+            } catch(e) {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+            }
+        }
+
+        const u = obterUsuario();
+        if (u) {
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+        } else {
+            document.getElementById('printUsuarioNome').innerText = 'Operador';
+        }
+
+        const resumoTexto = document.getElementById('resumoCartoes').innerText;
+        document.getElementById('printResumoTotais').innerText = resumoTexto;
+
+        window.print();
+    }
+
     function sair() {
         if (confirm('Deseja realmente sair?')) {
             localStorage.removeItem('usuarioLogado');
@@ -254,7 +361,7 @@
             data.forEach(item => {
                 let desc = (item.descricao || '').toLowerCase();
                 let canal = 'Outros / Boleto';
-                let taxaMdrPercent = 0.01; // Taxa padrão simulada de 1%
+                let taxaMdrPercent = 0.01;
 
                 if (desc.includes('pix')) { canal = 'PIX'; taxaMdrPercent = 0.005; }
                 else if (desc.includes('credito') || desc.includes('crédito')) { canal = 'Cartao_Credito'; taxaMdrPercent = 0.025; }
@@ -345,5 +452,9 @@
 
     window.onload = inicializarPagina;
 </script>
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
 </body>
 </html>
