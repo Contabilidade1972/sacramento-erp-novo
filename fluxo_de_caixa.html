@@ -96,7 +96,15 @@
                 margin: 15mm;
             }
             body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, .ocultar-print *, footer, .botao-ajuda-flutuante { display: none !important; }
+            
+            /* BLOQUEIO TOTAL E ABSOLUTO DE QUALQUER BOTÃO FLUTUANTE OU WIDGET EXTERNO */
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, footer, 
+            [style*="position: fixed"], [style*="z-index: 999999"], iframe, [id*="chat"], [class*="chat"], [id*="bot"] { 
+                display: none !important; 
+                visibility: hidden !important; 
+                opacity: 0 !important; 
+                pointer-events: none !important; 
+            }
             
             .container { 
                 max-width: 100% !important; 
@@ -481,9 +489,9 @@ function aplicarFiltros() {
 }
 
 async function executarImpressao() {
-    // REMOÇÃO VIA DOM ANTES DE IMPRIMIR PARA GARANTIR QUE O BOTÃO FLUTUANTE SUME
-    const botaoAjuda = document.querySelector('button[onclick*="central_ajuda.html"]');
-    if (botaoAjuda) botaoAjuda.style.display = 'none';
+    // REMOÇÃO VIA JAVASCRIPT NO MOMENTO DA IMPRESSÃO PARA GARANTIR QUE O BOTÃO SUME
+    const botoesFixos = document.querySelectorAll('[style*="position: fixed"], [style*="z-index: 999999"]');
+    botoesFixos.forEach(b => b.style.display = 'none');
 
     const selectEmp = document.getElementById('selectEmpresa');
     if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
@@ -513,11 +521,9 @@ async function executarImpressao() {
     
     window.print();
 
-    if (botaoAjuda) {
-        setTimeout(() => {
-            botaoAjuda.style.display = 'flex';
-        }, 1000);
-    }
+    setTimeout(() => {
+        botoesFixos.forEach(b => b.style.display = 'flex');
+    }, 1000);
 }
 
 function limparFiltros() {
@@ -574,8 +580,8 @@ async function inicializarPagina() {
 
 window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL COM CLASSE DE OCULTAÇÃO -->
-<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
