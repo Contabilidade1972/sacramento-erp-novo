@@ -97,34 +97,26 @@
                 size: A4 portrait;
                 margin: 15mm;
             }
-            body { 
-                background: #fff !important; 
-                color: #000 !important; 
-                font-size: 9pt; 
-                margin: 0 !important;
+            body * {
+                visibility: hidden !important;
+            }
+            #cardRelatorioModo, #cardRelatorioModo * {
+                visibility: visible !important;
+            }
+            #cardRelatorioModo {
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                border: none !important;
+                box-shadow: none !important;
                 padding: 0 !important;
+                margin: 0 !important;
+                background: #fff !important;
             }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
-            
-            .container { 
-                max-width: 100% !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                width: 100% !important; 
-                display: block !important; 
+            .ocultar-print, .collapse-btn {
+                display: none !important;
             }
-            
-            .card#cardRelatorioModo { 
-                border: none !important; 
-                box-shadow: none !important; 
-                padding: 0 !important; 
-                margin: 0 !important; 
-                width: 100% !important; 
-                position: absolute;
-                top: 0;
-                left: 0;
-            }
-
             .print-corporative-header {
                 display: block !important;
                 background: #fff !important;
@@ -133,33 +125,11 @@
                 border-bottom: 2px solid #1e3a8a !important;
                 width: 100% !important;
             }
-
-            .table-container { width: 100% !important; overflow: visible !important; }
-            
-            table { 
-                width: 100% !important; 
-                border-collapse: collapse !important; 
-                font-size: 9pt !important; 
-                table-layout: fixed !important; 
-            }
-            
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt !important; table-layout: fixed !important; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
-            
-            thead th { 
-                background: #1e3a8a !important; 
-                color: #fff !important; 
-                padding: 6px 8px !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-                word-wrap: break-word; 
-            }
-            
-            tbody td { 
-                padding: 5px 8px !important; 
-                border-bottom: 1px solid #cbd5e1 !important; 
-                word-wrap: break-word; 
-            }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
@@ -287,7 +257,7 @@
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Receber</h3>
             <div style="display:flex; gap:10px; align-items:center;">
                 <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
+                <button class="collapse-btn ocultar-print" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
         <div class="collapsible-content">
@@ -499,7 +469,6 @@ async function consultarCnpjReceita(doc) {
     if (!limpo) return;
     const cid = clienteIdAtual();
 
-    // 1. Tenta buscar na base local de parceiros
     try {
         const { data } = await sb.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
         if (data && (data.razao_social || data.nome)) {
@@ -508,7 +477,6 @@ async function consultarCnpjReceita(doc) {
         }
     } catch(e) {}
 
-    // 2. Se for CNPJ válido (14 dígitos), consulta API externa da Receita Federal (BrasilAPI)
     if (limpo.length === 14) {
         try {
             let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${limpo}`);
