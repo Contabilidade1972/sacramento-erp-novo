@@ -23,7 +23,6 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor por defeito. Só aparece se o body tiver a classe 'usuario-master' */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -87,21 +86,32 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
-        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
         .print-corporative-header { display: none !important; }
 
+        /* REGRA GLOBAL DE IMPRESSÃO: ANULA QUALQUER ELEMENTO EXTERNO OU INJETADO POR SCRIPT */
         @media print {
             @page {
                 size: A4 portrait;
                 margin: 10mm;
             }
             body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, .ocultar-print *, button[title="Central de Ajuda"], [style*="position: fixed"], [style*="z-index: 999999"], footer { display: none !important; visibility: hidden !important; opacity: 0 !important; }
+            
+            /* OCULTA TUDO EXCETO O RELATÓRIO */
+            body > *:not(.container) { display: none !important; }
+            .container > *:not(#cardRelatorioModo) { display: none !important; }
+            
+            .site-header, .page-toolbar, .dash-cards, button, .ocultar-print, footer, 
+            div[style*="fixed"], button[style*="fixed"], [style*="z-index: 999999"], [style*="z-index:4000"] { 
+                display: none !important; 
+                visibility: hidden !important; 
+                opacity: 0 !important; 
+                pointer-events: none !important; 
+            }
             
             .container { 
                 max-width: 100% !important; 
                 margin: 0 auto !important; 
-                padding: 0 5mm !important; 
+                padding: 0 !important; 
                 width: 100% !important; 
                 display: block !important;
             }
@@ -481,10 +491,6 @@ function aplicarFiltros() {
 }
 
 async function executarImpressao() {
-    // REMOÇÃO DIRETA DO BOTÃO FLUTUANTE NA DOM ANTES DE IMPRIMIR
-    const botoesFlutuantes = document.querySelectorAll('button[onclick*="central_ajuda.html"], [style*="position: fixed"]');
-    botoesFlutuantes.forEach(b => b.style.display = 'none');
-
     const selectEmp = document.getElementById('selectEmpresa');
     if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
         document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
@@ -510,13 +516,7 @@ async function executarImpressao() {
     }
 
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    
     window.print();
-
-    // RESTAURA O BOTÃO APÓS A IMPRESSÃO
-    setTimeout(() => {
-        botoesFlutuantes.forEach(b => b.style.display = 'flex');
-    }, 1000);
 }
 
 function limparFiltros() {
@@ -573,9 +573,5 @@ async function inicializarPagina() {
 
 window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
 </body>
 </html>
