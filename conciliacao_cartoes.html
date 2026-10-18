@@ -72,7 +72,10 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* REGRAS DE IMPRESSÃO CORPORATIVA A4 COM CABEÇALHO REPETIDO */
+        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA, VISÍVEL APENAS NA IMPRESSÃO */
+        .print-corporative-header { display: none !important; }
+
+        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 COM BLINDAGEM TOTAL */
         @media print {
             @page {
                 size: A4 portrait;
@@ -85,7 +88,8 @@
                 }
             }
             .site-header, .page-toolbar, .toolbar, .btn-sair, footer, 
-            button, [style*="position: fixed"], [style*="z-index"], button[title="Central de Ajuda"], .ocultar-print {
+            button, [style*="position: fixed"], [style*="z-index"], button[title="Central de Ajuda"], .ocultar-print,
+            iframe, [id*="chat"], [class*="chat"], [id*="bot"] {
                 display: none !important;
                 visibility: hidden !important;
                 opacity: 0 !important;
@@ -117,6 +121,14 @@
             }
             tr {
                 page-break-inside: avoid !important;
+            }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 6mm !important;
+                margin-bottom: 8mm !important;
+                border-bottom: 2px solid #1e3a8a !important;
+                width: 100% !important;
             }
             thead th {
                 background: #1e3a8a !important;
@@ -202,12 +214,11 @@
         </div>
         <table>
             <thead>
-                <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
                 <tr>
-                    <th colspan="7" style="background: #fff !important; padding: 0 0 10px 0 !important; border: none !important;">
-                        <div style="border-bottom: 2px solid #1e3a8a; padding-bottom: 8px; text-align: left;">
+                    <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                        <div class="print-corporative-header">
                             <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Conciliação de Recebíveis & Gateways</h2>
-                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            <p style="font-size: 8pt; color: #475569; margin: 3mm 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
                             <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
                         </div>
                     </th>
@@ -285,6 +296,10 @@
     }
 
     async function executarImpressao() {
+        // REMOVE O BOTÃO FLUTUANTE DA DOM NA HORA DA IMPRESSÃO PARA GARANTIR QUE SOME
+        const botoesFixos = document.querySelectorAll('[style*="position: fixed"], [style*="z-index: 999999"]');
+        botoesFixos.forEach(b => b.style.display = 'none');
+
         const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
         const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
         document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
@@ -320,6 +335,10 @@
         document.getElementById('printResumoTotais').innerText = resumoTexto;
 
         window.print();
+
+        setTimeout(() => {
+            botoesFixos.forEach(b => b.style.display = 'flex');
+        }, 1000);
     }
 
     function sair() {
