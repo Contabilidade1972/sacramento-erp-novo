@@ -22,6 +22,12 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM LGPD: Oculta seletor de empresas para quem não for Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -92,18 +98,35 @@
         .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); }
         .form-group input, .form-group select { height: 42px; padding: 0 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: var(--bg); color: var(--text-main); outline: none; }
 
-        .print-header { display: none; }
+        .collapse-btn { background: none; border: none; cursor: pointer; color: var(--secondary); font-size: 16px; transition: transform 0.2s; }
+        .collapsible-content { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
+        .collapsible-content.collapsed { max-height: 0 !important; opacity: 0; padding: 0 !important; margin: 0 !important; border: none !important; }
+
+        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
+        .print-corporative-header { display: none !important; }
 
         @media print {
-            .site-header, .page-toolbar, .filter-bar, .btn-acao, .btn-icon, .modal-overlay, .col-acoes { display: none !important; }
-            body { background: #fff !important; }
-            .kpi-grid { display: none !important; }
-            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
-            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
-            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            .site-header, .page-toolbar, .filter-bar, .btn-acao, .btn-icon, .modal-overlay, .col-acoes, .kpi-grid { display: none !important; }
+            body { background: #fff !important; color: #000 !important; font-size: 9pt; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 0 !important; width: 100% !important; display: block !important; }
+            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 8px !important;
+                margin-bottom: 12px !important;
+                border-bottom: 2px solid #1e3a8a !important;
+                width: 100% !important;
+            }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 9pt !important; table-layout: fixed !important; }
+            thead { display: table-header-group !important; }
+            tr { page-break-inside: avoid !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
     </style>
 </head>
@@ -148,11 +171,11 @@
         </div>
         <div class="kpi-card">
             <span class="kpi-title">Projeção em Aberto</span>
-            <span class="kpi-value" id="kpiValorAberto" style="color: var(--warning);">R$ 0,00</span>
+            <span class="kpi-value" id="kpiValorAberto" style="color: var(--warning);">R\$ 0,00</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-title">Total Recebido</span>
-            <span class="kpi-value" id="kpiValorRecebido" style="color: var(--success);">R$ 0,00</span>
+            <span class="kpi-value" id="kpiValorRecebido" style="color: var(--success);">R\$ 0,00</span>
         </div>
     </div>
 
@@ -164,24 +187,38 @@
     </div>
 
     <div class="card-table">
-        <div class="print-header">
-            <h2>Relatório de Contas a Receber</h2>
-            <p>Emitido em: <span id="printData">--</span> via Sacramento ERP</p>
-        </div>
         <div class="table-header">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Controle de Contas a Receber</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Acompanhe recebimentos, clientes e faturas em aberto.</p>
             </div>
+            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
         </div>
-        <table>
-            <thead>
-                <tr><th>Cliente</th><th>Descrição</th><th>Vencimento</th><th class="num">Valor (R$)</th><th>Status</th><th style="text-align:center;" class="col-acoes">Ações</th></tr>
-            </thead>
-            <tbody id="tbodyReceber">
-                <tr><td colspan="6" class="vazio">A carregar contas a receber do Supabase...</td></tr>
-            </tbody>
-        </table>
+        <div class="collapsible-content">
+            <table>
+                <thead>
+                    <tr>
+                        <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                            <div class="print-corporative-header">
+                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Contas a Receber</h2>
+                                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printData"></span></p>
+                            </div>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th style="width: 25%;">Cliente</th>
+                        <th style="width: 35%;">Descrição</th>
+                        <th style="width: 15%;">Vencimento</th>
+                        <th style="width: 15%;" class="num">Valor (R\$)</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="text-align:center;" class="col-acoes">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyReceber">
+                    <tr><td colspan="6" class="vazio">A carregar contas a receber do Supabase...</td></tr>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -204,7 +241,7 @@
       <input type="date" id="novoVencimento">
     </div>
     <div class="form-group">
-      <label>Valor (R$)</label>
+      <label>Valor (R\$)</label>
       <input type="number" step="0.01" id="novoValor" placeholder="0.00">
     </div>
     <div class="form-group">
@@ -240,6 +277,18 @@
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let cacheReceber = [];
 
+    function toggleCardBody(btn) {
+        const card = btn.closest('.card-table');
+        const content = card.querySelector('.collapsible-content');
+        const icon = btn.querySelector('i');
+        content.classList.toggle('collapsed');
+        if (content.classList.contains('collapsed')) {
+            icon.className = 'fas fa-chevron-down';
+        } else {
+            icon.className = 'fas fa-chevron-up';
+        }
+    }
+
     function obterUsuario() {
         try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
     }
@@ -249,7 +298,6 @@
         return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
     }
 
-    // TRAVA DE SEGURANÇA LGPD NATIVA E INFALÍVEL
     function clienteIdAtual() {
         const u = obterUsuario();
         if (!u) return null;
@@ -291,7 +339,6 @@
                 select.value = selAtual;
             }
         } else {
-            // TRAVA ABSOLUTA LGPD: Oculta o seletor de empresas para utilizadores comuns
             if (boxSeletor) boxSeletor.style.display = 'none';
         }
 
@@ -338,6 +385,16 @@
 
         cacheReceber = data || [];
         aplicarFiltros();
+        
+        const selectEmp = document.getElementById('selectEmpresa');
+        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        } else {
+            document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+        }
+
+        const operador = obterUsuario();
+        document.getElementById('printUsuarioNome').innerText = operador ? (operador.nome || operador.email) : 'Operador';
         document.getElementById('printData').innerText = new Date().toLocaleString('pt-BR');
     }
 
@@ -505,7 +562,7 @@
 
     window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
