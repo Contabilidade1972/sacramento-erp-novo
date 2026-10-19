@@ -23,6 +23,12 @@
             --border: #e2e8f0;
         }
 
+        /* BLINDAGEM LGPD ABSOLUTA: Oculta o seletor de empresas para qualquer usuário que não seja o Master */
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
@@ -97,7 +103,7 @@
 </head>
 <body>
 
-<!-- O erp-core.js injeta automaticamente o cabeçalho padrão unificado com White-Label e Tema Dia/Noite -->
+<!-- O erp-core.js injeta o cabeçalho padrão unificado -->
 
 <!-- MODAL: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
@@ -186,7 +192,6 @@
         </div>
     </div>
 
-    <!-- FORMULÁRIO COMPLETO COM TODOS OS CAMPOS SOLICITADOS -->
     <div class="card">
         <div class="card-header">
             <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar</h3>
@@ -370,9 +375,10 @@
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
 
+<script src="auth-guard.js"></script>
 <script src="erp-core.js"></script>
 <script>
-const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
 
 function toggleCardBody(btn) {
@@ -383,11 +389,23 @@ function toggleCardBody(btn) {
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
+function obterUsuario() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+}
+
+function ehMaster() {
+    const u = obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+}
+
 function clienteIdAtual() {
     try {
-        const sel = localStorage.getItem('empresaSelecionada');
-        if (sel) return parseInt(sel);
-        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const u = obterUsuario();
+        const master = ehMaster();
+        if (master) {
+            const sel = localStorage.getItem('empresaSelecionada');
+            if (sel) return parseInt(sel);
+        }
         return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
     } catch(e) {
         return 1;
@@ -395,6 +413,11 @@ function clienteIdAtual() {
 }
 
 async function inicializarPagina() {
+    const u = obterUsuario();
+    if (u && ehMaster()) {
+        document.body.classList.add('usuario-master');
+    }
+
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
     await carregarCentrosCustoSelect();
     await carregarPlanoContasSelect();
@@ -419,6 +442,7 @@ function atualizarCodigoVirtual() {
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
 }
 
+// BUSCA INTELIGENTE DE FORNECEDOR / CNPJ (BASE LOCAL + BRASILAPI)
 async function consultarCnpjReceita(doc) {
     let limpo = doc.replace(/\D/g, '');
     if (!limpo) return;
@@ -490,7 +514,7 @@ async function carregarContasBancariasModal() {
     const { data } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_origem_cadastro');
     if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione a conta de origem...</option>';
+    sel.innerHTML = '<option value="">Selecione a conta...</option>';
     if (data) {
         data.forEach(cb => {
             let nome = cb.banco || cb.nome || 'Banco';
@@ -761,6 +785,5 @@ window.excluirConta = async function(id) {
 
 window.onload = inicializarPagina;
 </script>
-<script src="erp-core.js"></script>
 </body>
 </html>
