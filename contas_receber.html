@@ -73,6 +73,15 @@
         .collapsible-content { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
         .collapsible-content.collapsed { max-height: 0 !important; opacity: 0; padding: 0 !important; margin: 0 !important; border: none !important; }
 
+        .campo-com-mais { display: flex; gap: 6px; align-items: flex-start; }
+        .campo-com-mais .form-control { flex: 1; }
+        .btn-mais { background: var(--success); color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: .2s; }
+        .btn-mais:hover { background: #059669; transform: scale(1.05); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
         .print-corporative-header { display: none !important; }
 
         @media print {
@@ -93,7 +102,47 @@
 </head>
 <body>
 
-<!-- O erp-core.js injeta automaticamente o cabeçalho unificado -->
+<!-- O erp-core.js injeta o cabeçalho moderno e unificado automaticamente -->
+
+<!-- MODAL: CENTRO DE CUSTO -->
+<div class="modal-overlay" id="modalNovoCentroCusto">
+    <div class="modal-card" style="max-width:420px;">
+        <div class="modal-header">
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-tags" style="color:var(--primary)"></i> Novo Centro de Custo</h3>
+            <button onclick="document.getElementById('modalNovoCentroCusto').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Nome / Descrição *</label>
+            <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Comercial, Projetos...">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
+            <button class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CLIENTE -->
+<div class="modal-overlay" id="modalNovoCliente">
+    <div class="modal-card" style="max-width:550px;">
+        <div class="modal-header">
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-user-tie" style="color:var(--primary)"></i> Novo Cliente</h3>
+            <button onclick="document.getElementById('modalNovoCliente').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>CNPJ / CPF *</label>
+            <input type="text" id="cli_doc" class="form-control" placeholder="Apenas números">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label>Razão Social / Nome *</label>
+            <input type="text" id="cli_nome" class="form-control" placeholder="Nome do cliente">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCliente').style.display='none'">Cancelar</button>
+            <button class="btn-acao" onclick="salvarNovoCliente()"><i class="fas fa-save"></i> Salvar Cliente</button>
+        </div>
+    </div>
+</div>
 
 <main class="container">
     <div class="page-toolbar">
@@ -146,7 +195,10 @@
                 </div>
                 <div>
                     <label>CNPJ / CPF do Cliente *</label>
-                    <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjCliente(this.value)">
+                    <div class="campo-com-mais">
+                        <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjCliente(this.value)">
+                        <button class="btn-mais" onclick="abrirModalCliente()" title="Cadastrar novo cliente"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
                 <div>
                     <label>Razão Social / Cliente *</label>
@@ -171,7 +223,12 @@
                 </div>
                 <div>
                     <label>Centro de Custo / Projeto *</label>
-                    <input type="text" id="centro_custo" class="form-control" placeholder="Ex: 1.01 - Comercial / P&D">
+                    <div class="campo-com-mais">
+                        <select id="centro_custo" class="form-control">
+                            <option value="">Carregando centros...</option>
+                        </select>
+                        <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
             </div>
             <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
@@ -329,6 +386,7 @@ async function inicializarPagina() {
     const elData = document.getElementById('printDataEmissao');
     if (elData) elData.innerText = new Date().toLocaleString('pt-BR');
     
+    await carregarCentrosCustoSelect();
     await carregarContas();
 }
 
@@ -384,6 +442,46 @@ async function consultarCnpjCliente(doc) {
             }
         } catch(err) {}
     }
+}
+
+async function carregarCentrosCustoSelect() {
+    const cid = obterClienteIdSeguro();
+    const { data } = await sbGlobal.from('centros_custo').select('*').eq('cliente_id', cid);
+    const sel = document.getElementById('centro_custo');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione o Centro de Custo...</option>';
+    if (data) {
+        data.forEach(cc => {
+            let nome = cc.nome || cc.descricao || '';
+            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+        });
+    }
+}
+
+function abrirModalCentroCusto() { document.getElementById('modalNovoCentroCusto').style.display = 'flex'; }
+function abrirModalCliente() { document.getElementById('modalNovoCliente').style.display = 'flex'; }
+
+async function salvarNovoCentroCusto() {
+    const nome = document.getElementById('cc_nome').value.trim();
+    if (!nome) { alert("Informe o nome."); return; }
+    const cid = obterClienteIdSeguro();
+    await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
+    document.getElementById('modalNovoCentroCusto').style.display = 'none';
+    await carregarCentrosCustoSelect();
+    document.getElementById('centro_custo').value = nome;
+    alert("Centro de custo cadastrado e selecionado!");
+}
+
+async function salvarNovoCliente() {
+    const nome = document.getElementById('cli_nome').value.trim();
+    const doc = document.getElementById('cli_doc').value.trim();
+    if (!nome) { alert("Informe o nome."); return; }
+    const cid = obterClienteIdSeguro();
+    await sbGlobal.from('parceiros').insert([{ cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Cliente' }]);
+    document.getElementById('modalNovoCliente').style.display = 'none';
+    document.getElementById('cliente_nome').value = nome;
+    document.getElementById('cpf_cnpj_cliente').value = doc;
+    alert("Cliente cadastrado com sucesso!");
 }
 
 async function carregarContas() {
@@ -533,17 +631,17 @@ async function salvarContaReceber() {
     const vencimento = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
     const status = document.getElementById('status_edicao').value;
-    const centro_custo = document.getElementById('centro_custo').value.trim();
+    const centro_custo = document.getElementById('centro_custo').value;
     const conta_contabil = document.getElementById('conta_contabil').value.trim();
     const forma_recebimento = document.getElementById('forma_recebimento').value;
     const cliente_id = obterClienteIdSeguro();
 
-    if(!cliente_nome || isNaN(valor) || !vencimento) {
-        alert("Preencha os campos obrigatórios (Cliente, Valor e Vencimento).");
+    if(!cliente_nome || isNaN(valor) || !vencimento || !centro_custo) {
+        alert("Preencha os campos obrigatórios (Cliente, Valor, Vencimento e Centro de Custo).");
         return;
     }
 
-    let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_recebimento };
+    let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_recebimento, updated_at: new Date().toISOString() };
     let res;
 
     if(id) {
