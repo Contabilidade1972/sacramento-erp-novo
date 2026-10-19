@@ -103,8 +103,6 @@
 </head>
 <body>
 
-<!-- O erp-core.js injeta o cabeçalho padrão unificado -->
-
 <!-- MODAL: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
     <div class="modal-card" style="max-width:420px;">
@@ -380,6 +378,7 @@
 <script>
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+const sb = window.supabase ? window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei') : null;
 
 function toggleCardBody(btn) {
     const card = btn.closest('.card');
@@ -442,11 +441,11 @@ function atualizarCodigoVirtual() {
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
 }
 
-// BUSCA INTELIGENTE DE FORNECEDOR / CNPJ (BASE LOCAL + BRASILAPI)
 async function consultarCnpjReceita(doc) {
     let limpo = doc.replace(/\D/g, '');
     if (!limpo) return;
     const cid = clienteIdAtual();
+    if (!sb) return;
 
     try {
         const { data } = await sb.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
@@ -480,6 +479,7 @@ async function consultarCnpjReceita(doc) {
 }
 
 async function carregarCentrosCustoSelect() {
+    if (!sb) return;
     const cid = clienteIdAtual();
     const { data } = await sb.from('centros_custo').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('centro_custo');
@@ -494,6 +494,7 @@ async function carregarCentrosCustoSelect() {
 }
 
 async function carregarPlanoContasSelect() {
+    if (!sb) return;
     const cid = clienteIdAtual();
     const { data } = await sb.from('plano_contas').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_contabil');
@@ -510,6 +511,7 @@ async function carregarPlanoContasSelect() {
 }
 
 async function carregarContasBancariasModal() {
+    if (!sb) return;
     const cid = clienteIdAtual();
     const { data } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_origem_cadastro');
@@ -528,6 +530,7 @@ function abrirModalContaContabil() { document.getElementById('modalNovaContaCont
 function abrirModalFornecedor() { document.getElementById('modalNovoFornecedor').style.display = 'flex'; }
 
 async function salvarNovoCentroCusto() {
+    if (!sb) return;
     const nome = document.getElementById('cc_nome').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = clienteIdAtual();
@@ -539,6 +542,7 @@ async function salvarNovoCentroCusto() {
 }
 
 async function salvarNovoPlanoContas() {
+    if (!sb) return;
     const desc = document.getElementById('pc_descricao').value.trim();
     if (!desc) { alert("Informe a descrição."); return; }
     const cid = clienteIdAtual();
@@ -550,6 +554,7 @@ async function salvarNovoPlanoContas() {
 }
 
 async function salvarNovoFornecedor() {
+    if (!sb) return;
     const nome = document.getElementById('forn_nome').value.trim();
     const doc = document.getElementById('forn_doc').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
@@ -562,6 +567,7 @@ async function salvarNovoFornecedor() {
 }
 
 async function carregarContas() {
+    if (!sb) return;
     const cid = clienteIdAtual();
     const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
@@ -697,6 +703,7 @@ function renderTabela() {
 }
 
 async function salvarContaPagar() {
+    if (!sb) return;
     const id = document.getElementById('edit_id').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
     const cpf_cnpj_fornecedor = document.getElementById('cpf_cnpj_fornecedor').value.trim();
@@ -774,6 +781,7 @@ function cancelarEdicao() {
 }
 
 window.excluirConta = async function(id) {
+    if (!sb) return;
     if(confirm("Deseja realmente excluir este registo?")) {
         const cid = clienteIdAtual();
         let res = await sb.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
