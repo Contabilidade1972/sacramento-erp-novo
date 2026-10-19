@@ -1,7 +1,7 @@
 // erp-core.js — Motor Central de Interface, White-Label e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
 
 (function() {
-    const styleId = 'erp-core-styles-universal-v25';
+    const styleId = 'erp-core-styles-universal-v30';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -29,56 +29,54 @@
                 color: var(--text-main) !important;
             }
             body.dark-mode .site-header { background: #070d1f !important; border-bottom: 1px solid #1e293b !important; }
-            body.dark-mode .card, body.dark-mode .toolbar, body.dark-mode .dash-card, body.dark-mode .card-table, body.dark-mode .panel { background: #131c38 !important; border-color: #1e293b !important; color: #f8fafc !important; }
+            body.dark-mode .card, body.dark-mode .portal-card, body.dark-mode .toolbar, body.dark-mode .dash-card, body.dark-mode .panel { background: #131c38 !important; border-color: #1e293b !important; color: #f8fafc !important; }
             body.dark-mode table thead th { background: #1e293b !important; color: #cbd5e1 !important; }
             body.dark-mode tbody td { border-bottom-color: #1e293b !important; color: #f8fafc !important; }
             body.dark-mode tbody tr:hover { background: #1a2544 !important; }
             body.dark-mode footer { background: #070d1f !important; border-top-color: #1e293b !important; color: #94a3b8 !important; }
 
-            body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; margin: 0; padding: 0; transition: background 0.3s ease, color 0.3s ease; }
-
-            /* HEADER CORPORATIVO PADRÃO UNIFICADO (EXATAMENTE IGUAL EM TODAS AS PÁGINAS) */
+            /* HEADER CORPORATIVO PADRÃO UNIFICADO */
             .site-header {
-                background: var(--secondary); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
+                background: var(--secondary) !important; color: #fff !important; padding: 14px 28px !important; display: flex !important; justify-content: space-between !important; align-items: center !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; position: sticky !important; top: 0 !important; z-index: 1000 !important; width: 100% !important;
             }
-            .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
-            .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; flex-shrink: 0; }
-            .brand-logo-box img { width: 100%; height: 100%; object-fit: cover; }
-            .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
-            .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; margin-top: 2px; display: block; }
+            .site-brand { display: flex !important; align-items: center !important; gap: 14px !important; text-decoration: none !important; color: #fff !important; }
+            .brand-logo-box { width: 42px !important; height: 42px !important; background: linear-gradient(135deg, #3b82f6, #2563eb) !important; border-radius: 10px !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 18px !important; color: #fff !important; box-shadow: 0 2px 8px rgba(37,99,235,0.3) !important; overflow: hidden !important; flex-shrink: 0 !important; }
+            .brand-logo-box img { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+            .brand-info h1 { font-size: 14.5px !important; font-weight: 800 !important; letter-spacing: -0.3px !important; margin: 0 !important; color: #fff !important; line-height: 1.2 !important; }
+            .brand-info span { font-size: 9.5px !important; color: #93c5fd !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; font-weight: 700 !important; margin-top: 2px !important; display: block !important; }
 
             /* BARRA DE PESQUISA GLOBAL */
-            .search-global-box { position: relative; flex: 1; max-width: 320px; margin: 0 16px; }
-            .search-global-box input { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 12px 7px 34px; color: #fff; font-size: 12.5px; outline: none; transition: all 0.2s ease; }
-            .search-global-box input::placeholder { color: #cbd5e1; font-weight: 400; }
-            .search-global-box input:focus { background: rgba(255,255,255,0.18); border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(147,197,253,0.2); }
-            .search-global-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 12px; }
+            .search-global-box { position: relative !important; flex: 1 !important; max-width: 320px !important; margin: 0 16px !important; }
+            .search-global-box input { width: 100% !important; background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.2) !important; border-radius: 8px !important; padding: 7px 12px 7px 34px !important; color: #fff !important; font-size: 12.5px !important; outline: none !important; transition: all 0.2s ease !important; }
+            .search-global-box input::placeholder { color: #cbd5e1 !important; font-weight: 400 !important; }
+            .search-global-box input:focus { background: rgba(255,255,255,0.18) !important; border-color: #93c5fd !important; box-shadow: 0 0 0 3px rgba(147,197,253,0.2) !important; }
+            .search-global-box i { position: absolute !important; left: 12px !important; top: 50% !important; transform: translateY(-50%) !important; color: #93c5fd !important; font-size: 12px !important; }
             
-            .search-results-dropdown { position: absolute; top: calc(100% + 8px); left: 0; width: 100%; background: #ffffff; border-radius: 10px; box-shadow: 0 10px 25px rgba(15,23,42,0.15); display: none; z-index: 3000; overflow: hidden; border: 1px solid var(--border); }
-            .search-dropdown-header { padding: 10px 14px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--text-light); background: #f8fafc; border-bottom: 1px solid var(--border); letter-spacing: 0.8px; }
-            .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; font-weight: 500; }
-            .search-item:last-child { border-bottom: none; }
-            .search-item:hover { background: #eff6ff; color: var(--primary); padding-left: 16px; }
-            .search-item i { width: 18px; color: var(--primary); font-size: 13px; text-align: center; }
+            .search-results-dropdown { position: absolute !important; top: calc(100% + 8px) !important; left: 0 !important; width: 100% !important; background: #ffffff !important; border-radius: 10px !important; box-shadow: 0 10px 25px rgba(15,23,42,0.15) !important; display: none !important; z-index: 3000 !important; overflow: hidden !important; border: 1px solid var(--border) !important; }
+            .search-dropdown-header { padding: 10px 14px !important; font-size: 10px !important; font-weight: 800 !important; text-transform: uppercase !important; color: var(--text-light) !important; background: #f8fafc !important; border-bottom: 1px solid var(--border) !important; letter-spacing: 0.8px !important; }
+            .search-item { padding: 10px 14px !important; font-size: 13px !important; color: var(--text-main) !important; text-decoration: none !important; display: flex !important; align-items: center !important; gap: 10px !important; border-bottom: 1px solid var(--border) !important; transition: 0.15s !important; font-weight: 500 !important; }
+            .search-item:last-child { border-bottom: none !important; }
+            .search-item:hover { background: #eff6ff !important; color: var(--primary) !important; padding-left: 16px !important; }
+            .search-item i { width: 18px !important; color: var(--primary) !important; font-size: 13px !important; text-align: center !important; }
 
-            .site-nav-right { display: flex; align-items: center; gap: 10px; }
-            .btn-topo-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 6px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; }
-            .btn-topo-acao:hover { background: rgba(255,255,255,0.2); }
+            .site-nav-right { display: flex !important; align-items: center !important; gap: 10px !important; }
+            .btn-topo-acao { background: rgba(255,255,255,0.1) !important; color: #fff !important; border: 1px solid rgba(255,255,255,0.2) !important; padding: 6px 10px !important; border-radius: 8px !important; font-size: 11.5px !important; font-weight: 700 !important; cursor: pointer !important; text-decoration: none !important; display: inline-flex !important; align-items: center !important; gap: 5px !important; transition: 0.2s !important; }
+            .btn-topo-acao:hover { background: rgba(255,255,255,0.2) !important; }
 
-            .empresa-selector { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 4px 8px; }
-            .empresa-selector select { border: none; background: transparent; font-size: 11.5px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-            .empresa-selector select option { color: #000; background: #fff; }
+            .empresa-selector { display: flex !important; align-items: center !important; gap: 6px !important; background: rgba(255,255,255,0.1) !important; border: 1px solid rgba(255,255,255,0.2) !important; border-radius: 8px !important; padding: 4px 8px !important; }
+            .empresa-selector select { border: none !important; background: transparent !important; font-size: 11.5px !important; font-weight: 600 !important; color: #fff !important; cursor: pointer !important; outline: none !important; }
+            .empresa-selector select option { color: #000 !important; background: #fff !important; }
             
-            .user-box { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.08); padding: 4px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
-            .btn-chave-senha { background: transparent; border: none; color: #93c5fd; cursor: pointer; font-size: 13px; padding: 2px 4px; transition: 0.2s; display: inline-flex; align-items: center; }
-            .btn-chave-senha:hover { color: #fff; transform: scale(1.1); }
+            .user-box { display: flex !important; align-items: center !important; gap: 6px !important; font-size: 12px !important; font-weight: 600 !important; color: #fff !important; background: rgba(255,255,255,0.08) !important; padding: 4px 8px !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.15) !important; }
+            .btn-chave-senha { background: transparent !important; border: none !important; color: #93c5fd !important; cursor: pointer !important; font-size: 13px !important; padding: 2px 4px !important; transition: 0.2s !important; display: inline-flex !important; align-items: center !important; }
+            .btn-chave-senha:hover { color: #fff !important; transform: scale(1.1) !important; }
             
-            .btn-modo-tema { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #ffd700; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: 0.2s; }
-            .btn-modo-tema:hover { background: rgba(255,255,255,0.25); transform: scale(1.08); }
+            .btn-modo-tema { background: rgba(255,255,255,0.12) !important; border: 1px solid rgba(255,255,255,0.25) !important; color: #ffd700 !important; width: 34px !important; height: 34px !important; border-radius: 50% !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 14px !important; transition: 0.2s !important; }
+            .btn-modo-tema:hover { background: rgba(255,255,255,0.25) !important; transform: scale(1.08) !important; }
 
-            .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; }
-            .btn-sair:hover { background: #b91c1c; }
+            .btn-sair { background: #dc2626 !important; color: #fff !important; border: none !important; padding: 6px 10px !important; border-radius: 8px !important; font-size: 11.5px !important; font-weight: 700 !important; cursor: pointer !important; display: inline-flex !important; align-items: center !important; gap: 5px !important; transition: 0.2s !important; }
+            .btn-sair:hover { background: #b91c1c !important; }
         `;
         document.head.appendChild(style);
     }
@@ -104,7 +102,7 @@
             document.body.classList.add('dark-mode');
         }
 
-        // REMOVE QUALQUER CABEÇALHO ESTÁTICO ANTIGO DA PÁGINA
+        // Remove QUALQUER cabeçalho estático antigo das páginas e substitui pelo unificado
         const cabecalhosAntigos = document.querySelectorAll('header, .site-header, .header');
         cabecalhosAntigos.forEach(h => h.remove());
 
@@ -168,7 +166,7 @@
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // BLINDAGEM LGPD ABSOLUTA: Oculta o seletor de empresas para quem não for Master
+        // BLINDAGEM LGPD: Oculta seletor para quem não for Master
         const uSessao = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
         const emailM = "lucianojorgesacramento@gmail.com";
         const ehMasterGlobal = uSessao && uSessao.email && uSessao.email.toLowerCase().trim() === emailM.toLowerCase().trim();
