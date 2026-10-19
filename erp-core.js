@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Com Chavinha e Confirmação de Senha)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (White-Label Dinâmico Global)
 
 (function() {
-    const styleId = 'erp-core-styles-v7';
+    const styleId = 'erp-core-styles-v8';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -28,7 +28,7 @@
             .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
             .brand-logo-box { width: 40px; height: 40px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; }
             .brand-logo-box img { width: 100%; height: 100%; object-fit: cover; }
-            .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin: 0; }
+            .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; }
             .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
             /* BARRA DE PESQUISA GLOBAL ELITE */
@@ -107,6 +107,7 @@
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
+        // Se houver um header estático antigo na página, substitui unificadamente pelo motor central
         const headerAntigo = document.querySelector('header');
         if (headerAntigo) {
             headerAntigo.remove();
@@ -153,11 +154,11 @@
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // MODAL DE ALTERAÇÃO DE SENHA (PADRÃO IDÊNTICO À SEGUNDA IMAGEM DO CLIENTE)
+        // MODAL DE ALTERAÇÃO DE SENHA GLOBAL (COM CONFIRMAÇÃO)
         if (!document.getElementById('modalAlterarSenhaCore')) {
             const modalHtml = `
                 <div id="modalAlterarSenhaCore" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
-                    <div style="background:#fff; width:100%; max-width:440px; border-radius:14px; box-shadow:0 15px 35px rgba(0,0,0,0.25); overflow:hidden; animation: modalPop 0.2s ease;">
+                    <div style="background:#fff; width:100%; max-width:440px; border-radius:14px; box-shadow:0 15px 35px rgba(0,0,0,0.25); overflow:hidden;">
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:20px 24px; border-bottom:1px solid #e2e8f0;">
                             <h3 style="font-size:16px; font-weight:800; color:#1e3a8a; display:flex; align-items:center; gap:10px;"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
                             <button onclick="fecharModalSenhaCore()" style="background:none; border:none; font-size:16px; color:#64748b; cursor:pointer;"><i class="fas fa-times"></i></button>
@@ -204,7 +205,8 @@
             document.body.insertAdjacentHTML('beforeend', assistantHtml);
         }
 
-        aplicarWhiteLabelTenant();
+        // APLICAÇÃO GLOBAL AUTOMÁTICA DA IDENTIDADE VISUAL DA EMPRESA LOGADA
+        aplicarWhiteLabelTenantGlobal();
         inicializarCore();
     });
 
@@ -242,7 +244,7 @@
         document.getElementById('confirmaSenhaInputCore').value = '';
     }
 
-    async function aplicarWhiteLabelTenant() {
+    async function aplicarWhiteLabelTenantGlobal() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -256,15 +258,19 @@
 
             if (data) {
                 const nomeEmpresa = data.nome_fantasia || data.razao_social || "Sacramento ERP";
-                const titleEl = document.getElementById('brandTitleCore');
+                
+                // Atualiza em qualquer página que utilize o erp-core.js
+                const titleEl = document.getElementById('brandTitleCore') || document.getElementById('brandTitle');
                 if (titleEl) titleEl.innerText = nomeEmpresa;
 
-                const logoBox = document.getElementById('brandLogoBoxCore');
+                const logoBox = document.getElementById('brandLogoBoxCore') || document.getElementById('brandLogoBox');
                 if (logoBox && data.logotipo_url) {
                     logoBox.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
                 }
             }
-        } catch(e) {}
+        } catch(e) {
+            console.error("Erro ao aplicar White-Label global:", e);
+        }
     }
 
     window.alternarChatCore = function() {
