@@ -1,7 +1,7 @@
 // erp-core.js — Motor Central de Interface, White-Label e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
 
 (function() {
-    const styleId = 'erp-core-styles-universal-v30';
+    const styleId = 'erp-core-styles-universal-v40';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -102,7 +102,7 @@
             document.body.classList.add('dark-mode');
         }
 
-        // Remove QUALQUER cabeçalho estático antigo das páginas e substitui pelo unificado
+        // REMOVE QUALQUER CABEÇALHO ESTÁTICO ANTIGO DAS PÁGINAS PARA EVITAR CONFLITO
         const cabecalhosAntigos = document.querySelectorAll('header, .site-header, .header');
         cabecalhosAntigos.forEach(h => h.remove());
 
@@ -166,7 +166,7 @@
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // BLINDAGEM LGPD: Oculta seletor para quem não for Master
+        // BLINDAGEM LGPD: Oculta o seletor para utilizadores não-master
         const uSessao = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
         const emailM = "lucianojorgesacramento@gmail.com";
         const ehMasterGlobal = uSessao && uSessao.email && uSessao.email.toLowerCase().trim() === emailM.toLowerCase().trim();
