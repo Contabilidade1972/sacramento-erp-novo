@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Código Original Preservado + Injeção Universal de White-Label & Tema Dia/Noite)
+// erp-core.js — Motor Central de Interface e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
 
 (function() {
-    const styleId = 'erp-core-styles-v14';
+    const styleId = 'erp-core-styles-universal';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -37,7 +37,7 @@
 
             body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; margin: 0; padding: 0; transition: background 0.3s ease, color 0.3s ease; }
 
-            /* HEADER CORPORATIVO PADRÃO UNIFICADO */
+            /* HEADER CORPORATIVO PADRÃO UNIFICADO (EXATAMENTE COMO NO ANEXO) */
             .site-header {
                 background: var(--secondary); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
@@ -48,7 +48,7 @@
             .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
             .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; margin-top: 2px; display: block; }
 
-            /* BARRA DE PESQUISA GLOBAL ELITE */
+            /* BARRA DE PESQUISA GLOBAL */
             .search-global-box { position: relative; flex: 1; max-width: 320px; margin: 0 16px; }
             .search-global-box input { width: 100%; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 7px 12px 7px 34px; color: #fff; font-size: 12.5px; outline: none; transition: all 0.2s ease; }
             .search-global-box input::placeholder { color: #cbd5e1; font-weight: 400; }
@@ -79,31 +79,6 @@
 
             .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; transition: 0.2s; }
             .btn-sair:hover { background: #b91c1c; }
-
-            /* PAINEL DE ASSISTENTE VIRTUAL INTERATIVO */
-            .assistant-widget { position: fixed; bottom: 30px; right: 30px; z-index: 4000; font-family: 'Inter', sans-serif; }
-            .assistant-trigger { width: 58px; height: 58px; background: linear-gradient(135deg, #2563eb, #1e3a8a); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 24px; box-shadow: 0 10px 30px rgba(37,99,235,0.4); cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); border: 3px solid #fff; position: relative; }
-            .assistant-trigger:hover { transform: scale(1.08); box-shadow: 0 15px 35px rgba(37,99,235,0.5); }
-            .assistant-badge { position: absolute; top: 0; right: 0; width: 16px; height: 16px; background: #10b981; border-radius: 50%; border: 2px solid #fff; }
-
-            .assistant-chat-box { position: absolute; bottom: 75px; right: 0; width: 340px; background: #fff; border-radius: 16px; box-shadow: 0 20px 50px rgba(15,23,42,0.2); border: 1px solid var(--border); display: none; flex-direction: column; overflow: hidden; animation: chatPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-            @keyframes chatPop { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-
-            .chat-header { background: var(--secondary); color: #fff; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; font-weight: 700; }
-            .chat-header span { display: flex; align-items: center; gap: 8px; }
-            .chat-close { background: transparent; border: none; color: #cbd5e1; font-size: 16px; cursor: pointer; transition: 0.15s; }
-            .chat-close:hover { color: #fff; }
-
-            .chat-body { padding: 16px; height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #f8fafc; font-size: 13px; }
-            .chat-msg { max-width: 85%; padding: 10px 14px; border-radius: 12px; line-height: 1.4; }
-            .chat-msg.bot { background: #fff; color: var(--text-main); align-self: flex-start; border: 1px solid var(--border); box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-            .chat-msg.user { background: var(--primary); color: #fff; align-self: flex-end; }
-
-            .chat-footer { padding: 12px; background: #fff; border-top: 1px solid var(--border); display: flex; gap: 8px; }
-            .chat-footer input { flex: 1; height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 12px; font-size: 12.5px; outline: none; }
-            .chat-footer input:focus { border-color: var(--primary); }
-            .chat-footer button { background: var(--primary); color: #fff; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-            .chat-footer button:hover { background: var(--primary-dark); }
         `;
         document.head.appendChild(style);
     }
@@ -116,33 +91,45 @@
         { nome: "Faturas & Emissão", url: "faturas.html", icon: "fa-file-invoice", keywords: ["fatura", "nota", "fiscal", "sefaz", "nfe"] },
         { nome: "Orçamentos & Propostas", url: "orcamentos.html", icon: "fa-file-contract", keywords: ["orcamento", "proposta", "comercial", "venda"] },
         { nome: "Contas Bancárias / Caixa", url: "contas_bancarias.html", icon: "fa-university", keywords: ["banco", "caixa", "saldo", "conta"] },
-        { nome: "Fluxo de Caixa", url: "fluxo_caixa.html", icon: "fa-chart-line", keywords: ["fluxo", "caixa", "projecao", "entrada", "saida"] },
+        { nome: "Fluxo de Caixa", url: "fluxo_de_caixa.html", icon: "fa-chart-line", keywords: ["fluxo", "caixa", "projecao", "entrada", "saida"] },
         { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
         { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
-        { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto", "departamento"] },
-        { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo"] },
-        { nome: "Inventário & Estoque", url: "estoque.html", icon: "fa-warehouse", keywords: ["inventario", "estoque", "saldo", "auditoria"] },
-        { nome: "Documentos XML", url: "documentos.html", icon: "fa-file-code", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
+        { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto"] },
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
 
     window.addEventListener('DOMContentLoaded', () => {
-        // Aplica o tema salvo (Dia / Noite) imediatamente
         if (localStorage.getItem('erp_tema_noite') === 'true') {
             document.body.classList.add('dark-mode');
         }
 
+        // Remove qualquer cabeçalho estático antigo da página para injetar o padrão unificado
         const headerAntigo = document.querySelector('header');
         if (headerAntigo) {
             headerAntigo.remove();
         }
 
         const pathAtual = window.location.pathname.toLowerCase();
-        let botaoModuloHtml = "";
+        let nomeModulo = "ERP PORTAL CORPORATIVO";
+        if (pathAtual.includes("modulo_financeiro")) nomeModulo = "ERP MÓDULO FINANCEIRO";
+        else if (pathAtual.includes("contas_pagar")) nomeModulo = "CONTAS A PAGAR";
+        else if (pathAtual.includes("contas_receber")) nomeModulo = "CONTAS A RECEBER";
+        else if (pathAtual.includes("dre")) nomeModulo = "DRE GERENCIAL";
+        else if (pathAtual.includes("fluxo")) nomeModulo = "FLUXO DE CAIXA";
+        else if (pathAtual.includes("dashboard")) nomeModulo = "DASHBOARD EXECUTIVO";
+        else if (pathAtual.includes("contas_bancarias")) nomeModulo = "CONTAS BANCÁRIAS & CAIXA";
+        else if (pathAtual.includes("orcamentos")) nomeModulo = "ORÇAMENTOS & PROPOSTAS";
+        else if (pathAtual.includes("faturas")) nomeModulo = "FATURAS & EMISSÃO";
+        else if (pathAtual.includes("parceiros")) nomeModulo = "GESTÃO DE PARCEIROS";
+        else if (pathAtual.includes("centros_custo")) nomeModulo = "CENTROS DE CUSTO";
 
-        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
+        let botaoModuloHtml = "";
+        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
             botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
+
+        const isDark = document.body.classList.contains('dark-mode');
+        const iconeTema = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
 
         const headerHtml = `
             <header class="site-header">
@@ -150,7 +137,7 @@
                     <div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>
                     <div class="brand-info">
                         <h1 id="brandTitleCore">Sacramento ERP</h1>
-                        <span id="brandSubtitleCore">Portal Corporativo</span>
+                        <span id="brandSubtitleCore">${nomeModulo}</span>
                     </div>
                 </a>
 
@@ -161,10 +148,10 @@
                 </div>
 
                 <div class="site-nav-right">
-                    <button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Alternar Modo Dia / Noite"><i class="fas fa-moon" style="color:#ffd700;"></i></button>
+                    <button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Alternar Modo Dia / Noite">${iconeTema}</button>
                     <a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>
                     ${botaoModuloHtml}
-                    <div class="empresa-selector">
+                    <div class="empresa-selector" id="seletorEmpresaCoreContainer">
                         <i class="fas fa-building" style="color: #93c5fd;"></i>
                         <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
                     </div>
@@ -179,7 +166,16 @@
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // MODAL DE ALTERAÇÃO DE SENHA GLOBAL (COM CONFIRMAÇÃO)
+        // BLINDAGEM LGPD: Oculta o seletor de empresas para usuários comuns
+        const uSessao = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const emailM = "lucianojorgesacramento@gmail.com";
+        const ehMasterGlobal = uSessao && uSessao.email && uSessao.email.toLowerCase().trim() === emailM.toLowerCase().trim();
+        if (!ehMasterGlobal) {
+            const selEmp = document.getElementById('seletorEmpresaCoreContainer');
+            if (selEmp) selEmp.style.display = 'none';
+        }
+
+        // MODAL DE ALTERAÇÃO DE SENHA GLOBAL
         if (!document.getElementById('modalAlterarSenhaCore')) {
             const modalHtml = `
                 <div id="modalAlterarSenhaCore" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
@@ -205,109 +201,26 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        if (!document.querySelector('.assistant-widget')) {
-            const assistantHtml = `
-                <div class="assistant-widget">
-                    <div class="assistant-chat-box" id="chatBoxCore">
-                        <div class="chat-header">
-                            <span><i class="fas fa-robot" style="color: #60a5fa;"></i> Assistente Executivo IA</span>
-                            <button class="chat-close" onclick="alternarChatCore()"><i class="fas fa-times"></i></button>
-                        </div>
-                        <div class="chat-body" id="chatBodyCore">
-                            <div class="chat-msg bot">Olá! Sou o seu assistente inteligente no Sacramento ERP. Como posso ajudar com os lançamentos ou relatórios hoje?</div>
-                        </div>
-                        <div class="chat-footer">
-                            <input type="text" id="chatInputCore" placeholder="Digite sua dúvida ou comando..." onkeypress="tratarEnterChatCore(event)">
-                            <button onclick="enviarMensagemChatCore()"><i class="fas fa-paper-plane"></i></button>
-                        </div>
-                    </div>
-                    <div class="assistant-trigger" onclick="alternarChatCore()" title="Abrir Assistente Virtual">
-                        <i class="fas fa-robot"></i>
-                        <div class="assistant-badge"></div>
-                    </div>
-                </div>
-            `;
-            document.body.insertAdjacentHTML('beforeend', assistantHtml);
-        }
+        aplicarWhiteLabelDinamico();
+        inicializarCoreDados();
 
         const inputBusca = document.getElementById('inputBuscaGlobalCore');
         const dropdown = document.getElementById('dropdownResultadosCore');
-
         if (inputBusca && dropdown) {
             inputBusca.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase().trim();
-                if (!query) {
-                    dropdown.style.display = 'none';
-                    return;
-                }
-
-                let encontrados = rotasModulos.filter(m => 
-                    m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query))
-                );
-
+                if (!query) { dropdown.style.display = 'none'; return; }
+                let encontrados = rotasModulos.filter(m => m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query)));
                 if (encontrados.length === 0) {
-                    dropdown.innerHTML = `
-                        <div class="search-dropdown-header">Resultados da Busca</div>
-                        <div class="search-item" style="color:var(--text-light); cursor:default; justify-content:center; padding: 16px;">Nenhum módulo encontrado.</div>
-                    `;
+                    dropdown.innerHTML = `<div class="search-dropdown-header">Resultados</div><div class="search-item" style="color:var(--text-light); padding:16px;">Nenhum módulo encontrado.</div>`;
                 } else {
-                    dropdown.innerHTML = `
-                        <div class="search-dropdown-header">Módulos Encontrados (${encontrados.length})</div>
-                        ${encontrados.map(m => `
-                            <a href="\${m.url}" class="search-item">
-                                <i class="fas ${m.icon}"></i> <span>${m.nome}</span>
-                            </a>
-                        `).join('')}
-                    `;
+                    dropdown.innerHTML = `<div class="search-dropdown-header">Módulos Encontrados</div>${encontrados.map(m => `<a href="\${m.url}" class="search-item"><i class="fas ${m.icon}"></i> <span>${m.nome}</span></a>`).join('')}`;
                 }
                 dropdown.style.display = 'block';
             });
-
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('.search-global-box')) {
-                    dropdown.style.display = 'none';
-                }
-            });
+            document.addEventListener('click', (e) => { if (!e.target.closest('.search-global-box')) dropdown.style.display = 'none'; });
         }
-
-        // MOTOR UNIVERSAL DE INJEÇÃO GLOBAL EM TEMPO DE EXECUÇÃO
-        aplicarWhiteLabelUniversalAbsoluto();
-        inicializarCore();
     });
-
-    window.abrirModalSenhaCore = function() { document.getElementById('modalAlterarSenhaCore').style.display = 'flex'; }
-    window.fecharModalSenhaCore = function() { document.getElementById('modalAlterarSenhaCore').style.display = 'none'; }
-
-    window.salvarNovaSenhaCore = async function() {
-        const novaSenha = document.getElementById('novaSenhaInputCore').value.trim();
-        const confirmaSenha = document.getElementById('confirmaSenhaInputCore').value.trim();
-        
-        if (!novaSenha || novaSenha.length < 6) {
-            alert("A nova senha deve ter pelo menos 6 caracteres.");
-            return;
-        }
-        if (novaSenha !== confirmaSenha) {
-            alert("As senhas digitadas não coincidem. Por favor, confirme corretamente.");
-            return;
-        }
-
-        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
-        if (!u || !u.email) {
-            alert("Sessão expirada. Faça login novamente.");
-            location.href = 'login.html';
-            return;
-        }
-        const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-        const { error } = await sb.from('usuarios').update({ senha: novaSenha }).eq('email', u.email);
-        if (error) {
-            alert("Erro ao atualizar senha: " + error.message);
-            return;
-        }
-        alert("Senha atualizada com sucesso!");
-        fecharModalSenhaCore();
-        document.getElementById('novaSenhaInputCore').value = '';
-        document.getElementById('confirmaSenhaInputCore').value = '';
-    }
 
     window.alternarTemaNoite = function() {
         const isDark = document.body.classList.toggle('dark-mode');
@@ -318,7 +231,7 @@
         }
     }
 
-    async function aplicarWhiteLabelUniversalAbsoluto() {
+    async function aplicarWhiteLabelDinamico() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -332,97 +245,25 @@
 
             if (data) {
                 const nomeEmpresa = data.nome_fantasia || data.razao_social || "Sacramento ERP";
-                
-                const path = window.location.pathname.toLowerCase();
-                let nomeModulo = "ERP PORTAL CORPORATIVO";
-                if (path.includes("modulo_financeiro")) nomeModulo = "ERP MÓDULO FINANCEIRO";
-                else if (path.includes("contas_pagar")) nomeModulo = "CONTAS A PAGAR";
-                else if (path.includes("contas_receber")) nomeModulo = "CONTAS A RECEBER";
-                else if (path.includes("dre")) nomeModulo = "DRE GERENCIAL";
-                else if (path.includes("fluxo_caixa")) nomeModulo = "FLUXO DE CAIXA";
-                else if (path.includes("dashboard")) nomeModulo = "DASHBOARD EXECUTIVO";
-                else if (path.includes("auditoria")) nomeModulo = "TRILHA DE AUDITORIA";
-                else if (path.includes("cte")) nomeModulo = "TRANSPORTE & LOGÍSTICA (CT-E)";
-                else if (path.includes("parceiros")) nomeModulo = "CADASTRO DE PARCEIROS";
+                const titleEl = document.getElementById('brandTitleCore');
+                if (titleEl) titleEl.innerText = nomeEmpresa;
 
-                // Varre QUALQUER elemento de título no documento inteiro, garantindo que o nome da empresa apareça em todas as páginas
-                const titles = document.querySelectorAll('#brandTitleCore, #brandTitle, .site-brand h1, h1');
-                titles.forEach(el => {
-                    if (el && (el.innerText.includes('Sacramento') || el.closest('.site-brand') || el.id.includes('brand'))) {
-                        el.innerText = nomeEmpresa;
-                    }
-                });
-
-                // Varre QUALQUER subtítulo de marca no documento inteiro para injetar o módulo atual
-                const subtitles = document.querySelectorAll('#brandSubtitleCore, #brandSubtitle, .brand-info span');
-                subtitles.forEach(el => {
-                    if (el) {
-                        el.innerText = nomeModulo;
-                    }
-                });
-
-                // Injeta a logomarca real do cliente em qualquer caixa de logo do documento
-                const logoBoxes = document.querySelectorAll('#brandLogoBoxCore, #brandLogoBox, .brand-logo-box');
-                logoBoxes.forEach(box => {
-                    if (box && data.logotipo_url) {
-                        box.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
-                    }
-                });
-
-                const isDark = document.body.classList.contains('dark-mode');
-                const btnTema = document.getElementById('btnModoTemaCore');
-                if (btnTema) {
-                    btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
+                const logoBox = document.getElementById('brandLogoBoxCore');
+                if (logoBox && data.logotipo_url) {
+                    logoBox.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
                 }
             }
         } catch(e) {
-            console.error("Erro ao aplicar White-Label Universal Absoluto:", e);
+            console.error("Erro no White-Label dinâmico do core:", e);
         }
     }
 
-    window.alternarChatCore = function() {
-        const chat = document.getElementById('chatBoxCore');
-        if (chat) {
-            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
-        }
-    }
-
-    window.enviarMensagemChatCore = function() {
-        const input = document.getElementById('chatInputCore');
-        const body = document.getElementById('chatBodyCore');
-        if (!input || !input.value.trim()) return;
-
-        const texto = input.value.trim();
-        body.innerHTML += `<div class="chat-msg user">${texto}</div>`;
-        input.value = '';
-        body.scrollTop = body.scrollHeight;
-
-        setTimeout(() => {
-            let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
-            const tLower = texto.toLowerCase();
-            if (tLower.includes('orcamento') || tLower.includes('proposta')) {
-                resposta = "No módulo de Orçamentos, você elabora propostas comerciais e as converte diretamente em faturas.";
-            } else if (tLower.includes('fatura') || tLower.includes('nota')) {
-                resposta = "Na central de Faturas, você gerencia emissões e transmissão fiscal SEFAZ.";
-            } else {
-                resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo.";
-            }
-
-            body.innerHTML += `<div class="chat-msg bot">${resposta}</div>`;
-            body.scrollTop = body.scrollHeight;
-        }, 600);
-    }
-
-    window.tratarEnterChatCore = function(e) {
-        if (e.key === 'Enter') enviarMensagemChatCore();
-    }
-
-    async function inicializarCore() {
+    async function inicializarCoreDados() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (u) {
                 const el = document.getElementById('userNameCore');
-                if (el) el.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+                if (el) el.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
             }
             await carregarSeletorEmpresaCore();
         } catch(err) {}
@@ -462,14 +303,40 @@
             location.href = 'login.html';
         }
     }
+
+    window.abrirModalSenhaCore = function() {
+        const m = document.getElementById('modalAlterarSenhaCore');
+        if (m) m.style.display = 'flex';
+    }
+
+    window.fecharModalSenhaCore = function() {
+        const m = document.getElementById('modalAlterarSenhaCore');
+        if (m) m.style.display = 'none';
+    }
+
+    window.salvarNovaSenhaCore = async function() {
+        const nova = document.getElementById('novaSenhaInputCore').value.trim();
+        const conf = document.getElementById('confirmaSenhaInputCore').value.trim();
+        if(!nova || !conf) { alert("Preencha todos os campos da senha!"); return; }
+        if(nova !== conf) { alert("As senhas não coincidem!"); return; }
+        
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        if (!u || !u.email) { alert("Usuário não logado."); return; }
+
+        const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+        const { error } = await sb.auth.updateUser({ password: nova });
+        if(error) { alert("Erro ao atualizar senha: " + error.message); return; }
+        
+        alert("Senha alterada com sucesso!");
+        fecharModalSenhaCore();
+        document.getElementById('novaSenhaInputCore').value = '';
+        document.getElementById('confirmaSenhaInputCore').value = '';
+    }
 })();
 
-// ==========================================================
-// INJETOR GLOBAL DO BOTÃO FLUTUANTE DE AJUDA — SACRAMENTO ERP
-// ==========================================================
+// Injetor do botão de ajuda flutuante
 (function () {
     if (window.location.pathname.toLowerCase().includes('central_ajuda.html')) return;
-
     window.addEventListener('DOMContentLoaded', () => {
         if (!document.getElementById('btnAjudaGlobalFlutuante')) {
             const btn = document.createElement('button');
@@ -483,11 +350,7 @@
                 box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; 
                 justify-content: center; transition: all 0.2s ease;
             `;
-            btn.onmouseover = () => { btn.style.background = '#1d4ed8'; btn.style.transform = 'scale(1.08)'; };
-            btn.onmouseout = () => { btn.style.background = '#2563eb'; btn.style.transform = 'scale(1)'; };
-            btn.onclick = function () { 
-                window.location.href = 'central_ajuda.html'; 
-            };
+            btn.onclick = function () { window.location.href = 'central_ajuda.html'; };
             document.body.appendChild(btn);
         }
     });
