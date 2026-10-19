@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (White-Label Universal 100% Garantido, Módulo Dinâmico & Tema Dia/Noite)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Substituição Universal de Header, White-Label, Módulo Dinâmico & Tema Dia/Noite)
 
 (function() {
-    const styleId = 'erp-core-styles-v12';
+    const styleId = 'erp-core-styles-v13';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -41,9 +41,9 @@
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
             }
             .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
-            .brand-logo-box, [id*="LogoBox"] { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; flex-shrink: 0; }
-            .brand-logo-box img, [id*="LogoBox"] img { width: 100%; height: 100%; object-fit: cover; }
-            .brand-info h1, [id*="Title"] { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
+            .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; flex-shrink: 0; }
+            .brand-logo-box img { width: 100%; height: 100%; object-fit: cover; }
+            .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
             .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; margin-top: 2px; display: block; }
 
             /* BARRA DE PESQUISA GLOBAL ELITE */
@@ -106,13 +106,78 @@
         document.head.appendChild(style);
     }
 
+    const rotasModulos = [
+        { nome: "Portal Principal (Início)", url: "index.html", icon: "fa-home", keywords: ["inicio", "portal", "home", "principal"] },
+        { nome: "Módulo Financeiro", url: "modulo_financeiro.html", icon: "fa-wallet", keywords: ["financeiro", "modulo"] },
+        { nome: "Contas a Pagar", url: "contas_pagar.html", icon: "fa-file-invoice-dollar", keywords: ["pagar", "despesa", "fornecedor", "boleto"] },
+        { nome: "Contas a Receber", url: "contas_receber.html", icon: "fa-hand-holding-usd", keywords: ["receber", "receita", "cliente", "fatura"] },
+        { nome: "Faturas & Emissão", url: "faturas.html", icon: "fa-file-invoice", keywords: ["fatura", "nota", "fiscal", "sefaz", "nfe"] },
+        { nome: "Orçamentos & Propostas", url: "orcamentos.html", icon: "fa-file-contract", keywords: ["orcamento", "proposta", "comercial", "venda"] },
+        { nome: "Contas Bancárias / Caixa", url: "contas_bancarias.html", icon: "fa-university", keywords: ["banco", "caixa", "saldo", "conta"] },
+        { nome: "Fluxo de Caixa", url: "fluxo_caixa.html", icon: "fa-chart-line", keywords: ["fluxo", "caixa", "projecao", "entrada", "saida"] },
+        { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
+        { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
+        { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto", "departamento"] },
+        { nome: "Produtos, Insumos e Serviços", url: "produtos.html", icon: "fa-boxes", keywords: ["produto", "servico", "insumo", "estoque", "catalogo"] },
+        { nome: "Inventário & Estoque", url: "estoque.html", icon: "fa-warehouse", keywords: ["inventario", "estoque", "saldo", "auditoria"] },
+        { nome: "Documentos XML", url: "documentos.html", icon: "fa-file-code", keywords: ["xml", "nota", "fiscal", "nfe", "cte"] },
+        { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
+    ];
+
     window.addEventListener('DOMContentLoaded', () => {
         // Aplica o tema salvo (Dia / Noite) imediatamente
         if (localStorage.getItem('erp_tema_noite') === 'true') {
             document.body.classList.add('dark-mode');
         }
 
-        // Injeta o modal de alteração de senha globalmente se não existir
+        // SUBSTITUIÇÃO UNIVERSAL DE HEADER: Remove qualquer header estático antigo e injeta o unificado com White-Label
+        const headerAntigo = document.querySelector('header');
+        if (headerAntigo) {
+            headerAntigo.remove();
+        }
+
+        const pathAtual = window.location.pathname.toLowerCase();
+        let botaoModuloHtml = "";
+        if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
+            botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
+        }
+
+        const headerHtml = `
+            <header class="site-header">
+                <a href="index.html" class="site-brand">
+                    <div class="brand-logo-box" id="brandLogoBoxUniversal"><i class="fas fa-cube"></i></div>
+                    <div class="brand-info">
+                        <h1 id="brandTitleUniversal">Carregando...</h1>
+                        <span id="brandSubtitleUniversal">ERP PORTAL CORPORATIVO</span>
+                    </div>
+                </a>
+
+                <div class="search-global-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo, orçamento..." autocomplete="off">
+                    <div class="search-results-dropdown" id="dropdownResultadosCore"></div>
+                </div>
+
+                <div class="site-nav-right">
+                    <button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Alternar Modo Dia / Noite"><i class="fas fa-moon" style="color:#ffd700;"></i></button>
+                    <a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>
+                    ${botaoModuloHtml}
+                    <div class="empresa-selector">
+                        <i class="fas fa-building" style="color: #93c5fd;"></i>
+                        <select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select>
+                    </div>
+                    <div class="user-box">
+                        <i class="fas fa-user-circle" style="font-size: 15px; color: #93c5fd;"></i>
+                        <span id="userNameCore">Usuário</span>
+                        <button class="btn-chave-senha" onclick="abrirModalSenhaCore()" title="Alterar Senha"><i class="fas fa-key"></i></button>
+                    </div>
+                    <button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+                </div>
+            </header>
+        `;
+        document.body.insertAdjacentHTML('afterbegin', headerHtml);
+
+        // MODAL DE ALTERAÇÃO DE SENHA GLOBAL (COM CONFIRMAÇÃO)
         if (!document.getElementById('modalAlterarSenhaCore')) {
             const modalHtml = `
                 <div id="modalAlterarSenhaCore" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
@@ -138,11 +203,47 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        // Adiciona o botão de tema (lua/sol) e a chave de senha
-        inserirBotaoTemaEChave();
+        if (!document.querySelector('.assistant-widget')) {
+            const assistantHtml = `
+                <div class="assistant-widget">
+                    <div class="assistant-chat-box" id="chatBoxCore">
+                        <div class="chat-header">
+                            <span><i class="fas fa-robot" style="color: #60a5fa;"></i> Assistente Executivo IA</span>
+                            <button class="chat-close" onclick="alternarChatCore()"><i class="fas fa-times"></i></button>
+                        </div>
+                        <div class="chat-body" id="chatBodyCore">
+                            <div class="chat-msg bot">Olá! Sou o seu assistente inteligente no Sacramento ERP. Como posso ajudar com os lançamentos ou relatórios hoje?</div>
+                        </div>
+                        <div class="chat-footer">
+                            <input type="text" id="chatInputCore" placeholder="Digite sua dúvida ou comando..." onkeypress="tratarEnterChatCore(event)">
+                            <button onclick="enviarMensagemChatCore()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                    <div class="assistant-trigger" onclick="alternarChatCore()" title="Abrir Assistente Virtual">
+                        <i class="fas fa-robot"></i>
+                        <div class="assistant-badge"></div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', assistantHtml);
+        }
 
-        // Aplica White-Label universal (Nome, Logotipo e Módulo de Referência em TODAS as páginas e headers estáticos)
-        aplicarWhiteLabelUniversalGarantido();
+        const inputBusca = document.getElementById('inputBuscaGlobalCore');
+        const dropdown = document.getElementById('dropdownResultadosCore');
+        if (inputBusca && dropdown) {
+            inputBusca.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase().trim();
+                if (!query) { dropdown.style.display = 'none'; return; }
+                let encontrados = rotasModulos.filter(m => m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query)));
+                dropdown.innerHTML = encontrados.length === 0 ? `<div class="search-item" style="color:var(--text-light); padding:16px;">Nenhum módulo encontrado.</div>` : encontrados.map(m => `<a href="${m.url}" class="search-item"><i class="fas ${m.icon}"></i> <span>${m.nome}</span></a>`).join('');
+                dropdown.style.display = 'block';
+            });
+            document.addEventListener('click', (e) => { if (!e.target.closest('.search-global-box')) dropdown.style.display = 'none'; });
+        }
+
+        // APLICAÇÃO IMEDIATA DA IDENTIDADE VISUAL E TEMA
+        aplicarWhiteLabelImediato();
+        inicializarCore();
     });
 
     window.abrirModalSenhaCore = function() { document.getElementById('modalAlterarSenhaCore').style.display = 'flex'; }
@@ -151,72 +252,26 @@
     window.salvarNovaSenhaCore = async function() {
         const novaSenha = document.getElementById('novaSenhaInputCore').value.trim();
         const confirmaSenha = document.getElementById('confirmaSenhaInputCore').value.trim();
-        
-        if (!novaSenha || novaSenha.length < 6) {
-            alert("A nova senha deve ter pelo menos 6 caracteres.");
-            return;
-        }
-        if (novaSenha !== confirmaSenha) {
-            alert("As senhas digitadas não coincidem. Por favor, confirme corretamente.");
-            return;
-        }
+        if (!novaSenha || novaSenha.length < 6) { alert("A nova senha deve ter pelo menos 6 caracteres."); return; }
+        if (novaSenha !== confirmaSenha) { alert("As senhas digitadas não coincidem."); return; }
 
         const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
-        if (!u || !u.email) {
-            alert("Sessão expirada. Faça login novamente.");
-            location.href = 'login.html';
-            return;
-        }
+        if (!u || !u.email) { alert("Sessão expirada."); location.href = 'login.html'; return; }
         const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
         const { error } = await sb.from('usuarios').update({ senha: novaSenha }).eq('email', u.email);
-        if (error) {
-            alert("Erro ao atualizar senha: " + error.message);
-            return;
-        }
+        if (error) { alert("Erro ao atualizar senha: " + error.message); return; }
         alert("Senha atualizada com sucesso!");
         fecharModalSenhaCore();
-        document.getElementById('novaSenhaInputCore').value = '';
-        document.getElementById('confirmaSenhaInputCore').value = '';
     }
 
     window.alternarTemaNoite = function() {
         const isDark = document.body.classList.toggle('dark-mode');
         localStorage.setItem('erp_tema_noite', isDark);
         const btnTema = document.getElementById('btnModoTemaCore');
-        if (btnTema) {
-            btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
-        }
+        if (btnTema) btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
     }
 
-    function inserirBotaoTemaEChave() {
-        const userBoxes = document.querySelectorAll('.user-box');
-        userBoxes.forEach(box => {
-            if (!box.querySelector('.btn-chave-senha')) {
-                const btnChave = document.createElement('button');
-                btnChave.className = 'btn-chave-senha';
-                btnChave.title = 'Alterar Senha';
-                btnChave.innerHTML = '<i class="fas fa-key"></i>';
-                btnChave.onclick = abrirModalSenhaCore;
-                box.appendChild(btnChave);
-            }
-        });
-
-        const navRights = document.querySelectorAll('.site-nav-right');
-        navRights.forEach(nav => {
-            if (!nav.querySelector('#btnModoTemaCore')) {
-                const isDark = document.body.classList.contains('dark-mode');
-                const btnTema = document.createElement('button');
-                btnTema.id = 'btnModoTemaCore';
-                btnTema.className = 'btn-modo-tema';
-                btnTema.title = 'Alternar Modo Dia / Noite';
-                btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
-                btnTema.onclick = alternarTemaNoite;
-                nav.insertBefore(btnTema, nav.firstChild);
-            }
-        });
-    }
-
-    async function aplicarWhiteLabelUniversalGarantido() {
+    async function aplicarWhiteLabelImediato() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -231,7 +286,6 @@
             if (data) {
                 const nomeEmpresa = data.nome_fantasia || data.razao_social || "Sacramento ERP";
                 
-                // Determina o subtítulo do módulo com base na URL atual
                 const path = window.location.pathname.toLowerCase();
                 let nomeModulo = "ERP PORTAL CORPORATIVO";
                 if (path.includes("modulo_financeiro")) nomeModulo = "ERP MÓDULO FINANCEIRO";
@@ -244,33 +298,90 @@
                 else if (path.includes("cte")) nomeModulo = "TRANSPORTE & LOGÍSTICA (CT-E)";
                 else if (path.includes("parceiros")) nomeModulo = "CADASTRO DE PARCEIROS";
 
-                // Varre TODOS os elementos de cabeçalho (.brand-info) em qualquer página do ERP
-                const brandInfos = document.querySelectorAll('.brand-info');
-                brandInfos.forEach(info => {
-                    let h1 = info.querySelector('h1');
-                    let span = info.querySelector('span');
-                    if (h1) h1.innerText = nomeEmpresa;
-                    if (span) span.innerText = nomeModulo;
-                });
+                const titleEl = document.getElementById('brandTitleUniversal');
+                if (titleEl) titleEl.innerText = nomeEmpresa;
 
-                // Varre qualquer H1 ou título que contenha Sacramento
-                const allElements = document.querySelectorAll('h1, .site-brand h1, #brandTitle, #brandTitleCore');
-                allElements.forEach(el => {
-                    if (el && (el.innerText.includes('Sacramento') || el.closest('.site-brand'))) {
-                        el.innerText = nomeEmpresa;
-                    }
-                });
+                const subEl = document.getElementById('brandSubtitleUniversal');
+                if (subEl) subEl.innerText = nomeModulo;
 
-                // Varre TODOS os blocos de logotipo em qualquer página
-                const logoBoxes = document.querySelectorAll('.brand-logo-box, [id*="LogoBox"]');
-                logoBoxes.forEach(box => {
-                    if (box && data.logotipo_url) {
-                        box.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
-                    }
-                });
+                const logoBox = document.getElementById('brandLogoBoxUniversal');
+                if (logoBox && data.logotipo_url) {
+                    logoBox.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
+                }
+
+                const isDark = document.body.classList.contains('dark-mode');
+                const btnTema = document.getElementById('btnModoTemaCore');
+                if (btnTema) btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
             }
         } catch(e) {
-            console.error("Erro ao aplicar White-Label Universal Garantido:", e);
+            console.error("Erro ao aplicar White-Label Imediato:", e);
+        }
+    }
+
+    window.alternarChatCore = function() {
+        const chat = document.getElementById('chatBoxCore');
+        if (chat) chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+    }
+
+    window.enviarMensagemChatCore = function() {
+        const input = document.getElementById('chatInputCore');
+        const body = document.getElementById('chatBodyCore');
+        if (!input || !input.value.trim()) return;
+        const texto = input.value.trim();
+        body.innerHTML += `<div class="chat-msg user">${texto}</div>`;
+        input.value = '';
+        body.scrollTop = body.scrollHeight;
+        setTimeout(() => {
+            body.innerHTML += `<div class="chat-msg bot">Entendido! Utilize os botões do sistema para gerenciar suas rotinas.</div>`;
+            body.scrollTop = body.scrollHeight;
+        }, 600);
+    }
+
+    window.tratarEnterChatCore = function(e) { if (e.key === 'Enter') enviarMensagemChatCore(); }
+
+    async function inicializarCore() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+            if (u) {
+                const el = document.getElementById('userNameCore');
+                if (el) el.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+            }
+            await carregarSeletorEmpresaCore();
+        } catch(err) {}
+    }
+
+    async function carregarSeletorEmpresaCore() {
+        const select = document.getElementById('selectEmpresaCore');
+        if (!select || !window.supabase) return;
+        try {
+            const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+            if (!data) return;
+            select.innerHTML = '';
+            data.forEach(emp => {
+                const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                const opt = document.createElement('option');
+                opt.value = emp.id;
+                opt.textContent = nomeEmp;
+                select.appendChild(opt);
+            });
+            const selEmp = localStorage.getItem('empresaSelecionada');
+            if (selEmp) select.value = selEmp;
+        } catch(e) {}
+    }
+
+    window.trocarEmpresaCore = function() {
+        const select = document.getElementById('selectEmpresaCore');
+        if (!select) return;
+        localStorage.setItem('empresaSelecionada', select.value);
+        location.reload();
+    }
+
+    window.sairSistemaCore = function() {
+        if (confirm('Deseja realmente encerrar a sessão?')) {
+            localStorage.removeItem('usuarioLogado');
+            localStorage.removeItem('empresaSelecionada');
+            location.href = 'login.html';
         }
     }
 })();
