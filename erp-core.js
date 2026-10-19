@@ -315,3 +315,91 @@
         document.getElementById('confirmaSenhaInputCore').value = '';
     };
 })();
+
+/* ===== PATCH v5.1 — remove barras antigas + garante cabeçalho + white-label com retry ===== */
+(function () {
+  'use strict';
+  function getSb() { return window.sb || null; }
+  function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
+  function nomeModulo() {
+    var arq = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    var mapa = { 'dashboard.html':'DASHBOARD ANALÍTICO', 'index.html':'PORTAL PRINCIPAL', 'projetos_pd.html':'PROJETOS DE P&D' };
+    return mapa[arq] || 'PORTAL DE GESTÃO EMPRESARIAL';
+  }
+  /* Fallback do botão Sair (caso a página não tenha o core carregado) */
+  if (!window.sairSistemaCore) {
+    window.sairSistemaCore = function () {
+      if (confirm('Deseja realmente encerrar a sessão?')) {
+        try { localStorage.removeItem('usuarioLogado'); localStorage.removeItem('empresaSelecionada'); } catch (e) {}
+        location.href = 'login.html';
+      }
+    };
+  }
+  /* 1) Remove barras antigas que repetem "PORTAL CORPORATIVO" */
+  function removerAntigos() {
+    var cand = document.querySelectorAll('header, nav, div, section');
+    for (var i = 0; i < cand.length; i++) {
+      var el = cand[i];
+      if (!el.parentNode) continue;
+      if (el.classList.contains('site-header')) continue;
+      if (el.querySelector('.site-header')) continue;
+      var t = (el.textContent || '').trim();
+      if (t.length > 400) continue;
+      if (t.indexOf('PORTAL CORPORATIVO') === -1) continue;
+      if (el.querySelector('form, table, canvas, input')) continue;
+      el.parentNode.removeChild(el);
+      return;
+    }
+  }
+  /* 2) Garante o cabeçalho novo (cria se a página não tiver) */
+  function garantirHeader() {
+    if (document.querySelector('.site-header')) return;
+    var u = usuario();
+    var html = '<header class="site-header">' +
+      '<a href="index.html" class="site-brand">' +
+        '<div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>' +
+        '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">' + nomeModulo() + '</span></div>' +
+      '</a>' +
+      '<div class="site-nav-right">' +
+        '<span class="date-time-core" id="dateTimeCore">--/--/---- --:--</span>' +
+        '<div class="user-box"><i class="fas fa-user-circle" style="font-size:15px;color:#93c5fd;"></i><span id="userNameCore">' + (u ? (u.nome || u.email || 'Usuário').split(' ')[0] : 'Usuário') + '</span></div>' +
+        '<button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>' +
+      '</div></header>';
+    document.body.insertAdjacentHTML('afterbegin', html);
+    setInterval(function () {
+      var el = document.getElementById('dateTimeCore');
+      if (el) el.innerText = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }, 1000);
+  }
+  /* 3) White-label com retry (fim do "Sacramento ERP" preso) */
+  var tentativas = 0;
+  function whiteLabel() {
+    tentativas++;
+    var u = usuario();
+    if (!u) return;
+    var cid = (u.cliente_id != null) ? u.cliente_id : 1;
+    try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
+    var sb = getSb();
+    if (!sb) { if (tentativas < 20) setTimeout(whiteLabel, 500); return; }
+    sb.from('configuracoes_sistema').select('app_name, app_logo_url').eq('cliente_id', cid).limit(1)
+      .then(function (res) {
+        if (res && res.data && res.data.length > 0 && (res.data[0].app_name || res.data[0].app_logo_url)) {
+          var cfg = res.data[0];
+          var t = document.getElementById('brandTitleCore');
+          if (t && cfg.app_name) t.innerText = cfg.app_name;
+          var box = document.getElementById('brandLogoBoxCore');
+          if (box && cfg.app_logo_url) box.innerHTML = '<img src="' + cfg.app_logo_url + '" alt="Logo">';
+        } else if (tentativas < 20) setTimeout(whiteLabel, 500);
+      })
+      .catch(function () { if (tentativas < 20) setTimeout(whiteLabel, 500); });
+  }
+  function iniciar() {
+    removerAntigos();
+    garantirHeader();
+    whiteLabel();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+  else iniciar();
+  var rodadas = 0;
+  var timer = setInterval(function () { removerAntigos(); rodadas++; if (rodadas > 15) clearInterval(timer); }, 600);
+})();
