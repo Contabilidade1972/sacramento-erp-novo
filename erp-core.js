@@ -316,38 +316,56 @@
     };
 })();
 
-/* ===== PATCH v5.2 — limpa cabeçalhos antigos SEM criar duplicado ===== */
+/* ===== PATCH v5.3 — limpa barras antigas em QUALQUER tag, sem duplicar ===== */
 (function () {
   'use strict';
   function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
   function getSb() { return window.sb || null; }
 
-  /* 1) Remove QUALQUER barra antiga que NÃO seja o cabeçalho do core */
+  /* 1) Varre header, nav, aside, div e section — remove qualquer barra antiga */
   function limparAntigos() {
-    var barras = document.querySelectorAll('header, nav, aside');
-    for (var i = 0; i < barras.length; i++) {
-      var el = barras[i];
+    var cand = document.querySelectorAll('header, nav, aside, div, section');
+    for (var i = 0; i < cand.length; i++) {
+      var el = cand[i];
       if (!el.parentNode) continue;
-      if (el.classList.contains('site-header')) continue;      /* cabeçalho do core: mantém */
-      if (el.querySelector('.site-header')) continue;          /* contém o do core: mantém */
+      if (el.classList.contains('site-header')) continue;   /* cabeçalho do core: mantém */
+      if (el.querySelector('.site-header')) continue;       /* contém o do core: mantém */
       var t = (el.textContent || '').trim();
-      if (t.length > 500) continue;                            /* conteúdo grande: não é barra */
-      if (el.querySelector('form, table, canvas')) continue;   /* tem conteúdo funcional: mantém */
-      /* É uma barra de cabeçalho antiga (tem "Sair", "ERP", "Portal", usuário etc.) */
-      var sinais = ['sair', 'erp', 'portal', 'corporativo', 'financeiro', 'início', 'inicio'];
+      if (t.length > 500) continue;                         /* conteúdo grande: não é barra */
+      if (el.querySelector('form, table, canvas')) continue;/* conteúdo funcional: mantém */
       var baixo = t.toLowerCase();
-      for (var s = 0; s < sinais.length; s++) {
-        if (baixo.indexOf(sinais[s]) > -1) { el.parentNode.removeChild(el); return; }
-      }
+      var ehBarraAntiga = (baixo.indexOf('portal corporativo') > -1)
+        || (baixo.indexOf('sacramento erp') > -1 && baixo.indexOf('sair') > -1);
+      if (ehBarraAntiga) { el.parentNode.removeChild(el); return; }
     }
   }
 
-  /* 2) White-label com retry: atualiza o cabeçalho que JÁ EXISTE (nunca cria outro) */
+  /* 2) Se após a limpeza NÃO existir cabeçalho do core, cria um (com relógio) */
+  function garantirHeader() {
+    if (document.querySelector('.site-header')) return;
+    var u = usuario();
+    var html = '<header class="site-header">' +
+      '<a href="index.html" class="site-brand">' +
+        '<div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>' +
+        '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">PORTAL DE GESTÃO EMPRESARIAL</span></div>' +
+      '</a>' +
+      '<div class="site-nav-right">' +
+        '<span class="date-time-core" id="dateTimeCore">--/--/---- --:--</span>' +
+        '<div class="user-box"><i class="fas fa-user-circle" style="font-size:15px;color:#93c5fd;"></i><span>' + (u ? (u.nome || u.email || 'Usuário').split(' ')[0] : 'Usuário') + '</span></div>' +
+        '<button class="btn-sair" onclick="if(window.sairSistemaCore){sairSistemaCore()}else{if(confirm(\'Deseja sair?\')){localStorage.removeItem(\'usuarioLogado\');location.href=\'login.html\';}}"><i class="fas fa-sign-out-alt"></i> Sair</button>' +
+      '</div></header>';
+    document.body.insertAdjacentHTML('afterbegin', html);
+    setInterval(function () {
+      var el = document.getElementById('dateTimeCore');
+      if (el) el.innerText = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    }, 1000);
+  }
+
+  /* 3) White-label com retry: atualiza o cabeçalho existente */
   var tentativas = 0;
   function whiteLabel() {
     tentativas++;
-    var header = document.querySelector('.site-header');
-    if (!header) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
+    if (!document.querySelector('.site-header')) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
     var u = usuario();
     if (!u) return;
     var cid = (u.cliente_id != null) ? u.cliente_id : 1;
@@ -369,6 +387,7 @@
 
   function iniciar() {
     limparAntigos();
+    garantirHeader();
     whiteLabel();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
