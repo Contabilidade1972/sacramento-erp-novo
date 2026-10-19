@@ -1,4 +1,4 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Substituição Universal de Header, White-Label, Módulo Dinâmico & Tema Dia/Noite)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Código Original Preservado + White-Label Global & Tema Dia/Noite)
 
 (function() {
     const styleId = 'erp-core-styles-v13';
@@ -20,13 +20,15 @@
 
             /* TEMA ESCURO (NOITE) */
             body.dark-mode {
-                --bg: #0b1329;
-                --card: #131c38;
-                --text-main: #f8fafc;
-                --text-light: #94a3b8;
-                --border: #1e293b;
+                --bg: #0b1329 !important;
+                --card: #131c38 !important;
+                --text-main: #f8fafc !important;
+                --text-light: #94a3b8 !important;
+                --border: #1e293b !important;
+                background-color: var(--bg) !important;
+                color: var(--text-main) !important;
             }
-            body.dark-mode .site-header { background: #070d1f !important; border-bottom: 1px solid #1e293b; }
+            body.dark-mode .site-header { background: #070d1f !important; border-bottom: 1px solid #1e293b !important; }
             body.dark-mode .card, body.dark-mode .toolbar, body.dark-mode .dash-card { background: #131c38 !important; border-color: #1e293b !important; color: #f8fafc !important; }
             body.dark-mode table thead th { background: #1e293b !important; color: #cbd5e1 !important; }
             body.dark-mode tbody td { border-bottom-color: #1e293b !important; color: #f8fafc !important; }
@@ -130,7 +132,6 @@
             document.body.classList.add('dark-mode');
         }
 
-        // SUBSTITUIÇÃO UNIVERSAL DE HEADER: Remove qualquer header estático antigo e injeta o unificado com White-Label
         const headerAntigo = document.querySelector('header');
         if (headerAntigo) {
             headerAntigo.remove();
@@ -138,6 +139,7 @@
 
         const pathAtual = window.location.pathname.toLowerCase();
         let botaoModuloHtml = "";
+
         if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo_caixa") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
             botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
@@ -145,10 +147,10 @@
         const headerHtml = `
             <header class="site-header">
                 <a href="index.html" class="site-brand">
-                    <div class="brand-logo-box" id="brandLogoBoxUniversal"><i class="fas fa-cube"></i></div>
+                    <div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>
                     <div class="brand-info">
-                        <h1 id="brandTitleUniversal">Carregando...</h1>
-                        <span id="brandSubtitleUniversal">ERP PORTAL CORPORATIVO</span>
+                        <h1 id="brandTitleCore">Sacramento ERP</h1>
+                        <span id="brandSubtitleCore">Portal Corporativo</span>
                     </div>
                 </a>
 
@@ -230,19 +232,45 @@
 
         const inputBusca = document.getElementById('inputBuscaGlobalCore');
         const dropdown = document.getElementById('dropdownResultadosCore');
+
         if (inputBusca && dropdown) {
             inputBusca.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase().trim();
-                if (!query) { dropdown.style.display = 'none'; return; }
-                let encontrados = rotasModulos.filter(m => m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query)));
-                dropdown.innerHTML = encontrados.length === 0 ? `<div class="search-item" style="color:var(--text-light); padding:16px;">Nenhum módulo encontrado.</div>` : encontrados.map(m => `<a href="${m.url}" class="search-item"><i class="fas ${m.icon}"></i> <span>${m.nome}</span></a>`).join('');
+                if (!query) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                let encontrados = rotasModulos.filter(m => 
+                    m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query))
+                );
+
+                if (encontrados.length === 0) {
+                    dropdown.innerHTML = `
+                        <div class="search-dropdown-header">Resultados da Busca</div>
+                        <div class="search-item" style="color:var(--text-light); cursor:default; justify-content:center; padding: 16px;">Nenhum módulo encontrado.</div>
+                    `;
+                } else {
+                    dropdown.innerHTML = `
+                        <div class="search-dropdown-header">Módulos Encontrados (${encontrados.length})</div>
+                        ${encontrados.map(m => `
+                            <a href="\${m.url}" class="search-item">
+                                <i class="fas ${m.icon}"></i> <span>${m.nome}</span>
+                            </a>
+                        `).join('')}
+                    `;
+                }
                 dropdown.style.display = 'block';
             });
-            document.addEventListener('click', (e) => { if (!e.target.closest('.search-global-box')) dropdown.style.display = 'none'; });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-global-box')) {
+                    dropdown.style.display = 'none';
+                }
+            });
         }
 
-        // APLICAÇÃO IMEDIATA DA IDENTIDADE VISUAL E TEMA
-        aplicarWhiteLabelImediato();
+        aplicarWhiteLabelUniversalSeguro();
         inicializarCore();
     });
 
@@ -252,26 +280,44 @@
     window.salvarNovaSenhaCore = async function() {
         const novaSenha = document.getElementById('novaSenhaInputCore').value.trim();
         const confirmaSenha = document.getElementById('confirmaSenhaInputCore').value.trim();
-        if (!novaSenha || novaSenha.length < 6) { alert("A nova senha deve ter pelo menos 6 caracteres."); return; }
-        if (novaSenha !== confirmaSenha) { alert("As senhas digitadas não coincidem."); return; }
+        
+        if (!novaSenha || novaSenha.length < 6) {
+            alert("A nova senha deve ter pelo menos 6 caracteres.");
+            return;
+        }
+        if (novaSenha !== confirmaSenha) {
+            alert("As senhas digitadas não coincidem. Por favor, confirme corretamente.");
+            return;
+        }
 
         const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
-        if (!u || !u.email) { alert("Sessão expirada."); location.href = 'login.html'; return; }
+        if (!u || !u.email) {
+            alert("Sessão expirada. Faça login novamente.");
+            location.href = 'login.html';
+            return;
+        }
         const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
         const { error } = await sb.from('usuarios').update({ senha: novaSenha }).eq('email', u.email);
-        if (error) { alert("Erro ao atualizar senha: " + error.message); return; }
+        if (error) {
+            alert("Erro ao atualizar senha: " + error.message);
+            return;
+        }
         alert("Senha atualizada com sucesso!");
         fecharModalSenhaCore();
+        document.getElementById('novaSenhaInputCore').value = '';
+        document.getElementById('confirmaSenhaInputCore').value = '';
     }
 
     window.alternarTemaNoite = function() {
         const isDark = document.body.classList.toggle('dark-mode');
         localStorage.setItem('erp_tema_noite', isDark);
         const btnTema = document.getElementById('btnModoTemaCore');
-        if (btnTema) btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
+        if (btnTema) {
+            btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
+        }
     }
 
-    async function aplicarWhiteLabelImediato() {
+    async function aplicarWhiteLabelUniversalSeguro() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -298,46 +344,64 @@
                 else if (path.includes("cte")) nomeModulo = "TRANSPORTE & LOGÍSTICA (CT-E)";
                 else if (path.includes("parceiros")) nomeModulo = "CADASTRO DE PARCEIROS";
 
-                const titleEl = document.getElementById('brandTitleUniversal');
+                const titleEl = document.getElementById('brandTitleCore');
                 if (titleEl) titleEl.innerText = nomeEmpresa;
 
-                const subEl = document.getElementById('brandSubtitleUniversal');
+                const subEl = document.getElementById('brandSubtitleCore');
                 if (subEl) subEl.innerText = nomeModulo;
 
-                const logoBox = document.getElementById('brandLogoBoxUniversal');
+                const logoBox = document.getElementById('brandLogoBoxCore');
                 if (logoBox && data.logotipo_url) {
                     logoBox.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
                 }
 
                 const isDark = document.body.classList.contains('dark-mode');
                 const btnTema = document.getElementById('btnModoTemaCore');
-                if (btnTema) btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
+                if (btnTema) {
+                    btnTema.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
+                }
             }
         } catch(e) {
-            console.error("Erro ao aplicar White-Label Imediato:", e);
+            console.error("Erro ao aplicar White-Label Universal:", e);
         }
     }
 
     window.alternarChatCore = function() {
         const chat = document.getElementById('chatBoxCore');
-        if (chat) chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        if (chat) {
+            chat.style.display = chat.style.display === 'flex' ? 'none' : 'flex';
+        }
     }
 
     window.enviarMensagemChatCore = function() {
         const input = document.getElementById('chatInputCore');
         const body = document.getElementById('chatBodyCore');
         if (!input || !input.value.trim()) return;
+
         const texto = input.value.trim();
         body.innerHTML += `<div class="chat-msg user">${texto}</div>`;
         input.value = '';
         body.scrollTop = body.scrollHeight;
+
         setTimeout(() => {
-            body.innerHTML += `<div class="chat-msg bot">Entendido! Utilize os botões do sistema para gerenciar suas rotinas.</div>`;
+            let resposta = "Entendido! Para gerenciar esta rotina, utilize os botões de ação na tabela ou consulte o menu superior.";
+            const tLower = texto.toLowerCase();
+            if (tLower.includes('orcamento') || tLower.includes('proposta')) {
+                resposta = "No módulo de Orçamentos, você elabora propostas comerciais e as converte diretamente em faturas.";
+            } else if (tLower.includes('fatura') || tLower.includes('nota')) {
+                resposta = "Na central de Faturas, você gerencia emissões e transmissão fiscal SEFAZ.";
+            } else {
+                resposta = "Estou aqui para orientar! Digite o nome do módulo desejado na barra de pesquisa no topo.";
+            }
+
+            body.innerHTML += `<div class="chat-msg bot">${resposta}</div>`;
             body.scrollTop = body.scrollHeight;
         }, 600);
     }
 
-    window.tratarEnterChatCore = function(e) { if (e.key === 'Enter') enviarMensagemChatCore(); }
+    window.tratarEnterChatCore = function(e) {
+        if (e.key === 'Enter') enviarMensagemChatCore();
+    }
 
     async function inicializarCore() {
         try {
