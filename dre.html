@@ -81,17 +81,80 @@
         .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
         .num { text-align: right; }
 
-        .print-header { display: none; }
+        .print-corporative-header { display: none !important; }
 
         @media print {
-            .site-header, .dre-toolbar, .btn-acao { display: none !important; }
-            body { background: #fff !important; }
-            .card-table { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            table { width: 100% !important; border: 1px solid #cbd5e1 !important; margin-top: 15px; }
-            thead th { background: #f1f5f9 !important; color: #0f172a !important; border-bottom: 2px solid #0f172a !important; }
-            .print-header { display: block !important; border-bottom: 2px solid #1e3a8a; padding-bottom: 15px; margin-bottom: 20px; }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #64748b; margin-top: 4px; }
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+                @bottom-right {
+                    content: "Página " counter(page) " de " counter(pages);
+                    font-size: 8.5pt;
+                    font-family: 'Inter', sans-serif;
+                    color: #475569;
+                }
+            }
+
+            body * {
+                visibility: hidden !important;
+            }
+
+            .card-table, .card-table * {
+                visibility: visible !important;
+            }
+
+            .card-table {
+                position: relative !important;
+                left: auto !important;
+                top: auto !important;
+                width: 100% !important;
+                padding: 0 5mm !important;
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+            }
+
+            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
+
+            .ocultar-print { display: none !important; }
+
+            .print-corporative-header {
+                display: block !important;
+                background: #fff !important;
+                padding-bottom: 6mm !important;
+                margin-bottom: 8mm !important;
+                border-bottom: 2px solid #1e3a8a !important;
+                width: 100% !important;
+            }
+
+            table {
+                font-size: 9pt !important;
+                width: 100% !important;
+                border-collapse: collapse !important;
+                margin: 0 auto !important;
+            }
+
+            thead {
+                display: table-header-group !important;
+            }
+
+            tr {
+                page-break-inside: avoid !important;
+            }
+
+            thead th {
+                background: #f1f5f9 !important;
+                color: #0f172a !important;
+                padding: 6px 8px !important;
+                border-bottom: 2px solid #0f172a !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            tbody td {
+                padding: 5px 8px !important;
+                border-bottom: 1px solid #e2e8f0 !important;
+            }
         }
     </style>
 </head>
@@ -121,7 +184,7 @@
 <div class="container">
     
     <!-- BARRA DE FERRAMENTAS E ABAS DE PERÍODO -->
-    <div class="dre-toolbar">
+    <div class="dre-toolbar ocultar-print">
         <div class="periodo-tabs">
             <button class="tab-btn ativo" id="tabMensal" onclick="selecionarPeriodo('mensal')">Mensal</button>
             <button class="tab-btn" id="tabAcumulado" onclick="selecionarPeriodo('acumulado')">Acumulado (Jan até Mês)</button>
@@ -131,16 +194,12 @@
             <span>Mês de Referência:</span>
             <input type="month" id="filtroMes" onchange="carregarDRE()">
         </div>
-        <button class="btn-acao" onclick="window.print()"><i class="fas fa-print"></i> Imprimir DRE</button>
+        <button class="btn-acao" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir DRE</button>
     </div>
 
     <!-- TABELA DRE PRINCIPAL -->
     <div class="card-table">
-        <div class="print-header">
-            <h2>Demonstrativo do Resultado do Exercício (DRE Gerencial)</h2>
-            <p>Período: <span id="printPeriodo">--</span> | Emitido via Sacramento ERP</p>
-        </div>
-        <div class="table-header">
+        <div class="table-header ocultar-print">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Estrutura de Resultados</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Demonstrativo analítico e sintético da apuração do exercício.</p>
@@ -148,6 +207,15 @@
         </div>
         <table>
             <thead>
+                <tr>
+                    <th colspan="2" style="background: #fff !important; padding: 0 !important; border: none !important;">
+                        <div class="print-corporative-header">
+                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Demonstrativo do Resultado do Exercício (DRE Gerencial)</h2>
+                            <p style="font-size: 8pt; color: #475569; margin: 3mm 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodo">--</span></p>
+                        </div>
+                    </th>
+                </tr>
                 <tr>
                     <th>Conta / Descrição Contábil</th>
                     <th class="num">Valor no Período (R\$)</th>
@@ -199,7 +267,6 @@
         carregarDRE();
     }
 
-    // Inicializa o input de mês com o mês atual se estiver vazio
     if (!document.getElementById('filtroMes').value) {
         const agora = new Date();
         const ano = agora.getFullYear();
@@ -213,6 +280,37 @@
             localStorage.removeItem('empresaSelecionada');
             location.href = 'login.html';
         }
+    }
+
+    async function executarImpressao() {
+        const selectEmp = document.getElementById('selectEmpresa');
+        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+        } else {
+            const cid = clienteIdAtual();
+            try {
+                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+                if (data) {
+                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+                } else {
+                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+                }
+            } catch(e) {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+            }
+        }
+
+        const u = obterUsuario();
+        if (u) {
+            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+        } else {
+            document.getElementById('printUsuarioNome').innerText = 'Operador';
+        }
+
+        const agora = new Date();
+        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+        window.print();
     }
 
     async function carregarDRE() {
@@ -366,8 +464,8 @@
 
     window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
