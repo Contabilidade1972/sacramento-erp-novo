@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (White-Label Dinâmico & Alteração de Senha)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Com Chavinha e Confirmação de Senha)
 
 (function() {
-    const styleId = 'erp-core-styles-v6';
+    const styleId = 'erp-core-styles-v7';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -53,7 +53,9 @@
             .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
             .empresa-selector select option { color: #000; background: #fff; }
             
-            .user-box { display: flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.08); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
+            .user-box { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.08); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
+            .btn-chave-senha { background: transparent; border: none; color: #93c5fd; cursor: pointer; font-size: 14px; padding: 2px 4px; transition: 0.2s; display: inline-flex; align-items: center; }
+            .btn-chave-senha:hover { color: #fff; transform: scale(1.1); }
             
             .btn-sair { background: #dc2626; color: #fff; border: none; padding: 7px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
             .btn-sair:hover { background: #b91c1c; }
@@ -143,27 +145,33 @@
                     <div class="user-box">
                         <i class="fas fa-user-circle" style="font-size: 15px; color: #93c5fd;"></i>
                         <span id="userNameCore">Usuário</span>
+                        <button class="btn-chave-senha" onclick="abrirModalSenhaCore()" title="Alterar Senha"><i class="fas fa-key"></i></button>
                     </div>
-                    <button class="btn-topo-acao" onclick="abrirModalSenhaCore()" title="Alterar Senha" style="background: rgba(255,255,255,0.15);"><i class="fas fa-key"></i></button>
                     <button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>
                 </div>
             </header>
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // MODAL DE ALTERAÇÃO DE SENHA GLOBAL
+        // MODAL DE ALTERAÇÃO DE SENHA (PADRÃO IDÊNTICO À SEGUNDA IMAGEM DO CLIENTE)
         if (!document.getElementById('modalAlterarSenhaCore')) {
             const modalHtml = `
                 <div id="modalAlterarSenhaCore" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center;">
-                    <div style="background:#fff; padding:30px; border-radius:14px; width:100%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
-                        <h3 style="font-size:16px; font-weight:800; color:#1e3a8a; margin-bottom:16px;"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
-                        <div style="margin-bottom:14px;">
-                            <label style="font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px; display:block; text-transform:uppercase;">Nova Senha</label>
-                            <input type="password" id="novaSenhaInputCore" class="form-control" placeholder="Mínimo de 6 caracteres" style="width:100%; height:40px; padding:0 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none;">
+                    <div style="background:#fff; width:100%; max-width:440px; border-radius:14px; box-shadow:0 15px 35px rgba(0,0,0,0.25); overflow:hidden; animation: modalPop 0.2s ease;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:20px 24px; border-bottom:1px solid #e2e8f0;">
+                            <h3 style="font-size:16px; font-weight:800; color:#1e3a8a; display:flex; align-items:center; gap:10px;"><i class="fas fa-key"></i> Alterar Minha Senha</h3>
+                            <button onclick="fecharModalSenhaCore()" style="background:none; border:none; font-size:16px; color:#64748b; cursor:pointer;"><i class="fas fa-times"></i></button>
                         </div>
-                        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
-                            <button onclick="fecharModalSenhaCore()" style="background:#64748b; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-weight:700; cursor:pointer;">Cancelar</button>
-                            <button onclick="salvarNovaSenhaCore()" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:6px; font-weight:700; cursor:pointer;">Salvar Senha</button>
+                        <div style="padding:24px; display:flex; flex-direction:column; gap:18px;">
+                            <div>
+                                <label style="font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Nova Senha</label>
+                                <input type="password" id="novaSenhaInputCore" placeholder="Digite a nova senha" style="width:100%; height:42px; padding:0 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; color:#0f172a;">
+                            </div>
+                            <div>
+                                <label style="font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Confirmar Nova Senha</label>
+                                <input type="password" id="confirmaSenhaInputCore" placeholder="Confirme a nova senha" style="width:100%; height:42px; padding:0 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; color:#0f172a;">
+                            </div>
+                            <button onclick="salvarNovaSenhaCore()" style="background:#2563eb; color:#fff; border:none; height:44px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 4px 12px rgba(37,99,235,0.3);"><i class="fas fa-lock"></i> Atualizar Senha</button>
                         </div>
                     </div>
                 </div>
@@ -205,10 +213,17 @@
 
     window.salvarNovaSenhaCore = async function() {
         const novaSenha = document.getElementById('novaSenhaInputCore').value.trim();
+        const confirmaSenha = document.getElementById('confirmaSenhaInputCore').value.trim();
+        
         if (!novaSenha || novaSenha.length < 6) {
             alert("A nova senha deve ter pelo menos 6 caracteres.");
             return;
         }
+        if (novaSenha !== confirmaSenha) {
+            alert("As senhas digitadas não coincidem. Por favor, confirme corretamente.");
+            return;
+        }
+
         const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
         if (!u || !u.email) {
             alert("Sessão expirada. Faça login novamente.");
@@ -221,9 +236,10 @@
             alert("Erro ao atualizar senha: " + error.message);
             return;
         }
-        alert("Senha alterada com sucesso!");
+        alert("Senha atualizada com sucesso!");
         fecharModalSenhaCore();
         document.getElementById('novaSenhaInputCore').value = '';
+        document.getElementById('confirmaSenhaInputCore').value = '';
     }
 
     async function aplicarWhiteLabelTenant() {
