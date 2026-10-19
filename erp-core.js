@@ -1,7 +1,7 @@
 // erp-core.js — Motor Central de Interface e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
 
 (function() {
-    const styleId = 'erp-core-styles-universal';
+    const styleId = 'erp-core-styles-universal-v20';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -37,7 +37,7 @@
 
             body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; margin: 0; padding: 0; transition: background 0.3s ease, color 0.3s ease; }
 
-            /* HEADER CORPORATIVO PADRÃO UNIFICADO (EXATAMENTE COMO NO ANEXO) */
+            /* HEADER CORPORATIVO PADRÃO UNIFICADO */
             .site-header {
                 background: var(--secondary); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
@@ -95,6 +95,7 @@
         { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
         { nome: "Parceiros & Clientes", url: "parceiros.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "cnpj", "cadastro"] },
         { nome: "Centros de Custo", url: "centros_custo.html", icon: "fa-sitemap", keywords: ["centro", "custo", "projeto"] },
+        { nome: "Trilha de Auditoria", url: "auditoria_sistema.html", icon: "fa-history", keywords: ["auditoria", "logs", "acessos", "seguranca"] },
         { nome: "Dashboard Analítico", url: "dashboard.html", icon: "fa-chart-bar", keywords: ["dashboard", "grafico", "executivo", "relatorio"] }
     ];
 
@@ -103,15 +104,13 @@
             document.body.classList.add('dark-mode');
         }
 
-        // Remove qualquer cabeçalho estático antigo da página para injetar o padrão unificado
-        const headerAntigo = document.querySelector('header');
-        if (headerAntigo) {
-            headerAntigo.remove();
-        }
+        // Remove QUALQUER cabeçalho antigo que exista na página (seja <header>, .site-header ou .header)
+        const cabecalhosAntigos = document.querySelectorAll('header, .site-header, .header');
+        cabecalhosAntigos.forEach(h => h.remove());
 
         const pathAtual = window.location.pathname.toLowerCase();
-        let nomeModulo = "ERP PORTAL CORPORATIVO";
-        if (pathAtual.includes("modulo_financeiro")) nomeModulo = "ERP MÓDULO FINANCEIRO";
+        let nomeModulo = "PORTAL DE GESTÃO EMPRESARIAL";
+        if (pathAtual.includes("modulo_financeiro")) nomeModulo = "MÓDULO FINANCEIRO";
         else if (pathAtual.includes("contas_pagar")) nomeModulo = "CONTAS A PAGAR";
         else if (pathAtual.includes("contas_receber")) nomeModulo = "CONTAS A RECEBER";
         else if (pathAtual.includes("dre")) nomeModulo = "DRE GERENCIAL";
@@ -122,10 +121,14 @@
         else if (pathAtual.includes("faturas")) nomeModulo = "FATURAS & EMISSÃO";
         else if (pathAtual.includes("parceiros")) nomeModulo = "GESTÃO DE PARCEIROS";
         else if (pathAtual.includes("centros_custo")) nomeModulo = "CENTROS DE CUSTO";
+        else if (pathAtual.includes("auditoria")) nomeModulo = "TRILHA DE AUDITORIA";
 
         let botaoModuloHtml = "";
+        if (!pathAtual.includes("index.html") && !pathAtual.endsWith("/")) {
+            botaoModuloHtml = `<a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>`;
+        }
         if (pathAtual.includes("contas_pagar") || pathAtual.includes("contas_receber") || pathAtual.includes("contas_bancarias") || pathAtual.includes("fluxo") || pathAtual.includes("dre") || pathAtual.includes("faturas") || pathAtual.includes("orcamentos")) {
-            botaoModuloHtml = `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
+            botaoModuloHtml += `<a href="modulo_financeiro.html" class="btn-topo-acao"><i class="fas fa-wallet"></i> Módulo Financeiro</a>`;
         }
 
         const isDark = document.body.classList.contains('dark-mode');
@@ -149,7 +152,6 @@
 
                 <div class="site-nav-right">
                     <button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Alternar Modo Dia / Noite">${iconeTema}</button>
-                    <a href="index.html" class="btn-topo-acao"><i class="fas fa-home"></i> Início</a>
                     ${botaoModuloHtml}
                     <div class="empresa-selector" id="seletorEmpresaCoreContainer">
                         <i class="fas fa-building" style="color: #93c5fd;"></i>
@@ -166,7 +168,7 @@
         `;
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        // BLINDAGEM LGPD: Oculta o seletor de empresas para usuários comuns
+        // BLINDAGEM LGPD ABSOLUTA: Oculta o seletor de empresas para quem não for Master
         const uSessao = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
         const emailM = "lucianojorgesacramento@gmail.com";
         const ehMasterGlobal = uSessao && uSessao.email && uSessao.email.toLowerCase().trim() === emailM.toLowerCase().trim();
@@ -254,7 +256,7 @@
                 }
             }
         } catch(e) {
-            console.error("Erro no White-Label dinâmico do core:", e);
+            console.error("Erro no White-Label dinâmico:", e);
         }
     }
 
@@ -332,26 +334,4 @@
         document.getElementById('novaSenhaInputCore').value = '';
         document.getElementById('confirmaSenhaInputCore').value = '';
     }
-})();
-
-// Injetor do botão de ajuda flutuante
-(function () {
-    if (window.location.pathname.toLowerCase().includes('central_ajuda.html')) return;
-    window.addEventListener('DOMContentLoaded', () => {
-        if (!document.getElementById('btnAjudaGlobalFlutuante')) {
-            const btn = document.createElement('button');
-            btn.id = 'btnAjudaGlobalFlutuante';
-            btn.title = 'Central de Ajuda';
-            btn.innerHTML = '<i class="fas fa-question"></i>';
-            btn.style.cssText = `
-                position: fixed; bottom: 24px; right: 24px; z-index: 999999;
-                width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff;
-                border: none; font-size: 22px; font-weight: bold; cursor: pointer;
-                box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; 
-                justify-content: center; transition: all 0.2s ease;
-            `;
-            btn.onclick = function () { window.location.href = 'central_ajuda.html'; };
-            document.body.appendChild(btn);
-        }
-    });
 })();
