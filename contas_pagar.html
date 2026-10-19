@@ -379,6 +379,12 @@
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
 
+// Instância única e segura do cliente Supabase para esta página
+const sbGlobal = window.supabase.createClient(
+    'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
+    'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
+);
+
 function obterClienteIdSeguro() {
     try {
         const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
@@ -440,11 +446,9 @@ async function consultarCnpjReceita(doc) {
     let limpo = doc.replace(/\D/g, '');
     if (!limpo) return;
     const cid = obterClienteIdSeguro();
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 
     try {
-        const { data } = await supabaseClient.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
+        const { data } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
         if (data && (data.razao_social || data.nome)) {
             document.getElementById('fornecedor_nome').value = data.razao_social || data.nome;
             return;
@@ -458,7 +462,7 @@ async function consultarCnpjReceita(doc) {
                 let json = await resp.json();
                 if (json.razao_social) {
                     document.getElementById('fornecedor_nome').value = json.razao_social;
-                    await supabaseClient.from('parceiros').insert([{
+                    await sbGlobal.from('parceiros').insert([{
                         cliente_id: cid,
                         tipo: 'Fornecedor',
                         razao_social: json.razao_social,
@@ -475,10 +479,8 @@ async function consultarCnpjReceita(doc) {
 }
 
 async function carregarCentrosCustoSelect() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const cid = obterClienteIdSeguro();
-    const { data } = await supabaseClient.from('centros_custo').select('*').eq('cliente_id', cid);
+    const { data } = await sbGlobal.from('centros_custo').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('centro_custo');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecione o Centro de Custo...</option>';
@@ -491,10 +493,8 @@ async function carregarCentrosCustoSelect() {
 }
 
 async function carregarPlanoContasSelect() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const cid = obterClienteIdSeguro();
-    const { data } = await supabaseClient.from('plano_contas').select('*').eq('cliente_id', cid);
+    const { data } = await sbGlobal.from('plano_contas').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_contabil');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecione a Conta Contábil (DRE)...</option>';
@@ -509,10 +509,8 @@ async function carregarPlanoContasSelect() {
 }
 
 async function carregarContasBancariasModal() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const cid = obterClienteIdSeguro();
-    const { data } = await supabaseClient.from('contas_bancarias').select('*').eq('cliente_id', cid);
+    const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_origem_cadastro');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecione a conta...</option>';
@@ -529,12 +527,10 @@ function abrirModalContaContabil() { document.getElementById('modalNovaContaCont
 function abrirModalFornecedor() { document.getElementById('modalNovoFornecedor').style.display = 'flex'; }
 
 async function salvarNovoCentroCusto() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const nome = document.getElementById('cc_nome').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await supabaseClient.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
+    await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
     await carregarCentrosCustoSelect();
     document.getElementById('centro_custo').value = nome;
@@ -542,12 +538,10 @@ async function salvarNovoCentroCusto() {
 }
 
 async function salvarNovoPlanoContas() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const desc = document.getElementById('pc_descricao').value.trim();
     if (!desc) { alert("Informe a descrição."); return; }
     const cid = obterClienteIdSeguro();
-    await supabaseClient.from('plano_contas').insert([{ cliente_id: cid, descricao: desc }]);
+    await sbGlobal.from('plano_contas').insert([{ cliente_id: cid, descricao: desc }]);
     document.getElementById('modalNovaContaContabil').style.display = 'none';
     await carregarPlanoContasSelect();
     document.getElementById('conta_contabil').value = desc;
@@ -555,13 +549,11 @@ async function salvarNovoPlanoContas() {
 }
 
 async function salvarNovoFornecedor() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const nome = document.getElementById('forn_nome').value.trim();
     const doc = document.getElementById('forn_doc').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await supabaseClient.from('parceiros').insert([{ cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Fornecedor' }]);
+    await sbGlobal.from('parceiros').insert([{ cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Fornecedor' }]);
     document.getElementById('modalNovoFornecedor').style.display = 'none';
     document.getElementById('fornecedor_nome').value = nome;
     document.getElementById('cpf_cnpj_fornecedor').value = doc;
@@ -569,10 +561,8 @@ async function salvarNovoFornecedor() {
 }
 
 async function carregarContas() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const cid = obterClienteIdSeguro();
-    const { data, error } = await supabaseClient.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+    const { data, error } = await sbGlobal.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
         document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
@@ -706,8 +696,6 @@ function renderTabela() {
 }
 
 async function salvarContaPagar() {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const id = document.getElementById('edit_id').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
     const cpf_cnpj_fornecedor = document.getElementById('cpf_cnpj_fornecedor').value.trim();
@@ -731,9 +719,9 @@ async function salvarContaPagar() {
     let res;
 
     if(id) {
-        res = await supabaseClient.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+        res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
     } else {
-        res = await supabaseClient.from('contas_pagar').insert([payload]);
+        res = await sbGlobal.from('contas_pagar').insert([payload]);
     }
 
     if(res.error) { alert("Erro ao salvar: " + res.error.message); return; }
@@ -785,11 +773,9 @@ function cancelarEdicao() {
 }
 
 window.excluirConta = async function(id) {
-    if (!window.supabase) return;
-    const supabaseClient = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     if(confirm("Deseja realmente excluir este registo?")) {
         const cid = obterClienteIdSeguro();
-        let res = await supabaseClient.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
+        let res = await sbGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
         alert("Registo removido com sucesso!");
         carregarContas();
