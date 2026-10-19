@@ -316,56 +316,29 @@
     };
 })();
 
-/* ===== PATCH v5.3 — limpa barras antigas em QUALQUER tag, sem duplicar ===== */
+/* ===== PATCH v5.4 — remove cabeçalhos antigos pelo ID (à prova de classe duplicada) ===== */
 (function () {
   'use strict';
   function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
   function getSb() { return window.sb || null; }
 
-  /* 1) Varre header, nav, aside, div e section — remove qualquer barra antiga */
+  /* Remove QUALQUER header/.site-header que NÃO seja o do core (o do core tem #brandTitleCore) */
   function limparAntigos() {
-    var cand = document.querySelectorAll('header, nav, aside, div, section');
+    var cand = document.querySelectorAll('header, .site-header');
     for (var i = 0; i < cand.length; i++) {
       var el = cand[i];
       if (!el.parentNode) continue;
-      if (el.classList.contains('site-header')) continue;   /* cabeçalho do core: mantém */
-      if (el.querySelector('.site-header')) continue;       /* contém o do core: mantém */
-      var t = (el.textContent || '').trim();
-      if (t.length > 500) continue;                         /* conteúdo grande: não é barra */
-      if (el.querySelector('form, table, canvas')) continue;/* conteúdo funcional: mantém */
-      var baixo = t.toLowerCase();
-      var ehBarraAntiga = (baixo.indexOf('portal corporativo') > -1)
-        || (baixo.indexOf('sacramento erp') > -1 && baixo.indexOf('sair') > -1);
-      if (ehBarraAntiga) { el.parentNode.removeChild(el); return; }
+      if (el.querySelector('#brandTitleCore')) continue;  /* é o cabeçalho do core: mantém */
+      el.parentNode.removeChild(el);
+      return;
     }
   }
 
-  /* 2) Se após a limpeza NÃO existir cabeçalho do core, cria um (com relógio) */
-  function garantirHeader() {
-    if (document.querySelector('.site-header')) return;
-    var u = usuario();
-    var html = '<header class="site-header">' +
-      '<a href="index.html" class="site-brand">' +
-        '<div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>' +
-        '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">PORTAL DE GESTÃO EMPRESARIAL</span></div>' +
-      '</a>' +
-      '<div class="site-nav-right">' +
-        '<span class="date-time-core" id="dateTimeCore">--/--/---- --:--</span>' +
-        '<div class="user-box"><i class="fas fa-user-circle" style="font-size:15px;color:#93c5fd;"></i><span>' + (u ? (u.nome || u.email || 'Usuário').split(' ')[0] : 'Usuário') + '</span></div>' +
-        '<button class="btn-sair" onclick="if(window.sairSistemaCore){sairSistemaCore()}else{if(confirm(\'Deseja sair?\')){localStorage.removeItem(\'usuarioLogado\');location.href=\'login.html\';}}"><i class="fas fa-sign-out-alt"></i> Sair</button>' +
-      '</div></header>';
-    document.body.insertAdjacentHTML('afterbegin', html);
-    setInterval(function () {
-      var el = document.getElementById('dateTimeCore');
-      if (el) el.innerText = new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-    }, 1000);
-  }
-
-  /* 3) White-label com retry: atualiza o cabeçalho existente */
+  /* White-label com retry: atualiza o cabeçalho do core */
   var tentativas = 0;
   function whiteLabel() {
     tentativas++;
-    if (!document.querySelector('.site-header')) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
+    if (!document.getElementById('brandTitleCore')) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
     var u = usuario();
     if (!u) return;
     var cid = (u.cliente_id != null) ? u.cliente_id : 1;
@@ -387,12 +360,11 @@
 
   function iniciar() {
     limparAntigos();
-    garantirHeader();
     whiteLabel();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
   else iniciar();
-  /* Reaplica a limpeza por 12 segundos para vencer scripts das páginas */
+  /* Reaplica por 12 segundos para vencer scripts das páginas */
   var rodadas = 0;
   var timer = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timer); }, 600);
 })();
