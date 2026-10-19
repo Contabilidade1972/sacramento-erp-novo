@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -22,44 +23,8 @@
             --border: #e2e8f0;
         }
 
-        /* MENU LATERAL PADRÃO ATUAL */
-        .sidebar{width:260px;background:linear-gradient(180deg,#0f172a 0%,#1e3a8a 160%);color:#fff;position:fixed;top:0;left:0;height:100vh;z-index:1000;display:flex;flex-direction:column;overflow-y:auto;transition:width 0.3s ease, transform 0.3s ease;box-shadow:2px 0 12px rgba(15,23,42,0.15);}
-        .sidebar.collapsed { width: 70px !important; }
-        .sidebar.collapsed .logo-text-wrapper,
-        .sidebar.collapsed .logo-watermark,
-        .sidebar.collapsed .sidebar-logo img,
-        .sidebar.collapsed .nav-section,
-        .sidebar.collapsed .nav-item span,
-        .sidebar.collapsed .menu-busca,
-        .sidebar.collapsed .nav-seta { display: none !important; }
-        .sidebar.collapsed .nav-item { justify-content: center; padding: 12px 0; }
-        .sidebar-logo{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,0.10);display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;z-index:10;min-height:80px; gap:8px;}
-        .logo-watermark{position:absolute;right:-14px;top:50%;transform:translateY(-50%);font-size:110px;color:rgba(255,255,255,0.07);z-index:0;pointer-events:none;line-height:1;}
-        .logo-text-wrapper{display:flex;flex-direction:column;overflow:hidden;flex:1;position:relative;z-index:1;}
-        .sidebar-logo h1{font-size:12px;font-weight:700;line-height:1.25;color:#fff;letter-spacing:0;text-transform:none;word-wrap:break-word;}
-        .sidebar-logo span{font-size:9px;color:#93c5fd;margin-top:3px;display:block;letter-spacing:0.5px;text-transform:uppercase;font-weight:600;}
-        .btn-toggle-menu { background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
-        .btn-toggle-menu:hover { color: #fff; }
-        .nav-section{padding:16px 20px 8px;font-size:10px;text-transform:uppercase;color:#64748b;font-weight:700;letter-spacing:0.5px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding-right:20px;}
-        .nav-seta { font-size: 9px; color: #64748b; transition: transform 0.2s; }
-        .nav-seta.fechada { transform: rotate(-90deg); }
-        .sidebar.collapsed .nav-section { display: none !important; }
-        .nav-item{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;cursor:pointer;color:#cbd5e1;font-size:13px;transition:.2s;border-left:3px solid transparent;}
-        .nav-item-left{display:flex;align-items:center;gap:12px;}
-        .sidebar.collapsed .nav-item-left { gap: 0; }
-        .nav-item:hover{background:rgba(255,255,255,0.06);color:#fff}
-        .nav-item.active{background:rgba(37, 99, 235, 0.18);color:var(--primary);border-left:3px solid var(--primary);font-weight:600;}
-        .badge-container { display: flex; gap: 4px; align-items: center; }
-        .badge-count { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; color: #fff; line-height: 1; }
-        .badge-red { background: var(--danger); }
-        .badge-yellow { background: var(--warning); color: #78350f; }
-
-        /* ÁREA PRINCIPAL */
-        .main { margin-left: 260px; flex: 1; display: flex; flex-direction: column; min-width: 0; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
-        .main.expanded { margin-left: 70px !important; width: calc(100% - 70px) !important; }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: row; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
         .container { max-width: 1380px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -117,8 +82,7 @@
         @media print {
             @page { size: A4 portrait; margin: 10mm; }
             body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
-            .sidebar, .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
-            .main { margin-left: 0 !important; width: 100% !important; }
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
             .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 5mm !important; width: 100% !important; display: block !important; }
             .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
             .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 6mm !important; margin-bottom: 8mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
@@ -133,80 +97,7 @@
 </head>
 <body>
 
-<!-- MENU LATERAL PADRÃO UNIFICADO -->
-<aside class="sidebar" id="appSidebar">
-    <div class="sidebar-logo">
-        <div class="logo-watermark"><i class="fas fa-dna"></i></div>
-        <div id="sidebarLogoContainer" style="display:flex; align-items:center; gap:8px; flex:1; min-width:0; position:relative; z-index:1;">
-            <div class="logo-text-wrapper">
-                <h1 id="sidebarAppName">Sacramento ERP</h1>
-                <span id="sidebarSubName">ERP Financeiro</span>
-            </div>
-        </div>
-        <button class="btn-toggle-menu" onclick="toggleRecolherMenuPC()" title="Recolher / Expandir Menu"><i class="fas fa-bars"></i></button>
-    </div>
-    <div class="nav-section">Principal</div>
-    <div class="nav-item" onclick="location.href='index.html'"><div class="nav-item-left"><i class="fas fa-desktop"></i> <span>Dashboard</span></div></div>
-    <div class="nav-section">Financeiro &amp; Fiscal</div>
-    <div class="nav-item active" onclick="location.href='contas_pagar.html'"><div class="nav-item-left"><i class="fas fa-file-invoice-dollar" style="color:#ef4444"></i> <span>Contas a Pagar</span></div></div>
-    <div class="nav-item" onclick="location.href='contas_receber.html'"><div class="nav-item-left"><i class="fas fa-hand-holding-usd" style="color:#10b981"></i> <span>Contas a Receber</span></div></div>
-    <div class="nav-item" onclick="location.href='modulo_financeiro.html'"><div class="nav-item-left"><i class="fas fa-wallet"></i> <span>Hub Financeiro</span></div></div>
-    <div style="padding-bottom: 30px;"></div>
-</aside>
-
-<!-- MODAL PAGAMENTO (BAIXA) -->
-<div class="modal-overlay" id="modalPagamento">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);display:flex;align-items:center;gap:8px;"><i class="fas fa-file-invoice-dollar" style="color:var(--success)"></i> Registrar Pagamento (Baixa)</h3>
-            <button onclick="document.getElementById('modalPagamento').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
-        </div>
-        <input type="hidden" id="pagamento_id_baixa">
-        <div style="background: var(--bg); padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
-            <div><strong>Fornecedor:</strong> <span id="modal_fornecedor_nome">-</span></div>
-            <div><strong>Valor Original do Título:</strong> <span id="modal_valor_original" style="font-weight: bold; color: var(--primary);">R\$ 0,00</span></div>
-        </div>
-        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
-            <div>
-                <label>Data do Pagamento</label>
-                <input type="date" id="data_pagamento" class="form-control">
-            </div>
-            <div>
-                <label>Forma de Saída / Meio</label>
-                <select id="forma_pagamento_baixa" class="form-control">
-                    <option value="Pix">PIX / Transferência</option>
-                    <option value="Cartão de Crédito">Cartão de Crédito</option>
-                    <option value="Boleto">Boleto Bancário</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                </select>
-            </div>
-        </div>
-        <div style="margin-bottom: 10px;">
-            <label>Conta Bancária de Origem *</label>
-            <select id="conta_origem_baixa" class="form-control">
-                <option value="">Carregando contas...</option>
-            </select>
-        </div>
-        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
-            <div>
-                <label>(-) Desconto (R\$)</label>
-                <input type="number" step="0.01" id="baixa_desconto" class="form-control" value="0.00" oninput="recalcularValorBaixa()">
-            </div>
-            <div>
-                <label>(+) Juros / Multa (R\$)</label>
-                <input type="number" step="0.01" id="baixa_juros" class="form-control" value="0.00" oninput="recalcularValorBaixa()">
-            </div>
-        </div>
-        <div style="background: #fee2e2; padding: 12px; border-radius: 6px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 12px; font-weight: 700; color: #b91c1c; text-transform: uppercase;">Valor Efetivo Pago:</span>
-            <span id="modal_valor_final" style="font-size: 18px; font-weight: 800; color: #b91c1c;">R\$ 0,00</span>
-        </div>
-        <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalPagamento').style.display='none'">Cancelar</button>
-            <button class="btn-acao sucesso" onclick="confirmarPagamento()"><i class="fas fa-check"></i> Confirmar Saída</button>
-        </div>
-    </div>
-</div>
+<!-- O erp-core.js injeta automaticamente o cabeçalho padrão unificado com White-Label e Tema Dia/Noite -->
 
 <!-- MODAL: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
@@ -266,211 +157,210 @@
     </div>
 </div>
 
-<main class="main" id="appMain">
-    <div class="container">
-        <div class="page-toolbar">
-            <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
-        </div>
+<main class="container">
+    <div class="page-toolbar">
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
+    </div>
 
-        <div class="dash-cards">
-            <div class="dash-card">
-                <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
-                <div>
-                    <h4>A Pagar (Pendente)</h4>
-                    <div class="value" id="tot_pendente">R\$ 0,00</div>
-                </div>
-            </div>
-            <div class="dash-card">
-                <div class="dash-icon" style="background:var(--success)"><i class="fas fa-check-double"></i></div>
-                <div>
-                    <h4>Total Pago</h4>
-                    <div class="value" id="tot_pago">R\$ 0,00</div>
-                </div>
-            </div>
-            <div class="dash-card">
-                <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
-                <div>
-                    <h4>Contas Vencidas</h4>
-                    <div class="value" id="tot_atrasado" style="color:var(--danger)">R\$ 0,00</div>
-                </div>
+    <div class="dash-cards">
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
+            <div>
+                <h4>A Pagar (Pendente)</h4>
+                <div class="value" id="tot_pendente">R\$ 0,00</div>
             </div>
         </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--success)"><i class="fas fa-check-double"></i></div>
+            <div>
+                <h4>Total Pago</h4>
+                <div class="value" id="tot_pago">R\$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <h4>Contas Vencidas</h4>
+                <div class="value" id="tot_atrasado" style="color:var(--danger)">R\$ 0,00</div>
+            </div>
+        </div>
+    </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar</h3>
+    <!-- FORMULÁRIO COMPLETO COM TODOS OS CAMPOS SOLICITADOS -->
+    <div class="card">
+        <div class="card-header">
+            <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar</h3>
+            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
+        </div>
+        <div class="collapsible-content">
+            <input type="hidden" id="edit_id">
+            <div class="form-grid">
+                <div>
+                    <label>Código (Virtual)</label>
+                    <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
+                </div>
+                <div>
+                    <label>CNPJ / CPF do Fornecedor *</label>
+                    <div class="campo-com-mais">
+                        <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
+                        <button class="btn-mais" onclick="abrirModalFornecedor()" title="Cadastrar novo fornecedor"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Razão Social / Fornecedor *</label>
+                    <input type="text" id="fornecedor_nome" class="form-control" placeholder="Nome do fornecedor ou prestador">
+                </div>
+            </div>
+            <div class="form-grid">
+                <div>
+                    <label>Valor do Título (R\$) *</label>
+                    <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
+                </div>
+                <div>
+                    <label>Vencimento *</label>
+                    <input type="date" id="vencimento" class="form-control">
+                </div>
+                <div>
+                    <label>Data de Pagamento (Opcional)</label>
+                    <input type="date" id="data_pagamento_edicao" class="form-control">
+                </div>
+                <div>
+                    <label>Status do Título</label>
+                    <select id="status_edicao" class="form-control">
+                        <option value="Pendente">Pendente / Em Aberto</option>
+                        <option value="Pago">Pago / Quitada</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 1fr 2fr 1fr;">
+                <div>
+                    <label><i class="fas fa-university"></i> Conta de Origem</label>
+                    <select id="conta_origem_cadastro" class="form-control">
+                        <option value="">Selecione a conta...</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Descrição / Despesa / Nota Fiscal *</label>
+                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
+                </div>
+                <div>
+                    <label>Custo Recorrente?</label>
+                    <select id="recorrente" class="form-control">
+                        <option value="Não">Não (Pontual)</option>
+                        <option value="Sim">Sim (Mensal)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
+                <div>
+                    <label><i class="fas fa-tags"></i> Centro de Custo / P&D *</label>
+                    <div class="campo-com-mais">
+                        <select id="centro_custo" class="form-control">
+                            <option value="">Carregando centros...</option>
+                        </select>
+                        <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <label><i class="fas fa-list-alt"></i> Conta Contábil (DRE) *</label>
+                    <div class="campo-com-mais">
+                        <select id="conta_contabil" class="form-control">
+                            <option value="">Carregando plano de contas...</option>
+                        </select>
+                        <button class="btn-mais" onclick="abrirModalContaContabil()" title="Nova Conta Contábil"><i class="fas fa-plus"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 10px; display:flex; gap:10px;">
+                <button class="btn-acao" id="btnSalvar" onclick="salvarContaPagar()"><i class="fas fa-save"></i> Adicionar Conta a Pagar</button>
+                <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;">Cancelar Edição</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" id="cardRelatorioModo">
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Obrigações (Contas a Pagar)</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
-            <div class="collapsible-content">
-                <input type="hidden" id="edit_id">
-                <div class="form-grid">
-                    <div>
-                        <label>Código (Virtual)</label>
-                        <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
-                    </div>
-                    <div>
-                        <label>Forma / Origem do Pagamento *</label>
-                        <select id="forma_pagamento" class="form-control">
-                            <option value="Boleto / Pix / TED">Boleto / Pix / TED (Caixa/Banco Direto)</option>
-                            <option value="Cartão de Crédito">Cartão de Crédito Corporativo</option>
-                            <option value="Cartão Pré-Pago">Cartão Pré-Pago (Baixa Direta)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>CNPJ / CPF do Fornecedor *</label>
-                        <div class="campo-com-mais">
-                            <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
-                            <button class="btn-mais" onclick="abrirModalFornecedor()" title="Cadastrar novo fornecedor"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
-                    <div>
-                        <label>Razão Social / Fornecedor *</label>
-                        <input type="text" id="fornecedor_nome" class="form-control" placeholder="Nome do fornecedor">
-                    </div>
+        </div>
+        <div class="collapsible-content">
+            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+                <div>
+                    <label>Data Início</label>
+                    <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
-                <div class="form-grid">
-                    <div>
-                        <label>Valor do Título (R\$) *</label>
-                        <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
-                    </div>
-                    <div>
-                        <label>Vencimento *</label>
-                        <input type="date" id="vencimento" class="form-control">
-                    </div>
-                    <div>
-                        <label>Status do Título</label>
-                        <select id="status_edicao" class="form-control">
-                            <option value="Pendente">Pendente / Em Aberto</option>
-                            <option value="Pago">Pago / Quitada</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Centro de Custo / P&D *</label>
-                        <div class="campo-com-mais">
-                            <select id="centro_custo" class="form-control">
-                                <option value="">Carregando centros...</option>
-                            </select>
-                            <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
+                <div>
+                    <label>Data Fim</label>
+                    <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
-                <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
-                    <div>
-                        <label>Descrição / Despesa / Nota Fiscal *</label>
-                        <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
-                    </div>
-                    <div>
-                        <label>Conta Contábil (DRE) *</label>
-                        <div class="campo-com-mais">
-                            <select id="conta_contabil" class="form-control">
-                                <option value="">Carregando plano de contas...</option>
-                            </select>
-                            <button class="btn-mais" onclick="abrirModalContaContabil()" title="Nova Conta Contábil"><i class="fas fa-plus"></i></button>
-                        </div>
-                    </div>
+                <div>
+                    <label>Status</label>
+                    <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                        <option value="todos">Todos os Status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="atrasado">Vencido / Atrasado</option>
+                        <option value="pago">Pago</option>
+                    </select>
                 </div>
-                <div style="margin-top: 10px; display:flex; gap:10px;">
-                    <button class="btn-acao" id="btnSalvar" onclick="salvarContaPagar()"><i class="fas fa-save"></i> Adicionar Conta a Pagar</button>
-                    <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;">Cancelar Edição</button>
+                <div>
+                    <label>Buscar por Nome / Descrição</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
                 </div>
+                <div>
+                    <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Fornecedor</th>
+                            <th>Centro Custo</th>
+                            <th>Conta DRE</th>
+                            <th>Descrição / NF</th>
+                            <th>Vencimento</th>
+                            <th style="text-align: right;">Valor (R\$)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo">
+                        <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
+    </div>
 
-        <div class="card" id="cardRelatorioModo">
-            <div class="card-header">
-                <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Obrigações (Contas a Pagar)</h3>
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                    <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
-                </div>
-            </div>
-            <div class="collapsible-content">
-                <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
-                    <div>
-                        <label>Data Início</label>
-                        <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
-                    </div>
-                    <div>
-                        <label>Data Fim</label>
-                        <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
-                    </div>
-                    <div>
-                        <label>Status</label>
-                        <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
-                            <option value="todos">Todos os Status</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="atrasado">Vencido / Atrasado</option>
-                            <option value="pago">Pago</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>Buscar por Nome / Descrição</label>
-                        <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
-                    </div>
-                    <div>
-                        <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
-                    </div>
-                </div>
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th colspan="9" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                                    <div class="print-corporative-header">
-                                        <h2 style="font-size: 12pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório Operacional de Contas a Pagar</h2>
-                                        <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                        <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros Aplicados:</strong> <span id="printFiltrosInfo">Todos</span></p>
-                                    </div>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th style="width: 8%;">Código</th>
-                                <th style="width: 20%;">Fornecedor</th>
-                                <th style="width: 12%;">Forma Pgto</th>
-                                <th style="width: 12%;">Centro Custo</th>
-                                <th style="width: 11%;">Conta DRE</th>
-                                <th style="width: 14%;">Descrição / NF</th>
-                                <th style="width: 9%;">Vencimento</th>
-                                <th style="width: 9%; text-align: right;">Valor (R\$)</th>
-                                <th style="width: 5%;">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyRelatorioModo">
-                            <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
+            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
         </div>
-
-        <div class="card">
-            <div class="card-header">
-                <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
-                <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
-            </div>
-            <div class="collapsible-content">
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Fornecedor / Favorecido</th>
-                                <th>Forma Pgto / Cartão</th>
-                                <th>Centro de Custo</th>
-                                <th>Conta DRE</th>
-                                <th>Descrição / NF</th>
-                                <th>Vencimento</th>
-                                <th>Valor Total</th>
-                                <th>Status</th>
-                                <th>Data Criação</th>
-                                <th style="text-align:right;">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyContas">
-                            <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+        <div class="collapsible-content">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Fornecedor / Favorecido</th>
+                            <th>Centro de Custo</th>
+                            <th>Conta DRE</th>
+                            <th>Descrição / NF</th>
+                            <th>Vencimento</th>
+                            <th>Valor Total</th>
+                            <th>Status</th>
+                            <th>Data Criação</th>
+                            <th style="text-align:right;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyContas">
+                        <tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -483,9 +373,7 @@
 <script src="erp-core.js"></script>
 <script>
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
-let valorOriginalBaixa = 0;
 
 function toggleCardBody(btn) {
     const card = btn.closest('.card');
@@ -495,30 +383,15 @@ function toggleCardBody(btn) {
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
-function toggleRecolherMenuPC() {
-    const sidebar = document.getElementById('appSidebar');
-    const main = document.getElementById('appMain');
-    sidebar.classList.toggle('collapsed');
-    main.classList.toggle('expanded');
-}
-
-function obterUsuario() {
-    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-}
-
-function ehMaster() {
-    const u = obterUsuario();
-    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-}
-
 function clienteIdAtual() {
-    const u = obterUsuario();
-    if (!u) return 1;
-    if (ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    try {
+        const sel = localStorage.getItem('empresaSelecionada');
+        if (sel) return parseInt(sel);
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
+    } catch(e) {
+        return 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 2;
 }
 
 async function inicializarPagina() {
@@ -615,7 +488,7 @@ async function carregarPlanoContasSelect() {
 async function carregarContasBancariasModal() {
     const cid = clienteIdAtual();
     const { data } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid);
-    const sel = document.getElementById('conta_origem_baixa');
+    const sel = document.getElementById('conta_origem_cadastro');
     if (!sel) return;
     sel.innerHTML = '<option value="">Selecione a conta de origem...</option>';
     if (data) {
@@ -669,7 +542,7 @@ async function carregarContas() {
     const { data, error } = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
@@ -732,17 +605,10 @@ function aplicarFiltrosRelatorio() {
         return true;
     });
 
-    let infoFiltros = [];
-    if(dtIni) infoFiltros.push(`Início: ${dtIni.split('-').reverse().join('/')}`);
-    if(dtFim) infoFiltros.push(`Fim: ${dtFim.split('-').reverse().join('/')}`);
-    if(stFiltro !== 'todos') infoFiltros.push(`Status: ${stFiltro.toUpperCase()}`);
-    if(txtBusca) infoFiltros.push(`Busca: "${txtBusca}"`);
-    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
-
     const tbody = document.getElementById('tbodyRelatorioModo');
     tbody.innerHTML = '';
     if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
         return;
     }
 
@@ -750,11 +616,9 @@ function aplicarFiltrosRelatorio() {
         let codVirtual = formatarCodigoVirtual(t.id);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
         let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
-        let formaPgto = t.forma_pagamento || 'Boleto / Pix / TED';
         tbody.innerHTML += `<tr>
             <td><strong>${codVirtual}</strong></td>
             <td><strong>${t.fornecedor_nome || '—'}</strong></td>
-            <td>${formaPgto}</td>
             <td>${t.centro_custo || '—'}</td>
             <td>${t.conta_contabil || '—'}</td>
             <td>${t.descricao || '—'}</td>
@@ -776,7 +640,7 @@ function limparFiltrosRelatorio() {
 function renderTabela() {
     const tbody = document.getElementById('tbodyContas');
     if (!contasCache.length) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada.</td></tr>`;
         return;
     }
 
@@ -787,17 +651,11 @@ function renderTabela() {
         let codVirtual = formatarCodigoVirtual(t.id);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
-        let formaPgto = t.forma_pagamento || 'Boleto / Pix / TED';
-        
-        let btnBaixa = (t.statusSeguro === 'pago') 
-            ? `<span style="font-size:11px; color:var(--success);"><i class="fas fa-check-circle"></i> Quitada</span>` 
-            : `<button class="btn-acao sucesso" style="padding:4px 10px; font-size:11px;" onclick="abrirModalPagamento(${t.id})"><i class="fas fa-check"></i> Pagar</button>`;
 
         tbody.innerHTML += `
             <tr>
                 <td><strong>${codVirtual}</strong></td>
                 <td><strong>${t.fornecedor_nome || '—'}</strong></td>
-                <td><span class="badge badge-cartao">${formaPgto}</span></td>
                 <td>${t.centro_custo || '—'}</td>
                 <td>${t.conta_contabil || '—'}</td>
                 <td>${t.descricao || '—'}</td>
@@ -806,73 +664,12 @@ function renderTabela() {
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${dataReg}</td>
                 <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;">
-                    ${btnBaixa}
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
     });
-}
-
-window.abrirModalPagamento = function(id) {
-    let t = contasCache.find(x => String(x.id) === String(id));
-    if(!t) return;
-    document.getElementById('pagamento_id_baixa').value = t.id;
-    document.getElementById('modal_fornecedor_nome').innerText = t.fornecedor_nome || 'Não Informado';
-    valorOriginalBaixa = t.valorNumerico || 0;
-    document.getElementById('modal_valor_original').innerText = formatBRL(valorOriginalBaixa);
-    document.getElementById('baixa_desconto').value = '0.00';
-    document.getElementById('baixa_juros').value = '0.00';
-    document.getElementById('modal_valor_final').innerText = formatBRL(valorOriginalBaixa);
-    document.getElementById('data_pagamento').valueAsDate = new Date();
-    document.getElementById('modalPagamento').style.display = 'flex';
-}
-
-function recalcularValorBaixa() {
-    let desc = parseFloat(document.getElementById('baixa_desconto').value) || 0;
-    let juros = parseFloat(document.getElementById('baixa_juros').value) || 0;
-    let final = valorOriginalBaixa - desc + juros;
-    if(final < 0) final = 0;
-    document.getElementById('modal_valor_final').innerText = formatBRL(final);
-}
-
-async function confirmarPagamento() {
-    let id = document.getElementById('pagamento_id_baixa').value;
-    let dataPgto = document.getElementById('data_pagamento').value;
-    let formaPgto = document.getElementById('forma_pagamento_baixa').value;
-    let contaOrigem = document.getElementById('conta_origem_baixa').value;
-    let desc = parseFloat(document.getElementById('baixa_desconto').value) || 0;
-    let juros = parseFloat(document.getElementById('baixa_juros').value) || 0;
-    let valorEfetivo = valorOriginalBaixa - desc + juros;
-
-    if(!dataPgto) { alert("Informe a data do pagamento."); return; }
-    if(!contaOrigem) { alert("Selecione a conta bancária de origem."); return; }
-
-    const cid = clienteIdAtual();
-    let payload = {
-        status: 'Pago',
-        valor: Number(valorEfetivo.toFixed(2)),
-        data_pagamento: dataPgto,
-        forma_pagamento: formaPgto,
-        conta_origem: contaOrigem,
-        updated_at: new Date().toISOString()
-    };
-
-    let res = await sb.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cid);
-    if(res.error) { alert("Erro ao registrar baixa: " + res.error.message); return; }
-
-    document.getElementById('modalPagamento').style.display = 'none';
-    alert("Pagamento registrado com sucesso!");
-    carregarContas();
-}
-
-async function executarImpressao() {
-    document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-    const u = obterUsuario();
-    if (u) document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário';
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    window.print();
 }
 
 async function salvarContaPagar() {
@@ -885,7 +682,9 @@ async function salvarContaPagar() {
     const status = document.getElementById('status_edicao').value;
     const centro_custo = document.getElementById('centro_custo').value;
     const conta_contabil = document.getElementById('conta_contabil').value;
-    const forma_pagamento = document.getElementById('forma_pagamento').value;
+    const conta_origem = document.getElementById('conta_origem_cadastro').value;
+    const data_pagamento = document.getElementById('data_pagamento_edicao').value;
+    const recorrente = document.getElementById('recorrente').value;
     const cliente_id = clienteIdAtual();
 
     if(!fornecedor_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
@@ -893,7 +692,7 @@ async function salvarContaPagar() {
         return;
     }
 
-    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_pagamento, updated_at: new Date().toISOString() };
+    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, conta_origem, data_pagamento: data_pagamento || null, recorrente, updated_at: new Date().toISOString() };
     let res;
 
     if(id) {
@@ -918,11 +717,13 @@ window.editarConta = function(id) {
     document.getElementById('fornecedor_nome').value = t.fornecedor_nome || '';
     document.getElementById('valor').value = t.valorNumerico || '';
     document.getElementById('vencimento').value = t.vencimento || '';
+    document.getElementById('data_pagamento_edicao').value = t.data_pagamento || '';
+    document.getElementById('conta_origem_cadastro').value = t.conta_origem || '';
     document.getElementById('descricao').value = t.descricao || '';
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
+    document.getElementById('recorrente').value = t.recorrente || 'Não';
     document.getElementById('status_edicao').value = t.status || 'Pendente';
-    document.getElementById('forma_pagamento').value = t.forma_pagamento || 'Boleto / Pix / TED';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(t.id)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'inline-block';
@@ -935,11 +736,13 @@ function cancelarEdicao() {
     document.getElementById('fornecedor_nome').value = '';
     document.getElementById('valor').value = '';
     document.getElementById('vencimento').value = '';
+    document.getElementById('data_pagamento_edicao').value = '';
+    document.getElementById('conta_origem_cadastro').value = '';
     document.getElementById('descricao').value = '';
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
+    document.getElementById('recorrente').value = 'Não';
     document.getElementById('status_edicao').value = 'Pendente';
-    document.getElementById('forma_pagamento').value = 'Boleto / Pix / TED';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'none';
