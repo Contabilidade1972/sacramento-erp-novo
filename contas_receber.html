@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -22,7 +23,7 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM LGPD: Oculta seletor de empresas para quem não for Master */
+        /* BLINDAGEM LGPD: Oculta o seletor de empresas para usuários comuns */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -30,23 +31,6 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1380px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -89,99 +73,29 @@
         .collapsible-content { transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
         .collapsible-content.collapsed { max-height: 0 !important; opacity: 0; padding: 0 !important; margin: 0 !important; border: none !important; }
 
-        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
         .print-corporative-header { display: none !important; }
 
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 10mm;
-            }
+            @page { size: A4 portrait; margin: 10mm; }
             body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
             .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
-            
-            .container { 
-                max-width: 100% !important; 
-                margin: 0 auto !important; 
-                padding: 0 5mm !important; 
-                width: 100% !important; 
-                display: block !important;
-            }
-            
-            .card#cardRelatorioModo { 
-                border: none !important; 
-                box-shadow: none !important; 
-                padding: 0 !important; 
-                margin: 0 auto !important; 
-                width: 100% !important; 
-            }
-
-            .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 6px !important;
-                margin-bottom: 8px !important;
-                border-bottom: 2px solid #1e3a8a !important;
-                width: 100% !important;
-            }
-
-            .table-container {
-                width: 100% !important;
-                overflow: visible !important;
-            }
-
-            table { 
-                width: 100% !important; 
-                border-collapse: collapse !important; 
-                font-size: 8pt !important; 
-                table-layout: fixed !important; 
-                margin: 0 auto !important;
-            }
-            
+            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 5mm !important; width: 100% !important; display: block !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
+            .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 6mm !important; margin-bottom: 8mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
+            .table-container { width: 100% !important; overflow: visible !important; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; table-layout: fixed !important; margin: 0 auto !important; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
-            
-            thead th { 
-                background: #1e3a8a !important; 
-                color: #fff !important; 
-                padding: 5px 6px !important; 
-                -webkit-print-color-adjust: exact; 
-                print-color-adjust: exact; 
-                word-wrap: break-word; 
-            }
-            
-            tbody td { 
-                padding: 4px 6px !important; 
-                border-bottom: 1px solid #cbd5e1 !important; 
-                word-wrap: break-word; 
-            }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
+            tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
 <body>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
+<!-- O erp-core.js injeta automaticamente o cabeçalho unificado -->
 
-<div class="container">
+<main class="container">
     <div class="page-toolbar">
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
@@ -232,7 +146,7 @@
                 </div>
                 <div>
                     <label>CNPJ / CPF do Cliente *</label>
-                    <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
+                    <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjCliente(this.value)">
                 </div>
                 <div>
                     <label>Razão Social / Cliente *</label>
@@ -281,7 +195,7 @@
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Receber</h3>
             <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
@@ -315,24 +229,15 @@
                 <table>
                     <thead>
                         <tr>
-                            <th colspan="9" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                                <div class="print-corporative-header">
-                                    <h2 style="font-size: 12pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório Operacional de Contas a Receber</h2>
-                                    <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                    <p style="font-size: 7.5pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros Aplicados:</strong> <span id="printFiltrosInfo">Todos</span></p>
-                                </div>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th style="width: 8%;">Código</th>
-                            <th style="width: 20%;">Cliente</th>
-                            <th style="width: 12%;">Forma Receb.</th>
-                            <th style="width: 12%;">Centro Custo</th>
-                            <th style="width: 11%;">Conta DRE</th>
-                            <th style="width: 14%;">Descrição / NF</th>
-                            <th style="width: 9%;">Vencimento</th>
-                            <th style="width: 9%; text-align: right;">Valor (R\$)</th>
-                            <th style="width: 5%;">Status</th>
+                            <th>Código</th>
+                            <th>Cliente</th>
+                            <th>Forma Receb.</th>
+                            <th>Centro Custo</th>
+                            <th>Conta DRE</th>
+                            <th>Descrição / NF</th>
+                            <th>Vencimento</th>
+                            <th style="text-align: right;">Valor (R\$)</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyRelatorioModo">
@@ -373,96 +278,62 @@
             </div>
         </div>
     </div>
-</div>
+</main>
 
 <footer>
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
 
+<script src="auth-guard.js"></script>
+<script src="erp-core.js"></script>
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+
+const sbGlobal = window.supabase.createClient(
+    'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
+    'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
+);
+
+function obterClienteIdSeguro() {
+    try {
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const emailU = (u && u.email ? u.email : "").toLowerCase().trim();
+        if (emailU === EMAIL_MASTER.toLowerCase().trim()) {
+            const sel = localStorage.getItem('empresaSelecionada');
+            if (sel) return parseInt(sel);
+        }
+        return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
+    } catch(e) {
+        return 1;
+    }
+}
 
 function toggleCardBody(btn) {
     const card = btn.closest('.card');
     const content = card.querySelector('.collapsible-content');
     const icon = btn.querySelector('i');
     content.classList.toggle('collapsed');
-    if (content.classList.contains('collapsed')) {
-        icon.className = 'fas fa-chevron-down';
-    } else {
-        icon.className = 'fas fa-chevron-up';
-    }
-}
-
-function obterUsuario() {
-    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-}
-
-function ehMaster() {
-    const u = obterUsuario();
-    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-}
-
-function clienteIdAtual() {
-    const u = obterUsuario();
-    if (!u) return 1;
-    if (ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
-    }
-    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
 async function inicializarPagina() {
-    const u = obterUsuario();
-    if (u) {
-        document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-    }
-
-    const select = document.getElementById('selectEmpresa');
-    const boxSeletor = document.getElementById('boxSeletorEmpresa');
-    const master = ehMaster();
-
-    if (master) {
-        if (boxSeletor) boxSeletor.style.display = 'flex';
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
+    try {
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const emailU = (u && u.email ? u.email : "").toLowerCase().trim();
+        if (emailU === EMAIL_MASTER.toLowerCase().trim()) {
+            document.body.classList.add('usuario-master');
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        if (boxSeletor) boxSeletor.style.display = 'none';
-    }
+    } catch(e) {}
 
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
+    const elData = document.getElementById('printDataEmissao');
+    if (elData) elData.innerText = new Date().toLocaleString('pt-BR');
+    
     await carregarContas();
 }
 
-function trocarEmpresa() {
-    if (!ehMaster()) return;
-    const select = document.getElementById('selectEmpresa');
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarContas();
-}
-
-function sair() {
-    if (confirm('Deseja realmente sair?')) { 
-        localStorage.removeItem('usuarioLogado'); 
-        localStorage.removeItem('empresaSelecionada'); 
-        location.href = 'login.html'; 
-    }
-}
-
 function formatBRL(v) {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+    return 'R\$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatarCodigoVirtual(id) {
@@ -475,17 +346,17 @@ function atualizarCodigoVirtual() {
         let maxId = Math.max(...contasCache.map(c => parseInt(c.id) || 0));
         proximoId = maxId + 1;
     }
-    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(proximoId);
+    const elCod = document.getElementById('codigo_virtual');
+    if (elCod) elCod.value = formatarCodigoVirtual(proximoId);
 }
 
-// BUSCA INTELIGENTE DE CLIENTE / CNPJ (BASE LOCAL + RECEITA FEDERAL)
-async function consultarCnpjReceita(doc) {
-    let limpo = doc.replace(/\D/g, '');
+async function consultarCnpjCliente(doc) {
+    let limpo = (doc || '').replace(/\D/g, '');
     if (!limpo) return;
-    const cid = clienteIdAtual();
+    const cid = obterClienteIdSeguro();
 
     try {
-        const { data } = await sb.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
+        const { data } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
         if (data && (data.razao_social || data.nome)) {
             document.getElementById('cliente_nome').value = data.razao_social || data.nome;
             return;
@@ -499,7 +370,7 @@ async function consultarCnpjReceita(doc) {
                 let json = await resp.json();
                 if (json.razao_social) {
                     document.getElementById('cliente_nome').value = json.razao_social;
-                    await sb.from('parceiros').insert([{
+                    await sbGlobal.from('parceiros').insert([{
                         cliente_id: cid,
                         tipo: 'Cliente',
                         razao_social: json.razao_social,
@@ -516,8 +387,8 @@ async function consultarCnpjReceita(doc) {
 }
 
 async function carregarContas() {
-    const cid = clienteIdAtual();
-    const { data, error } = await sb.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+    const cid = obterClienteIdSeguro();
+    const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
         document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
@@ -581,17 +452,10 @@ function aplicarFiltrosRelatorio() {
         return true;
     });
 
-    let infoFiltros = [];
-    if(dtIni) infoFiltros.push(`Início: ${dtIni.split('-').reverse().join('/')}`);
-    if(dtFim) infoFiltros.push(`Fim: ${dtFim.split('-').reverse().join('/')}`);
-    if(stFiltro !== 'todos') infoFiltros.push(`Status: ${stFiltro.toUpperCase()}`);
-    if(txtBusca) infoFiltros.push(`Busca: "${txtBusca}"`);
-    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
-
     const tbody = document.getElementById('tbodyRelatorioModo');
     tbody.innerHTML = '';
     if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
         return;
     }
 
@@ -661,35 +525,6 @@ function renderTabela() {
     });
 }
 
-async function executarImpressao() {
-    const selectEmp = document.getElementById('selectEmpresa');
-    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-    } else {
-        const cid = clienteIdAtual();
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) {
-                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-            } else {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-            }
-        } catch(e) {
-            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-        }
-    }
-
-    const u = obterUsuario();
-    if (u) {
-        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-    } else {
-        document.getElementById('printUsuarioNome').innerText = 'Operador';
-    }
-
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    window.print();
-}
-
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -701,7 +536,7 @@ async function salvarContaReceber() {
     const centro_custo = document.getElementById('centro_custo').value.trim();
     const conta_contabil = document.getElementById('conta_contabil').value.trim();
     const forma_recebimento = document.getElementById('forma_recebimento').value;
-    const cliente_id = clienteIdAtual();
+    const cliente_id = obterClienteIdSeguro();
 
     if(!cliente_nome || isNaN(valor) || !vencimento) {
         alert("Preencha os campos obrigatórios (Cliente, Valor e Vencimento).");
@@ -712,9 +547,9 @@ async function salvarContaReceber() {
     let res;
 
     if(id) {
-        res = await sb.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+        res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cliente_id);
     } else {
-        res = await sb.from('contas_receber').insert([payload]);
+        res = await sbGlobal.from('contas_receber').insert([payload]);
     }
 
     if(res.error) { alert("Erro ao salvar: " + res.error.message); return; }
@@ -763,8 +598,8 @@ function cancelarEdicao() {
 
 window.excluirConta = async function(id) {
     if(confirm("Deseja realmente excluir este registo?")) {
-        const cid = clienteIdAtual();
-        let res = await sb.from('contas_receber').delete().eq('id', id).eq('cliente_id', cid);
+        const cid = obterClienteIdSeguro();
+        let res = await sbGlobal.from('contas_receber').delete().eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
         alert("Registo removido com sucesso!");
         carregarContas();
@@ -773,9 +608,5 @@ window.excluirConta = async function(id) {
 
 window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
 </body>
 </html>
