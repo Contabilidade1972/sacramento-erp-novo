@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
+// erp-core.js — Motor Central de Interface, White-Label e Injeção Universal do Cabeçalho Padrão — Sacramento ERP
 
 (function() {
-    const styleId = 'erp-core-styles-universal-v20';
+    const styleId = 'erp-core-styles-universal-v25';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -29,7 +29,7 @@
                 color: var(--text-main) !important;
             }
             body.dark-mode .site-header { background: #070d1f !important; border-bottom: 1px solid #1e293b !important; }
-            body.dark-mode .card, body.dark-mode .toolbar, body.dark-mode .dash-card { background: #131c38 !important; border-color: #1e293b !important; color: #f8fafc !important; }
+            body.dark-mode .card, body.dark-mode .toolbar, body.dark-mode .dash-card, body.dark-mode .card-table, body.dark-mode .panel { background: #131c38 !important; border-color: #1e293b !important; color: #f8fafc !important; }
             body.dark-mode table thead th { background: #1e293b !important; color: #cbd5e1 !important; }
             body.dark-mode tbody td { border-bottom-color: #1e293b !important; color: #f8fafc !important; }
             body.dark-mode tbody tr:hover { background: #1a2544 !important; }
@@ -37,7 +37,7 @@
 
             body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; margin: 0; padding: 0; transition: background 0.3s ease, color 0.3s ease; }
 
-            /* HEADER CORPORATIVO PADRÃO UNIFICADO */
+            /* HEADER CORPORATIVO PADRÃO UNIFICADO (EXATAMENTE IGUAL EM TODAS AS PÁGINAS) */
             .site-header {
                 background: var(--secondary); color: #fff; padding: 14px 28px; display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
@@ -104,7 +104,7 @@
             document.body.classList.add('dark-mode');
         }
 
-        // Remove QUALQUER cabeçalho antigo que exista na página (seja <header>, .site-header ou .header)
+        // REMOVE QUALQUER CABEÇALHO ESTÁTICO ANTIGO DA PÁGINA
         const cabecalhosAntigos = document.querySelectorAll('header, .site-header, .header');
         cabecalhosAntigos.forEach(h => h.remove());
 
