@@ -64,7 +64,7 @@
         .badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; display: inline-block; }
         .badge-pendente { background: #fee2e2; color: #991b1b; }
         .badge-recebido { background: #d1fae5; color: #065f46; }
-        .badge-cartao { background: #e0e7ff; color: #3730a3; }
+        .badge-atrasado { background: #fef3c7; color: #d97706; }
 
         .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
@@ -78,8 +78,10 @@
         .btn-mais { background: var(--success); color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: .2s; }
         .btn-mais:hover { background: #059669; transform: scale(1.05); }
 
+        .aviso-nao-cadastrado { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
+        .modal-card { background: var(--card); width: 100%; max-width: 640px; max-height: 90vh; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; overflow-y: auto; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
         .print-corporative-header { display: none !important; }
@@ -115,6 +117,10 @@
             <label>Nome / Descrição *</label>
             <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Comercial, Projetos...">
         </div>
+        <div style="margin-bottom:12px;">
+            <label>Código (Automático)</label>
+            <input type="text" id="cc_codigo" class="form-control" readonly style="background:var(--bg);">
+        </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
             <button class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
@@ -122,24 +128,86 @@
     </div>
 </div>
 
-<!-- MODAL: CLIENTE -->
+<!-- MODAL: CADASTRO COMPLETO DE CLIENTE / PARCEIRO -->
 <div class="modal-overlay" id="modalNovoCliente">
-    <div class="modal-card" style="max-width:550px;">
+    <div class="modal-card">
         <div class="modal-header">
-            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-user-tie" style="color:var(--primary)"></i> Novo Cliente</h3>
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-user-tie" style="color:var(--primary)"></i> Novo Cliente / Parceiro</h3>
             <button onclick="document.getElementById('modalNovoCliente').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
         </div>
         <div style="margin-bottom:12px;">
-            <label>CNPJ / CPF *</label>
-            <input type="text" id="cli_doc" class="form-control" placeholder="Apenas números">
+            <label>CPF / CNPJ * <span id="cli_status_doc" style="font-weight:normal;font-size:11px;margin-left:6px;"></span></label>
+            <div class="campo-com-mais">
+                <input type="text" id="cli_doc" class="form-control" placeholder="Digite o CPF ou CNPJ — busca automática" oninput="buscarDadosDocumentoCliente()">
+                <button class="btn-mais" onclick="document.getElementById('cli_doc').focus()" title="Buscar"><i class="fas fa-search"></i></button>
+            </div>
         </div>
         <div style="margin-bottom:12px;">
-            <label>Razão Social / Nome *</label>
+            <label>Nome / Razão Social *</label>
             <input type="text" id="cli_nome" class="form-control" placeholder="Nome do cliente">
         </div>
-        <div style="display:flex; justify-content:flex-end; gap:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+                <label>E-mail</label>
+                <input type="email" id="cli_email" class="form-control" placeholder="cliente@email.com">
+            </div>
+            <div>
+                <label>Telefone / WhatsApp</label>
+                <input type="text" id="cli_telefone" class="form-control" placeholder="(00) 00000-0000">
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 3fr;gap:10px;margin-bottom:10px;">
+            <div>
+                <label>CEP</label>
+                <input type="text" id="cli_cep" class="form-control" placeholder="00000-000" onblur="buscarCepCliente()">
+            </div>
+            <div>
+                <label>Logradouro</label>
+                <input type="text" id="cli_logradouro" class="form-control" placeholder="Rua, Avenida...">
+            </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:16px;">
             <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCliente').style.display='none'">Cancelar</button>
             <button class="btn-acao" onclick="salvarNovoCliente()"><i class="fas fa-save"></i> Salvar Cliente</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: RECEBIMENTO / BAIXA -->
+<div class="modal-overlay" id="modalRecebimento">
+    <div class="modal-card" style="max-width:500px;">
+        <div class="modal-header">
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-hand-holding-usd" style="color:var(--success)"></i> Registrar Recebimento (Baixa)</h3>
+            <button onclick="document.getElementById('modalRecebimento').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="recebimento_id_baixa">
+        <div style="background: var(--bg); padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+            <div><strong>Cliente:</strong> <span id="modal_cliente_nome">-</span></div>
+            <div><strong>Valor Original:</strong> <span id="modal_valor_original" style="font-weight: bold; color: var(--primary);">R\$ 0,00</span></div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+                <label>Data do Recebimento</label>
+                <input type="date" id="data_recebimento" class="form-control">
+            </div>
+            <div>
+                <label>Forma de Entrada</label>
+                <select id="forma_recebimento_baixa" class="form-control">
+                    <option value="Pix">PIX / Transferência</option>
+                    <option value="Boleto">Boleto Bancário</option>
+                    <option value="Dinheiro">Dinheiro</option>
+                </select>
+            </div>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <label>Conta Bancária de Destino *</label>
+            <select id="conta_destino_baixa" class="form-control">
+                <option value="">Carregando contas...</option>
+            </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalRecebimento').style.display='none'">Cancelar</button>
+            <button class="btn-acao sucesso" onclick="confirmarRecebimento()"><i class="fas fa-check"></i> Confirmar Entrada</button>
         </div>
     </div>
 </div>
@@ -186,23 +254,16 @@
                     <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
                 </div>
                 <div>
-                    <label>Forma / Origem do Recebimento *</label>
-                    <select id="forma_recebimento" class="form-control">
-                        <option value="Boleto / Pix / TED">Boleto / Pix / TED (Caixa/Banco Direto)</option>
-                        <option value="Cartao_Credito">Cartão de Crédito / Gateway (Recebíveis)</option>
-                        <option value="Dinheiro">Dinheiro em Caixa</option>
-                    </select>
-                </div>
-                <div>
-                    <label>CNPJ / CPF do Cliente *</label>
+                    <label>CNPJ / CPF do Cliente * <span id="status_cliente" style="font-weight:normal;font-size:10px;"></span></label>
                     <div class="campo-com-mais">
-                        <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjCliente(this.value)">
+                        <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." oninput="buscarOuConsultarCliente()">
                         <button class="btn-mais" onclick="abrirModalCliente()" title="Cadastrar novo cliente"><i class="fas fa-plus"></i></button>
                     </div>
+                    <div id="aviso_cliente_nao_cadastrado" style="display:none;"></div>
                 </div>
-                <div>
+                <div style="grid-column: span 2;">
                     <label>Razão Social / Cliente *</label>
-                    <input type="text" id="cliente_nome" class="form-control" placeholder="Nome do cliente">
+                    <input type="text" id="cliente_nome" class="form-control" placeholder="Nome do cliente ou pagador">
                 </div>
             </div>
             <div class="form-grid">
@@ -224,10 +285,10 @@
                 <div>
                     <label>Centro de Custo / Projeto *</label>
                     <div class="campo-com-mais">
-                        <select id="centro_custo" class="form-control">
-                            <option value="">Carregando centros...</option>
+                        <select id="centro_custo" class="form-control" required>
+                            <option value="">Carregando Centros de Custo...</option>
                         </select>
-                        <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
+                        <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Cadastrar novo centro de custo"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
             </div>
@@ -237,8 +298,13 @@
                     <input type="text" id="descricao" class="form-control" placeholder="Ex: Fatura de Serviços, Venda de Mercadoria...">
                 </div>
                 <div>
-                    <label>Conta Contábil (DRE)</label>
-                    <input type="text" id="conta_contabil" class="form-control" placeholder="Ex: 4.01 - Receita de Vendas">
+                    <label>Conta Contábil (DRE) *</label>
+                    <div class="campo-com-mais">
+                        <select id="conta_contabil" class="form-control" required>
+                            <option value="">Carregando Plano de Contas...</option>
+                        </select>
+                        <button class="btn-mais" onclick="location.href='plano_contas.html'" title="Gerenciar Plano de Contas"><i class="fas fa-plus"></i></button>
+                    </div>
                 </div>
             </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
@@ -288,7 +354,6 @@
                         <tr>
                             <th>Código</th>
                             <th>Cliente</th>
-                            <th>Forma Receb.</th>
                             <th>Centro Custo</th>
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
@@ -298,7 +363,7 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyRelatorioModo">
-                        <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                        <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -317,7 +382,6 @@
                         <tr>
                             <th>Código</th>
                             <th>Cliente / Sacado</th>
-                            <th>Forma Receb.</th>
                             <th>Centro de Custo</th>
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
@@ -329,7 +393,7 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
-                        <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
+                        <tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -346,6 +410,8 @@
 <script>
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+let clienteCadastradoNaBase = false;
+let valorOriginalBaixa = 0;
 
 const sbGlobal = window.supabase.createClient(
     'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
@@ -383,15 +449,14 @@ async function inicializarPagina() {
         }
     } catch(e) {}
 
-    const elData = document.getElementById('printDataEmissao');
-    if (elData) elData.innerText = new Date().toLocaleString('pt-BR');
-    
     await carregarCentrosCustoSelect();
+    await carregarPlanoContasSelect();
+    await carregarContasBancariasModal();
     await carregarContas();
 }
 
 function formatBRL(v) {
-    return 'R\$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatarCodigoVirtual(id) {
@@ -408,40 +473,43 @@ function atualizarCodigoVirtual() {
     if (elCod) elCod.value = formatarCodigoVirtual(proximoId);
 }
 
-// BUSCA INTELIGENTE DE CLIENTE / CNPJ
-async function consultarCnpjCliente(doc) {
-    let limpo = (doc || '').replace(/\D/g, '');
-    if (!limpo) return;
+// BUSCA INTELIGENTE DE CLIENTE / CNPJ (BASE LOCAL + BRASILAPI)
+async function buscarOuConsultarCliente() {
+    let docDigitado = document.getElementById('cpf_cnpj_cliente').value.replace(/\D/g, '');
+    let statusEl = document.getElementById('status_cliente');
+    let avisoEl = document.getElementById('aviso_cliente_nao_cadastrado');
+    if(avisoEl) avisoEl.style.display = 'none';
+    if(!docDigitado) { statusEl.innerHTML = ''; return; }
+    
     const cid = obterClienteIdSeguro();
-
-    try {
-        const { data } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
-        if (data && (data.razao_social || data.nome)) {
-            document.getElementById('cliente_nome').value = data.razao_social || data.nome;
+    const { data, error } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid);
+    if(!error && data) {
+        let cli = data.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === docDigitado);
+        if(cli) {
+            document.getElementById('cliente_nome').value = cli.nome || cli.razao_social || '';
+            statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Cliente Encontrado na Base</span>';
+            clienteCadastradoNaBase = true;
             return;
         }
-    } catch(e) {}
+    }
 
-    if (limpo.length === 14) {
+    if (docDigitado.length === 14) {
+        statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando Receita...</span>';
         try {
-            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${limpo}`);
-            if (resp.ok) {
-                let json = await resp.json();
-                if (json.razao_social) {
-                    document.getElementById('cliente_nome').value = json.razao_social;
-                    await sbGlobal.from('parceiros').insert([{
-                        cliente_id: cid,
-                        tipo: 'Cliente',
-                        razao_social: json.razao_social,
-                        nome_fantasia: json.nome_fantasia || json.razao_social,
-                        cnpj_cpf: limpo,
-                        telefone: json.ddd_telefone_1 || '',
-                        email: json.email || ''
-                    }]);
-                    return;
-                }
+            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${docDigitado}`);
+            if (!resp.ok) throw new Error("CNPJ não encontrado");
+            let dados = await resp.json();
+            document.getElementById('cliente_nome').value = dados.razao_social || '';
+            statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
+            if(avisoEl) {
+                avisoEl.innerHTML = '<div class="aviso-nao-cadastrado"><i class="fas fa-info-circle"></i> Novo cliente. Clique no <strong style="margin:0 3px;">+</strong> para salvar na base.</div>';
+                avisoEl.style.display = 'block';
             }
-        } catch(err) {}
+            clienteCadastradoNaBase = false;
+        } catch (err) {
+            statusEl.innerHTML = '<span style="color:var(--warning)">Preencha o Nome</span>';
+            clienteCadastradoNaBase = false;
+        }
     }
 }
 
@@ -454,6 +522,36 @@ async function carregarCentrosCustoSelect() {
     if (data) {
         data.forEach(cc => {
             let nome = cc.nome || cc.descricao || '';
+            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+        });
+    }
+}
+
+async function carregarPlanoContasSelect() {
+    const cid = obterClienteIdSeguro();
+    const { data } = await sbGlobal.from('plano_contas').select('*').eq('cliente_id', cid);
+    const sel = document.getElementById('conta_contabil');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione a Conta Contábil (DRE)...</option>';
+    if (data) {
+        data.forEach(pc => {
+            let desc = pc.descricao || pc.nome || '';
+            let cod = pc.codigo_reduzido || '';
+            let rotulo = cod ? `${cod} - ${desc}` : desc;
+            sel.innerHTML += `<option value="${rotulo}">${rotulo}</option>`;
+        });
+    }
+}
+
+async function carregarContasBancariasModal() {
+    const cid = obterClienteIdSeguro();
+    const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
+    const sel = document.getElementById('conta_destino_baixa');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione a conta de destino...</option>';
+    if (data) {
+        data.forEach(cb => {
+            let nome = cb.banco || cb.nome || 'Banco';
             sel.innerHTML += `<option value="${nome}">${nome}</option>`;
         });
     }
@@ -482,6 +580,7 @@ async function salvarNovoCliente() {
     document.getElementById('modalNovoCliente').style.display = 'none';
     document.getElementById('cliente_nome').value = nome;
     document.getElementById('cpf_cnpj_cliente').value = doc;
+    clienteCadastradoNaBase = true;
     alert("Cliente cadastrado com sucesso!");
 }
 
@@ -490,7 +589,7 @@ async function carregarContas() {
     const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
@@ -516,12 +615,15 @@ async function carregarContas() {
 }
 
 function atualizarDashboard() {
-    let pend = 0, recebido = 0;
+    let pend = 0, recebido = 0, atr = 0;
+    let hoje = new Date().toISOString().split('T')[0];
 
     contasCache.forEach(t => {
         let val = t.valorNumerico;
         if (t.statusSeguro === 'recebido') {
             recebido += val;
+        } else if (t.vencimento && t.vencimento < hoje) {
+            atr += val;
         } else {
             pend += val;
         }
@@ -554,7 +656,7 @@ function aplicarFiltrosRelatorio() {
     const tbody = document.getElementById('tbodyRelatorioModo');
     tbody.innerHTML = '';
     if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
         return;
     }
 
@@ -563,11 +665,9 @@ function aplicarFiltrosRelatorio() {
         let clienteNome = t.cliente_nome || t.cliente || '—';
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
         let badgeText = t.statusSeguro === 'recebido' ? 'RECEBIDO' : t.statusSeguro.toUpperCase();
-        let formaReceb = t.forma_recebimento || 'Boleto / Pix / TED';
         tbody.innerHTML += `<tr>
             <td><strong>${codVirtual}</strong></td>
             <td><strong>${clienteNome}</strong></td>
-            <td>${formaReceb}</td>
             <td>${t.centro_custo || '—'}</td>
             <td>${t.conta_contabil || '—'}</td>
             <td>${t.descricao || '—'}</td>
@@ -589,7 +689,7 @@ function limparFiltrosRelatorio() {
 function renderTabela() {
     const tbody = document.getElementById('tbodyContas');
     if (!contasCache.length) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada.</td></tr>`;
         return;
     }
 
@@ -601,13 +701,15 @@ function renderTabela() {
         let clienteNome = t.cliente_nome || t.cliente || '—';
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
-        let formaReceb = t.forma_recebimento || 'Boleto / Pix / TED';
+        
+        let btnBaixa = (t.statusSeguro === 'recebido') 
+            ? `<span style="font-size:11px; color:var(--success);"><i class="fas fa-check-circle"></i> Quitada</span>` 
+            : `<button class="btn-acao sucesso" style="padding:4px 10px; font-size:11px;" onclick="abrirModalRecebimento(${t.id})"><i class="fas fa-check"></i> Receber</button>`;
 
         tbody.innerHTML += `
             <tr>
                 <td><strong>${codVirtual}</strong></td>
                 <td><strong>${clienteNome}</strong></td>
-                <td><span class="badge badge-cartao">${formaReceb}</span></td>
                 <td>${t.centro_custo || '—'}</td>
                 <td>${t.conta_contabil || '—'}</td>
                 <td>${t.descricao || '—'}</td>
@@ -615,13 +717,42 @@ function renderTabela() {
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${dataReg}</td>
-                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end;">
+                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;">
+                    ${btnBaixa}
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
     });
+}
+
+window.abrirModalRecebimento = function(id) {
+    let t = contasCache.find(x => String(x.id) === String(id));
+    if(!t) return;
+    document.getElementById('recebimento_id_baixa').value = t.id;
+    document.getElementById('modal_cliente_nome').innerText = t.cliente_nome || t.cliente || 'Não Informado';
+    valorOriginalBaixa = t.valorNumerico || 0;
+    document.getElementById('modal_valor_original').innerText = formatBRL(valorOriginalBaixa);
+    document.getElementById('data_recebimento').valueAsDate = new Date();
+    document.getElementById('modalRecebimento').style.display = 'flex';
+}
+
+async function confirmarRecebimento() {
+    let id = document.getElementById('recebimento_id_baixa').value;
+    let dataRc = document.getElementById('data_recebimento').value;
+    let contaDestino = document.getElementById('conta_destino_baixa').value;
+    if(!dataRc) { alert("Informe a data."); return; }
+    if(!contaDestino) { alert("Selecione a conta de destino."); return; }
+
+    const cid = obterClienteIdSeguro();
+    let payload = { status: 'Recebido', data_recebimento: dataRc, conta_destino: contaDestino, updated_at: new Date().toISOString() };
+    let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
+    if(res.error) { alert("Erro ao registrar baixa: " + res.error.message); return; }
+
+    document.getElementById('modalRecebimento').style.display = 'none';
+    alert("Recebimento registrado com sucesso!");
+    carregarContas();
 }
 
 async function salvarContaReceber() {
@@ -633,13 +764,17 @@ async function salvarContaReceber() {
     const descricao = document.getElementById('descricao').value.trim();
     const status = document.getElementById('status_edicao').value;
     const centro_custo = document.getElementById('centro_custo').value;
-    const conta_contabil = document.getElementById('conta_contabil').value.trim();
+    const conta_contabil = document.getElementById('conta_contabil').value;
     const forma_recebimento = document.getElementById('forma_recebimento').value;
     const cliente_id = obterClienteIdSeguro();
 
-    if(!cliente_nome || isNaN(valor) || !vencimento || !centro_custo) {
-        alert("Preencha os campos obrigatórios (Cliente, Valor, Vencimento e Centro de Custo).");
+    if(!cliente_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
+        alert("Preencha todos os campos obrigatórios.");
         return;
+    }
+
+    if(cpf_cnpj_cliente && !clienteCadastradoNaBase && !id) {
+        await sbGlobal.from('parceiros').insert([{ cliente_id, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
     }
 
     let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_recebimento, updated_at: new Date().toISOString() };
@@ -689,6 +824,10 @@ function cancelarEdicao() {
     document.getElementById('conta_contabil').value = '';
     document.getElementById('status_edicao').value = 'Pendente';
     document.getElementById('forma_recebimento').value = 'Boleto / Pix / TED';
+    document.getElementById('status_cliente').innerHTML = '';
+    let avisoC = document.getElementById('aviso_cliente_nao_cadastrado');
+    if(avisoC) avisoC.style.display = 'none';
+    clienteCadastradoNaBase = false;
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Receber';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Receber';
     document.getElementById('btnCancelar').style.display = 'none';
