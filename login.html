@@ -41,12 +41,18 @@
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-light); letter-spacing: 0.5px; }
         .input-box { position: relative; display: flex; align-items: center; }
-        .input-box i { position: absolute; left: 14px; color: var(--text-light); font-size: 14px; }
+        .input-box i.fa-envelope, .input-box i.fa-lock { position: absolute; left: 14px; color: var(--text-light); font-size: 14px; }
         .input-box input {
-            width: 100%; height: 46px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: 10px;
+            width: 100%; height: 46px; padding: 0 40px 0 42px; border: 1px solid var(--border); border-radius: 10px;
             font-size: 14px; background: #f8fafc; color: var(--text-main); outline: none; transition: 0.2s;
         }
         .input-box input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        
+        /* ESTILO DO BOTÃO OLHINHO DE SENHA */
+        .btn-toggle-password {
+            position: absolute; right: 14px; background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 15px; display: flex; align-items: center; justify-content: center;
+        }
+        .btn-toggle-password:hover { color: var(--primary); }
 
         .btn-entrar {
             background: var(--primary); color: #fff; border: none; height: 46px; border-radius: 10px;
@@ -85,7 +91,11 @@
             <label>Palavra-passe</label>
             <div class="input-box">
                 <i class="fas fa-lock"></i>
+                <!-- CAMPO DE SENHA COM SUPORTE AO OLHINHO -->
                 <input type="password" id="senha" required placeholder="••••••••">
+                <button type="button" class="btn-toggle-password" onclick="alternarVisibilidadeSenha()" title="Mostrar/Ocultar Senha">
+                    <i class="fas fa-eye" id="iconeOlhoSenha"></i>
+                </button>
             </div>
         </div>
 
@@ -101,6 +111,19 @@
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = 'lucianojorgesacramento@gmail.com';
 
+    // FUNÇÃO PARA MOSTRAR / OCULTAR A SENHA (OLHINHO)
+    function alternarVisibilidadeSenha() {
+        const inputSenha = document.getElementById('senha');
+        const iconeOlho = document.getElementById('iconeOlhoSenha');
+        if (inputSenha.type === 'password') {
+            inputSenha.type = 'text';
+            iconeOlho.className = 'fas fa-eye-slash';
+        } else {
+            inputSenha.type = 'password';
+            iconeOlho.className = 'fas fa-eye';
+        }
+    }
+
     async function realizarLogin(event) {
         event.preventDefault();
         const email = document.getElementById('email').value.trim().toLowerCase();
@@ -108,7 +131,6 @@
         const erroBox = document.getElementById('erroBox');
         erroBox.style.display = 'none';
 
-        // Acesso Master Exclusivo do Desenvolvedor
         if (email === EMAIL_MASTER.toLowerCase() && senha === 'master2026') {
             localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: email, cliente_id: 1, perfil: 'master' }));
             localStorage.setItem('empresaSelecionada', '1');
@@ -117,7 +139,6 @@
         }
 
         try {
-            // Autenticação oficial encriptada via Supabase Auth
             const { data, error } = await sb.auth.signInWithPassword({
                 email: email,
                 password: senha
@@ -128,15 +149,11 @@
                 return;
             }
 
-            // BUSCA SEGURA E CORRETA: Verifica se o usuário possui vínculo na tabela de utilizadores/perfis ou usa o metadado correto
-            // Tentamos buscar na tabela de perfis de usuários do ERP pelo e-mail
-            let clienteId = 2; // Padrão seguro para a Nanosignals caso não ache perfil específico
-            
+            let clienteId = 2;
             const { data: perfilUser } = await sb.from('usuarios').select('cliente_id').eq('email', email).maybeSingle();
             if (perfilUser && perfilUser.cliente_id) {
                 clienteId = parseInt(perfilUser.cliente_id);
             } else if (email.includes('fecoelho')) {
-                // Garante que o e-mail da Fernanda aponte rigorosamente para a Nanosignals (ID 2)
                 clienteId = 2;
             } else if (email === EMAIL_MASTER.toLowerCase()) {
                 clienteId = 1;
@@ -157,8 +174,8 @@
         erroBox.style.display = 'block';
     }
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
