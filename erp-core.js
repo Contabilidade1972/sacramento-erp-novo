@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Código Original Preservado + White-Label Global & Tema Dia/Noite)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (Código Original Preservado + Injeção Universal de White-Label & Tema Dia/Noite)
 
 (function() {
-    const styleId = 'erp-core-styles-v13';
+    const styleId = 'erp-core-styles-v14';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -270,7 +270,8 @@
             });
         }
 
-        aplicarWhiteLabelUniversalSeguro();
+        // MOTOR UNIVERSAL DE INJEÇÃO GLOBAL EM TEMPO DE EXECUÇÃO
+        aplicarWhiteLabelUniversalAbsoluto();
         inicializarCore();
     });
 
@@ -317,7 +318,7 @@
         }
     }
 
-    async function aplicarWhiteLabelUniversalSeguro() {
+    async function aplicarWhiteLabelUniversalAbsoluto() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -344,16 +345,29 @@
                 else if (path.includes("cte")) nomeModulo = "TRANSPORTE & LOGÍSTICA (CT-E)";
                 else if (path.includes("parceiros")) nomeModulo = "CADASTRO DE PARCEIROS";
 
-                const titleEl = document.getElementById('brandTitleCore');
-                if (titleEl) titleEl.innerText = nomeEmpresa;
+                // Varre QUALQUER elemento de título no documento inteiro, garantindo que o nome da empresa apareça em todas as páginas
+                const titles = document.querySelectorAll('#brandTitleCore, #brandTitle, .site-brand h1, h1');
+                titles.forEach(el => {
+                    if (el && (el.innerText.includes('Sacramento') || el.closest('.site-brand') || el.id.includes('brand'))) {
+                        el.innerText = nomeEmpresa;
+                    }
+                });
 
-                const subEl = document.getElementById('brandSubtitleCore');
-                if (subEl) subEl.innerText = nomeModulo;
+                // Varre QUALQUER subtítulo de marca no documento inteiro para injetar o módulo atual
+                const subtitles = document.querySelectorAll('#brandSubtitleCore, #brandSubtitle, .brand-info span');
+                subtitles.forEach(el => {
+                    if (el) {
+                        el.innerText = nomeModulo;
+                    }
+                });
 
-                const logoBox = document.getElementById('brandLogoBoxCore');
-                if (logoBox && data.logotipo_url) {
-                    logoBox.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
-                }
+                // Injeta a logomarca real do cliente em qualquer caixa de logo do documento
+                const logoBoxes = document.querySelectorAll('#brandLogoBoxCore, #brandLogoBox, .brand-logo-box');
+                logoBoxes.forEach(box => {
+                    if (box && data.logotipo_url) {
+                        box.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
+                    }
+                });
 
                 const isDark = document.body.classList.contains('dark-mode');
                 const btnTema = document.getElementById('btnModoTemaCore');
@@ -362,7 +376,7 @@
                 }
             }
         } catch(e) {
-            console.error("Erro ao aplicar White-Label Universal:", e);
+            console.error("Erro ao aplicar White-Label Universal Absoluto:", e);
         }
     }
 
