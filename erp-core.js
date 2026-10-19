@@ -1,7 +1,7 @@
-// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (White-Label Universal, Módulo Dinâmico & Modo Dia/Noite)
+// erp-core.js — Motor Central de Interface e Inteligência do Sacramento ERP (White-Label Universal 100% Garantido, Módulo Dinâmico & Tema Dia/Noite)
 
 (function() {
-    const styleId = 'erp-core-styles-v11';
+    const styleId = 'erp-core-styles-v12';
     if (!document.getElementById(styleId)) {
         const style = document.createElement('style');
         style.id = styleId;
@@ -41,9 +41,9 @@
                 box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
             }
             .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
-            .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; flex-shrink: 0; }
-            .brand-logo-box img { width: 100%; height: 100%; object-fit: cover; }
-            .brand-info h1 { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
+            .brand-logo-box, [id*="LogoBox"] { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); overflow: hidden; flex-shrink: 0; }
+            .brand-logo-box img, [id*="LogoBox"] img { width: 100%; height: 100%; object-fit: cover; }
+            .brand-info h1, [id*="Title"] { font-size: 14.5px; font-weight: 800; letter-spacing: -0.3px; margin: 0; color: #fff; line-height: 1.2; }
             .brand-info span { font-size: 9.5px; color: #93c5fd; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; margin-top: 2px; display: block; }
 
             /* BARRA DE PESQUISA GLOBAL ELITE */
@@ -138,11 +138,11 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        // Adiciona o botão de tema (lua/sol) ao lado do usuário
+        // Adiciona o botão de tema (lua/sol) e a chave de senha
         inserirBotaoTemaEChave();
 
-        // Aplica White-Label dinâmico (Nome, Logotipo e Módulo de Referência em TODAS as páginas)
-        aplicarWhiteLabelEmTodasAsPaginas();
+        // Aplica White-Label universal (Nome, Logotipo e Módulo de Referência em TODAS as páginas e headers estáticos)
+        aplicarWhiteLabelUniversalGarantido();
     });
 
     window.abrirModalSenhaCore = function() { document.getElementById('modalAlterarSenhaCore').style.display = 'flex'; }
@@ -216,7 +216,7 @@
         });
     }
 
-    async function aplicarWhiteLabelEmTodasAsPaginas() {
+    async function aplicarWhiteLabelUniversalGarantido() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
             if (!u) return;
@@ -231,7 +231,7 @@
             if (data) {
                 const nomeEmpresa = data.nome_fantasia || data.razao_social || "Sacramento ERP";
                 
-                // Determina o nome do módulo com base na URL atual
+                // Determina o subtítulo do módulo com base na URL atual
                 const path = window.location.pathname.toLowerCase();
                 let nomeModulo = "ERP PORTAL CORPORATIVO";
                 if (path.includes("modulo_financeiro")) nomeModulo = "ERP MÓDULO FINANCEIRO";
@@ -244,7 +244,7 @@
                 else if (path.includes("cte")) nomeModulo = "TRANSPORTE & LOGÍSTICA (CT-E)";
                 else if (path.includes("parceiros")) nomeModulo = "CADASTRO DE PARCEIROS";
 
-                // Atualiza em TODAS as páginas (substitui Sacramento ERP pelo nome da empresa e adiciona o subtítulo do módulo)
+                // Varre TODOS os elementos de cabeçalho (.brand-info) em qualquer página do ERP
                 const brandInfos = document.querySelectorAll('.brand-info');
                 brandInfos.forEach(info => {
                     let h1 = info.querySelector('h1');
@@ -253,16 +253,16 @@
                     if (span) span.innerText = nomeModulo;
                 });
 
-                // Varre TODOS os seletores avulsos de título caso existam
-                const titles = document.querySelectorAll('#brandTitle, #brandTitleCore, .site-brand h1');
-                titles.forEach(el => {
-                    if (el && el.innerText.includes('Sacramento')) {
+                // Varre qualquer H1 ou título que contenha Sacramento
+                const allElements = document.querySelectorAll('h1, .site-brand h1, #brandTitle, #brandTitleCore');
+                allElements.forEach(el => {
+                    if (el && (el.innerText.includes('Sacramento') || el.closest('.site-brand'))) {
                         el.innerText = nomeEmpresa;
                     }
                 });
 
-                // Varre TODOS os containers de logotipo para injetar a imagem correta
-                const logoBoxes = document.querySelectorAll('#brandLogoBox, #brandLogoBoxCore, .brand-logo-box');
+                // Varre TODOS os blocos de logotipo em qualquer página
+                const logoBoxes = document.querySelectorAll('.brand-logo-box, [id*="LogoBox"]');
                 logoBoxes.forEach(box => {
                     if (box && data.logotipo_url) {
                         box.innerHTML = `<img src="${data.logotipo_url}" alt="${nomeEmpresa}">`;
@@ -270,7 +270,7 @@
                 });
             }
         } catch(e) {
-            console.error("Erro ao aplicar White-Label e Módulo:", e);
+            console.error("Erro ao aplicar White-Label Universal Garantido:", e);
         }
     }
 })();
