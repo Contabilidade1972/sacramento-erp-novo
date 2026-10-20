@@ -1,13 +1,14 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.0 (CORRIGIDO)
-   - White-Label lê de configuracoes_sistema (fonte certa)
+   erp-core.js — Motor Central v5.5 (DEFINITIVO)
+   - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
-   - Lista de módulos completa
+   - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
+   - Lista completa de módulos + busca global corrigida
    ============================================================ */
 (function() {
     'use strict';
-    var styleId = 'erp-core-styles-universal-v50';
+    var styleId = 'erp-core-styles-universal-v55';
     if (!document.getElementById(styleId)) {
         var style = document.createElement('style');
         style.id = styleId;
@@ -113,6 +114,8 @@
         return window.sb || null;
     }
 
+    function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
+
     /* ===== RELÓGIO (trava exclusiva — fim da data estática) ===== */
     function iniciarRelogio() {
         if (window.__relogioCoreAtivo) return;
@@ -125,42 +128,47 @@
         setTimeout(tick, 100);
     }
 
-    /* ===== WHITE-LABEL: lê de configuracoes_sistema (FONTE CERTA) ===== */
+    /* ===== REMOVE CABEÇALHOS ANTIGOS PELO ID (à prova de classe duplicada) =====
+       O cabeçalho do core SEMPRE contém #brandTitleCore. Qualquer header/.site-header
+       sem esse id é antigo e é removido. */
+    function limparAntigos() {
+        var cand = document.querySelectorAll('header, .site-header');
+        for (var i = 0; i < cand.length; i++) {
+            var el = cand[i];
+            if (!el.parentNode) continue;
+            if (el.querySelector('#brandTitleCore')) continue;  /* é o cabeçalho do core: mantém */
+            el.parentNode.removeChild(el);
+            return;
+        }
+    }
+
+    /* ===== WHITE-LABEL: lê de configuracoes_sistema com retry ===== */
+    var tentativasWL = 0;
     function aplicarWhiteLabel() {
-        var u = null;
-        try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) {}
+        tentativasWL++;
+        if (!document.getElementById('brandTitleCore')) { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); return; }
+        var u = usuario();
         if (!u) return;
         var cid = (u.cliente_id != null) ? u.cliente_id : 1;
-        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch(e) {}
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
         var sb = getSb();
-        if (!sb) return;
+        if (!sb) { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); return; }
         sb.from('configuracoes_sistema').select('app_name, app_logo_url').eq('cliente_id', cid).limit(1)
-          .then(function(res) {
+          .then(function (res) {
               if (res && res.data && res.data.length > 0 && (res.data[0].app_name || res.data[0].app_logo_url)) {
                   var cfg = res.data[0];
                   var t = document.getElementById('brandTitleCore');
                   if (t && cfg.app_name) t.innerText = cfg.app_name;
                   var box = document.getElementById('brandLogoBoxCore');
                   if (box && cfg.app_logo_url) box.innerHTML = '<img src="' + cfg.app_logo_url + '" alt="Logo">';
-              } else {
-                  /* Fallback: nome da empresa em clientes_contratantes */
-                  return sb.from('clientes_contratantes').select('nome_fantasia, razao_social, logotipo_url').eq('id', cid).maybeSingle()
-                    .then(function(r2) {
-                        if (r2 && r2.data) {
-                            var nome = r2.data.nome_fantasia || r2.data.razao_social;
-                            var t2 = document.getElementById('brandTitleCore');
-                            if (t2 && nome) t2.innerText = nome;
-                            var box2 = document.getElementById('brandLogoBoxCore');
-                            if (box2 && r2.data.logotipo_url) box2.innerHTML = '<img src="' + r2.data.logotipo_url + '" alt="Logo">';
-                        }
-                    });
-              }
-          }).catch(function(){});
+              } else if (tentativasWL < 30) { setTimeout(aplicarWhiteLabel, 400); }
+          })
+          .catch(function () { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); });
     }
 
     window.addEventListener('DOMContentLoaded', function() {
         try { if (localStorage.getItem('erp_tema_noite') === 'true') document.body.classList.add('dark-mode'); } catch(e) {}
-        /* Remove APENAS cabeçalhos antigos estáticos (mantém o conteúdo das páginas) */
+        /* Remove cabeçalhos antigos estáticos */
         var antigos = document.querySelectorAll('header.header, aside.sidebar');
         antigos.forEach(function(h) { h.remove(); });
 
@@ -196,8 +204,7 @@
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
         /* LGPD: seletor só para Master */
-        var u = null;
-        try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) {}
+        var u = usuario();
         var ehMaster = u && u.email && u.email.toLowerCase().trim() === 'lucianojorgesacramento@gmail.com';
         if (!ehMaster) {
             var selEmp = document.getElementById('seletorEmpresaCoreContainer');
@@ -227,6 +234,9 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
+        /* Limpeza contínua de cabeçalhos antigos (por 12s) + white-label + relógio */
+        var rodadas = 0;
+        var timerLimpeza = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timerLimpeza); }, 600);
         aplicarWhiteLabel();
         iniciarRelogio();
 
@@ -314,57 +324,4 @@
         document.getElementById('novaSenhaInputCore').value = '';
         document.getElementById('confirmaSenhaInputCore').value = '';
     };
-})();
-
-/* ===== PATCH v5.4 — remove cabeçalhos antigos pelo ID (à prova de classe duplicada) ===== */
-(function () {
-  'use strict';
-  function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
-  function getSb() { return window.sb || null; }
-
-  /* Remove QUALQUER header/.site-header que NÃO seja o do core (o do core tem #brandTitleCore) */
-  function limparAntigos() {
-    var cand = document.querySelectorAll('header, .site-header');
-    for (var i = 0; i < cand.length; i++) {
-      var el = cand[i];
-      if (!el.parentNode) continue;
-      if (el.querySelector('#brandTitleCore')) continue;  /* é o cabeçalho do core: mantém */
-      el.parentNode.removeChild(el);
-      return;
-    }
-  }
-
-  /* White-label com retry: atualiza o cabeçalho do core */
-  var tentativas = 0;
-  function whiteLabel() {
-    tentativas++;
-    if (!document.getElementById('brandTitleCore')) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
-    var u = usuario();
-    if (!u) return;
-    var cid = (u.cliente_id != null) ? u.cliente_id : 1;
-    try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
-    var sb = getSb();
-    if (!sb) { if (tentativas < 30) setTimeout(whiteLabel, 400); return; }
-    sb.from('configuracoes_sistema').select('app_name, app_logo_url').eq('cliente_id', cid).limit(1)
-      .then(function (res) {
-        if (res && res.data && res.data.length > 0 && (res.data[0].app_name || res.data[0].app_logo_url)) {
-          var cfg = res.data[0];
-          var t = document.getElementById('brandTitleCore');
-          if (t && cfg.app_name) t.innerText = cfg.app_name;
-          var box = document.getElementById('brandLogoBoxCore');
-          if (box && cfg.app_logo_url) box.innerHTML = '<img src="' + cfg.app_logo_url + '" alt="Logo">';
-        } else if (tentativas < 30) { setTimeout(whiteLabel, 400); }
-      })
-      .catch(function () { if (tentativas < 30) setTimeout(whiteLabel, 400); });
-  }
-
-  function iniciar() {
-    limparAntigos();
-    whiteLabel();
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
-  else iniciar();
-  /* Reaplica por 12 segundos para vencer scripts das páginas */
-  var rodadas = 0;
-  var timer = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timer); }, 600);
 })();
