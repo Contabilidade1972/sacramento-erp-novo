@@ -325,3 +325,111 @@
         document.getElementById('confirmaSenhaInputCore').value = '';
     };
 })();
+/* ===== PATCH v5.6 — IMPRESSÃO PROFISSIONAL (@media print) ===== */
+(function () {
+  'use strict';
+
+  /* 1) CSS de impressão: esconde a interface, mostra só o documento */
+  var styleId = 'erp-print-styles-v56';
+  if (!document.getElementById(styleId)) {
+    var st = document.createElement('style');
+    st.id = styleId;
+    st.innerHTML = `
+      @media print {
+        /* Esconde TODA a interface do sistema */
+        .site-header, .site-nav-right, .search-global-box, .empresa-selector,
+        .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
+        .assistant-widget, .assistant-bubble, .assistant-avatar,
+        nav, aside, .sidebar, .toolbar, .no-print, button, .btn, .modal,
+        #modalAlterarSenhaCore, #modalAlterarSenha { display: none !important; }
+        /* Reset do corpo para papel */
+        body { background: #fff !important; color: #000 !important; margin: 0 !important; }
+        body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
+        .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+        /* Cabeçalho corporativo do documento impresso */
+        .print-doc-header {
+          display: block !important;
+          border-bottom: 3px solid #1e3a8a;
+          padding-bottom: 10px;
+          margin-bottom: 18px;
+        }
+        .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
+        .print-doc-header .pdh-cnpj { font-size: 11px; color: #475569; }
+        .print-doc-header .pdh-titulo { font-size: 14px; font-weight: 700; color: #000; margin-top: 8px; text-transform: uppercase; }
+        .print-doc-header .pdh-meta { font-size: 10px; color: #64748b; margin-top: 4px; }
+        /* Rodapé de auditoria */
+        .print-doc-footer {
+          display: block !important;
+          border-top: 1px solid #94a3b8;
+          margin-top: 16px;
+          padding-top: 6px;
+          font-size: 9px;
+          color: #64748b;
+        }
+        /* Tabelas: bordas visíveis e sem quebra de linha estranha */
+        table { width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; }
+        table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; color: #000 !important; background: #fff !important; }
+        table th { background: #e2e8f0 !important; font-weight: 700 !important; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; }
+      }
+      /* Na tela, o cabeçalho/rodapé de impressão ficam ocultos */
+      .print-doc-header, .print-doc-footer { display: none; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  /* 2) Injeta o cabeçalho e rodapé corporativos do documento */
+  function montarDocImpresso() {
+    if (document.getElementById('printDocHeader')) return;
+    var u = null;
+    try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) {}
+    var nomeEmpresa = 'Sacramento ERP';
+    var cnpj = '';
+    try {
+      var el = document.getElementById('brandTitleCore') || document.getElementById('brandTitle');
+      if (el && el.innerText) nomeEmpresa = el.innerText;
+    } catch (e) {}
+    var tituloDoc = (document.title || 'Relatório').replace(/\s*[—-]\s*Sacramento ERP.*/i, '').trim();
+    var agora = new Date().toLocaleString('pt-BR');
+    var usuario = u ? (u.nome || u.email || '') : '';
+    var cid = (u && u.cliente_id != null) ? u.cliente_id : 1;
+    try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
+
+    var header = document.createElement('div');
+    header.className = 'print-doc-header';
+    header.id = 'printDocHeader';
+    header.innerHTML =
+      '<div class="pdh-empresa">' + nomeEmpresa + '</div>' +
+      '<div class="pdh-cnpj">Documento emitido pelo Sacramento ERP · Empresa ID ' + cid + (cnpj ? ' · CNPJ ' + cnpj : '') + '</div>' +
+      '<div class="pdh-titulo">' + tituloDoc + '</div>' +
+      '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + '</div>';
+    if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
+    else document.body.appendChild(header);
+
+    var footer = document.createElement('div');
+    footer.className = 'print-doc-footer';
+    footer.id = 'printDocFooter';
+    footer.innerHTML = 'Sacramento ERP · Documento gerado eletronicamente por ' + (usuario || 'usuário do sistema') + ' em ' + agora + ' · Página 1';
+    document.body.appendChild(footer);
+  }
+
+  /* 3) Atualiza o nome da empresa no cabeçalho de impressão quando o white-label aplicar */
+  var wlTent = 0;
+  function sincronizarNomeImpressao() {
+    wlTent++;
+    var el = document.getElementById('brandTitleCore') || document.getElementById('brandTitle');
+    var pdh = document.querySelector('.print-doc-header .pdh-empresa');
+    if (el && pdh && el.innerText && el.innerText !== 'Sacramento ERP') pdh.innerText = el.innerText;
+    if (wlTent < 30) setTimeout(sincronizarNomeImpressao, 500);
+  }
+
+  function iniciar() {
+    montarDocImpresso();
+    sincronizarNomeImpressao();
+    /* Garante que o cabeçalho de impressão seja criado também se a página carregar depois */
+    setTimeout(montarDocImpresso, 1500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
+  else iniciar();
+})();
