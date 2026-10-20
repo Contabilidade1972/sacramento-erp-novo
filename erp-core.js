@@ -336,6 +336,9 @@
     st.id = styleId;
     st.innerHTML = `
       @media print {
+        /* Margens físicas do papel (A4 padrão corporativo) */
+        @page { size: A4; margin: 18mm 15mm 15mm 15mm; }
+        html, body { margin: 0 !important; padding: 0 !important; }
         /* Esconde TODA a interface do sistema */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
         .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
