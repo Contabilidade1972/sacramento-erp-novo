@@ -1,13 +1,13 @@
 /* ============================================================
-   erp-core.js — Motor Central v6.0 (DEFINITIVO)
+   erp-core.js — Motor Central v6.1 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Limpa filtro pré-preenchido com e-mail do usuário ao abrir a página
-   - Impressão v6.0: margens 20mm/15mm, tabela cabe no papel,
-     flutuantes ocultos, rodapé da página oculto
+   - Limpa filtro pré-preenchido com e-mail do usuário (match por contenção, retries longos)
+   - Impressão v6.1: margens GARANTIDAS (padding no corpo, independente do Chrome),
+     nome e CNPJ reais da empresa no impresso, tabela cabe no papel
    ============================================================ */
 (function() {
     'use strict';
@@ -168,22 +168,25 @@
     }
 
     /* ===== LIMPEZA DO FILTRO PRÉ-PREENCHIDO COM O E-MAIL DO USUÁRIO =====
-       Ao abrir qualquer página, se algum campo de busca/filtro estiver
-       preenchido com o e-mail do usuário logado, ele é esvaziado e a
-       busca é reexecutada — o cliente abre a página com o filtro vazio. */
+       Limpa qualquer campo de busca que CONTENHA o e-mail do usuário logado.
+       Retries longos (até 10s) porque a página pode preencher o filtro depois. */
+    var filtroLimpo = false;
     function limparFiltroEmail() {
+        if (filtroLimpo) return;
         var u = usuario();
         if (!u || !u.email) return;
         var email = String(u.email).toLowerCase().trim();
         var campos = document.querySelectorAll('input[type="text"], input[type="search"], input:not([type])');
         for (var i = 0; i < campos.length; i++) {
             var inp = campos[i];
+            if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue; /* não mexe na busca global do topo */
             var val = (inp.value || '').toLowerCase().trim();
-            if (val && val === email) {
+            if (val && val.indexOf(email) > -1) {
                 inp.value = '';
                 inp.dispatchEvent(new Event('input', { bubbles: true }));
                 inp.dispatchEvent(new Event('change', { bubbles: true }));
                 inp.dispatchEvent(new Event('keyup', { bubbles: true }));
+                filtroLimpo = true;
             }
         }
     }
@@ -258,11 +261,13 @@
         aplicarWhiteLabel();
         iniciarRelogio();
 
-        /* Limpa o filtro com e-mail: imediato + retries (a página pode preencher depois) */
-        limparFiltroEmail();
-        setTimeout(limparFiltroEmail, 800);
-        setTimeout(limparFiltroEmail, 2000);
-        setTimeout(limparFiltroEmail, 4000);
+        /* Limpa o filtro com e-mail: retries por até 10s (a página pode preencher depois) */
+        var tentFiltro = 0;
+        var timerFiltro = setInterval(function () {
+            limparFiltroEmail();
+            tentFiltro++;
+            if (filtroLimpo || tentFiltro > 20) clearInterval(timerFiltro);
+        }, 500);
 
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
@@ -349,26 +354,30 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v6.0 =====
-   - Margens: 20mm topo, 15mm laterais e base (regra @page única)
-   - Tabela CABE no papel: layout fixo + quebra de texto (fim do corte horizontal)
-   - Rodapé próprio da página OCULTO, flutuantes ocultos, linhas preservadas */
+/* ===== IMPRESSÃO PROFISSIONAL v6.1 =====
+   - Margens GARANTIDAS: @page em zero + padding no corpo — o recuo fica
+     IGUAL em qualquer configuração de "Margens" do Chrome
+   - Nome e CNPJ REAIS da empresa no impresso (busca em clientes_contratantes)
+   - Flutuantes ocultos, rodapé da página oculto, tabela cabe no papel */
 (function () {
   'use strict';
 
-  var styleId = 'erp-print-styles-v60';
+  var styleId = 'erp-print-styles-v61';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
-      @page { size: A4; margin: 20mm 15mm 15mm 15mm; }
+      /* Margem do papel ZERADA: o recuo real vem do padding do corpo abaixo.
+         Assim a margem é IDÊNTICA com "Padrão" ou "Nenhuma" no Chrome. */
+      @page { size: A4; margin: 0; }
       @media print {
         html, body {
           margin: 0 !important;
-          padding: 0 !important;
+          padding: 15mm 12mm !important;
           background: #fff !important;
           color: #000 !important;
           width: auto !important;
+          box-sizing: border-box !important;
           overflow: visible !important;
         }
         /* Esconde a interface de navegação */
@@ -439,7 +448,7 @@
     header.id = 'printDocHeader';
     header.innerHTML =
       '<div class="pdh-empresa">' + nomeEmpresa + '</div>' +
-      '<div class="pdh-cnpj">Documento emitido pelo Sacramento ERP · Empresa ID ' + cid + '</div>' +
+      '<div class="pdh-cnpj" id="pdhCnpjLinha">Documento emitido pelo Sacramento ERP</div>' +
       '<div class="pdh-titulo">' + tituloDoc + '</div>' +
       '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + '</div>';
     if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
@@ -450,6 +459,22 @@
     footer.id = 'printDocFooter';
     footer.innerHTML = 'Sacramento ERP · Documento gerado eletronicamente por ' + (usuario || 'usuário do sistema') + ' em ' + agora + ' · Página 1';
     document.body.appendChild(footer);
+
+    /* Busca o CNPJ real da empresa para o impresso */
+    var sb = (window.sb || (window.supabase ? window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei') : null));
+    if (sb) {
+      sb.from('clientes_contratantes').select('razao_social, nome_fantasia, cnpj').eq('id', cid).maybeSingle()
+        .then(function (res) {
+          if (res && res.data) {
+            var linha = document.getElementById('pdhCnpjLinha');
+            if (linha) {
+              var partes = [];
+              if (res.data.cnpj) partes.push('CNPJ: ' + res.data.cnpj);
+              if (partes.length) linha.innerText = partes.join(' · ');
+            }
+          }
+        }).catch(function(){});
+    }
   }
 
   var wlTent = 0;
