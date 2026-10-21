@@ -1,12 +1,12 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.8 (DEFINITIVO)
+   erp-core.js — Motor Central v5.9 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Impressão v5.8: margem ÚNICA (sem soma), rodapé da página
-     oculto, flutuantes ocultos, tabela preservada
+   - Impressão v5.9: margens corporativas 20mm/15mm, rodapé da
+     página oculto, flutuantes ocultos, tabela preservada
    ============================================================ */
 (function() {
     'use strict';
@@ -321,19 +321,19 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v5.8 =====
-   - Margem ÚNICA (só @page, sem padding no body — fim da margem dobrada)
+/* ===== IMPRESSÃO PROFISSIONAL v5.9 =====
+   - Margens corporativas: 20mm topo, 15mm laterais e base (regra @page única)
    - Rodapé próprio da página OCULTO na impressão (fim do rodapé duplicado)
    - Flutuantes ocultos, tabela preservada */
 (function () {
   'use strict';
 
-  var styleId = 'erp-print-styles-v58';
+  var styleId = 'erp-print-styles-v59';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
-      @page { size: A4; margin: 15mm 12mm 12mm 12mm; }
+      @page { size: A4; margin: 20mm 15mm 15mm 15mm; }
       @media print {
         html, body {
           margin: 0 !important;
