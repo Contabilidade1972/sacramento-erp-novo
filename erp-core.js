@@ -1,13 +1,14 @@
 /* ============================================================
-   erp-core.js — Motor Central v6.1 (DEFINITIVO)
+   erp-core.js — Motor Central v6.2 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Limpa filtro pré-preenchido com e-mail do usuário (match por contenção, retries longos)
-   - Impressão v6.1: margens GARANTIDAS (padding no corpo, independente do Chrome),
-     nome e CNPJ reais da empresa no impresso, tabela cabe no papel
+   - Limpa filtro pré-preenchido com e-mail do usuário (30s de retries
+     + limpeza garantida no momento da impressão)
+   - Impressão v6.2: margens compactas (10mm/8mm), cabeçalho
+     corporativo REPETIDO em todas as páginas, tabela cabe no papel
    ============================================================ */
 (function() {
     'use strict';
@@ -169,26 +170,30 @@
 
     /* ===== LIMPEZA DO FILTRO PRÉ-PREENCHIDO COM O E-MAIL DO USUÁRIO =====
        Limpa qualquer campo de busca que CONTENHA o e-mail do usuário logado.
-       Retries longos (até 10s) porque a página pode preencher o filtro depois. */
+       Roda por até 30s (a página pode preencher o filtro tarde) e também
+       no momento exato da impressão (beforeprint), garantindo que o
+       impresso saia sempre com TODOS os dados, sem filtro aplicado. */
     var filtroLimpo = false;
-    function limparFiltroEmail() {
-        if (filtroLimpo) return;
+    function limparFiltroEmail(forcar) {
+        if (filtroLimpo && !forcar) return;
         var u = usuario();
         if (!u || !u.email) return;
         var email = String(u.email).toLowerCase().trim();
         var campos = document.querySelectorAll('input[type="text"], input[type="search"], input:not([type])');
+        var limpou = false;
         for (var i = 0; i < campos.length; i++) {
             var inp = campos[i];
-            if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue; /* não mexe na busca global do topo */
+            if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue;
             var val = (inp.value || '').toLowerCase().trim();
             if (val && val.indexOf(email) > -1) {
                 inp.value = '';
                 inp.dispatchEvent(new Event('input', { bubbles: true }));
                 inp.dispatchEvent(new Event('change', { bubbles: true }));
                 inp.dispatchEvent(new Event('keyup', { bubbles: true }));
-                filtroLimpo = true;
+                limpou = true;
             }
         }
+        if (limpou) filtroLimpo = true;
     }
 
     window.addEventListener('DOMContentLoaded', function() {
@@ -261,12 +266,12 @@
         aplicarWhiteLabel();
         iniciarRelogio();
 
-        /* Limpa o filtro com e-mail: retries por até 10s (a página pode preencher depois) */
+        /* Limpa o filtro com e-mail: retries por até 30s */
         var tentFiltro = 0;
         var timerFiltro = setInterval(function () {
-            limparFiltroEmail();
+            limparFiltroEmail(false);
             tentFiltro++;
-            if (filtroLimpo || tentFiltro > 20) clearInterval(timerFiltro);
+            if (tentFiltro > 60) clearInterval(timerFiltro);
         }, 500);
 
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
@@ -354,26 +359,24 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v6.1 =====
-   - Margens GARANTIDAS: @page em zero + padding no corpo — o recuo fica
-     IGUAL em qualquer configuração de "Margens" do Chrome
-   - Nome e CNPJ REAIS da empresa no impresso (busca em clientes_contratantes)
+/* ===== IMPRESSÃO PROFISSIONAL v6.2 =====
+   - Margens COMPACTAS: 10mm topo/base, 8mm laterais (padding no corpo, @page 0)
+   - Cabeçalho corporativo FIXO: repetido em TODAS as páginas impressas
+   - Limpeza do filtro garantida no beforeprint (impresso sai sem filtro)
    - Flutuantes ocultos, rodapé da página oculto, tabela cabe no papel */
 (function () {
   'use strict';
 
-  var styleId = 'erp-print-styles-v61';
+  var styleId = 'erp-print-styles-v62';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
-      /* Margem do papel ZERADA: o recuo real vem do padding do corpo abaixo.
-         Assim a margem é IDÊNTICA com "Padrão" ou "Nenhuma" no Chrome. */
       @page { size: A4; margin: 0; }
       @media print {
         html, body {
           margin: 0 !important;
-          padding: 15mm 12mm !important;
+          padding: 10mm 8mm !important;
           background: #fff !important;
           color: #000 !important;
           width: auto !important;
@@ -396,6 +399,23 @@
         [style*="position:fixed"], [style*="position: fixed"] { display: none !important; }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
         .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
+        /* CABEÇALHO CORPORATIVO FIXO: repetido em TODAS as páginas */
+        .print-doc-header {
+          display: block !important;
+          position: fixed !important;
+          top: 0 !important; left: 0 !important; right: 0 !important;
+          background: #fff !important;
+          border-bottom: 2px solid #1e3a8a;
+          padding-bottom: 6px;
+          margin-bottom: 8px;
+          z-index: 10;
+        }
+        .print-doc-header .pdh-empresa { font-size: 13px; font-weight: 800; color: #1e3a8a; }
+        .print-doc-header .pdh-cnpj { font-size: 9px; color: #475569; }
+        .print-doc-header .pdh-titulo { font-size: 11px; font-weight: 700; color: #000; margin-top: 3px; text-transform: uppercase; }
+        .print-doc-header .pdh-meta { font-size: 8px; color: #64748b; margin-top: 2px; }
+        /* Espaçador: reserva o espaço do cabeçalho fixo no fluxo do conteúdo */
+        .print-doc-spacer { display: block !important; height: 26mm; }
         /* TABELA CABE NO PAPEL: layout fixo + quebra de texto em células longas */
         table {
           width: 100% !important; min-width: 0 !important; max-width: 100% !important;
@@ -414,16 +434,10 @@
         tr, tbody tr { page-break-inside: avoid; display: table-row !important; visibility: visible !important; }
         tbody, thead { display: table-row-group !important; visibility: visible !important; }
         .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; max-width: 100% !important; }
-        /* Cabeçalho corporativo do documento impresso */
-        .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 14px; }
-        .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
-        .print-doc-header .pdh-cnpj { font-size: 11px; color: #475569; }
-        .print-doc-header .pdh-titulo { font-size: 14px; font-weight: 700; color: #000; margin-top: 8px; text-transform: uppercase; }
-        .print-doc-header .pdh-meta { font-size: 10px; color: #64748b; margin-top: 4px; }
         /* Rodapé de auditoria */
-        .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 14px; padding-top: 6px; font-size: 9px; color: #64748b; }
+        .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 10px; padding-top: 5px; font-size: 8px; color: #64748b; }
       }
-      .print-doc-header, .print-doc-footer { display: none; }
+      .print-doc-header, .print-doc-footer, .print-doc-spacer { display: none; }
     `;
     document.head.appendChild(st);
   }
@@ -453,6 +467,13 @@
       '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + '</div>';
     if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
     else document.body.appendChild(header);
+
+    /* Espaçador logo após o cabeçalho fixo (reserva o espaço na 1ª página) */
+    var spacer = document.createElement('div');
+    spacer.className = 'print-doc-spacer';
+    spacer.id = 'printDocSpacer';
+    if (header.nextSibling) document.body.insertBefore(spacer, header.nextSibling);
+    else document.body.appendChild(spacer);
 
     var footer = document.createElement('div');
     footer.className = 'print-doc-footer';
