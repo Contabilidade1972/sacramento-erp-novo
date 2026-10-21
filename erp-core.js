@@ -1,12 +1,12 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.6 (DEFINITIVO)
+   erp-core.js — Motor Central v5.7 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Impressão profissional: margens A4, cabeçalho corporativo,
-     rodapé de auditoria, tabela com dados visíveis
+   - Impressão profissional v5.7: margens GARANTIDAS por padding,
+     oculta TODOS os elementos flutuantes, tabela com dados
    ============================================================ */
 (function() {
     'use strict';
@@ -130,15 +130,13 @@
         setTimeout(tick, 100);
     }
 
-    /* ===== REMOVE CABEÇALHOS ANTIGOS PELO ID (à prova de classe duplicada) =====
-       O cabeçalho do core SEMPRE contém #brandTitleCore. Qualquer header/.site-header
-       sem esse id é antigo e é removido. */
+    /* ===== REMOVE CABEÇALHOS ANTIGOS PELO ID (à prova de classe duplicada) ===== */
     function limparAntigos() {
         var cand = document.querySelectorAll('header, .site-header');
         for (var i = 0; i < cand.length; i++) {
             var el = cand[i];
             if (!el.parentNode) continue;
-            if (el.querySelector('#brandTitleCore')) continue;  /* é o cabeçalho do core: mantém */
+            if (el.querySelector('#brandTitleCore')) continue;
             el.parentNode.removeChild(el);
             return;
         }
@@ -170,7 +168,6 @@
 
     window.addEventListener('DOMContentLoaded', function() {
         try { if (localStorage.getItem('erp_tema_noite') === 'true') document.body.classList.add('dark-mode'); } catch(e) {}
-        /* Remove cabeçalhos antigos estáticos */
         var antigos = document.querySelectorAll('header.header, aside.sidebar');
         antigos.forEach(function(h) { h.remove(); });
 
@@ -205,7 +202,6 @@
             '</div></header>';
         document.body.insertAdjacentHTML('afterbegin', headerHtml);
 
-        /* LGPD: seletor só para Master */
         var u = usuario();
         var ehMaster = u && u.email && u.email.toLowerCase().trim() === 'lucianojorgesacramento@gmail.com';
         if (!ehMaster) {
@@ -219,7 +215,6 @@
             if (el) el.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
         }
 
-        /* MODAL SENHA */
         if (!document.getElementById('modalAlterarSenhaCore')) {
             var modalHtml = '<div id="modalAlterarSenhaCore" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:99999;align-items:center;justify-content:center;">' +
                 '<div style="background:#fff;width:100%;max-width:440px;border-radius:14px;box-shadow:0 15px 35px rgba(0,0,0,0.25);overflow:hidden;">' +
@@ -236,13 +231,11 @@
             document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
-        /* Limpeza contínua de cabeçalhos antigos (por 12s) + white-label + relógio */
         var rodadas = 0;
         var timerLimpeza = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timerLimpeza); }, 600);
         aplicarWhiteLabel();
         iniciarRelogio();
 
-        /* BUSCA GLOBAL */
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
         if (inputBusca && dropdown) {
@@ -328,40 +321,56 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL (@media print) — v5.6 corrigida ===== */
+/* ===== IMPRESSÃO PROFISSIONAL v5.7 =====
+   - Margens GARANTIDAS por padding no body (independe da configuração do Chrome)
+   - Oculta TODOS os elementos flutuantes/fixed (assistente, ajuda, chat, FABs)
+   - Protege a tabela e suas linhas */
 (function () {
   'use strict';
 
-  /* 1) CSS de impressão: margens A4, esconde SÓ a interface, tabela com dados visíveis */
-  var styleId = 'erp-print-styles-v56';
+  var styleId = 'erp-print-styles-v57';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
       @page { size: A4; margin: 20mm 15mm 15mm 15mm; }
       @media print {
-        html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-        /* Esconde SÓ a interface — sem esconder contêineres que possam conter tabelas */
+        /* MARGENS GARANTIDAS: mesmo se o navegador zerar as margens do papel,
+           o padding no corpo cria o recuo visual */
+        html, body {
+          margin: 0 !important;
+          padding: 15mm !important;
+          padding-top: 18mm !important;
+          background: #fff !important;
+          color: #000 !important;
+          width: auto !important;
+          box-sizing: border-box !important;
+        }
+        /* Esconde a interface de navegação */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
         .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
-        .assistant-widget, .assistant-bubble, .assistant-avatar,
         nav, aside, .sidebar, .no-print,
         #modalAlterarSenhaCore, #modalAlterarSenha { display: none !important; }
-        /* NÃO esconde mais button/.btn/.toolbar/.modal genéricos — era isso que apagava as linhas */
-        button, .btn { display: revert !important; }
-        /* Reset do corpo para papel */
-        body { background: #fff !important; color: #000 !important; }
+        /* Oculta QUALQUER elemento flutuante ou fixo (assistente, ajuda, chat, FAB) */
+        .assistant-widget, .assistant-bubble, .assistant-avatar,
+        [class*="float"], [class*="Float"], [class*="fab"], [class*="Fab"],
+        [class*="chat"], [class*="Chat"], [class*="help"], [class*="Help"],
+        [class*="widget"], [class*="Widget"], [class*="bubble"], [class*="Bubble"],
+        [class*="assistant"], [class*="Assistant"], [class*="botao-flutuante"],
+        [style*="position:fixed"], [style*="position: fixed"],
+        [style*="position:fixed"][style*="bottom"], [style*="position: absolute"][style*="bottom"] {
+          display: none !important;
+        }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
         .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
-        /* Força TODA tabela a ocupar a largura do papel */
+        /* Tabela: largura total, bordas, linhas preservadas */
         table { width: 100% !important; min-width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; table-layout: auto !important; }
         table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; color: #000 !important; background: #fff !important; }
         table th { background: #e2e8f0 !important; font-weight: 700 !important; }
         thead { display: table-header-group; }
-        tr { page-break-inside: avoid; display: table-row !important; }
-        tbody, thead { display: table-row-group !important; }
-        /* Contêineres de tabela: visíveis e sem altura/scroll limitado na impressão */
-        .table-responsive, .table-container, .tabela-container, div { overflow: visible !important; max-height: none !important; }
+        tr, tbody tr { page-break-inside: avoid; display: table-row !important; visibility: visible !important; }
+        tbody, thead { display: table-row-group !important; visibility: visible !important; }
+        .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; }
         /* Cabeçalho corporativo do documento impresso */
         .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 18px; }
         .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
@@ -371,19 +380,16 @@
         /* Rodapé de auditoria */
         .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 16px; padding-top: 6px; font-size: 9px; color: #64748b; }
       }
-      /* Na tela, o cabeçalho/rodapé de impressão ficam ocultos */
       .print-doc-header, .print-doc-footer { display: none; }
     `;
     document.head.appendChild(st);
   }
 
-  /* 2) Injeta o cabeçalho e rodapé corporativos do documento */
   function montarDocImpresso() {
     if (document.getElementById('printDocHeader')) return;
     var u = null;
     try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) {}
     var nomeEmpresa = 'Sacramento ERP';
-    var cnpj = '';
     try {
       var el = document.getElementById('brandTitleCore') || document.getElementById('brandTitle');
       if (el && el.innerText) nomeEmpresa = el.innerText;
@@ -399,7 +405,7 @@
     header.id = 'printDocHeader';
     header.innerHTML =
       '<div class="pdh-empresa">' + nomeEmpresa + '</div>' +
-      '<div class="pdh-cnpj">Documento emitido pelo Sacramento ERP · Empresa ID ' + cid + (cnpj ? ' · CNPJ ' + cnpj : '') + '</div>' +
+      '<div class="pdh-cnpj">Documento emitido pelo Sacramento ERP · Empresa ID ' + cid + '</div>' +
       '<div class="pdh-titulo">' + tituloDoc + '</div>' +
       '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + '</div>';
     if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
@@ -412,7 +418,6 @@
     document.body.appendChild(footer);
   }
 
-  /* 3) Atualiza o nome da empresa no cabeçalho de impressão quando o white-label aplicar */
   var wlTent = 0;
   function sincronizarNomeImpressao() {
     wlTent++;
