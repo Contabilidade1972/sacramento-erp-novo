@@ -1,12 +1,12 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.7 (DEFINITIVO)
+   erp-core.js — Motor Central v5.8 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Impressão profissional v5.7: margens GARANTIDAS por padding,
-     oculta TODOS os elementos flutuantes, tabela com dados
+   - Impressão v5.8: margem ÚNICA (sem soma), rodapé da página
+     oculto, flutuantes ocultos, tabela preservada
    ============================================================ */
 (function() {
     'use strict';
@@ -321,46 +321,41 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v5.7 =====
-   - Margens GARANTIDAS por padding no body (independe da configuração do Chrome)
-   - Oculta TODOS os elementos flutuantes/fixed (assistente, ajuda, chat, FABs)
-   - Protege a tabela e suas linhas */
+/* ===== IMPRESSÃO PROFISSIONAL v5.8 =====
+   - Margem ÚNICA (só @page, sem padding no body — fim da margem dobrada)
+   - Rodapé próprio da página OCULTO na impressão (fim do rodapé duplicado)
+   - Flutuantes ocultos, tabela preservada */
 (function () {
   'use strict';
 
-  var styleId = 'erp-print-styles-v57';
+  var styleId = 'erp-print-styles-v58';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
-      @page { size: A4; margin: 20mm 15mm 15mm 15mm; }
+      @page { size: A4; margin: 15mm 12mm 12mm 12mm; }
       @media print {
-        /* MARGENS GARANTIDAS: mesmo se o navegador zerar as margens do papel,
-           o padding no corpo cria o recuo visual */
         html, body {
           margin: 0 !important;
-          padding: 15mm !important;
-          padding-top: 18mm !important;
+          padding: 0 !important;
           background: #fff !important;
           color: #000 !important;
           width: auto !important;
-          box-sizing: border-box !important;
         }
         /* Esconde a interface de navegação */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
         .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
         nav, aside, .sidebar, .no-print,
         #modalAlterarSenhaCore, #modalAlterarSenha { display: none !important; }
-        /* Oculta QUALQUER elemento flutuante ou fixo (assistente, ajuda, chat, FAB) */
+        /* Esconde o rodapé PRÓPRIO da página (evita rodapé duplicado) */
+        body > footer, .site-footer, footer.footer, footer:not(.print-doc-footer) { display: none !important; }
+        /* Oculta QUALQUER elemento flutuante ou fixo */
         .assistant-widget, .assistant-bubble, .assistant-avatar,
         [class*="float"], [class*="Float"], [class*="fab"], [class*="Fab"],
         [class*="chat"], [class*="Chat"], [class*="help"], [class*="Help"],
         [class*="widget"], [class*="Widget"], [class*="bubble"], [class*="Bubble"],
         [class*="assistant"], [class*="Assistant"], [class*="botao-flutuante"],
-        [style*="position:fixed"], [style*="position: fixed"],
-        [style*="position:fixed"][style*="bottom"], [style*="position: absolute"][style*="bottom"] {
-          display: none !important;
-        }
+        [style*="position:fixed"], [style*="position: fixed"] { display: none !important; }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
         .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
         /* Tabela: largura total, bordas, linhas preservadas */
@@ -372,13 +367,13 @@
         tbody, thead { display: table-row-group !important; visibility: visible !important; }
         .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; }
         /* Cabeçalho corporativo do documento impresso */
-        .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 18px; }
+        .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 14px; }
         .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
         .print-doc-header .pdh-cnpj { font-size: 11px; color: #475569; }
         .print-doc-header .pdh-titulo { font-size: 14px; font-weight: 700; color: #000; margin-top: 8px; text-transform: uppercase; }
         .print-doc-header .pdh-meta { font-size: 10px; color: #64748b; margin-top: 4px; }
         /* Rodapé de auditoria */
-        .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 16px; padding-top: 6px; font-size: 9px; color: #64748b; }
+        .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 14px; padding-top: 6px; font-size: 9px; color: #64748b; }
       }
       .print-doc-header, .print-doc-footer { display: none; }
     `;
