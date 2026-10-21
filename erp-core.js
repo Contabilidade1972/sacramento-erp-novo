@@ -1,12 +1,13 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.9 (DEFINITIVO)
+   erp-core.js — Motor Central v6.0 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
-   - Impressão v5.9: margens corporativas 20mm/15mm, rodapé da
-     página oculto, flutuantes ocultos, tabela preservada
+   - Limpa filtro pré-preenchido com e-mail do usuário ao abrir a página
+   - Impressão v6.0: margens 20mm/15mm, tabela cabe no papel,
+     flutuantes ocultos, rodapé da página oculto
    ============================================================ */
 (function() {
     'use strict';
@@ -166,6 +167,27 @@
           .catch(function () { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); });
     }
 
+    /* ===== LIMPEZA DO FILTRO PRÉ-PREENCHIDO COM O E-MAIL DO USUÁRIO =====
+       Ao abrir qualquer página, se algum campo de busca/filtro estiver
+       preenchido com o e-mail do usuário logado, ele é esvaziado e a
+       busca é reexecutada — o cliente abre a página com o filtro vazio. */
+    function limparFiltroEmail() {
+        var u = usuario();
+        if (!u || !u.email) return;
+        var email = String(u.email).toLowerCase().trim();
+        var campos = document.querySelectorAll('input[type="text"], input[type="search"], input:not([type])');
+        for (var i = 0; i < campos.length; i++) {
+            var inp = campos[i];
+            var val = (inp.value || '').toLowerCase().trim();
+            if (val && val === email) {
+                inp.value = '';
+                inp.dispatchEvent(new Event('input', { bubbles: true }));
+                inp.dispatchEvent(new Event('change', { bubbles: true }));
+                inp.dispatchEvent(new Event('keyup', { bubbles: true }));
+            }
+        }
+    }
+
     window.addEventListener('DOMContentLoaded', function() {
         try { if (localStorage.getItem('erp_tema_noite') === 'true') document.body.classList.add('dark-mode'); } catch(e) {}
         var antigos = document.querySelectorAll('header.header, aside.sidebar');
@@ -235,6 +257,12 @@
         var timerLimpeza = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timerLimpeza); }, 600);
         aplicarWhiteLabel();
         iniciarRelogio();
+
+        /* Limpa o filtro com e-mail: imediato + retries (a página pode preencher depois) */
+        limparFiltroEmail();
+        setTimeout(limparFiltroEmail, 800);
+        setTimeout(limparFiltroEmail, 2000);
+        setTimeout(limparFiltroEmail, 4000);
 
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
@@ -321,14 +349,14 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v5.9 =====
-   - Margens corporativas: 20mm topo, 15mm laterais e base (regra @page única)
-   - Rodapé próprio da página OCULTO na impressão (fim do rodapé duplicado)
-   - Flutuantes ocultos, tabela preservada */
+/* ===== IMPRESSÃO PROFISSIONAL v6.0 =====
+   - Margens: 20mm topo, 15mm laterais e base (regra @page única)
+   - Tabela CABE no papel: layout fixo + quebra de texto (fim do corte horizontal)
+   - Rodapé próprio da página OCULTO, flutuantes ocultos, linhas preservadas */
 (function () {
   'use strict';
 
-  var styleId = 'erp-print-styles-v59';
+  var styleId = 'erp-print-styles-v60';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
@@ -341,6 +369,7 @@
           background: #fff !important;
           color: #000 !important;
           width: auto !important;
+          overflow: visible !important;
         }
         /* Esconde a interface de navegação */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
@@ -358,14 +387,24 @@
         [style*="position:fixed"], [style*="position: fixed"] { display: none !important; }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
         .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
-        /* Tabela: largura total, bordas, linhas preservadas */
-        table { width: 100% !important; min-width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; table-layout: auto !important; }
-        table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; color: #000 !important; background: #fff !important; }
+        /* TABELA CABE NO PAPEL: layout fixo + quebra de texto em células longas */
+        table {
+          width: 100% !important; min-width: 0 !important; max-width: 100% !important;
+          border-collapse: collapse !important; font-size: 9px !important;
+          table-layout: fixed !important; word-wrap: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+        table th, table td {
+          border: 1px solid #94a3b8 !important; padding: 3px 5px !important;
+          color: #000 !important; background: #fff !important;
+          word-wrap: break-word !important; overflow-wrap: break-word !important;
+          white-space: normal !important; overflow: hidden !important;
+        }
         table th { background: #e2e8f0 !important; font-weight: 700 !important; }
         thead { display: table-header-group; }
         tr, tbody tr { page-break-inside: avoid; display: table-row !important; visibility: visible !important; }
         tbody, thead { display: table-row-group !important; visibility: visible !important; }
-        .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; }
+        .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; max-width: 100% !important; }
         /* Cabeçalho corporativo do documento impresso */
         .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 14px; }
         .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
