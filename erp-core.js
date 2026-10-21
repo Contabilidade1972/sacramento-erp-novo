@@ -1,10 +1,12 @@
 /* ============================================================
-   erp-core.js — Motor Central v5.5 (DEFINITIVO)
+   erp-core.js — Motor Central v5.6 (DEFINITIVO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
    - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
    - Lista completa de módulos + busca global corrigida
+   - Impressão profissional: margens A4, cabeçalho corporativo,
+     rodapé de auditoria, tabela com dados visíveis
    ============================================================ */
 (function() {
     'use strict';
@@ -240,7 +242,7 @@
         aplicarWhiteLabel();
         iniciarRelogio();
 
-        /* BUSCA GLOBAL (bug da barra invertida corrigido) */
+        /* BUSCA GLOBAL */
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
         if (inputBusca && dropdown) {
@@ -325,56 +327,49 @@
         document.getElementById('confirmaSenhaInputCore').value = '';
     };
 })();
-/* ===== PATCH v5.6 — IMPRESSÃO PROFISSIONAL (@media print) ===== */
+
+/* ===== IMPRESSÃO PROFISSIONAL (@media print) — v5.6 corrigida ===== */
 (function () {
   'use strict';
 
-  /* 1) CSS de impressão: esconde a interface, mostra só o documento */
+  /* 1) CSS de impressão: margens A4, esconde SÓ a interface, tabela com dados visíveis */
   var styleId = 'erp-print-styles-v56';
   if (!document.getElementById(styleId)) {
     var st = document.createElement('style');
     st.id = styleId;
     st.innerHTML = `
+      @page { size: A4; margin: 20mm 15mm 15mm 15mm; }
       @media print {
-        /* Margens físicas do papel (A4 padrão corporativo) */
-        @page { size: A4; margin: 18mm 15mm 15mm 15mm; }
-        html, body { margin: 0 !important; padding: 0 !important; }
-        /* Esconde TODA a interface do sistema */
+        html, body { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        /* Esconde SÓ a interface — sem esconder contêineres que possam conter tabelas */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
         .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
         .assistant-widget, .assistant-bubble, .assistant-avatar,
-        nav, aside, .sidebar, .toolbar, .no-print, button, .btn, .modal,
+        nav, aside, .sidebar, .no-print,
         #modalAlterarSenhaCore, #modalAlterarSenha { display: none !important; }
+        /* NÃO esconde mais button/.btn/.toolbar/.modal genéricos — era isso que apagava as linhas */
+        button, .btn { display: revert !important; }
         /* Reset do corpo para papel */
-        body { background: #fff !important; color: #000 !important; margin: 0 !important; }
+        body { background: #fff !important; color: #000 !important; }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
-        .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; }
+        .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
+        /* Força TODA tabela a ocupar a largura do papel */
+        table { width: 100% !important; min-width: 100% !important; max-width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; table-layout: auto !important; }
+        table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; color: #000 !important; background: #fff !important; }
+        table th { background: #e2e8f0 !important; font-weight: 700 !important; }
+        thead { display: table-header-group; }
+        tr { page-break-inside: avoid; display: table-row !important; }
+        tbody, thead { display: table-row-group !important; }
+        /* Contêineres de tabela: visíveis e sem altura/scroll limitado na impressão */
+        .table-responsive, .table-container, .tabela-container, div { overflow: visible !important; max-height: none !important; }
         /* Cabeçalho corporativo do documento impresso */
-        .print-doc-header {
-          display: block !important;
-          border-bottom: 3px solid #1e3a8a;
-          padding-bottom: 10px;
-          margin-bottom: 18px;
-        }
+        .print-doc-header { display: block !important; border-bottom: 3px solid #1e3a8a; padding-bottom: 10px; margin-bottom: 18px; }
         .print-doc-header .pdh-empresa { font-size: 16px; font-weight: 800; color: #1e3a8a; }
         .print-doc-header .pdh-cnpj { font-size: 11px; color: #475569; }
         .print-doc-header .pdh-titulo { font-size: 14px; font-weight: 700; color: #000; margin-top: 8px; text-transform: uppercase; }
         .print-doc-header .pdh-meta { font-size: 10px; color: #64748b; margin-top: 4px; }
         /* Rodapé de auditoria */
-        .print-doc-footer {
-          display: block !important;
-          border-top: 1px solid #94a3b8;
-          margin-top: 16px;
-          padding-top: 6px;
-          font-size: 9px;
-          color: #64748b;
-        }
-        /* Tabelas: bordas visíveis e sem quebra de linha estranha */
-        table { width: 100% !important; border-collapse: collapse !important; font-size: 10px !important; }
-        table th, table td { border: 1px solid #94a3b8 !important; padding: 4px 6px !important; color: #000 !important; background: #fff !important; }
-        table th { background: #e2e8f0 !important; font-weight: 700 !important; }
-        thead { display: table-header-group; }
-        tr { page-break-inside: avoid; }
+        .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 16px; padding-top: 6px; font-size: 9px; color: #64748b; }
       }
       /* Na tela, o cabeçalho/rodapé de impressão ficam ocultos */
       .print-doc-header, .print-doc-footer { display: none; }
@@ -430,7 +425,6 @@
   function iniciar() {
     montarDocImpresso();
     sincronizarNomeImpressao();
-    /* Garante que o cabeçalho de impressão seja criado também se a página carregar depois */
     setTimeout(montarDocImpresso, 1500);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
