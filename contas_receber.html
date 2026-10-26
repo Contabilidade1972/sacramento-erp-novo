@@ -704,7 +704,6 @@ async function carregarContas() {
     atualizarCodigoVirtual();
 }
 
-// CORREÇÃO DOS CARDS: Soma todos os títulos que não estão recebidos (incluindo atrasados e pendentes) na projeção em aberto
 function atualizarDashboard() {
     let totalTitulos = contasCache.length;
     let pendAberto = 0;
@@ -715,7 +714,6 @@ function atualizarDashboard() {
         if (t.statusSeguro === 'recebido') {
             recebido += val;
         } else {
-            // Soma todos os pendentes e atrasados na projeção em aberto
             pendAberto += val;
         }
     });
@@ -908,12 +906,10 @@ async function salvarContaReceber() {
         
         let batch = [];
         for(let i = 0; i < qtdGerar; i++) {
-            // Incrementa o mês corretamente lidando com a virada do ano
             let targetMes = (mes - 1) + i;
             let targetAno = ano + Math.floor(targetMes / 12);
             let realMes = (targetMes % 12 + 1);
             
-            // Corrige o dia caso ultrapasse o último dia do mês (ex: 31 de fev)
             let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
             let realDia = Math.min(dia, ultimoDiaMes);
 
@@ -946,9 +942,20 @@ async function salvarContaReceber() {
     carregarContas();
 }
 
+// CORREÇÃO DO BOTÃO DE EDITAR: Abre o formulário imediatamente no 1º clique e preenche os dados
 window.editarConta = function(id) {
     let t = contasCache.find(x => String(x.id) === String(id));
     if(!t) return;
+
+    // Se o formulário estiver recolhido (colapsado), expande-o imediatamente
+    const cardForm = document.getElementById('formTitle').closest('.card');
+    const contentForm = cardForm.querySelector('.collapsible-content');
+    const iconForm = cardForm.querySelector('.collapse-btn i');
+    if (contentForm.classList.contains('collapsed')) {
+        contentForm.classList.remove('collapsed');
+        if (iconForm) iconForm.className = 'fas fa-chevron-up';
+    }
+
     document.getElementById('edit_id').value = t.id;
     document.getElementById('codigo_virtual').value = formatarCodigoVirtual(t.id);
     document.getElementById('cpf_cnpj_cliente').value = t.cpf_cnpj_cliente || '';
