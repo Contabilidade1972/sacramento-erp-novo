@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -23,7 +24,6 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM LGPD: Oculta o seletor de empresas para usuários comuns */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -104,8 +104,6 @@
 </head>
 <body>
 
-<!-- O erp-core.js injeta o cabeçalho moderno unificado automaticamente -->
-
 <!-- MODAL: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
     <div class="modal-card" style="max-width:420px;">
@@ -146,80 +144,6 @@
             <label>Nome / Razão Social *</label>
             <input type="text" id="cli_nome" class="form-control" placeholder="Nome do cliente">
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div>
-                <label>E-mail</label>
-                <input type="email" id="cli_email" class="form-control" placeholder="cliente@email.com">
-            </div>
-            <div>
-                <label>Telefone / WhatsApp</label>
-                <input type="text" id="cli_telefone" class="form-control" placeholder="(00) 00000-0000">
-            </div>
-        </div>
-        <div style="margin-bottom:12px;">
-            <label>Nome do Contato Responsável</label>
-            <input type="text" id="cli_contato" class="form-control" placeholder="Pessoa de contato">
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px;">
-            <label style="margin-bottom:8px;"><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> Endereço</label>
-            <div style="display:grid;grid-template-columns:1fr 3fr;gap:10px;margin-bottom:10px;">
-                <div>
-                    <label>CEP</label>
-                    <input type="text" id="cli_cep" class="form-control" placeholder="00000-000" onblur="buscarCepCliente()">
-                </div>
-                <div>
-                    <label>Logradouro</label>
-                    <input type="text" id="cli_logradouro" class="form-control" placeholder="Preenchido pelo CEP">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px;">
-                <div>
-                    <label>Número</label>
-                    <input type="text" id="cli_numero" class="form-control" placeholder="Número">
-                </div>
-                <div>
-                    <label>Complemento</label>
-                    <input type="text" id="cli_complemento" class="form-control" placeholder="Apto, sala...">
-                </div>
-                <div>
-                    <label>Bairro</label>
-                    <input type="text" id="cli_bairro" class="form-control" placeholder="Bairro">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;">
-                <div>
-                    <label>Cidade</label>
-                    <input type="text" id="cli_cidade" class="form-control" placeholder="Cidade">
-                </div>
-                <div>
-                    <label>UF</label>
-                    <input type="text" id="cli_uf" class="form-control" placeholder="UF" maxlength="2">
-                </div>
-            </div>
-        </div>
-        <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:12px;">
-            <label style="margin-bottom:8px;"><i class="fas fa-university" style="color:var(--success)"></i> Dados Bancários (para recebimento)</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
-                <div>
-                    <label>Banco</label>
-                    <input type="text" id="cli_banco" class="form-control" placeholder="Banco">
-                </div>
-                <div>
-                    <label>Agência</label>
-                    <input type="text" id="cli_agencia" class="form-control" placeholder="Agência">
-                </div>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-                <div>
-                    <label>Conta</label>
-                    <input type="text" id="cli_conta" class="form-control" placeholder="Conta">
-                </div>
-                <div>
-                    <label>Chave Pix</label>
-                    <input type="text" id="cli_pix" class="form-control" placeholder="Chave Pix">
-                </div>
-            </div>
-        </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCliente').style.display='none'">Cancelar</button>
             <button class="btn-acao" onclick="salvarNovoClienteModal()"><i class="fas fa-save"></i> Salvar Cliente</button>
@@ -237,7 +161,7 @@
         <input type="hidden" id="recebimento_id_baixa">
         <div style="background: var(--bg); padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
             <div><strong>Cliente:</strong> <span id="modal_cliente_nome">-</span></div>
-            <div><strong>Valor Original:</strong> <span id="modal_valor_original" style="font-weight: bold; color: var(--primary);">R\$ 0,00</span></div>
+            <div><strong>Valor Original:</strong> <span id="modal_valor_original" style="font-weight: bold; color: var(--primary);">R$ 0,00</span></div>
         </div>
         <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
@@ -283,14 +207,14 @@
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-hourglass-half"></i></div>
             <div>
                 <h4>Projeção em Aberto</h4>
-                <div class="value" id="kpiValorAberto" style="color: var(--warning);">R\$ 0,00</div>
+                <div class="value" id="kpiValorAberto" style="color: var(--warning);">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--success)"><i class="fas fa-check-double"></i></div>
             <div>
                 <h4>Total Recebido</h4>
-                <div class="value" id="kpiValorRecebido" style="color: var(--success)">R\$ 0,00</div>
+                <div class="value" id="kpiValorRecebido" style="color: var(--success)">R$ 0,00</div>
             </div>
         </div>
     </div>
@@ -322,7 +246,7 @@
             </div>
             <div class="form-grid">
                 <div>
-                    <label>Valor do Título (R\$) *</label>
+                    <label>Valor do Título (R$) *</label>
                     <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
                 </div>
                 <div>
@@ -346,7 +270,7 @@
                     </div>
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr;">
                 <div>
                     <label>Descrição / Nota Fiscal / Contrato *</label>
                     <input type="text" id="descricao" class="form-control" placeholder="Ex: Fatura de Serviços, Venda de Mercadoria...">
@@ -357,6 +281,13 @@
                         <option value="">Carregando Plano de Contas...</option>
                     </select>
                 </div>
+                <div>
+                    <label>Receita Recorrente?</label>
+                    <select id="recorrente" class="form-control">
+                        <option value="Não">Não (Pontual)</option>
+                        <option value="Sim">Sim (Mensal)</option>
+                    </select>
+                </div>
             </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
                 <button class="btn-acao" id="btnSalvar" onclick="salvarContaReceber()"><i class="fas fa-save"></i> Adicionar Conta a Receber</button>
@@ -365,6 +296,7 @@
         </div>
     </div>
 
+    <!-- HISTÓRICO DE CONTAS A RECEBER COM FILTROS INTEGRADOS -->
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Receber</h3>
@@ -374,6 +306,7 @@
             </div>
         </div>
         <div class="collapsible-content">
+            <!-- BARRA DE FILTROS DO HISTÓRICO -->
             <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
                 <div>
                     <label>Data Início</label>
@@ -409,7 +342,7 @@
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
                             <th>Vencimento</th>
-                            <th style="text-align: right;">Valor (R\$)</th>
+                            <th style="text-align: right;">Valor (R$)</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -421,10 +354,23 @@
         </div>
     </div>
 
+    <!-- HISTÓRICO DE CONTAS A RECEBER E FATURAMENTO -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Receber e Faturamento</h3>
-            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <!-- BARRA DE FILTROS DO HISTÓRICO PRINCIPAL -->
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 260px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 150px; height: 38px;">
+                    <option value="todos">Todos Status</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="recebido">Recebido</option>
+                    <option value="atrasado">Vencido</option>
+                </select>
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;" title="Data Início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;" title="Data Fim">
+                <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
+            </div>
         </div>
         <div class="collapsible-content">
             <div class="table-container">
@@ -565,7 +511,6 @@ function validarCNPJ(cnpj) {
     return resultado == digitos.charAt(1);
 }
 
-// BUSCA INTELIGENTE DE CLIENTE / CNPJ NA BASE E RECEITA FEDERAL
 async function buscarOuConsultarCliente() {
     let docDigitado = document.getElementById('cpf_cnpj_cliente').value.replace(/\D/g, '');
     let statusEl = document.getElementById('status_cliente');
@@ -609,7 +554,6 @@ async function buscarOuConsultarCliente() {
     }
 }
 
-// BUSCA DE DADOS DENTRO DO MODAL DE CADASTRO DE CLIENTE
 async function buscarDadosDocumentoCliente() {
     let doc = document.getElementById('cli_doc').value.replace(/\D/g, '');
     let statusEl = document.getElementById('cli_status_doc');
@@ -620,18 +564,6 @@ async function buscarDadosDocumentoCliente() {
             .then(r => { if (!r.ok) throw new Error(); return r.json(); })
             .then(d => {
                 document.getElementById('cli_nome').value = d.razao_social || d.nome_fantasia || '';
-                document.getElementById('cli_email').value = d.email || '';
-                if (d.ddd_telefone_1) {
-                    let tel = d.ddd_telefone_1.replace(/\D/g, '');
-                    document.getElementById('cli_telefone').value = `(${tel.slice(0,2)}) ${tel.slice(2)}`;
-                }
-                if (d.cep) {
-                    document.getElementById('cli_cep').value = d.cep;
-                    document.getElementById('cli_logradouro').value = d.logradouro || '';
-                    document.getElementById('cli_bairro').value = d.bairro || '';
-                    document.getElementById('cli_cidade').value = d.municipio || '';
-                    document.getElementById('cli_uf').value = d.uf || '';
-                }
                 statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> Encontrado</span>';
             })
             .catch(() => { statusEl.innerHTML = '<span style="color:var(--warning)">Preencha manualmente</span>'; });
@@ -704,7 +636,7 @@ function abrirModalCentroCusto() {
 }
 
 function abrirModalCliente() {
-    ['cli_nome','cli_doc','cli_email','cli_telefone','cli_contato','cli_cep','cli_logradouro','cli_numero','cli_complemento','cli_bairro','cli_cidade','cli_uf','cli_banco','cli_agencia','cli_conta','cli_pix'].forEach(id => {
+    ['cli_nome','cli_doc'].forEach(id => {
         let el = document.getElementById(id);
         if(el) el.value = '';
     });
@@ -734,14 +666,7 @@ async function salvarNovoClienteModal() {
         nome,
         razao_social: nome,
         cnpj_cpf: doc,
-        tipo_cadastro: 'Cliente',
-        email: document.getElementById('cli_email').value.trim(),
-        telefone: document.getElementById('cli_telefone').value.trim(),
-        cep: document.getElementById('cli_cep').value.replace(/\D/g, ''),
-        logradouro: document.getElementById('cli_logradouro').value.trim(),
-        bairro: document.getElementById('cli_bairro').value.trim(),
-        cidade: document.getElementById('cli_cidade').value.trim(),
-        uf: document.getElementById('cli_uf').value.trim()
+        tipo_cadastro: 'Cliente'
     }]);
     document.getElementById('modalNovoCliente').style.display = 'none';
     document.getElementById('cliente_nome').value = nome;
@@ -777,6 +702,7 @@ async function carregarContas() {
 
     renderTabela();
     aplicarFiltrosRelatorio();
+    aplicarFiltrosHistorico();
     atualizarDashboard();
     atualizarCodigoVirtual();
 }
@@ -853,15 +779,38 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-function renderTabela() {
+// FILTROS DO HISTÓRICO PRINCIPAL DE CONTAS A RECEBER
+function aplicarFiltrosHistorico() {
+    let dtIni = document.getElementById('histDataInicio').value;
+    let dtFim = document.getElementById('histDataFim').value;
+    let stFiltro = document.getElementById('histStatus').value;
+    let txtBusca = document.getElementById('histBusca').value.trim().toLowerCase();
+
+    let dadosFiltrados = contasCache.filter(t => {
+        let dataRef = t.vencimento || t.data_vencimento;
+        if (dtIni && dataRef && dataRef < dtIni) return false;
+        if (dtFim && dataRef && dataRef > dtFim) return false;
+        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
+        if (txtBusca) {
+            let clienteNome = t.cliente_nome || t.cliente || '';
+            let linha = (clienteNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
+        }
+        return true;
+    });
+
+    renderTabelaFiltrada(dadosFiltrados);
+}
+
+function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
-    if (!contasCache.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada.</td></tr>`;
+    if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
-    contasCache.forEach(t => {
+    lista.forEach(t => {
         let badgeClass = t.statusSeguro === 'recebido' ? 'badge-recebido' : 'badge-pendente';
         let badgeLabel = t.statusSeguro === 'recebido' ? 'Recebido' : 'Pendente';
         let codVirtual = formatarCodigoVirtual(t.id);
@@ -884,7 +833,7 @@ function renderTabela() {
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${dataReg}</td>
-                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;">
+                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;" class="ocultar-print">
                     ${btnBaixa}
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
@@ -892,6 +841,10 @@ function renderTabela() {
             </tr>
         `;
     });
+}
+
+function renderTabela() {
+    renderTabelaFiltrada(contasCache);
 }
 
 window.abrirModalRecebimento = function(id) {
@@ -932,7 +885,7 @@ async function salvarContaReceber() {
     const status = document.getElementById('status_edicao').value;
     const centro_custo = document.getElementById('centro_custo').value;
     const conta_contabil = document.getElementById('conta_contabil').value;
-    const forma_recebimento = document.getElementById('forma_recebimento').value;
+    const recorrente = document.getElementById('recorrente').value;
     const cliente_id = obterClienteIdSeguro();
 
     if(!cliente_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
@@ -944,7 +897,7 @@ async function salvarContaReceber() {
         await sbGlobal.from('parceiros').insert([{ cliente_id, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
     }
 
-    let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, forma_recebimento, updated_at: new Date().toISOString() };
+    let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
     let res;
 
     if(id) {
@@ -972,8 +925,8 @@ window.editarConta = function(id) {
     document.getElementById('descricao').value = t.descricao || '';
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
+    document.getElementById('recorrente').value = t.recorrente || 'Não';
     document.getElementById('status_edicao').value = t.status || 'Pendente';
-    document.getElementById('forma_recebimento').value = t.forma_recebimento || 'Boleto / Pix / TED';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Receber (${formatarCodigoVirtual(t.id)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Receber';
     document.getElementById('btnCancelar').style.display = 'inline-block';
@@ -989,8 +942,8 @@ function cancelarEdicao() {
     document.getElementById('descricao').value = '';
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
+    document.getElementById('recorrente').value = 'Não';
     document.getElementById('status_edicao').value = 'Pendente';
-    document.getElementById('forma_recebimento').value = 'Boleto / Pix / TED';
     let avisoC = document.getElementById('aviso_cliente_nao_cadastrado');
     if(avisoC) avisoC.style.display = 'none';
     clienteCadastradoNaBase = false;
@@ -1010,7 +963,9 @@ window.excluirConta = async function(id) {
     }
 }
 
-window.onload = inicializarPagina;
+window.onload = inicializarPage = function() {
+    inicializarPagina();
+};
 </script>
 </body>
 </html>
