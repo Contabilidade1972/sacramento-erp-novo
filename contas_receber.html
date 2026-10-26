@@ -126,7 +126,7 @@
     </div>
 </div>
 
-<!-- MODAL: CLIENTE / PARCEIRO -->
+<!-- MODAL: CADASTRO COMPLETO DE CLIENTE / PARCEIRO -->
 <div class="modal-overlay" id="modalNovoCliente">
     <div class="modal-card">
         <div class="modal-header">
@@ -871,7 +871,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM GERAÇÃO AUTOMÁTICA DE PARCELAS RECORRENTES (CORRIGIDO)
+// SALVAR COM GERAÇÃO AUTOMÁTICA DE PARCELAS RECORRENTES (CORRIGIDO COM `cid`)
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -884,7 +884,7 @@ async function salvarContaReceber() {
     const conta_contabil = document.getElementById('conta_contabil').value;
     const recorrente = document.getElementById('recorrente').value;
     const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
-    const cliente_id = obterClienteIdSeguro();
+    const cid = obterClienteIdSeguro();
 
     if(!cliente_nome || isNaN(valor) || !vencimentoBase || !centro_custo || !conta_contabil) {
         alert("Preencha todos os campos obrigatórios.");
@@ -892,12 +892,12 @@ async function salvarContaReceber() {
     }
 
     if(cpf_cnpj_cliente && !clienteCadastradoNaBase && !id) {
-        await sbGlobal.from('parceiros').insert([{ cliente_id, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
+        await sbGlobal.from('parceiros').insert([{ cliente_id: cid, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
     }
 
     if(id) {
-        let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
-        let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
+        let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
         alert("Conta a receber atualizada com sucesso!");
     } else {
@@ -906,12 +906,12 @@ async function salvarContaReceber() {
         
         let batch = [];
         for(let i = 0; i < qtdGerar; i++) {
-            let dataVenc = new Date(ano, mes - 1 + i, dia);
+            let dataVenc = new Date(ano, (mes - 1) + i, dia);
             let dataIso = dataVenc.toISOString().split('T')[0];
             let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
 
             batch.push({
-                cliente_id,
+                cliente_id: cid,
                 cliente_nome,
                 cpf_cnpj_cliente,
                 valor,
