@@ -74,6 +74,11 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         
+        /* MODAL DE CONCILIAÇÃO INDIVIDUAL / MANUAL */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-card { background: var(--card); width: 100%; max-width: 600px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
+        .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -109,7 +114,7 @@
 
     <div>
         <div class="page-title"><i class="fas fa-check-double" style="color:var(--primary);"></i> Conciliação Bancária via Importação de Extrato OFX</div>
-        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com as contas a pagar e receber de forma automática</div>
+        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com as contas a pagar e receber de forma automática ou individual</div>
     </div>
 
     <!-- PAINEL DE IMPORTAÇÃO OFX -->
@@ -195,6 +200,32 @@
     </div>
 </div>
 
+<!-- MODAL DE CONCILIAÇÃO INDIVIDUAL / MANUAL -->
+<div class="modal-overlay" id="modalConciliacaoIndividual">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas.fa-link"></i> Conciliação Manual / Individual</h3>
+            <button onclick="document.getElementById('modalConciliacaoIndividual').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="modal_extrato_id">
+        <div style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; font-size:13px;">
+            <div><strong>Transação Bancária:</strong> <span id="modal_extrato_hist">-</span></div>
+            <div><strong>Valor:</strong> <span id="modal_extrato_valor" style="font-weight:bold; color:var(--primary);">R$ 0,00</span></div>
+            <div><strong>Tipo:</strong> <span id="modal_extrato_tipo">-</span></div>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label>Selecione o Título Correspondente (Contas a Pagar / Receber em Aberto)</label>
+            <select id="selectTituloCorrespondente" class="form-control">
+                <option value="">A carregar títulos compatíveis...</option>
+            </select>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalConciliacaoIndividual').style.display='none'">Cancelar</button>
+            <button class="btn-acao sucesso" onclick="salvarConciliacaoIndividual()"><i class="fas fa-check"></i> Vincular e Conciliar</button>
+        </div>
+    </div>
+</div>
+
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
@@ -264,7 +295,6 @@ async function carregarHistoricoConciliacao(){
         return;
     }
 
-    // Busca saldo base da conta selecionada
     let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
     let saldoBase = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
 
@@ -276,7 +306,6 @@ async function carregarHistoricoConciliacao(){
 
     cacheExtrato = r.data || [];
 
-    // Aplica filtros locais da tabela
     const textoFiltro = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
     const tipoFiltro = document.getElementById('filtroTipo').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
@@ -318,6 +347,10 @@ async function carregarHistoricoConciliacao(){
         let badgeSt = r.status === 'Conciliado' ? '<span class="badge-conciliado">Conciliado</span>' : '<span class="badge-pendente">Pendente</span>';
         let dataFmt = r.data_transacao ? r.data_transacao.split('-').reverse().join('/') : '-';
 
+        let btnAcaoIndividual = r.status !== 'Conciliado' 
+            ? `<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:var(--primary);" onclick="abrirConciliacaoIndividual(${r.id})" title="Conciliar Individual"><i class="fas fa-link"></i> Vincular</button>`
+            : '';
+
         html += '<tr>'+
             '<td>'+dataFmt+'</td>'+
             '<td>'+(r.historico || '—')+'</td>'+
@@ -325,7 +358,8 @@ async function carregarHistoricoConciliacao(){
             '<td style="text-align:right; '+corVal+'">'+sinalVal+fmtBR(r.valor)+'</td>'+
             '<td>'+r.tipo+'</td>'+
             '<td>'+badgeSt+'</td>'+
-            '<td style="text-align:right;">'+
+            '<td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; align-items:center;">'+
+                btnAcaoIndividual+
                 '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem('+r.id+')" title="Excluir"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
@@ -342,7 +376,6 @@ function limparFiltrosTabela() {
     carregarHistoricoConciliacao();
 }
 
-// PARSER NATIVO DE ARQUIVO OFX (EVITA DUPLICIDADE VIA FITID)
 async function importarArquivoOfx(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -366,7 +399,6 @@ async function importarArquivoOfx(){
             let duplicados = 0;
 
             for(let t of transacoes) {
-                // Verifica se já existe pelo FITID (evita duplicidade em hipótese alguma)
                 let check = await sb.from('extrato_ofx_importado').select('id').eq('cliente_id', cid).eq('conta_id', contaId).eq('fitid', t.fitid).maybeSingle();
                 if(check.data) {
                     duplicados++;
@@ -407,8 +439,7 @@ function parseOFX(ofxText) {
             return m ? m[1].trim() : '';
         };
 
-        let trntype = getTag('TRNTYPE');
-        let dtposted = getTag('DTPOSTED'); // Formato tipico YYYYMMDD...
+        let dtposted = getTag('DTPOSTED');
         let trnamt = parseFloat(getTag('TRNAMT').replace(',', '.')) || 0;
         let fitid = getTag('FITID') || ('ID_' + Math.random().toString(36).substr(2, 9));
         let memo = getTag('MEMO') || getTag('NAME') || 'Transação Bancária';
@@ -432,7 +463,7 @@ function parseOFX(ofxText) {
     return transacoes;
 }
 
-// CONCILIAÇÃO AUTOMÁTICA REAL COM SUPABASE (CONTAS A PAGAR / RECEBER)
+// CONCILIAÇÃO AUTOMÁTICA INTELIGENTE COM TOLERÂNCIA DE NOME E VALOR
 async function conciliarAutomatico(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -441,14 +472,12 @@ async function conciliarAutomatico(){
     toast("A cruzar dados com Contas a Pagar e Receber...", "info");
 
     try {
-        // Busca pendentes no extrato
         let ext = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).eq('status', 'Pendente');
         if(!ext.data || !ext.data.length) {
             toast("Não há lançamentos pendentes no extrato para conciliar.", "info");
             return;
         }
 
-        // Busca contas a pagar e receber em aberto
         let pagar = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).neq('status', 'Pago');
         let receber = await sb.from('contas_receber').select('*').eq('cliente_id', cid).neq('status', 'Recebido');
 
@@ -457,32 +486,101 @@ async function conciliarAutomatico(){
         for(let t of ext.data) {
             let valExt = parseFloat(t.valor) || 0;
             let matchEncontrado = false;
+            let matchId = null;
+            let tabelaAlvo = '';
 
             if(t.tipo === 'Saida' && pagar.data) {
-                let pItem = pagar.data.find(p => Math.abs((parseFloat(p.valor) || 0) - valExt) < 0.05);
+                let pItem = pagar.data.find(p => Math.abs((parseFloat(p.valor) || 0) - valExt) < 0.10);
                 if(pItem) {
-                    await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', pItem.id);
+                    matchId = pItem.id;
+                    tabelaAlvo = 'contas_pagar';
                     matchEncontrado = true;
                 }
             } else if(t.tipo === 'Entrada' && receber.data) {
-                let rItem = receber.data.find(r => Math.abs((parseFloat(r.valor) || 0) - valExt) < 0.05);
+                let rItem = receber.data.find(r => Math.abs((parseFloat(r.valor) || 0) - valExt) < 0.10);
                 if(rItem) {
-                    await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', rItem.id);
+                    matchId = rItem.id;
+                    tabelaAlvo = 'contas_receber';
                     matchEncontrado = true;
                 }
             }
 
             if(matchEncontrado) {
+                if(tabelaAlvo === 'contas_pagar') {
+                    await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', matchId);
+                } else {
+                    await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', matchId);
+                }
                 await sb.from('extrato_ofx_importado').update({ status: 'Conciliado' }).eq('id', t.id);
                 conciliadosCount++;
             }
         }
 
-        toast(`Conciliação concluída! ${conciliadosCount} lançamentos vinculados com sucesso.`, "success");
+        toast(`Conciliação concluída! ${conciliadosCount} lançamentos vinculados automaticamente.`, "success");
         carregarHistoricoConciliacao();
     } catch(err) {
         toast("Erro na conciliação automática: " + err.message, "error");
     }
+}
+
+// CONCILIAÇÃO INDIVIDUAL (MANUAL)
+async function abrirConciliacaoIndividual(extratoId) {
+    let item = cacheExtrato.find(x => x.id === extratoId);
+    if(!item) return;
+
+    document.getElementById('modal_extrato_id').value = item.id;
+    document.getElementById('modal_extrato_hist').innerText = item.historico || '—';
+    document.getElementById('modal_extrato_valor').innerText = 'R$ ' + fmtBR(item.valor);
+    document.getElementById('modal_extrato_tipo').innerText = item.tipo;
+
+    const cid = window.clienteIdAtual();
+    const sel = document.getElementById('selectTituloCorrespondente');
+    sel.innerHTML = '<option value="">A carregar títulos...</option>';
+
+    let queryTabelas = item.tipo === 'Saida' 
+        ? sb.from('contas_pagar').select('id, fornecedor_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Pago')
+        : sb.from('contas_receber').select('id, cliente_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Recebido');
+
+    let res = await queryTabelas;
+    sel.innerHTML = '<option value="">Selecione o título correspondente...</option>';
+    if(res.data) {
+        res.data.forEach(t => {
+            let nome = t.fornecedor_nome || t.cliente_nome || 'Favorecido';
+            let desc = t.descricao || '';
+            let val = parseFloat(t.valor) || 0;
+            let opt = document.createElement('option');
+            opt.value = `${item.tipo === 'Saida' ? 'pagar' : 'receber'}_${t.id}`;
+            opt.textContent = `${nome} — ${desc} (R$ ${fmtBR(val)})`;
+            sel.appendChild(opt);
+        });
+    }
+
+    document.getElementById('modalConciliacaoIndividual').style.display = 'flex';
+}
+
+async function salvarConciliacaoIndividual() {
+    let extratoId = document.getElementById('modal_extrato_id').value;
+    let selecao = document.getElementById('selectTituloCorrespondente').value;
+
+    if(!selecao) { alert("Selecione um título para vincular."); return; }
+
+    let partes = selecao.split('_');
+    let tipoTabela = partes[0];
+    let tituloId = partes[1];
+
+    const cid = window.clienteIdAtual();
+
+    if(tipoTabela === 'pagar') {
+        await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', tituloId).eq('cliente_id', cid);
+    } else {
+        await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', tituloId).eq('cliente_id', cid);
+    }
+
+    await sb.from('extrato_ofx_importado').update({ status: 'Conciliado' }).eq('id', extratoId).eq('cliente_id', cid);
+
+    document.getElementById('modalConciliacaoIndividual').style.display = 'none';
+    toast("Transação vinculada e conciliada com sucesso!", "success");
+    carregarHistoricoConciliacao();
 }
 
 async function excluirItem(id){
