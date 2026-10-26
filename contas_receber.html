@@ -39,6 +39,8 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: 0 2px 6px rgba(239,68,68,0.2); }
+        .btn-acao.perigo:hover { background: #dc2626; }
 
         .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 16px; }
@@ -357,20 +359,21 @@
         </div>
     </div>
 
-    <!-- HISTÓRICO PRINCIPAL -->
+    <!-- HISTÓRICO PRINCIPAL COM EXCLUSÃO EM MASSA -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Receber e Faturamento</h3>
             <div style="display:flex; gap:10px; align-items:center;" class="ocultar-print">
-                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 240px; height: 38px;">
-                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;">
+                <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:38px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 220px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;">
                     <option value="todos">Todos Status</option>
                     <option value="pendente">Pendente</option>
                     <option value="recebido">Recebido</option>
                     <option value="atrasado">Vencido</option>
                 </select>
-                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 135px; height: 38px;" title="Data Início">
-                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 135px; height: 38px;" title="Data Fim">
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Fim">
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
@@ -379,6 +382,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="checkMaster" onclick="selecionarTodos(this)"></th>
                             <th>Código</th>
                             <th>Cliente / Sacado</th>
                             <th>Centro de Custo</th>
@@ -392,7 +396,7 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
-                        <tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
+                        <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -678,7 +682,7 @@ async function carregarContas() {
     const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
@@ -801,7 +805,7 @@ function aplicarFiltrosHistorico() {
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
         return;
     }
 
@@ -820,6 +824,7 @@ function renderTabelaFiltrada(lista) {
 
         tbody.innerHTML += `
             <tr>
+                <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
                 <td><strong>${codVirtual}</strong></td>
                 <td><strong>${clienteNome}</strong></td>
                 <td>${t.centro_custo || '—'}</td>
@@ -837,10 +842,50 @@ function renderTabelaFiltrada(lista) {
             </tr>
         `;
     });
+    atualizarContadorSelecao();
 }
 
 function renderTabela() {
     renderTabelaFiltrada(contasCache);
+}
+
+// SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
+function selecionarTodos(master) {
+    const checkboxes = document.querySelectorAll('.check-linha');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    atualizarContadorSelecao();
+}
+
+function atualizarContadorSelecao() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    const btnExcluir = document.getElementById('btnExcluirSelecionados');
+    const qtdSpan = document.getElementById('qtdSelecionados');
+    if (selecionados.length > 0) {
+        btnExcluir.style.display = 'inline-flex';
+        qtdSpan.innerText = selecionados.length;
+    } else {
+        btnExcluir.style.display = 'none';
+        qtdSpan.innerText = '0';
+        document.getElementById('checkMaster').checked = false;
+    }
+}
+
+async function excluirSelecionados() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    if (selecionados.length === 0) return;
+
+    if (confirm(`Deseja realmente excluir os ${selecionados.length} registos selecionados?`)) {
+        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+        const cid = obterClienteIdSeguro();
+
+        let res = await sbGlobal.from('contas_receber').delete().in('id', ids).eq('cliente_id', cid);
+        if (res.error) {
+            alert("Erro ao excluir selecionados: " + res.error.message);
+            return;
+        }
+        alert(`${selecionados.length} registos removidos com sucesso!`);
+        carregarContas();
+    }
 }
 
 window.abrirModalRecebimento = function(id) {
@@ -871,7 +916,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM GERAÇÃO EM LOTE PARA RECORRÊNCIA MENSAL (APENAS NA CRIAÇÃO NOVA)
+// SALVAR COM GERAÇÃO EM LOTE PARA RECORRÊNCIA MENSAL
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -896,13 +941,11 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // Se for edição, atualiza apenas o registro atual sem duplicações
         let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
         alert("Conta a receber atualizada com sucesso!");
     } else {
-        // Se for NOVO lançamento, gera o lote completo (ex: 12 meses)
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
         
