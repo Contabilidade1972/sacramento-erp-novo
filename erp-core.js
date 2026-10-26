@@ -1,14 +1,12 @@
 /* ============================================================
-   erp-core.js — Motor Central v6.2 (DEFINITIVO)
+   erp-core.js — Motor Central v6.2 (DEFINITIVO & CORRIGIDO)
    - White-Label lê de configuracoes_sistema (fonte única)
    - Reusa a conexão única window.sb (nunca cria outra)
    - Relógio próprio (fim da data estática)
-   - Remove cabeçalhos antigos pelo ID (à prova de classe duplicada)
+   - Remove cabeçalhos duplicados com blindagem total
    - Lista completa de módulos + busca global corrigida
-   - Limpa filtro pré-preenchido com e-mail do usuário (30s de retries
-     + limpeza garantida no momento da impressão)
-   - Impressão v6.2: margens compactas (10mm/8mm), cabeçalho
-     corporativo REPETIDO em todas as páginas, tabela cabe no papel
+   - Limpa filtro pré-preenchido com e-mail do usuário
+   - Impressão v6.2: margens compactas, cabeçalho repetido
    ============================================================ */
 (function() {
     'use strict';
@@ -56,7 +54,6 @@
         document.head.appendChild(style);
     }
 
-    /* ===== LISTA COMPLETA DE MÓDULOS (busca + subtítulo) ===== */
     var rotasModulos = [
         { nome:"Portal Principal (Início)", url:"index.html", icon:"fa-home", keywords:["inicio","portal","home","principal"] },
         { nome:"Módulo Financeiro", url:"modulo_financeiro.html", icon:"fa-wallet", keywords:["financeiro","modulo"] },
@@ -120,7 +117,6 @@
 
     function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
 
-    /* ===== RELÓGIO (trava exclusiva — fim da data estática) ===== */
     function iniciarRelogio() {
         if (window.__relogioCoreAtivo) return;
         window.__relogioCoreAtivo = true;
@@ -132,19 +128,18 @@
         setTimeout(tick, 100);
     }
 
-    /* ===== REMOVE CABEÇALHOS ANTIGOS PELO ID (à prova de classe duplicada) ===== */
+    /* ===== BLINDAGEM CONTRA DUPLICAÇÃO DE CABEÇALHO ===== */
     function limparAntigos() {
-        var cand = document.querySelectorAll('header, .site-header');
-        for (var i = 0; i < cand.length; i++) {
-            var el = cand[i];
+        // Remove qualquer header que NÃO seja o gerado pelo motor oficial (#brandTitleCore)
+        var headers = document.querySelectorAll('header, .site-header');
+        for (var i = 0; i < headers.length; i++) {
+            var el = headers[i];
             if (!el.parentNode) continue;
-            if (el.querySelector('#brandTitleCore')) continue;
+            if (el.querySelector('#brandTitleCore')) continue; // Mantém o oficial
             el.parentNode.removeChild(el);
-            return;
         }
     }
 
-    /* ===== WHITE-LABEL: lê de configuracoes_sistema com retry ===== */
     var tentativasWL = 0;
     function aplicarWhiteLabel() {
         tentativasWL++;
@@ -168,11 +163,6 @@
           .catch(function () { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); });
     }
 
-    /* ===== LIMPEZA DO FILTRO PRÉ-PREENCHIDO COM O E-MAIL DO USUÁRIO =====
-       Limpa qualquer campo de busca que CONTENHA o e-mail do usuário logado.
-       Roda por até 30s (a página pode preencher o filtro tarde) e também
-       no momento exato da impressão (beforeprint), garantindo que o
-       impresso saia sempre com TODOS os dados, sem filtro aplicado. */
     var filtroLimpo = false;
     function limparFiltroEmail(forcar) {
         if (filtroLimpo && !forcar) return;
@@ -198,8 +188,9 @@
 
     window.addEventListener('DOMContentLoaded', function() {
         try { if (localStorage.getItem('erp_tema_noite') === 'true') document.body.classList.add('dark-mode'); } catch(e) {}
-        var antigos = document.querySelectorAll('header.header, aside.sidebar');
-        antigos.forEach(function(h) { h.remove(); });
+        
+        // Limpeza agressiva imediata de cabeçalhos estáticos pré-existentes
+        limparAntigos();
 
         var mod = nomeModuloAtual();
         var arq = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
@@ -212,25 +203,28 @@
         var isDark = document.body.classList.contains('dark-mode');
         var iconeTema = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
 
-        var headerHtml = '<header class="site-header">' +
-            '<a href="index.html" class="site-brand">' +
-                '<div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>' +
-                '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">' + mod + '</span></div>' +
-            '</a>' +
-            '<div class="search-global-box"><i class="fas fa-search"></i>' +
-                '<input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo..." autocomplete="off">' +
-                '<div class="search-results-dropdown" id="dropdownResultadosCore"></div>' +
-            '</div>' +
-            '<div class="site-nav-right">' +
-                '<span class="date-time-core" id="dateTimeCore">--/--/---- --:--</span>' +
-                '<button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Modo Dia / Noite">' + iconeTema + '</button>' +
-                btnModulo +
-                '<div class="empresa-selector" id="seletorEmpresaCoreContainer"><i class="fas fa-building" style="color:#93c5fd;"></i><select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select></div>' +
-                '<div class="user-box"><i class="fas fa-user-circle" style="font-size:15px;color:#93c5fd;"></i><span id="userNameCore">Usuário</span>' +
-                '<button class="btn-chave-senha" onclick="abrirModalSenhaCore()" title="Alterar Senha"><i class="fas fa-key"></i></button></div>' +
-                '<button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>' +
-            '</div></header>';
-        document.body.insertAdjacentHTML('afterbegin', headerHtml);
+        // Garante que não injeta se já existir um header oficial
+        if (!document.getElementById('brandTitleCore')) {
+            var headerHtml = '<header class="site-header">' +
+                '<a href="index.html" class="site-brand">' +
+                    '<div class="brand-logo-box" id="brandLogoBoxCore"><i class="fas fa-cube"></i></div>' +
+                    '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">' + mod + '</span></div>' +
+                '</a>' +
+                '<div class="search-global-box"><i class="fas fa-search"></i>' +
+                    '<input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo..." autocomplete="off">' +
+                    '<div class="search-results-dropdown" id="dropdownResultadosCore"></div>' +
+                '</div>' +
+                '<div class="site-nav-right">' +
+                    '<span class="date-time-core" id="dateTimeCore">--/--/---- --:--</span>' +
+                    '<button class="btn-modo-tema" id="btnModoTemaCore" onclick="alternarTemaNoite()" title="Modo Dia / Noite">' + iconeTema + '</button>' +
+                    btnModulo +
+                    '<div class="empresa-selector" id="seletorEmpresaCoreContainer"><i class="fas fa-building" style="color:#93c5fd;"></i><select id="selectEmpresaCore" onchange="trocarEmpresaCore()"></select></div>' +
+                    '<div class="user-box"><i class="fas fa-user-circle" style="font-size:15px;color:#93c5fd;"></i><span id="userNameCore">Usuário</span>' +
+                    '<button class="btn-chave-senha" onclick="abrirModalSenhaCore()" title="Alterar Senha"><i class="fas fa-key"></i></button></div>' +
+                    '<button class="btn-sair" onclick="sairSistemaCore()"><i class="fas fa-sign-out-alt"></i> Sair</button>' +
+                '</div></header>';
+            document.body.insertAdjacentHTML('afterbegin', headerHtml);
+        }
 
         var u = usuario();
         var ehMaster = u && u.email && u.email.toLowerCase().trim() === 'lucianojorgesacramento@gmail.com';
@@ -262,11 +256,10 @@
         }
 
         var rodadas = 0;
-        var timerLimpeza = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 20) clearInterval(timerLimpeza); }, 600);
+        var timerLimpeza = setInterval(function () { limparAntigos(); rodadas++; if (rodadas > 30) clearInterval(timerLimpeza); }, 300);
         aplicarWhiteLabel();
         iniciarRelogio();
 
-        /* Limpa o filtro com e-mail: retries por até 30s */
         var tentFiltro = 0;
         var timerFiltro = setInterval(function () {
             limparFiltroEmail(false);
@@ -359,11 +352,7 @@
     };
 })();
 
-/* ===== IMPRESSÃO PROFISSIONAL v6.2 =====
-   - Margens COMPACTAS: 10mm topo/base, 8mm laterais (padding no corpo, @page 0)
-   - Cabeçalho corporativo FIXO: repetido em TODAS as páginas impressas
-   - Limpeza do filtro garantida no beforeprint (impresso sai sem filtro)
-   - Flutuantes ocultos, rodapé da página oculto, tabela cabe no papel */
+/* ===== IMPRESSÃO PROFISSIONAL v6.2 ===== */
 (function () {
   'use strict';
 
@@ -383,14 +372,11 @@
           box-sizing: border-box !important;
           overflow: visible !important;
         }
-        /* Esconde a interface de navegação */
         .site-header, .site-nav-right, .search-global-box, .empresa-selector,
         .user-box, .btn-sair, .btn-modo-tema, .btn-topo-acao, .btn-acao-topo,
         nav, aside, .sidebar, .no-print,
         #modalAlterarSenhaCore, #modalAlterarSenha { display: none !important; }
-        /* Esconde o rodapé PRÓPRIO da página (evita rodapé duplicado) */
         body > footer, .site-footer, footer.footer, footer:not(.print-doc-footer) { display: none !important; }
-        /* Oculta QUALQUER elemento flutuante ou fixo */
         .assistant-widget, .assistant-bubble, .assistant-avatar,
         [class*="float"], [class*="Float"], [class*="fab"], [class*="Fab"],
         [class*="chat"], [class*="Chat"], [class*="help"], [class*="Help"],
@@ -399,24 +385,21 @@
         [style*="position:fixed"], [style*="position: fixed"] { display: none !important; }
         body.dark-mode { --bg:#fff !important; --card:#fff !important; --text-main:#000 !important; }
         .container, main, .content, .page-content { margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
-        /* CABEÇALHO CORPORATIVO FIXO: repetido em TODAS as páginas */
         .print-doc-header {
           display: block !important;
           position: fixed !important;
           top: 0 !important; left: 0 !important; right: 0 !important;
           background: #fff !important;
           border-bottom: 2px solid #1e3a8a;
-          padding-bottom: 6px;
-          margin-bottom: 8px;
+          padding-bottom: 6mm;
+          margin-bottom: 8mm;
           z-index: 10;
         }
         .print-doc-header .pdh-empresa { font-size: 13px; font-weight: 800; color: #1e3a8a; }
         .print-doc-header .pdh-cnpj { font-size: 9px; color: #475569; }
         .print-doc-header .pdh-titulo { font-size: 11px; font-weight: 700; color: #000; margin-top: 3px; text-transform: uppercase; }
         .print-doc-header .pdh-meta { font-size: 8px; color: #64748b; margin-top: 2px; }
-        /* Espaçador: reserva o espaço do cabeçalho fixo no fluxo do conteúdo */
         .print-doc-spacer { display: block !important; height: 26mm; }
-        /* TABELA CABE NO PAPEL: layout fixo + quebra de texto em células longas */
         table {
           width: 100% !important; min-width: 0 !important; max-width: 100% !important;
           border-collapse: collapse !important; font-size: 9px !important;
@@ -434,7 +417,6 @@
         tr, tbody tr { page-break-inside: avoid; display: table-row !important; visibility: visible !important; }
         tbody, thead { display: table-row-group !important; visibility: visible !important; }
         .table-responsive, .table-container, .tabela-container { overflow: visible !important; max-height: none !important; max-width: 100% !important; }
-        /* Rodapé de auditoria */
         .print-doc-footer { display: block !important; border-top: 1px solid #94a3b8; margin-top: 10px; padding-top: 5px; font-size: 8px; color: #64748b; }
       }
       .print-doc-header, .print-doc-footer, .print-doc-spacer { display: none; }
@@ -468,7 +450,6 @@
     if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
     else document.body.appendChild(header);
 
-    /* Espaçador logo após o cabeçalho fixo (reserva o espaço na 1ª página) */
     var spacer = document.createElement('div');
     spacer.className = 'print-doc-spacer';
     spacer.id = 'printDocSpacer';
@@ -481,7 +462,6 @@
     footer.innerHTML = 'Sacramento ERP · Documento gerado eletronicamente por ' + (usuario || 'usuário do sistema') + ' em ' + agora + ' · Página 1';
     document.body.appendChild(footer);
 
-    /* Busca o CNPJ real da empresa para o impresso */
     var sb = (window.sb || (window.supabase ? window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei') : null));
     if (sb) {
       sb.from('clientes_contratantes').select('razao_social, nome_fantasia, cnpj').eq('id', cid).maybeSingle()
