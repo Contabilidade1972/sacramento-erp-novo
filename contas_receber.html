@@ -115,10 +115,6 @@
             <label>Nome / Descrição *</label>
             <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Comercial, Projetos...">
         </div>
-        <div style="margin-bottom:12px;">
-            <label>Código (Automático)</label>
-            <input type="text" id="cc_codigo" class="form-control" readonly style="background:var(--bg);">
-        </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
             <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
             <button class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
@@ -126,7 +122,7 @@
     </div>
 </div>
 
-<!-- MODAL: CADASTRO COMPLETO DE CLIENTE / PARCEIRO -->
+<!-- MODAL: CLIENTE / PARCEIRO -->
 <div class="modal-overlay" id="modalNovoCliente">
     <div class="modal-card">
         <div class="modal-header">
@@ -270,10 +266,10 @@
                     </div>
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
                 <div>
                     <label>Descrição / Nota Fiscal / Contrato *</label>
-                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Fatura de Serviços, Venda de Mercadoria...">
+                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Fatura de Serviços...">
                 </div>
                 <div>
                     <label>Conta Contábil (DRE) *</label>
@@ -283,10 +279,14 @@
                 </div>
                 <div>
                     <label>Receita Recorrente?</label>
-                    <select id="recorrente" class="form-control">
+                    <select id="recorrente" class="form-control" onchange="toggleParcelas(this.value)">
                         <option value="Não">Não (Pontual)</option>
                         <option value="Sim">Sim (Mensal)</option>
                     </select>
+                </div>
+                <div id="blocoParcelas" style="display:none;">
+                    <label>Nº de Meses / Parcelas</label>
+                    <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
                 </div>
             </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
@@ -306,7 +306,6 @@
             </div>
         </div>
         <div class="collapsible-content">
-            <!-- BARRA DE FILTROS DO HISTÓRICO -->
             <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
                 <div>
                     <label>Data Início</label>
@@ -354,21 +353,20 @@
         </div>
     </div>
 
-    <!-- HISTÓRICO DE CONTAS A RECEBER E FATURAMENTO -->
+    <!-- HISTÓRICO PRINCIPAL -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Receber e Faturamento</h3>
             <div style="display:flex; gap:10px; align-items:center;">
-                <!-- BARRA DE FILTROS DO HISTÓRICO PRINCIPAL -->
-                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 260px; height: 38px;">
-                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 150px; height: 38px;">
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 240px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;">
                     <option value="todos">Todos Status</option>
                     <option value="pendente">Pendente</option>
                     <option value="recebido">Recebido</option>
                     <option value="atrasado">Vencido</option>
                 </select>
-                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;" title="Data Início">
-                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 140px; height: 38px;" title="Data Fim">
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 135px; height: 38px;" title="Data Início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 135px; height: 38px;" title="Data Fim">
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
@@ -435,6 +433,15 @@ function toggleCardBody(btn) {
     const icon = btn.querySelector('i');
     content.classList.toggle('collapsed');
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+}
+
+function toggleParcelas(val) {
+    const bloco = document.getElementById('blocoParcelas');
+    if (val === 'Sim') {
+        bloco.style.display = 'block';
+    } else {
+        bloco.style.display = 'none';
+    }
 }
 
 async function inicializarPagina() {
@@ -568,21 +575,6 @@ async function buscarDadosDocumentoCliente() {
             })
             .catch(() => { statusEl.innerHTML = '<span style="color:var(--warning)">Preencha manualmente</span>'; });
     }
-}
-
-function buscarCepCliente() {
-    let cep = document.getElementById('cli_cep').value.replace(/\D/g, '');
-    if (cep.length !== 8) return;
-    fetch(`https://viacep.com.br/ws/${cep}/json/`)
-        .then(r => r.json())
-        .then(d => {
-            if (d.erro) { alert("CEP não encontrado."); return; }
-            document.getElementById('cli_logradouro').value = d.logradouro || '';
-            document.getElementById('cli_bairro').value = d.bairro || '';
-            document.getElementById('cli_cidade').value = d.localidade || '';
-            document.getElementById('cli_uf').value = d.uf || '';
-        })
-        .catch(() => alert("Erro ao buscar CEP."));
 }
 
 async function carregarCentrosCustoSelect() {
@@ -779,7 +771,7 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-// FILTROS DO HISTÓRICO PRINCIPAL DE CONTAS A RECEBER
+// FILTROS DO HISTÓRICO PRINCIPAL
 function aplicarFiltrosHistorico() {
     let dtIni = document.getElementById('histDataInicio').value;
     let dtFim = document.getElementById('histDataFim').value;
@@ -875,20 +867,22 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
+// SALVAR COM GERAÇÃO AUTOMÁTICA DE PARCELAS RECORRENTES
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
     const cpf_cnpj_cliente = document.getElementById('cpf_cnpj_cliente').value.trim();
     const valor = parseFloat(document.getElementById('valor').value);
-    const vencimento = document.getElementById('vencimento').value;
+    const vencimentoBase = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
     const status = document.getElementById('status_edicao').value;
     const centro_custo = document.getElementById('centro_custo').value;
     const conta_contabil = document.getElementById('conta_contabil').value;
     const recorrente = document.getElementById('recorrente').value;
+    const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
     const cliente_id = obterClienteIdSeguro();
 
-    if(!cliente_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
+    if(!cliente_nome || isNaN(valor) || !vencimentoBase || !centro_custo || !conta_contabil) {
         alert("Preencha todos os campos obrigatórios.");
         return;
     }
@@ -897,18 +891,42 @@ async function salvarContaReceber() {
         await sbGlobal.from('parceiros').insert([{ cliente_id, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
     }
 
-    let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
-    let res;
-
     if(id) {
-        res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+        let payload = { cliente_id, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
+        let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
+        if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
+        alert("Conta a receber atualizada com sucesso!");
     } else {
-        res = await sbGlobal.from('contas_receber').insert([payload]);
+        // GERAÇÃO EM LOTE PARA RECORRÊNCIA / PARCELAMENTO
+        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+        let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
+        
+        let batch = [];
+        for(let i = 0; i < qtdGerar; i++) {
+            let dataVenc = new Date(ano, mes - 1 + i, dia);
+            let dataIso = dataVenc.toISOString().split('T')[0];
+            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
+
+            batch.push({
+                cliente_id,
+                cliente_nome,
+                cpf_cnpj_cliente,
+                valor,
+                vencimento: dataIso,
+                descricao: descParcela,
+                status,
+                centro_custo,
+                conta_contabil,
+                recorrente,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        let res = await sbGlobal.from('contas_receber').insert(batch);
+        if(res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
+        alert(qtdGerar > f`${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a receber registrada com sucesso!");
     }
 
-    if(res.error) { alert("Erro ao salvar: " + res.error.message); return; }
-    
-    alert(id ? "Conta a receber atualizada com sucesso!" : "Conta a receber registrada com sucesso!");
     cancelarEdicao();
     carregarContas();
 }
@@ -926,6 +944,7 @@ window.editarConta = function(id) {
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('recorrente').value = t.recorrente || 'Não';
+    toggleParcelas(t.recorrente || 'Não');
     document.getElementById('status_edicao').value = t.status || 'Pendente';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Receber (${formatarCodigoVirtual(t.id)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Receber';
@@ -943,6 +962,7 @@ function cancelarEdicao() {
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
     document.getElementById('recorrente').value = 'Não';
+    toggleParcelas('Não');
     document.getElementById('status_edicao').value = 'Pendente';
     let avisoC = document.getElementById('aviso_cliente_nao_cadastrado');
     if(avisoC) avisoC.style.display = 'none';
@@ -963,9 +983,7 @@ window.excluirConta = async function(id) {
     }
 }
 
-window.onload = inicializarPage = function() {
-    inicializarPagina();
-};
+window.onload = inicializarPagina;
 </script>
 </body>
 </html>
