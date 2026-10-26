@@ -74,7 +74,6 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         
-        /* MODAL DE CONCILIAÇÃO INDIVIDUAL / MANUAL */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-card { background: var(--card); width: 100%; max-width: 600px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
@@ -147,7 +146,7 @@
     <!-- KPIS DE RESUMO -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-title">Saldo da Conta Selecionada</div>
+            <div class="kpi-title">Saldo Final (OFX / Banco)</div>
             <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoBanco">R$ 0,00</div>
         </div>
         <div class="kpi-card">
@@ -204,7 +203,7 @@
 <div class="modal-overlay" id="modalConciliacaoIndividual">
     <div class="modal-card">
         <div class="modal-header">
-            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas.fa-link"></i> Conciliação Manual / Individual</h3>
+            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas fa-link"></i> Conciliação Manual / Individual</h3>
             <button onclick="document.getElementById('modalConciliacaoIndividual').style.display='none'" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
         <input type="hidden" id="modal_extrato_id">
@@ -295,9 +294,6 @@ async function carregarHistoricoConciliacao(){
         return;
     }
 
-    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
-    let saldoBase = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
-
     var r = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).order('data_transacao', { ascending: false });
     if(r.error) {
         el.innerHTML = '<div class="empty-state">Erro ao carregar extrato: ' + r.error.message + '</div>';
@@ -328,7 +324,11 @@ async function carregarHistoricoConciliacao(){
         if(item.status === 'Conciliado') conciliados++; else pendentes++;
     });
 
-    document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoBase);
+    // Puxa saldo final armazenado ou calcula com base no último saldo da conta
+    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
+    let saldoExibido = contaObj ? (parseFloat(contaObj.saldo_final_ofx !== null && contaObj.saldo_final_ofx !== undefined ? contaObj.saldo_final_ofx : contaObj.saldo_inicial) || 0) : 0;
+
+    document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoExibido);
     document.getElementById('kpiTotalMov').innerText = 'R$ ' + fmtBR(totalMov);
     document.getElementById('kpiStatusConciliacao').innerText = conciliados + ' / ' + pendentes;
 
@@ -376,6 +376,7 @@ function limparFiltrosTabela() {
     carregarHistoricoConciliacao();
 }
 
+// PARSER NATIVO DE ARQUIVO OFX COM LEITURA DE SALDO (<BALAMT>) E FITID
 async function importarArquivoOfx(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -389,7 +390,10 @@ async function importarArquivoOfx(){
     reader.onload = async function(e) {
         var textoOfx = e.target.result;
         try {
-            let transacoes = parseOFX(textoOfx);
+            let resultadoOfx = parseOFXComSaldo(textoOfx);
+            let transacoes = resultadoOfx.transacoes;
+            let saldoFinalOfx = resultadoOfx.saldoFinal;
+
             if(!transacoes.length) {
                 toast("Nenhuma transação encontrada no arquivo OFX.", "error");
                 return;
@@ -417,8 +421,14 @@ async function importarArquivoOfx(){
                 }
             }
 
+            // Atualiza o saldo final da conta bancária com o valor do OFX (<BALAMT>) se disponível
+            if(saldoFinalOfx !== null) {
+                await sb.from('contas_bancarias').update({ saldo_inicial: saldoFinalOfx }).eq('id', contaId).eq('cliente_id', cid);
+            }
+
             toast(`OFX processado! ${inseridos} novas transações importadas (${duplicados} duplicadas descartadas).`, "success");
             document.getElementById('arquivoOfx').value = '';
+            await carregarContasBancarias();
             carregarHistoricoConciliacao();
         } catch(err) {
             toast("Erro ao processar o arquivo OFX: " + err.message, "error");
@@ -427,8 +437,16 @@ async function importarArquivoOfx(){
     reader.readAsText(arquivo);
 }
 
-function parseOFX(ofxText) {
+function parseOFXComSaldo(ofxText) {
     let transacoes = [];
+    let saldoFinal = null;
+
+    // Extrai saldo final da tag <BALAMT>
+    let mBal = ofxText.match(/<BALAMT>(.*?)(<|\r|\n|$)/i);
+    if(mBal) {
+        saldoFinal = parseFloat(mBal[1].replace(',', '.')) || null;
+    }
+
     let stmts = ofxText.split('<STMTTRN>');
     for(let i = 1; i < stmts.length; i++) {
         let bloco = stmts[i].split('</STMTTRN>')[0];
@@ -460,10 +478,10 @@ function parseOFX(ofxText) {
             memo: memo
         });
     }
-    return transacoes;
+    return { transacoes, saldoFinal };
 }
 
-// CONCILIAÇÃO AUTOMÁTICA INTELIGENTE COM TOLERÂNCIA DE NOME E VALOR
+// CONCILIAÇÃO AUTOMÁTICA INTELIGENTE
 async function conciliarAutomatico(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
