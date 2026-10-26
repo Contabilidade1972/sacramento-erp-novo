@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -64,7 +65,6 @@
         .badge-pendente { background: #fee2e2; color: #991b1b; }
         .badge-pago { background: #d1fae5; color: #065f46; }
         .badge-atrasado { background: #fef3c7; color: #d97706; }
-        .badge-cartao { background: #e0e7ff; color: #3730a3; }
 
         .btn-icon { background: var(--bg); border: 1px solid var(--border); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--text-light); transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; }
         .btn-icon:hover { background: #eff6ff; color: var(--primary); border-color: var(--primary); }
@@ -170,21 +170,21 @@
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
             <div>
                 <h4>A Pagar (Pendente)</h4>
-                <div class="value" id="tot_pendente">R\$ 0,00</div>
+                <div class="value" id="tot_pendente">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--success)"><i class="fas fa-check-double"></i></div>
             <div>
                 <h4>Total Pago</h4>
-                <div class="value" id="tot_pago">R\$ 0,00</div>
+                <div class="value" id="tot_pago">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
             <div>
                 <h4>Contas Vencidas</h4>
-                <div class="value" id="tot_atrasado" style="color:var(--danger)">R\$ 0,00</div>
+                <div class="value" id="tot_atrasado" style="color:var(--danger)">R$ 0,00</div>
             </div>
         </div>
     </div>
@@ -215,7 +215,7 @@
             </div>
             <div class="form-grid">
                 <div>
-                    <label>Valor do Título (R\$) *</label>
+                    <label>Valor do Título (R$) *</label>
                     <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
                 </div>
                 <div>
@@ -280,27 +280,26 @@
         </div>
     </div>
 
-    <div class="card" id="cardRelatorioModo">
+    <!-- HISTÓRICO DE CONTAS A PAGAR COM FILTROS INTEGRADOS -->
+    <div class="card">
         <div class="card-header">
-            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Obrigações (Contas a Pagar)</h3>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
-            </div>
+            <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
+            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
         </div>
         <div class="collapsible-content">
-            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+            <!-- BARRA DE FILTROS DO HISTÓRICO -->
+            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;">
                 <div>
                     <label>Data Início</label>
-                    <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                    <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()">
                 </div>
                 <div>
                     <label>Data Fim</label>
-                    <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                    <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()">
                 </div>
                 <div>
                     <label>Status</label>
-                    <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                    <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()">
                         <option value="todos">Todos os Status</option>
                         <option value="pendente">Pendente</option>
                         <option value="atrasado">Vencido / Atrasado</option>
@@ -309,40 +308,13 @@
                 </div>
                 <div>
                     <label>Buscar por Nome / Descrição</label>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
+                    <input type="text" id="histBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosHistorico()">
                 </div>
                 <div>
-                    <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+                    <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosHistorico()"><i class="fas fa-eraser"></i> Limpar</button>
                 </div>
             </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Fornecedor</th>
-                            <th>Centro Custo</th>
-                            <th>Conta DRE</th>
-                            <th>Descrição / NF</th>
-                            <th>Vencimento</th>
-                            <th style="text-align: right;">Valor (R\$)</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tbodyRelatorioModo">
-                        <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
-            <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
-        </div>
-        <div class="collapsible-content">
             <div class="table-container">
                 <table>
                     <thead>
@@ -418,9 +390,6 @@ async function inicializarPagina() {
         }
     } catch(e) {}
 
-    const elData = document.getElementById('printDataEmissao');
-    if (elData) elData.innerText = new Date().toLocaleString('pt-BR');
-    
     await carregarCentrosCustoSelect();
     await carregarPlanoContasSelect();
     await carregarContasBancariasModal();
@@ -428,7 +397,7 @@ async function inicializarPagina() {
 }
 
 function formatBRL(v) {
-    return 'R\$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatarCodigoVirtual(id) {
@@ -608,8 +577,7 @@ async function carregarContas() {
         return t;
     });
 
-    renderTabela();
-    aplicarFiltrosRelatorio();
+    aplicarFiltrosHistorico();
     atualizarDashboard();
     atualizarCodigoVirtual();
 }
@@ -634,11 +602,12 @@ function atualizarDashboard() {
     document.getElementById('tot_atrasado').innerText = formatBRL(atr);
 }
 
-function aplicarFiltrosRelatorio() {
-    let dtIni = document.getElementById('filtroDataInicio').value;
-    let dtFim = document.getElementById('filtroDataFim').value;
-    let stFiltro = document.getElementById('filtroStatus').value;
-    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+// FILTROS DO HISTÓRICO DE CONTAS A PAGAR
+function aplicarFiltrosHistorico() {
+    let dtIni = document.getElementById('histDataInicio').value;
+    let dtFim = document.getElementById('histDataFim').value;
+    let stFiltro = document.getElementById('histStatus').value;
+    let txtBusca = document.getElementById('histBusca').value.trim().toLowerCase();
 
     let dadosFiltrados = contasCache.filter(t => {
         let dataRef = (stFiltro === 'pago' && t.data_pagamento) ? t.data_pagamento : t.vencimento;
@@ -646,53 +615,32 @@ function aplicarFiltrosRelatorio() {
         if (dtFim && dataRef && dataRef > dtFim) return false;
         if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
         if (txtBusca) {
-            let linha = (t.fornecedor_nome + ' ' + t.descricao + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
+            let linha = ((t.fornecedor_nome || '') + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
         }
         return true;
     });
 
-    const tbody = document.getElementById('tbodyRelatorioModo');
-    tbody.innerHTML = '';
-    if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
-        return;
-    }
-
-    dadosFiltrados.forEach(t => {
-        let codVirtual = formatarCodigoVirtual(t.id);
-        let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
-        let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
-        tbody.innerHTML += `<tr>
-            <td><strong>${codVirtual}</strong></td>
-            <td><strong>${t.fornecedor_nome || '—'}</strong></td>
-            <td>${t.centro_custo || '—'}</td>
-            <td>${t.conta_contabil || '—'}</td>
-            <td>${t.descricao || '—'}</td>
-            <td>${dataVencFmt}</td>
-            <td style="text-align: right;"><strong>${formatBRL(t.valorNumerico)}</strong></td>
-            <td>${badgeText}</td>
-        </tr>`;
-    });
+    renderTabelaFiltrada(dadosFiltrados);
 }
 
-function limparFiltrosRelatorio() {
-    document.getElementById('filtroDataInicio').value = '';
-    document.getElementById('filtroDataFim').value = '';
-    document.getElementById('filtroStatus').value = 'todos';
-    document.getElementById('filtroBusca').value = '';
-    aplicarFiltrosRelatorio();
+function limparFiltrosHistorico() {
+    document.getElementById('histDataInicio').value = '';
+    document.getElementById('histDataFim').value = '';
+    document.getElementById('histStatus').value = 'todos';
+    document.getElementById('histBusca').value = '';
+    aplicarFiltrosHistorico();
 }
 
-function renderTabela() {
+function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
-    if (!contasCache.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada.</td></tr>`;
+    if (!lista.length) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada com os filtros aplicados.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
-    contasCache.forEach(t => {
+    lista.forEach(t => {
         let badgeClass = t.statusSeguro === 'pago' ? 'badge-pago' : (t.statusSeguro === 'atrasado' ? 'badge-atrasado' : 'badge-pendente');
         let badgeLabel = t.statusSeguro === 'pago' ? 'Pago' : (t.statusSeguro === 'atrasado' ? 'Vencido' : 'Pendente');
         let codVirtual = formatarCodigoVirtual(t.id);
