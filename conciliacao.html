@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conciliação Bancária via Importação de Extrato OFX — Sacramento ERP</title>
+    <title>Central de Conciliação e Auditoria Consolidada — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -112,32 +112,32 @@
     </div>
 
     <div>
-        <div class="page-title"><i class="fas fa-check-double" style="color:var(--primary);"></i> Conciliação Bancária via Importação de Extrato OFX</div>
-        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com todas as páginas do financeiro de forma automática ou individual</div>
+        <div class="page-title"><i class="fas fa-check-double" style="color:var(--primary);"></i> Central de Conciliação e Consulta Consolidada</div>
+        <div class="page-subtitle">Consulte o extrato bancário via OFX ou audite as movimentações em espécie do Caixa Físico em tempo real</div>
     </div>
 
-    <!-- PAINEL DE IMPORTAÇÃO OFX -->
+    <!-- PAINEL DE SELEÇÃO E IMPORTAÇÃO -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-file-import"></i> Importar Extrato Bancário (.OFX)</span></div>
+        <div class="panel-header"><span id="tituloPainelImportacao"><i class="fas fa-file-import"></i> Importar Extrato Bancário (.OFX) ou Consultar Caixa</span></div>
         <div class="form-row">
             <div>
-                <label>Selecione a Conta Bancária *</label>
-                <select id="selectConta" class="form-control" onchange="carregarHistoricoConciliacao()">
-                    <option value="">Selecione a conta...</option>
+                <label>Selecione a Conta ou Caixa *</label>
+                <select id="selectConta" class="form-control" onchange="mudarSelecaoConta()">
+                    <option value="">Selecione...</option>
                 </select>
             </div>
-            <div>
+            <div id="blocoNaturezaConta">
                 <label>Natureza da Conta *</label>
                 <select id="selectNatureza" class="form-control">
                     <option value="PJ Empresarial">PJ Empresarial</option>
                     <option value="PF Particular">PF Particular</option>
                 </select>
             </div>
-            <div>
+            <div id="blocoArquivoOfx">
                 <label>Arquivo OFX do Banco *</label>
                 <input type="file" id="arquivoOfx" class="form-control" accept=".ofx" style="padding: 6px;">
             </div>
-            <div style="display:flex; align-items:flex-end;">
+            <div style="display:flex; align-items:flex-end;" id="blocoBotaoOfx">
                 <button class="btn-acao" style="background:var(--success); height:38px; width:100%; justify-content:center;" onclick="importarArquivoOfx()"><i class="fas fa-cloud-upload-alt"></i> Processar OFX</button>
             </div>
         </div>
@@ -146,24 +146,24 @@
     <!-- KPIS DE RESUMO -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-title">Saldo da Conta Selecionada</div>
+            <div class="kpi-title" id="kpiTituloSaldo">Saldo da Conta / Caixa</div>
             <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoBanco">R$ 0,00</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">Total Movimentado no Extrato</div>
+            <div class="kpi-title" id="kpiTituloMov">Total Movimentado</div>
             <div class="kpi-value" id="kpiTotalMov">R$ 0,00</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">Conciliados / Pendentes</div>
+            <div class="kpi-title" id="kpiTituloStatus">Conciliados / Pendentes ou Registos</div>
             <div class="kpi-value" style="color:var(--success);" id="kpiStatusConciliacao">0 / 0</div>
         </div>
     </div>
 
-    <!-- TABELA DE EXTRATO IMPORTADO E FILTROS -->
+    <!-- TABELA DE AUDITORIA E EXTRATO -->
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Extrato Importado & Auditoria de Comparação</span>
-            <div style="display:flex; gap:10px; align-items:center;">
+            <span id="tituloTabelaAuditoria"><i class="fas fa-list"></i> Extrato Importado & Auditoria de Comparação</span>
+            <div style="display:flex; gap:10px; align-items:center;" id="blocoAcoesTabela">
                 <button class="btn-acao" style="background:var(--success); padding:6px 12px; font-size:12px;" onclick="conciliarAutomatico()"><i class="fas fa-check"></i> Conciliar Automáticos</button>
             </div>
         </div>
@@ -182,7 +182,7 @@
                     <option value="Saida">Saída</option>
                 </select>
             </div>
-            <div>
+            <div id="blocoFiltroStatus">
                 <label>Status</label>
                 <select id="filtroStatus" class="form-control" onchange="carregarHistoricoConciliacao()">
                     <option value="">Todos</option>
@@ -195,7 +195,7 @@
             </div>
         </div>
 
-        <div class="table-scroll" id="listaConciliacao">A carregar dados de conciliação...</div>
+        <div class="table-scroll" id="listaConciliacao">A carregar dados...</div>
     </div>
 </div>
 
@@ -268,32 +268,149 @@ async function carregarContasBancarias(){
     if(!r.error){
         cacheContasBancarias = r.data || [];
         var sel = document.getElementById('selectConta');
-        sel.innerHTML = '<option value="">Selecione a conta...</option>';
+        sel.innerHTML = '<option value="">Selecione a conta ou caixa...</option>';
         cacheContasBancarias.forEach(function(c){
             var nome = (c.nome || c.banco || 'Conta');
             var opt = document.createElement('option'); opt.value = c.id; opt.textContent = nome; sel.appendChild(opt);
         });
         if(sel.options.length > 1) {
             sel.selectedIndex = 1;
-            carregarHistoricoConciliacao();
+            mudarSelecaoConta();
         }
     }
+}
+
+function mudarSelecaoConta() {
+    let contaId = document.getElementById('selectConta').value;
+    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
+    
+    let isCaixaFisico = contaObj && (contaObj.tipo || '').toLowerCase().includes('caixa');
+
+    // Se for Caixa Físico, oculta controles de OFX e exibe Modo Consulta de Movimentações
+    if(isCaixaFisico) {
+        document.getElementById('blocoNaturezaConta').style.display = 'none';
+        document.getElementById('blocoArquivoOfx').style.display = 'none';
+        document.getElementById('blocoBotaoOfx').style.display = 'none';
+        document.getElementById('tituloPainelImportacao').innerHTML = '<i class="fas fa-cash-register"></i> Consulta de Movimentações (Caixa Físico)';
+        document.getElementById('tituloTabelaAuditoria').innerHTML = '<i class="fas fa-list"></i> Auditoria de Entradas e Saídas em Dinheiro';
+        document.getElementById('blocoAcoesTabela').style.display = 'none';
+        document.getElementById('blocoFiltroStatus').style.display = 'none';
+        document.getElementById('kpiTituloSaldo').innerText = 'Saldo Atual do Caixa Físico';
+        document.getElementById('kpiTituloMov').innerText = 'Total Movimentado (Dinheiro)';
+        document.getElementById('kpiTituloStatus').innerText = 'Total de Registos';
+    } else {
+        document.getElementById('blocoNaturezaConta').style.display = 'block';
+        document.getElementById('blocoArquivoOfx').style.display = 'block';
+        document.getElementById('blocoBotaoOfx').style.display = 'block';
+        document.getElementById('tituloPainelImportacao').innerHTML = '<i class="fas fa-file-import"></i> Importar Extrato Bancário (.OFX)';
+        document.getElementById('tituloTabelaAuditoria').innerHTML = '<i class="fas fa-list"></i> Extrato Importado & Auditoria de Comparação';
+        document.getElementById('blocoAcoesTabela').style.display = 'flex';
+        document.getElementById('blocoFiltroStatus').style.display = 'block';
+        document.getElementById('kpiTituloSaldo').innerText = 'Saldo da Conta Selecionada';
+        document.getElementById('kpiTituloMov').innerText = 'Total Movimentado no Extrato';
+        document.getElementById('kpiTituloStatus').innerText = 'Conciliados / Pendentes';
+    }
+
+    carregarHistoricoConciliacao();
 }
 
 async function carregarHistoricoConciliacao(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
     var el = document.getElementById('listaConciliacao');
-    if(!cid) return;
-
-    if(!contaId) {
-        el.innerHTML = '<div class="empty-state">Selecione uma conta bancária para visualizar o extrato.</div>';
-        document.getElementById('kpiSaldoBanco').innerText = 'R$ 0,00';
-        document.getElementById('kpiTotalMov').innerText = 'R$ 0,00';
-        document.getElementById('kpiStatusConciliacao').innerText = '0 / 0';
+    if(!cid || !contaId) {
+        el.innerHTML = '<div class="empty-state">Selecione uma conta ou caixa para visualizar.</div>';
         return;
     }
 
+    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
+    let isCaixaFisico = contaObj && (contaObj.tipo || '').toLowerCase().includes('caixa');
+
+    if(isCaixaFisico) {
+        // BUSCA MOVIMENTAÇÕES REAIS DO CAIXA FÍSICO EM TODAS AS PÁGINAS DO FINANCEIRO
+        let [pagar, receber, transferencias] = await Promise.all([
+            sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('status', 'Pago'),
+            sb.from('contas_receber').select('*').eq('cliente_id', cid).eq('status', 'Recebido'),
+            sb.from('transferencias').select('*').eq('cliente_id', cid)
+        ]);
+
+        let movimentacoesCaixa = [];
+        let saldoCaixa = parseFloat(contaObj.saldo_inicial) || 0;
+
+        if(receber.data) {
+            receber.data.forEach(r => {
+                movimentacoesCaixa.push({
+                    data: r.data_recebimento || r.vencimento,
+                    historico: `Recebimento (Cliente): ${r.cliente_nome || r.cliente || 'Diversos'} — ${r.descricao || ''}`,
+                    valor: parseFloat(r.valor) || 0,
+                    tipo: 'Entrada'
+                });
+            });
+        }
+
+        if(pagar.data) {
+            pagar.data.forEach(p => {
+                movimentacoesCaixa.push({
+                    data: p.data_pagamento || p.vencimento,
+                    historico: `Pagamento (Fornecedor): ${p.fornecedor_nome || 'Diversos'} — ${p.descricao || ''}`,
+                    valor: parseFloat(p.valor) || 0,
+                    tipo: 'Saida'
+                });
+            });
+        }
+
+        if(transferencias.data) {
+            transferencias.data.forEach(tr => {
+                movimentacoesCaixa.push({
+                    data: tr.data || new Date().toISOString().split('T')[0],
+                    historico: `Movimentação / Aporte: ${tr.descricao || 'Transferência'}`,
+                    valor: parseFloat(tr.valor) || 0,
+                    tipo: 'Entrada'
+                });
+            });
+        }
+
+        movimentacoesCaixa.sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        let totalMov = 0;
+        movimentacoesCaixa.forEach(m => {
+            totalMov += m.valor;
+            if(m.tipo === 'Entrada') saldoCaixa += m.valor; else saldoCaixa -= m.valor;
+        });
+
+        document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoCaixa);
+        document.getElementById('kpiTotalMov').innerText = 'R$ ' + fmtBR(totalMov);
+        document.getElementById('kpiStatusConciliacao').innerText = movimentacoesCaixa.length + ' Registos';
+
+        if(!movimentacoesCaixa.length) {
+            el.innerHTML = '<div class="empty-state">Nenhuma movimentação registrada para este Caixa Físico.</div>';
+            return;
+        }
+
+        var html = '<table class="analitica-table"><thead><tr>'+
+            '<th>Data</th><th>Histórico / Descrição</th><th style="text-align:right;">Valor</th><th>Tipo</th><th>Status</th>'+
+        '</tr></thead><tbody>';
+
+        movimentacoesCaixa.forEach(m => {
+            let corVal = m.tipo === 'Entrada' ? 'color:var(--success); font-weight:700;' : 'color:var(--danger); font-weight:700;';
+            let sinalVal = m.tipo === 'Entrada' ? '+ R$ ' : '- R$ ';
+            let dataFmt = m.data ? m.data.split('-').reverse().join('/') : '-';
+
+            html += '<tr>'+
+                '<td>'+dataFmt+'</td>'+
+                '<td>'+m.historico+'</td>'+
+                '<td style="text-align:right; '+corVal+'">'+sinalVal+fmtBR(m.valor)+'</td>'+
+                '<td>'+m.tipo+'</td>'+
+                '<td><span class="badge-conciliado">Registrado</span></td>'+
+            '</tr>';
+        });
+
+        html += '</tbody></table>';
+        el.innerHTML = html;
+        return;
+    }
+
+    // MODO CONCIONAL BANCÁRIA VIA OFX
     var r = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).order('data_transacao', { ascending: false });
     if(r.error) {
         el.innerHTML = '<div class="empty-state">Erro ao carregar extrato: ' + r.error.message + '</div>';
@@ -324,7 +441,6 @@ async function carregarHistoricoConciliacao(){
         if(item.status === 'Conciliado') conciliados++; else pendentes++;
     });
 
-    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
     let saldoExibido = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
 
     document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoExibido);
@@ -332,7 +448,7 @@ async function carregarHistoricoConciliacao(){
     document.getElementById('kpiStatusConciliacao').innerText = conciliados + ' / ' + pendentes;
 
     if(!filtrados.length){
-        el.innerHTML = '<div class="empty-state">Nenhum registo encontrado no extrato para esta conta.</div>';
+        el.innerHTML = '<div class="empty-state">Nenhum registo encontrado no extrato para esta conta. Faça a importação do OFX acima.</div>';
         return;
     }
 
@@ -477,7 +593,6 @@ function parseOFXComSaldo(ofxText) {
     return { transacoes, saldoFinal };
 }
 
-// MOTOR DE CONCILIAÇÃO AUTOMÁTICA EM TODAS AS PÁGINAS DO FINANCEIRO
 async function conciliarAutomatico(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -542,7 +657,6 @@ async function conciliarAutomatico(){
     }
 }
 
-// CONCILIAÇÃO INDIVIDUAL BUSCANDO EM TODAS AS PÁGINAS DO FINANCEIRO
 async function abrirConciliacaoIndividual(extratoId) {
     let item = cacheExtrato.find(x => x.id === extratoId);
     if(!item) return;
@@ -554,7 +668,7 @@ async function abrirConciliacaoIndividual(extratoId) {
 
     const cid = window.clienteIdAtual();
     const sel = document.getElementById('selectTituloCorrespondente');
-    sel.innerHTML = '<option value="">A carregar títulos de todo o financeiro...</option>';
+    sel.innerHTML = '<option value="">A carregar títulos...</option>';
 
     let [pagar, receber, transferencias] = await Promise.all([
         sb.from('contas_pagar').select('id, fornecedor_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Pago'),
