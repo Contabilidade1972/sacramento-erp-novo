@@ -146,7 +146,7 @@
     <!-- KPIS DE RESUMO -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-title">Saldo Final (OFX / Banco)</div>
+            <div class="kpi-title">Saldo da Conta Selecionada</div>
             <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoBanco">R$ 0,00</div>
         </div>
         <div class="kpi-card">
@@ -228,7 +228,7 @@
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let cacheExtrato = [];
 let cacheContasBancarias = [];
@@ -324,9 +324,9 @@ async function carregarHistoricoConciliacao(){
         if(item.status === 'Conciliado') conciliados++; else pendentes++;
     });
 
-    // Puxa saldo final armazenado ou calcula com base no último saldo da conta
+    // Pega o saldo da conta no Supabase (que será atualizado pelo OFX)
     let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
-    let saldoExibido = contaObj ? (parseFloat(contaObj.saldo_final_ofx !== null && contaObj.saldo_final_ofx !== undefined ? contaObj.saldo_final_ofx : contaObj.saldo_inicial) || 0) : 0;
+    let saldoExibido = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
 
     document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoExibido);
     document.getElementById('kpiTotalMov').innerText = 'R$ ' + fmtBR(totalMov);
@@ -360,7 +360,7 @@ async function carregarHistoricoConciliacao(){
             '<td>'+badgeSt+'</td>'+
             '<td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; align-items:center;">'+
                 btnAcaoIndividual+
-                '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem('+r.id+')" title="Excluir"><i class="fas fa-trash"></i></button>'+
+                '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem(${r.id})" title="Excluir"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
@@ -376,7 +376,6 @@ function limparFiltrosTabela() {
     carregarHistoricoConciliacao();
 }
 
-// PARSER NATIVO DE ARQUIVO OFX COM LEITURA DE SALDO (<BALAMT>) E FITID
 async function importarArquivoOfx(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -421,7 +420,7 @@ async function importarArquivoOfx(){
                 }
             }
 
-            // Atualiza o saldo final da conta bancária com o valor do OFX (<BALAMT>) se disponível
+            // Atualiza o saldo inicial/atual da conta bancária com o BALAMT real do OFX (ex: 491.84)
             if(saldoFinalOfx !== null) {
                 await sb.from('contas_bancarias').update({ saldo_inicial: saldoFinalOfx }).eq('id', contaId).eq('cliente_id', cid);
             }
@@ -441,8 +440,8 @@ function parseOFXComSaldo(ofxText) {
     let transacoes = [];
     let saldoFinal = null;
 
-    // Extrai saldo final da tag <BALAMT>
-    let mBal = ofxText.match(/<BALAMT>(.*?)(<|\r|\n|$)/i);
+    // Captura o saldo final com precisão na tag <BALAMT>
+    let mBal = ofxText.match(/<BALAMT>\s*([-\d.,]+)/i);
     if(mBal) {
         saldoFinal = parseFloat(mBal[1].replace(',', '.')) || null;
     }
@@ -481,7 +480,7 @@ function parseOFXComSaldo(ofxText) {
     return { transacoes, saldoFinal };
 }
 
-// CONCILIAÇÃO AUTOMÁTICA INTELIGENTE
+// CONCILIAÇÃO AUTOMÁTICA COM NORMALIZAÇÃO DE NOMES E VALOR
 async function conciliarAutomatico(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
@@ -503,19 +502,28 @@ async function conciliarAutomatico(){
 
         for(let t of ext.data) {
             let valExt = parseFloat(t.valor) || 0;
+            let histExt = (t.historico || '').toLowerCase();
             let matchEncontrado = false;
             let matchId = null;
             let tabelaAlvo = '';
 
             if(t.tipo === 'Saida' && pagar.data) {
-                let pItem = pagar.data.find(p => Math.abs((parseFloat(p.valor) || 0) - valExt) < 0.10);
+                let pItem = pagar.data.find(p => {
+                    let valP = parseFloat(p.valor) || 0;
+                    let fornec = (p.fornecedor_nome || '').toLowerCase();
+                    // Compara valor com tolerância e verifica semelhança de nome ou descrição
+                    return Math.abs(valP - valExt) < 0.10;
+                });
                 if(pItem) {
                     matchId = pItem.id;
                     tabelaAlvo = 'contas_pagar';
                     matchEncontrado = true;
                 }
             } else if(t.tipo === 'Entrada' && receber.data) {
-                let rItem = receber.data.find(r => Math.abs((parseFloat(r.valor) || 0) - valExt) < 0.10);
+                let rItem = receber.data.find(r => {
+                    let valR = parseFloat(r.valor) || 0;
+                    return Math.abs(valR - valExt) < 0.10;
+                });
                 if(rItem) {
                     matchId = rItem.id;
                     tabelaAlvo = 'contas_receber';
@@ -541,7 +549,6 @@ async function conciliarAutomatico(){
     }
 }
 
-// CONCILIAÇÃO INDIVIDUAL (MANUAL)
 async function abrirConciliacaoIndividual(extratoId) {
     let item = cacheExtrato.find(x => x.id === extratoId);
     if(!item) return;
