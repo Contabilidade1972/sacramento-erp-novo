@@ -272,7 +272,8 @@
                     </div>
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+            <!-- FORMULÁRIO DE RECORRÊNCIA CORRIGIDO E SEMPRE VISÍVEL QUANDO NECESSÁRIO -->
+            <div class="form-grid" style="grid-template-columns: 2fr 1.5fr 1fr 1fr;">
                 <div>
                     <label>Descrição / Nota Fiscal / Contrato *</label>
                     <input type="text" id="descricao" class="form-control" placeholder="Ex: Fatura de Serviços...">
@@ -290,9 +291,11 @@
                         <option value="Sim">Sim (Mensal)</option>
                     </select>
                 </div>
-                <div id="blocoParcelas" style="display:none;">
-                    <label>Nº de Meses / Parcelas</label>
-                    <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                <div>
+                    <div id="blocoParcelas" style="display:block;">
+                        <label>Nº de Meses / Parcelas</label>
+                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                    </div>
                 </div>
             </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
@@ -448,7 +451,7 @@ function toggleParcelas(val) {
     if (val === 'Sim') {
         bloco.style.display = 'block';
     } else {
-        bloco.style.display = 'none';
+        bloco.style.display = 'block'; // Mantém visível para clareza
         document.getElementById('num_parcelas').value = '12';
     }
 }
@@ -916,7 +919,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM GERAÇÃO EM LOTE PARA RECORRÊNCIA MENSAL
+// SALVAR COM LEITURA GARANTIDA DA RECORRÊNCIA E GERAÇÃO EM LOTE
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -946,6 +949,7 @@ async function salvarContaReceber() {
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
         alert("Conta a receber atualizada com sucesso!");
     } else {
+        // LEITURA CORRETA DA RECORRÊNCIA E QUANTIDADE DE PARCELAS
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
         
