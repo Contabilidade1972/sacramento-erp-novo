@@ -113,7 +113,7 @@
 
     <div>
         <div class="page-title"><i class="fas fa-check-double" style="color:var(--primary);"></i> Conciliação Bancária via Importação de Extrato OFX</div>
-        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com as contas a pagar e receber de forma automática ou individual</div>
+        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com todas as páginas do financeiro de forma automática ou individual</div>
     </div>
 
     <!-- PAINEL DE IMPORTAÇÃO OFX -->
@@ -213,9 +213,9 @@
             <div><strong>Tipo:</strong> <span id="modal_extrato_tipo">-</span></div>
         </div>
         <div style="margin-bottom:14px;">
-            <label>Selecione o Título Correspondente (Contas a Pagar / Receber em Aberto)</label>
+            <label>Selecione o Título Correspondente (Pagar, Receber, Transferências, etc.)</label>
             <select id="selectTituloCorrespondente" class="form-control">
-                <option value="">A carregar títulos compatíveis...</option>
+                <option value="">A carregar títulos de todo o financeiro...</option>
             </select>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
@@ -324,7 +324,6 @@ async function carregarHistoricoConciliacao(){
         if(item.status === 'Conciliado') conciliados++; else pendentes++;
     });
 
-    // Pega o saldo da conta no Supabase (que será atualizado pelo OFX)
     let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
     let saldoExibido = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
 
@@ -360,7 +359,7 @@ async function carregarHistoricoConciliacao(){
             '<td>'+badgeSt+'</td>'+
             '<td style="text-align:right; display:flex; gap:6px; justify-content:flex-end; align-items:center;">'+
                 btnAcaoIndividual+
-                '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem(${r.id})" title="Excluir"><i class="fas fa-trash"></i></button>'+
+                '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem('+r.id+')" title="Excluir"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
@@ -420,7 +419,6 @@ async function importarArquivoOfx(){
                 }
             }
 
-            // Atualiza o saldo inicial/atual da conta bancária com o BALAMT real do OFX (ex: 491.84)
             if(saldoFinalOfx !== null) {
                 await sb.from('contas_bancarias').update({ saldo_inicial: saldoFinalOfx }).eq('id', contaId).eq('cliente_id', cid);
             }
@@ -440,7 +438,6 @@ function parseOFXComSaldo(ofxText) {
     let transacoes = [];
     let saldoFinal = null;
 
-    // Captura o saldo final com precisão na tag <BALAMT>
     let mBal = ofxText.match(/<BALAMT>\s*([-\d.,]+)/i);
     if(mBal) {
         saldoFinal = parseFloat(mBal[1].replace(',', '.')) || null;
@@ -480,13 +477,13 @@ function parseOFXComSaldo(ofxText) {
     return { transacoes, saldoFinal };
 }
 
-// CONCILIAÇÃO AUTOMÁTICA COM NORMALIZAÇÃO DE NOMES E VALOR
+// MOTOR DE CONCILIAÇÃO AUTOMÁTICA EM TODAS AS PÁGINAS DO FINANCEIRO
 async function conciliarAutomatico(){
     var cid = window.clienteIdAtual();
     var contaId = document.getElementById('selectConta').value;
     if(!contaId) { toast("Selecione a conta bancária.", "error"); return; }
 
-    toast("A cruzar dados com Contas a Pagar e Receber...", "info");
+    toast("A cruzar dados com todo o ecossistema financeiro (Pagar, Receber, Transferências)...", "info");
 
     try {
         let ext = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).eq('status', 'Pendente');
@@ -497,44 +494,40 @@ async function conciliarAutomatico(){
 
         let pagar = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).neq('status', 'Pago');
         let receber = await sb.from('contas_receber').select('*').eq('cliente_id', cid).neq('status', 'Recebido');
+        let transferencias = await sb.from('transferencias').select('*').eq('cliente_id', cid);
 
         let conciliadosCount = 0;
 
         for(let t of ext.data) {
             let valExt = parseFloat(t.valor) || 0;
-            let histExt = (t.historico || '').toLowerCase();
             let matchEncontrado = false;
             let matchId = null;
             let tabelaAlvo = '';
 
-            if(t.tipo === 'Saida' && pagar.data) {
-                let pItem = pagar.data.find(p => {
-                    let valP = parseFloat(p.valor) || 0;
-                    let fornec = (p.fornecedor_nome || '').toLowerCase();
-                    // Compara valor com tolerância e verifica semelhança de nome ou descrição
-                    return Math.abs(valP - valExt) < 0.10;
-                });
-                if(pItem) {
-                    matchId = pItem.id;
-                    tabelaAlvo = 'contas_pagar';
-                    matchEncontrado = true;
+            if(t.tipo === 'Saida') {
+                if(pagar.data) {
+                    let pItem = pagar.data.find(p => Math.abs((parseFloat(p.valor) || 0) - valExt) < 0.10);
+                    if(pItem) { matchId = pItem.id; tabelaAlvo = 'contas_pagar'; matchEncontrado = true; }
                 }
-            } else if(t.tipo === 'Entrada' && receber.data) {
-                let rItem = receber.data.find(r => {
-                    let valR = parseFloat(r.valor) || 0;
-                    return Math.abs(valR - valExt) < 0.10;
-                });
-                if(rItem) {
-                    matchId = rItem.id;
-                    tabelaAlvo = 'contas_receber';
-                    matchEncontrado = true;
+                if(!matchEncontrado && transferencias.data) {
+                    let trItem = transferencias.data.find(tr => Math.abs((parseFloat(tr.valor) || 0) - valExt) < 0.10);
+                    if(trItem) { matchId = trItem.id; tabelaAlvo = 'transferencias'; matchEncontrado = true; }
+                }
+            } else if(t.tipo === 'Entrada') {
+                if(receber.data) {
+                    let rItem = receber.data.find(r => Math.abs((parseFloat(r.valor) || 0) - valExt) < 0.10);
+                    if(rItem) { matchId = rItem.id; tabelaAlvo = 'contas_receber'; matchEncontrado = true; }
+                }
+                if(!matchEncontrado && transferencias.data) {
+                    let trItem = transferencias.data.find(tr => Math.abs((parseFloat(tr.valor) || 0) - valExt) < 0.10);
+                    if(trItem) { matchId = trItem.id; tabelaAlvo = 'transferencias'; matchEncontrado = true; }
                 }
             }
 
             if(matchEncontrado) {
                 if(tabelaAlvo === 'contas_pagar') {
                     await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', matchId);
-                } else {
+                } else if(tabelaAlvo === 'contas_receber') {
                     await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', matchId);
                 }
                 await sb.from('extrato_ofx_importado').update({ status: 'Conciliado' }).eq('id', t.id);
@@ -542,13 +535,14 @@ async function conciliarAutomatico(){
             }
         }
 
-        toast(`Conciliação concluída! ${conciliadosCount} lançamentos vinculados automaticamente.`, "success");
+        toast(`Conciliação concluída! ${conciliadosCount} lançamentos vinculados em todo o financeiro.`, "success");
         carregarHistoricoConciliacao();
     } catch(err) {
         toast("Erro na conciliação automática: " + err.message, "error");
     }
 }
 
+// CONCILIAÇÃO INDIVIDUAL BUSCANDO EM TODAS AS PÁGINAS DO FINANCEIRO
 async function abrirConciliacaoIndividual(extratoId) {
     let item = cacheExtrato.find(x => x.id === extratoId);
     if(!item) return;
@@ -560,22 +554,39 @@ async function abrirConciliacaoIndividual(extratoId) {
 
     const cid = window.clienteIdAtual();
     const sel = document.getElementById('selectTituloCorrespondente');
-    sel.innerHTML = '<option value="">A carregar títulos...</option>';
+    sel.innerHTML = '<option value="">A carregar títulos de todo o financeiro...</option>';
 
-    let queryTabelas = item.tipo === 'Saida' 
-        ? sb.from('contas_pagar').select('id, fornecedor_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Pago')
-        : sb.from('contas_receber').select('id, cliente_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Recebido');
+    let [pagar, receber, transferencias] = await Promise.all([
+        sb.from('contas_pagar').select('id, fornecedor_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Pago'),
+        sb.from('contas_receber').select('id, cliente_nome, descricao, valor, vencimento').eq('cliente_id', cid).neq('status', 'Recebido'),
+        sb.from('transferencias').select('id, descricao, valor, data').eq('cliente_id', cid)
+    ]);
 
-    let res = await queryTabelas;
     sel.innerHTML = '<option value="">Selecione o título correspondente...</option>';
-    if(res.data) {
-        res.data.forEach(t => {
-            let nome = t.fornecedor_nome || t.cliente_nome || 'Favorecido';
-            let desc = t.descricao || '';
-            let val = parseFloat(t.valor) || 0;
+
+    if(pagar.data) {
+        pagar.data.forEach(t => {
             let opt = document.createElement('option');
-            opt.value = `${item.tipo === 'Saida' ? 'pagar' : 'receber'}_${t.id}`;
-            opt.textContent = `${nome} — ${desc} (R$ ${fmtBR(val)})`;
+            opt.value = `pagar_${t.id}`;
+            opt.textContent = `[Pagar] ${t.fornecedor_nome || 'Fornecedor'} — ${t.descricao || 'Despesa'} (R$ ${fmtBR(t.valor)})`;
+            sel.appendChild(opt);
+        });
+    }
+
+    if(receber.data) {
+        receber.data.forEach(t => {
+            let opt = document.createElement('option');
+            opt.value = `receber_${t.id}`;
+            opt.textContent = `[Receber] ${t.cliente_nome || 'Cliente'} — ${t.descricao || 'Receita'} (R$ ${fmtBR(t.valor)})`;
+            sel.appendChild(opt);
+        });
+    }
+
+    if(transferencias.data) {
+        transferencias.data.forEach(t => {
+            let opt = document.createElement('option');
+            opt.value = `transferencia_${t.id}`;
+            opt.textContent = `[Transferência/Aporte] ${t.descricao || 'Movimentação'} (R$ ${fmtBR(t.valor)})`;
             sel.appendChild(opt);
         });
     }
@@ -597,7 +608,7 @@ async function salvarConciliacaoIndividual() {
 
     if(tipoTabela === 'pagar') {
         await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', tituloId).eq('cliente_id', cid);
-    } else {
+    } else if(tipoTabela === 'receber') {
         await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', tituloId).eq('cliente_id', cid);
     }
 
