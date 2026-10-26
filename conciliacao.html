@@ -14,7 +14,6 @@
             --bg: #f0f4f8; --card: #ffffff; --text-main: #1e293b; --text-light: #64748b; --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -23,7 +22,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -58,6 +56,8 @@
         .kpi-value { font-size: 20px; font-weight: 800; color: var(--secondary); }
 
         .form-row { display: grid; grid-template-columns: 2fr 2fr 3fr auto; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+        .filter-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 10px; align-items: flex-end; margin-bottom: 16px; background: var(--bg); padding: 12px; border-radius: 8px; }
+        
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
         .form-control { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
         .form-control:focus { border-color: var(--primary); }
@@ -80,7 +80,6 @@
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
 <header class="site-header">
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
@@ -110,7 +109,7 @@
 
     <div>
         <div class="page-title"><i class="fas fa-check-double" style="color:var(--primary);"></i> Conciliação Bancária via Importação de Extrato OFX</div>
-        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com as contas a pagar e receber</div>
+        <div class="page-subtitle">Importe o arquivo OFX do banco para conciliar lançamentos com as contas a pagar e receber de forma automática</div>
     </div>
 
     <!-- PAINEL DE IMPORTAÇÃO OFX -->
@@ -118,8 +117,8 @@
         <div class="panel-header"><span><i class="fas fa-file-import"></i> Importar Extrato Bancário (.OFX)</span></div>
         <div class="form-row">
             <div>
-                <label>Selecione a Conta Bancária de Destino *</label>
-                <select id="selectConta" class="form-control">
+                <label>Selecione a Conta Bancária *</label>
+                <select id="selectConta" class="form-control" onchange="carregarHistoricoConciliacao()">
                     <option value="">Selecione a conta...</option>
                 </select>
             </div>
@@ -143,31 +142,55 @@
     <!-- KPIS DE RESUMO -->
     <div class="kpi-grid">
         <div class="kpi-card">
-            <div class="kpi-title">Saldo Final (Banco)</div>
-            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoBanco">R\$ 9.833,53</div>
+            <div class="kpi-title">Saldo da Conta Selecionada</div>
+            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoBanco">R$ 0,00</div>
         </div>
         <div class="kpi-card">
-            <div class="kpi-title">Total Movimentado</div>
-            <div class="kpi-value" id="kpiTotalMov">R\$ 17.925,62</div>
+            <div class="kpi-title">Total Movimentado no Extrato</div>
+            <div class="kpi-value" id="kpiTotalMov">R$ 0,00</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Conciliados / Pendentes</div>
-            <div class="kpi-value" style="color:var(--success);" id="kpiStatusConciliacao">34 / 0</div>
+            <div class="kpi-value" style="color:var(--success);" id="kpiStatusConciliacao">0 / 0</div>
         </div>
     </div>
 
-    <!-- TABELA DE EXTRATO IMPORTADO -->
+    <!-- TABELA DE EXTRATO IMPORTADO E FILTROS -->
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Extrato Importado & Auditoria de Comparação</span>
             <div style="display:flex; gap:10px; align-items:center;">
-                <select id="filtroContaTabela" class="form-control" style="font-size:12px; padding:6px 10px; width:220px;" onchange="carregarHistoricoConciliacao()">
-                    <option value="">Todas as Contas (Consolidado)</option>
-                    <option value="Inter PJ">Inter PJ</option>
-                </select>
                 <button class="btn-acao" style="background:var(--success); padding:6px 12px; font-size:12px;" onclick="conciliarAutomatico()"><i class="fas fa-check"></i> Conciliar Automáticos</button>
             </div>
         </div>
+
+        <!-- FILTROS AVANÇADOS DA TABELA -->
+        <div class="filter-row">
+            <div>
+                <label>Pesquisar Histórico</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Filtrar descrição..." oninput="carregarHistoricoConciliacao()">
+            </div>
+            <div>
+                <label>Tipo</label>
+                <select id="filtroTipo" class="form-control" onchange="carregarHistoricoConciliacao()">
+                    <option value="">Todos</option>
+                    <option value="Entrada">Entrada</option>
+                    <option value="Saida">Saída</option>
+                </select>
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="filtroStatus" class="form-control" onchange="carregarHistoricoConciliacao()">
+                    <option value="">Todos</option>
+                    <option value="Conciliado">Conciliado</option>
+                    <option value="Pendente">Pendente</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao" style="background:#64748b; height:38px; width:100%; justify-content:center;" onclick="limparFiltrosTabela()"><i class="fas fa-eraser"></i> Limpar</button>
+            </div>
+        </div>
+
         <div class="table-scroll" id="listaConciliacao">A carregar dados de conciliação...</div>
     </div>
 </div>
@@ -177,6 +200,8 @@
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+let cacheExtrato = [];
+let cacheContasBancarias = [];
 
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -207,86 +232,99 @@ function toast(msg,type='success'){
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 async function carregarContasBancarias(){
-    var cid=window.clienteIdAtual();
+    var cid = window.clienteIdAtual();
     if(!cid) return;
-    var r=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
+    var r = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
-        var sel=document.getElementById('selectConta');
-        sel.innerHTML='<option value="">Selecione a conta...</option>';
-        (r.data||[]).forEach(function(c){
+        cacheContasBancarias = r.data || [];
+        var sel = document.getElementById('selectConta');
+        sel.innerHTML = '<option value="">Selecione a conta...</option>';
+        cacheContasBancarias.forEach(function(c){
             var nome = (c.nome || c.banco || 'Conta');
-            var opt=document.createElement('option'); opt.value=nome; opt.textContent=nome; sel.appendChild(opt);
+            var opt = document.createElement('option'); opt.value = c.id; opt.textContent = nome; sel.appendChild(opt);
         });
-        if(sel.options.length > 1) sel.selectedIndex = 1;
+        if(sel.options.length > 1) {
+            sel.selectedIndex = 1;
+            carregarHistoricoConciliacao();
+        }
     }
 }
 
 async function carregarHistoricoConciliacao(){
     var cid = window.clienteIdAtual();
-    var filtroConta = document.getElementById('filtroContaTabela').value.toLowerCase();
+    var contaId = document.getElementById('selectConta').value;
     var el = document.getElementById('listaConciliacao');
     if(!cid) return;
 
-    let registros = [
-        { id: 20260018772, conta: 'Inter PJ', natureza: 'PJ', data: '19/08/2026', historico: 'Pix enviado: "Cp:37880206-Btb Solutions Solucoes Empresariais E Apoio Administrativo LTDA"', valor: 1621.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '29/08/2026' },
-        { id: 20260017077, conta: 'Inter PJ', natureza: 'PJ', data: '17/08/2026', historico: 'Pagamento efetuado: "Pagamento fatura cartao Inter"', valor: 238.80, tipo: 'Saida', status: 'Conciliado', data_criacao: '29/08/2026' },
-        { id: 20268817477, conta: 'Inter PJ', natureza: 'PJ', data: '17/08/2026', historico: 'Pix enviado: "Cp: 00360305-Flavia Batista Sacramento"', valor: 300.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '28/08/2026' },
-        { id: 20268818871, conta: 'Inter PJ', natureza: 'PJ', data: '10/08/2026', historico: 'Pix recebido: "Cp:00000000-GILBERTO MEDEIROS RIBEIRO"', valor: 600.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '28/08/2026' },
-        { id: 20260012077, conta: 'Inter PJ', natureza: 'PJ', data: '10/08/2026', historico: 'Pix recebido: "Cp:90400888-ALICE FREITAS VERSIANI"', valor: 600.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '28/08/2026' },
-        { id: 20260017772, conta: 'Inter PJ', natureza: 'PJ', data: '10/08/2026', historico: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES FONSECA"', valor: 600.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '29/08/2026' },
-        { id: 20260019441, conta: 'Inter PJ', natureza: 'PJ', data: '04/08/2026', historico: 'Pix recebido: "Cp:60701190-FERNANDA COELHO M J OLIVEIRA"', valor: 600.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '28/08/2026' },
-        { id: 20260015522, conta: 'Inter PJ', natureza: 'PJ', data: '04/08/2026', historico: 'Pix enviado: "00019 32104138 WIZARD TECNOLOGIA LTDA"', valor: 170.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '27/08/2026' },
-        { id: 20260011144, conta: 'Inter PJ', natureza: 'PJ', data: '15/07/2026', historico: 'Pix enviado: "Cp: 00360305-Flavia Batista Sacramento"', valor: 300.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '26/08/2026' },
-        { id: 20260013388, conta: 'Inter PJ', natureza: 'PJ', data: '15/07/2026', historico: 'Pix enviado: "Cp: 37880206-Btb Solutions"', valor: 1621.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '26/08/2026' },
-        { id: 20260015599, conta: 'Inter PJ', natureza: 'PJ', data: '15/07/2026', historico: 'Pagamento efetuado: "Pagamento fatura cartao Inter"', valor: 311.82, tipo: 'Saida', status: 'Conciliado', data_criacao: '25/08/2026' },
-        { id: 20260012233, conta: 'Inter PJ', natureza: 'PJ', data: '10/07/2026', historico: 'Pix recebido: "Cp:60701190-FERNANDA COELHO"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '25/08/2026' },
-        { id: 20260014455, conta: 'Inter PJ', natureza: 'PJ', data: '10/07/2026', historico: 'Pix recebido: "Cp:90400888-ALICE FREITAS"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '24/08/2026' },
-        { id: 20260016677, conta: 'Inter PJ', natureza: 'PJ', data: '10/07/2026', historico: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '24/08/2026' },
-        { id: 20260018899, conta: 'Inter PJ', natureza: 'PJ', data: '10/07/2026', historico: 'Pix recebido: "Cp:00000000-GILBERTO MEDEIROS"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '23/08/2026' },
-        { id: 20260011011, conta: 'Inter PJ', natureza: 'PJ', data: '09/07/2026', historico: 'Aplicacao: "CDB CREDITO BANCO INTER S A"', valor: 200.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '23/08/2026' },
-        { id: 20260012022, conta: 'Inter PJ', natureza: 'PJ', data: '09/07/2026', historico: 'Pix recebido: "Cp:18236120-Luis Adan Flores"', valor: 261.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '22/08/2026' },
-        { id: 20260013033, conta: 'Inter PJ', natureza: 'PJ', data: '09/07/2026', historico: 'Resgate: "CDB CREDITO BANCO INTER S A"', valor: 200.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '22/08/2026' },
-        { id: 20260014044, conta: 'Inter PJ', natureza: 'PJ', data: '02/07/2026', historico: 'Aplicacao: "CDB CREDITO BANCO INTER S A"', valor: 100.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '21/08/2026' },
-        { id: 20260015055, conta: 'Inter PJ', natureza: 'PJ', data: '19/06/2026', historico: 'Aplicacao: "CDB CREDITO BANCO INTER SA"', valor: 300.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '21/08/2026' },
-        { id: 20260016066, conta: 'Inter PJ', natureza: 'PJ', data: '19/06/2026', historico: 'Pix enviado: "Cp:37880206-Btb Solutions"', valor: 1621.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '20/08/2026' },
-        { id: 20260017078, conta: 'Inter PJ', natureza: 'PJ', data: '10/06/2026', historico: 'Pix recebido: "Cp:00000000-GILBERTO MEDEIROS"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '20/08/2026' },
-        { id: 20260018089, conta: 'Inter PJ', natureza: 'PJ', data: '10/06/2026', historico: 'Pix enviado: "Cp:60746948-Luis Adan Flores"', valor: 238.80, tipo: 'Saida', status: 'Conciliado', data_criacao: '19/08/2026' },
-        { id: 20260019090, conta: 'Inter PJ', natureza: 'PJ', data: '10/06/2026', historico: 'Pix enviado: "Cp:00360305-Flavia Batista"', valor: 300.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '19/08/2026' },
-        { id: 20260010101, conta: 'Inter PJ', natureza: 'PJ', data: '09/06/2026', historico: 'Pix recebido: "Cp:60701190-FERNANDA COELHO"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '18/08/2026' },
-        { id: 20260010202, conta: 'Inter PJ', natureza: 'PJ', data: '08/06/2026', historico: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '18/08/2026' },
-        { id: 20260010303, conta: 'Inter PJ', natureza: 'PJ', data: '08/06/2026', historico: 'Pix recebido: "Cp:18236120-Luis Adan Flores"', valor: 500.00, tipo: 'Entrada', status: 'Conciliado', data_criacao: '17/08/2026' },
-        { id: 20260010404, conta: 'Inter PJ', natureza: 'PJ', data: '29/05/2026', historico: 'Pix enviado: "Cp:37880206-Btb Solutions"', valor: 1621.00, tipo: 'Saida', status: 'Conciliado', data_criacao: '17/08/2026' },
-        { id: 20260010505, conta: 'Inter PJ', natureza: 'PJ', data: '27/05/2026', historico: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES"', valor: 324.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '16/08/2026' },
-        { id: 20260010606, conta: 'Inter PJ', natureza: 'PJ', data: '27/05/2026', historico: 'Pix recebido: "Cp:18236120-Luis Adan Flores"', valor: 324.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '16/08/2026' },
-        { id: 20260010707, conta: 'Inter PJ', natureza: 'PJ', data: '26/05/2026', historico: 'Pix recebido: "Cp:00000000-GILBERTO MEDEIROS"', valor: 324.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '15/08/2026' },
-        { id: 20260010808, conta: 'Inter PJ', natureza: 'PJ', data: '26/05/2026', historico: 'Pix recebido: "Cp:90400888-ALICE FREITAS"', valor: 324.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '15/08/2026' },
-        { id: 20260010909, conta: 'Inter PJ', natureza: 'PJ', data: '25/05/2026', historico: 'Pix recebido: "Cp:60701190-FERNANDA COELHO"', valor: 324.20, tipo: 'Entrada', status: 'Conciliado', data_criacao: '14/08/2026' },
-        { id: 20260011000, conta: 'Inter PJ', natureza: 'PJ', data: '25/05/2026', historico: 'Saldo Inicial de Carga / Implantação', valor: 9833.53, tipo: 'Entrada', status: 'Conciliado', data_criacao: '14/08/2026' }
-    ];
+    if(!contaId) {
+        el.innerHTML = '<div class="empty-state">Selecione uma conta bancária para visualizar o extrato.</div>';
+        document.getElementById('kpiSaldoBanco').innerText = 'R$ 0,00';
+        document.getElementById('kpiTotalMov').innerText = 'R$ 0,00';
+        document.getElementById('kpiStatusConciliacao').innerText = '0 / 0';
+        return;
+    }
 
-    if(filtroConta){
-        registros = registros.filter(r => (r.conta || '').toLowerCase().includes(filtroConta));
+    // Busca saldo base da conta selecionada
+    let contaObj = cacheContasBancarias.find(c => String(c.id) === String(contaId));
+    let saldoBase = contaObj ? (parseFloat(contaObj.saldo_inicial) || 0) : 0;
+
+    var r = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).order('data_transacao', { ascending: false });
+    if(r.error) {
+        el.innerHTML = '<div class="empty-state">Erro ao carregar extrato: ' + r.error.message + '</div>';
+        return;
+    }
+
+    cacheExtrato = r.data || [];
+
+    // Aplica filtros locais da tabela
+    const textoFiltro = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const tipoFiltro = document.getElementById('filtroTipo').value;
+    const statusFiltro = document.getElementById('filtroStatus').value;
+
+    let filtrados = cacheExtrato.filter(item => {
+        let hist = (item.historico || '').toLowerCase();
+        let matchTexto = !textoFiltro || hist.includes(textoFiltro);
+        let matchTipo = !tipoFiltro || item.tipo === tipoFiltro;
+        let matchStatus = !statusFiltro || item.status === statusFiltro;
+        return matchTexto && matchTipo && matchStatus;
+    });
+
+    let totalMov = 0;
+    let conciliados = 0;
+    let pendentes = 0;
+
+    cacheExtrato.forEach(item => {
+        let val = parseFloat(item.valor) || 0;
+        totalMov += Math.abs(val);
+        if(item.status === 'Conciliado') conciliados++; else pendentes++;
+    });
+
+    document.getElementById('kpiSaldoBanco').innerText = 'R$ ' + fmtBR(saldoBase);
+    document.getElementById('kpiTotalMov').innerText = 'R$ ' + fmtBR(totalMov);
+    document.getElementById('kpiStatusConciliacao').innerText = conciliados + ' / ' + pendentes;
+
+    if(!filtrados.length){
+        el.innerHTML = '<div class="empty-state">Nenhum registo encontrado no extrato para esta conta.</div>';
+        return;
     }
 
     var html = '<table class="analitica-table"><thead><tr>'+
-        '<th>Instituição / Conta</th><th>Natureza</th><th>Data</th><th>Histórico / Descrição (OFX)</th><th>Documento / ID</th><th style="text-align:right;">Valor</th><th>Tipo</th><th>Status</th><th>Data Criação</th><th style="text-align:right;">Ações</th>'+
+        '<th>Data</th><th>Histórico / Descrição (OFX)</th><th>FITID / ID</th><th style="text-align:right;">Valor</th><th>Tipo</th><th>Status</th><th style="text-align:right;">Ações</th>'+
     '</tr></thead><tbody>';
 
-    registros.forEach(r => {
+    filtrados.forEach(r => {
         let corVal = r.tipo === 'Entrada' ? 'color:var(--success); font-weight:700;' : 'color:var(--danger); font-weight:700;';
-        let sinalVal = r.tipo === 'Entrada' ? '+ R\$ ' : '- R\$ ';
+        let sinalVal = r.tipo === 'Entrada' ? '+ R$ ' : '- R$ ';
         let badgeSt = r.status === 'Conciliado' ? '<span class="badge-conciliado">Conciliado</span>' : '<span class="badge-pendente">Pendente</span>';
+        let dataFmt = r.data_transacao ? r.data_transacao.split('-').reverse().join('/') : '-';
 
         html += '<tr>'+
-            '<td><strong>'+(r.conta || 'Inter PJ')+'</strong></td>'+
-            '<td>'+(r.natureza || 'PJ')+'</td>'+
-            '<td>'+r.data+'</td>'+
-            '<td>'+r.historico+'</td>'+
-            '<td><small>'+r.id+'</small></td>'+
+            '<td>'+dataFmt+'</td>'+
+            '<td>'+(r.historico || '—')+'</td>'+
+            '<td><small>'+(r.fitid || r.id)+'</small></td>'+
             '<td style="text-align:right; '+corVal+'">'+sinalVal+fmtBR(r.valor)+'</td>'+
             '<td>'+r.tipo+'</td>'+
             '<td>'+badgeSt+'</td>'+
-            '<td>'+r.data_criacao+'</td>'+
             '<td style="text-align:right;">'+
                 '<button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirItem('+r.id+')" title="Excluir"><i class="fas fa-trash"></i></button>'+
             '</td>'+
@@ -295,26 +333,163 @@ async function carregarHistoricoConciliacao(){
 
     html += '</tbody></table>';
     el.innerHTML = html;
-    document.getElementById('kpiStatusConciliacao').innerText = registros.length + ' / 0';
 }
 
-function importarArquivoOfx(){
-    var conta = document.getElementById('selectConta').value;
+function limparFiltrosTabela() {
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroTipo').value = '';
+    document.getElementById('filtroStatus').value = '';
+    carregarHistoricoConciliacao();
+}
+
+// PARSER NATIVO DE ARQUIVO OFX (EVITA DUPLICIDADE VIA FITID)
+async function importarArquivoOfx(){
+    var cid = window.clienteIdAtual();
+    var contaId = document.getElementById('selectConta').value;
     var arquivo = document.getElementById('arquivoOfx').files[0];
-    if(!conta){ toast("Selecione a conta bancária!", "error"); return; }
-    if(!arquivo){ toast("Selecione o arquivo OFX!", "error"); return; }
+    
+    if(!cid){ toast("Cliente não identificado.", "error"); return; }
+    if(!contaId){ toast("Selecione a conta bancária de destino!", "error"); return; }
+    if(!arquivo){ toast("Selecione o arquivo OFX do banco!", "error"); return; }
 
-    toast("Arquivo OFX processado e importado com sucesso!");
-    setTimeout(() => { carregarHistoricoConciliacao(); }, 800);
+    var reader = new FileReader();
+    reader.onload = async function(e) {
+        var textoOfx = e.target.result;
+        try {
+            let transacoes = parseOFX(textoOfx);
+            if(!transacoes.length) {
+                toast("Nenhuma transação encontrada no arquivo OFX.", "error");
+                return;
+            }
+
+            let inseridos = 0;
+            let duplicados = 0;
+
+            for(let t of transacoes) {
+                // Verifica se já existe pelo FITID (evita duplicidade em hipótese alguma)
+                let check = await sb.from('extrato_ofx_importado').select('id').eq('cliente_id', cid).eq('conta_id', contaId).eq('fitid', t.fitid).maybeSingle();
+                if(check.data) {
+                    duplicados++;
+                } else {
+                    let res = await sb.from('extrato_ofx_importado').insert([{
+                        cliente_id: cid,
+                        conta_id: parseInt(contaId),
+                        fitid: t.fitid,
+                        data_transacao: t.data,
+                        valor: t.valor,
+                        tipo: t.tipo,
+                        historico: t.memo,
+                        status: 'Pendente'
+                    }]);
+                    if(!res.error) inseridos++;
+                }
+            }
+
+            toast(`OFX processado! ${inseridos} novas transações importadas (${duplicados} duplicadas descartadas).`, "success");
+            document.getElementById('arquivoOfx').value = '';
+            carregarHistoricoConciliacao();
+        } catch(err) {
+            toast("Erro ao processar o arquivo OFX: " + err.message, "error");
+        }
+    };
+    reader.readAsText(arquivo);
 }
 
-function conciliarAutomatico(){
-    toast("Conciliação automática concluída com sucesso! Registros validados.");
+function parseOFX(ofxText) {
+    let transacoes = [];
+    let stmts = ofxText.split('<STMTTRN>');
+    for(let i = 1; i < stmts.length; i++) {
+        let bloco = stmts[i].split('</STMTTRN>')[0];
+        
+        let getTag = (tag) => {
+            let reg = new RegExp('<' + tag + '>(.*?)(<|\\r|\\n|$)', 'i');
+            let m = bloco.match(reg);
+            return m ? m[1].trim() : '';
+        };
+
+        let trntype = getTag('TRNTYPE');
+        let dtposted = getTag('DTPOSTED'); // Formato tipico YYYYMMDD...
+        let trnamt = parseFloat(getTag('TRNAMT').replace(',', '.')) || 0;
+        let fitid = getTag('FITID') || ('ID_' + Math.random().toString(36).substr(2, 9));
+        let memo = getTag('MEMO') || getTag('NAME') || 'Transação Bancária';
+
+        let ano = dtposted.substr(0,4);
+        let mes = dtposted.substr(4,2);
+        let dia = dtposted.substr(6,2);
+        let dataIso = `${ano}-${mes}-${dia}`;
+        if(!ano || !mes || !dia) dataIso = new Date().toISOString().split('T')[0];
+
+        let tipo = trnamt >= 0 ? 'Entrada' : 'Saida';
+
+        transacoes.push({
+            fitid: fitid,
+            data: dataIso,
+            valor: Math.abs(trnamt),
+            tipo: tipo,
+            memo: memo
+        });
+    }
+    return transacoes;
 }
 
-function excluirItem(id){
-    if(confirm("Deseja realmente excluir este registro do extrato?")){
-        toast("Registro removido com sucesso!");
+// CONCILIAÇÃO AUTOMÁTICA REAL COM SUPABASE (CONTAS A PAGAR / RECEBER)
+async function conciliarAutomatico(){
+    var cid = window.clienteIdAtual();
+    var contaId = document.getElementById('selectConta').value;
+    if(!contaId) { toast("Selecione a conta bancária.", "error"); return; }
+
+    toast("A cruzar dados com Contas a Pagar e Receber...", "info");
+
+    try {
+        // Busca pendentes no extrato
+        let ext = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).eq('status', 'Pendente');
+        if(!ext.data || !ext.data.length) {
+            toast("Não há lançamentos pendentes no extrato para conciliar.", "info");
+            return;
+        }
+
+        // Busca contas a pagar e receber em aberto
+        let pagar = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).neq('status', 'Pago');
+        let receber = await sb.from('contas_receber').select('*').eq('cliente_id', cid).neq('status', 'Recebido');
+
+        let conciliadosCount = 0;
+
+        for(let t of ext.data) {
+            let valExt = parseFloat(t.valor) || 0;
+            let matchEncontrado = false;
+
+            if(t.tipo === 'Saida' && pagar.data) {
+                let pItem = pagar.data.find(p => Math.abs((parseFloat(p.valor) || 0) - valExt) < 0.05);
+                if(pItem) {
+                    await sb.from('contas_pagar').update({ status: 'Pago' }).eq('id', pItem.id);
+                    matchEncontrado = true;
+                }
+            } else if(t.tipo === 'Entrada' && receber.data) {
+                let rItem = receber.data.find(r => Math.abs((parseFloat(r.valor) || 0) - valExt) < 0.05);
+                if(rItem) {
+                    await sb.from('contas_receber').update({ status: 'Recebido' }).eq('id', rItem.id);
+                    matchEncontrado = true;
+                }
+            }
+
+            if(matchEncontrado) {
+                await sb.from('extrato_ofx_importado').update({ status: 'Conciliado' }).eq('id', t.id);
+                conciliadosCount++;
+            }
+        }
+
+        toast(`Conciliação concluída! ${conciliadosCount} lançamentos vinculados com sucesso.`, "success");
+        carregarHistoricoConciliacao();
+    } catch(err) {
+        toast("Erro na conciliação automática: " + err.message, "error");
+    }
+}
+
+async function excluirItem(id){
+    if(confirm("Deseja realmente excluir este registo do extrato?")){
+        var r = await sb.from('extrato_ofx_importado').delete().eq('id', id);
+        if(r.error) { toast("Erro ao excluir: " + r.error.message, "error"); return; }
+        toast("Registo removido com sucesso!");
         carregarHistoricoConciliacao();
     }
 }
@@ -324,7 +499,6 @@ window.trocarEmpresa = function() {
     if (!select) return;
     localStorage.setItem('empresaSelecionada', select.value);
     carregarContasBancarias();
-    carregarHistoricoConciliacao();
 };
 
 window.sair = function() {
@@ -367,13 +541,7 @@ window.onload = async function(){
     }
 
     await carregarContasBancarias();
-    await carregarHistoricoConciliacao();
 };
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
-    <script src="erp-core.js"></script>
 </body>
 </html>
