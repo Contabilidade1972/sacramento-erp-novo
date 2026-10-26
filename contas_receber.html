@@ -329,6 +329,7 @@
                         <option value="todos">Todos os Status</option>
                         <option value="pendente">Pendente</option>
                         <option value="recebido">Recebido</option>
+                        <option value="atrasado">Vencido</option>
                     </select>
                 </div>
                 <div>
@@ -361,7 +362,7 @@
         </div>
     </div>
 
-    <!-- HISTÓRICO PRINCIPAL COM EXCLUSÃO EM MASSA E FILTROS ROBUSTOS -->
+    <!-- HISTÓRICO PRINCIPAL -->
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Receber e Faturamento</h3>
@@ -679,6 +680,7 @@ async function salvarNovoClienteModal() {
     alert("Cliente cadastrado com sucesso!");
 }
 
+// CARREGAMENTO E ATRIBUIÇÃO AUTOMÁTICA DE STATUS VENCIDO / ATRASADO
 async function carregarContas() {
     const cid = obterClienteIdSeguro();
     const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
@@ -693,11 +695,15 @@ async function carregarContas() {
         let v = parseFloat(t.valor) || 0;
         let st = (t.status || 'Pendente').toLowerCase();
         let stFinal = 'pendente';
+        
         if (st.includes('recebido') || st.includes('pago')) {
             stFinal = 'recebido';
         } else if (t.vencimento && t.vencimento < hoje) {
-            stFinal = 'atrasado';
+            stFinal = 'atrasado'; // RECONHECIMENTO AUTOMÁTICO DE ATRASO
+        } else {
+            stFinal = 'pendente';
         }
+
         t.valorNumerico = v;
         t.statusSeguro = stFinal;
         return t;
@@ -736,7 +742,7 @@ function aplicarFiltrosRelatorio() {
     let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
 
     let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = t.vencimento || t.data_vencimento;
+        let dataRef = t.vencimento || t.data_vencimento || '';
         if (dtIni && dataRef && dataRef < dtIni) return false;
         if (dtFim && dataRef && dataRef > dtFim) return false;
         if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
@@ -781,7 +787,7 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-// FILTROS DO HISTÓRICO PRINCIPAL (CORRIGIDO PARA COMPATIBILIDADE ROBUSTA DE DATAS)
+// FILTROS DO HISTÓRICO PRINCIPAL (CORRIGIDO PARA IGNORAR VAZIOS E FILTRAR CORRETAMENTE)
 function aplicarFiltrosHistorico() {
     let dtIni = document.getElementById('histDataInicio').value;
     let dtFim = document.getElementById('histDataFim').value;
@@ -813,8 +819,16 @@ function renderTabelaFiltrada(lista) {
 
     tbody.innerHTML = '';
     lista.forEach(t => {
-        let badgeClass = t.statusSeguro === 'recebido' ? 'badge-recebido' : 'badge-pendente';
-        let badgeLabel = t.statusSeguro === 'recebido' ? 'Recebido' : 'Pendente';
+        let badgeClass = 'badge-pendente';
+        let badgeLabel = 'Pendente';
+        if (t.statusSeguro === 'recebido') {
+            badgeClass = 'badge-recebido';
+            badgeLabel = 'Recebido';
+        } else if (t.statusSeguro === 'atrasado') {
+            badgeClass = 'badge-atrasado';
+            badgeLabel = 'Vencido';
+        }
+
         let codVirtual = formatarCodigoVirtual(t.id);
         let clienteNome = t.cliente_nome || t.cliente || '—';
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
