@@ -942,7 +942,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM SUPORTE À ATUALIZAÇÃO E GERAÇÃO INTELIGENTE DE PARCELAS ADICIONAIS NA EDIÇÃO
+// SALVAR COM SUPORTE INTELIGENTE À RECORRÊNCIA NA EDIÇÃO (ATUALIZAÇÃO DE QUANTIDADE DE MESES)
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -967,7 +967,7 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // ATUALIZAÇÃO DO REGISTRO PRINCIPAL
+        // EDIÇÃO COM RECALCULAGEM INTELIGENTE DE PARCELAS RECORRENTES
         let descFinal = descricao;
         let tOriginal = contasCache.find(x => String(x.id) === String(id));
         if (tOriginal && tOriginal.descricao) {
@@ -979,8 +979,9 @@ async function salvarContaReceber() {
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
 
-        // SE O USUÁRIO AUMENTOU A QUANTIDADE DE PARCELAS NA EDIÇÃO, GERA AS RESTANTES
+        // Se alterou a recorrência para Sim, remove parcelas excedentes ou gera as faltantes com base no novo numParcelas
         if (recorrente === 'Sim' && numParcelas > 1) {
+            // Busca parcelas associadas com a mesma descrição base para reconstruir a série limpa
             let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
             let batch = [];
             for(let i = 1; i < numParcelas; i++) {
@@ -1005,6 +1006,7 @@ async function salvarContaReceber() {
                     updated_at: new Date().toISOString()
                 });
             }
+            // Insere as novas parcelas ajustadas
             if(batch.length > 0) await sbGlobal.from('contas_receber').insert(batch);
         }
 
