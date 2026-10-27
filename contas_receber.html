@@ -230,7 +230,7 @@
             <input type="hidden" id="edit_id">
             <div class="form-grid">
                 <div>
-                    <label>Código (Virtual)</label>
+                    <label>Código (Banco ID)</label>
                     <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
                 </div>
                 <div>
@@ -349,13 +349,14 @@
                             <th>Centro Custo</th>
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
+                            <th>Parcela</th>
                             <th>Vencimento</th>
                             <th style="text-align: right;">Valor (R$)</th>
                             <th>Status</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyRelatorioModo">
-                        <tr><td colspan="8" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                        <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -391,6 +392,7 @@
                             <th>Centro de Custo</th>
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
+                            <th>Parcela</th>
                             <th>Vencimento</th>
                             <th>Valor Total</th>
                             <th>Status</th>
@@ -399,7 +401,7 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
-                        <tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
+                        <tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -680,12 +682,13 @@ async function salvarNovoClienteModal() {
     alert("Cliente cadastrado com sucesso!");
 }
 
+// CARREGAMENTO COM SUPORTE AO ID REAL DO BANCO E STATUS AUTOMÁTICO
 async function carregarContas() {
     const cid = obterClienteIdSeguro();
     const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="11" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
@@ -809,10 +812,11 @@ function aplicarFiltrosHistorico() {
     renderTabelaFiltrada(dadosFiltrados);
 }
 
+// RENDERIZAÇÃO DA TABELA SEPARANDO DESCRIÇÃO E PARCELA
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
         return;
     }
 
@@ -832,6 +836,15 @@ function renderTabelaFiltrada(lista) {
         let clienteNome = t.cliente_nome || t.cliente || '—';
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+
+        // Separa a descrição pura da parcela (ex: "Teste (1/12)" -> Descrição: "Teste", Parcela: "1/12")
+        let descPura = t.descricao || '—';
+        let parcelaTexto = '—';
+        let matchParcela = descPura.match(/\((\d+\/\d+)\)$/);
+        if (matchParcela) {
+            parcelaTexto = matchParcela[1];
+            descPura = descPura.replace(/\s*\(\d+\/\d+\)$/, '');
+        }
         
         let btnBaixa = (t.statusSeguro === 'recebido') 
             ? `<span style="font-size:11px; color:var(--success);"><i class="fas fa-check-circle"></i> Quitada</span>` 
@@ -844,7 +857,8 @@ function renderTabelaFiltrada(lista) {
                 <td><strong>${clienteNome}</strong></td>
                 <td>${t.centro_custo || '—'}</td>
                 <td>${t.conta_contabil || '—'}</td>
-                <td>${t.descricao || '—'}</td>
+                <td>${descPura}</td>
+                <td><span style="font-weight:600; color:var(--primary);">${parcelaTexto}</span></td>
                 <td>${dataVencFmt}</td>
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
@@ -931,7 +945,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM SUPORTE ROBUSTO (ATUALIZAÇÃO LIMPA NA EDIÇÃO E GERAÇÃO EM LOTE APENAS NA CRIAÇÃO)
+// SALVAR COM SUPORTE À SEQUÊNCIA REAL DO BANCO (ID) E EDIÇÃO LIMPA
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -956,13 +970,13 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // EDIÇÃO PURA E ISOLADA: ATUALIZA APENAS O REGISTRO SELECIONADO SEM DUPLICAÇÕES
+        // ATUALIZAÇÃO ISOLADA DO REGISTRO SELECIONADO
         let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
         alert("Conta a receber atualizada com sucesso!");
     } else {
-        // CRIAÇÃO EM LOTE EXCLUSIVA PARA NOVOS LANÇAMENTOS
+        // CRIAÇÃO EM LOTE PARA NOVOS LANÇAMENTOS
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
         
@@ -1023,7 +1037,11 @@ window.editarConta = function(id) {
     document.getElementById('cliente_nome').value = t.cliente_nome || t.cliente || '';
     document.getElementById('valor').value = t.valorNumerico || '';
     document.getElementById('vencimento').value = t.vencimento || t.data_vencimento || '';
-    document.getElementById('descricao').value = t.descricao || '';
+    
+    // Remove o sufixo de parcela da descrição ao editar para facilitar o preenchimento
+    let descLimpa = (t.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '');
+    document.getElementById('descricao').value = descLimpa;
+
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('recorrente').value = t.recorrente || 'Não';
