@@ -39,6 +39,8 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: 0 2px 6px rgba(239,68,68,0.2); }
+        .btn-acao.perigo:hover { background: #dc2626; }
 
         .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 16px; }
@@ -77,6 +79,8 @@
         .campo-com-mais .form-control { flex: 1; }
         .btn-mais { background: var(--success); color: #fff; border: none; width: 42px; height: 42px; border-radius: 8px; cursor: pointer; font-size: 16px; font-weight: 700; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: .2s; }
         .btn-mais:hover { background: #059669; transform: scale(1.05); }
+
+        .aviso-nao-cadastrado { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 6px; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
@@ -202,11 +206,12 @@
                     <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
                 </div>
                 <div>
-                    <label>CNPJ / CPF do Fornecedor *</label>
+                    <label>CNPJ / CPF do Fornecedor * <span id="status_fornecedor" style="font-weight:normal;font-size:10px;"></span></label>
                     <div class="campo-com-mais">
-                        <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." onblur="consultarCnpjReceita(this.value)">
+                        <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." oninput="buscarOuConsultarFornecedor()">
                         <button class="btn-mais" onclick="abrirModalFornecedor()" title="Cadastrar novo fornecedor"><i class="fas fa-plus"></i></button>
                     </div>
+                    <div id="aviso_fornecedor_nao_cadastrado" style="display:none;"></div>
                 </div>
                 <div style="grid-column: span 2;">
                     <label>Razão Social / Fornecedor *</label>
@@ -234,7 +239,11 @@
                     </select>
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 1fr 2fr 1fr;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+                <div>
+                    <label>Descrição / Despesa / Nota Fiscal *</label>
+                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
+                </div>
                 <div>
                     <label><i class="fas fa-university"></i> Conta de Origem</label>
                     <select id="conta_origem_cadastro" class="form-control">
@@ -242,15 +251,17 @@
                     </select>
                 </div>
                 <div>
-                    <label>Descrição / Despesa / Nota Fiscal *</label>
-                    <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
-                </div>
-                <div>
                     <label>Custo Recorrente?</label>
-                    <select id="recorrente" class="form-control">
+                    <select id="recorrente" class="form-control" onchange="toggleParcelas(this.value)">
                         <option value="Não">Não (Pontual)</option>
                         <option value="Sim">Sim (Mensal)</option>
                     </select>
+                </div>
+                <div>
+                    <div id="blocoParcelas" style="display:block;">
+                        <label>Nº de Meses / Parcelas</label>
+                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                    </div>
                 </div>
             </div>
             <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
@@ -284,48 +295,32 @@
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <div style="display:flex; gap:10px; align-items:center;" class="ocultar-print">
+                <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:38px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar fornecedor ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 200px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 120px; height: 38px;">
+                    <option value="todos">Todos Status</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="atrasado">Vencido</option>
+                    <option value="pago">Pago</option>
+                </select>
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Fim">
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
         <div class="collapsible-content">
-            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
-                <div>
-                    <label>Data Início</label>
-                    <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()">
-                </div>
-                <div>
-                    <label>Data Fim</label>
-                    <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()">
-                </div>
-                <div>
-                    <label>Status</label>
-                    <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()">
-                        <option value="todos">Todos os Status</option>
-                        <option value="pendente">Pendente</option>
-                        <option value="atrasado">Vencido / Atrasado</option>
-                        <option value="pago">Pago</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Buscar por Nome / Descrição</label>
-                    <input type="text" id="histBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosHistorico()">
-                </div>
-                <div>
-                    <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosHistorico()"><i class="fas fa-eraser"></i> Limpar</button>
-                </div>
-            </div>
-
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="checkMaster" onclick="selecionarTodos(this)"></th>
                             <th>Código</th>
                             <th>Fornecedor / Favorecido</th>
                             <th>Centro de Custo</th>
                             <th>Conta DRE</th>
                             <th>Descrição / NF</th>
+                            <th>Parcela</th>
                             <th>Vencimento</th>
                             <th>Valor Total</th>
                             <th>Status</th>
@@ -334,7 +329,7 @@
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
-                        <tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
+                        <tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">A carregar histórico do Supabase...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -351,6 +346,12 @@
 <script>
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+let fornecedorCadastradoNaBase = false;
+
+const sbGlobal = window.supabase.createClient(
+    'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
+    'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
+);
 
 function obterClienteIdSeguro() {
     try {
@@ -366,21 +367,22 @@ function obterClienteIdSeguro() {
     }
 }
 
-function getSupabase() {
-    if (window.sb) return window.sb;
-    if (window.supabase && typeof window.supabase.createClient === 'function') {
-        window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-        return window.sb;
-    }
-    return null;
-}
-
 function toggleCardBody(btn) {
     const card = btn.closest('.card');
     const content = card.querySelector('.collapsible-content');
     const icon = btn.querySelector('i');
     content.classList.toggle('collapsed');
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+}
+
+function toggleParcelas(val) {
+    const bloco = document.getElementById('blocoParcelas');
+    if (val === 'Sim') {
+        bloco.style.display = 'block';
+    } else {
+        bloco.style.display = 'block';
+        document.getElementById('num_parcelas').value = '12';
+    }
 }
 
 async function inicializarPagina() {
@@ -402,105 +404,119 @@ function formatBRL(v) {
     return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function formatarCodigoVirtual(id) {
-    return "CP-" + String(id || 1).padStart(3, '0');
+function formatarCodigoVirtual(index) {
+    return "CP-" + String(index + 1).padStart(3, '0');
 }
 
 function atualizarCodigoVirtual() {
-    let proximoId = 1;
-    if (contasCache.length > 0) {
-        let maxId = Math.max(...contasCache.map(c => parseInt(c.id) || 0));
-        proximoId = maxId + 1;
-    }
     const elCod = document.getElementById('codigo_virtual');
-    if (elCod) elCod.value = formatarCodigoVirtual(proximoId);
+    if (elCod) elCod.value = "CP-" + String(contasCache.length + 1).padStart(3, '0');
 }
 
-async function consultarCnpjReceita(doc) {
-    let limpo = (doc || '').replace(/\D/g, '');
-    if (!limpo) return;
-    const cid = obterClienteIdSeguro();
-    const client = getSupabase();
-    if (!client) return;
+// VALIDAÇÃO DE CNPJ E CPF
+function validarCNPJ(cnpj) {
+    cnpj = cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+    let tamanho = cnpj.length - 2;
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0, pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado != digitos.charAt(0)) return false;
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return resultado == digitos.charAt(1);
+}
 
+// BUSCA AUTOMÁTICA DE FORNECEDOR (SEM ERRO 400)
+async function buscarOuConsultarFornecedor() {
+    let docDigitado = document.getElementById('cpf_cnpj_fornecedor').value.replace(/\D/g, '');
+    let statusEl = document.getElementById('status_fornecedor');
+    let avisoEl = document.getElementById('aviso_fornecedor_nao_cadastrado');
+    if(avisoEl) avisoEl.style.display = 'none';
+    if(!docDigitado) { if(statusEl) statusEl.innerHTML = ''; return; }
+    
+    const cid = obterClienteIdSeguro();
     try {
-        const { data } = await client.from('parceiros').select('*').eq('cliente_id', cid).or(`cnpj_cpf.eq.${limpo},cnpj.eq.${limpo}`).maybeSingle();
-        if (data && (data.razao_social || data.nome)) {
-            document.getElementById('fornecedor_nome').value = data.razao_social || data.nome;
-            return;
+        const { data, error } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid);
+        if(!error && data) {
+            let forn = data.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === docDigitado);
+            if(forn) {
+                document.getElementById('fornecedor_nome').value = forn.nome || forn.razao_social || '';
+                if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Fornecedor Encontrado</span>';
+                fornecedorCadastradoNaBase = true;
+                return;
+            }
         }
     } catch(e) {}
 
-    if (limpo.length === 14) {
+    if (docDigitado.length === 14) {
+        if(statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando Receita...</span>';
         try {
-            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${limpo}`);
-            if (resp.ok) {
-                let json = await resp.json();
-                if (json.razao_social) {
-                    document.getElementById('fornecedor_nome').value = json.razao_social;
-                    await client.from('parceiros').insert([{
-                        cliente_id: cid,
-                        tipo: 'Fornecedor',
-                        razao_social: json.razao_social,
-                        nome_fantasia: json.nome_fantasia || json.razao_social,
-                        cnpj_cpf: limpo,
-                        telefone: json.ddd_telefone_1 || '',
-                        email: json.email || ''
-                    }]);
-                    return;
-                }
+            let resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${docDigitado}`);
+            if (!resposta.ok) throw new Error("CNPJ não encontrado");
+            let dados = await resposta.json();
+            document.getElementById('fornecedor_nome').value = dados.razao_social || '';
+            if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
+            if(avisoEl) {
+                avisoEl.innerHTML = '<div class="aviso-nao-cadastrado"><i class="fas fa-info-circle"></i> Novo fornecedor. Clique no <strong style="margin:0 3px;">+</strong> para salvar.</div>';
+                avisoEl.style.display = 'block';
             }
-        } catch(err) {}
+            fornecedorCadastradoNaBase = false;
+        } catch (err) {
+            if(statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Preencha o Nome</span>';
+            fornecedorCadastradoNaBase = false;
+        }
     }
 }
 
 async function carregarCentrosCustoSelect() {
-    const client = getSupabase();
+    const cid = obterClienteIdSeguro();
+    const { data } = await sbGlobal.from('centros_custo').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('centro_custo');
     if (!sel) return;
-    if (!client) {
-        sel.innerHTML = '<option value="">Erro de conexão Supabase</option>';
-        return;
-    }
-    const cid = obterClienteIdSeguro();
-    const { data, error } = await client.from('centros_custo').select('*').eq('cliente_id', cid);
     sel.innerHTML = '<option value="">Selecione o Centro de Custo...</option>';
-    if (!error && data) {
+    if (data) {
         data.forEach(cc => {
             let nome = cc.nome || cc.descricao || '';
-            if (nome) sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
         });
     }
 }
 
 async function carregarPlanoContasSelect() {
-    const client = getSupabase();
+    const cid = obterClienteIdSeguro();
+    const { data } = await sbGlobal.from('plano_contas').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_contabil');
     if (!sel) return;
-    if (!client) {
-        sel.innerHTML = '<option value="">Erro de conexão Supabase</option>';
-        return;
-    }
-    const cid = obterClienteIdSeguro();
-    const { data, error } = await client.from('plano_contas').select('*').eq('cliente_id', cid);
     sel.innerHTML = '<option value="">Selecione a Conta Contábil (DRE)...</option>';
-    if (!error && data) {
+    if (data) {
         data.forEach(pc => {
             let desc = pc.descricao || pc.nome || '';
             let cod = pc.codigo_reduzido || '';
             let rotulo = cod ? `${cod} - ${desc}` : desc;
-            if (rotulo.trim()) sel.innerHTML += `<option value="${rotulo}">${rotulo}</option>`;
+            sel.innerHTML += `<option value="${rotulo}">${rotulo}</option>`;
         });
     }
 }
 
 async function carregarContasBancariasModal() {
-    const client = getSupabase();
-    const sel = document.getElementById('conta_origem_cadastro');
-    if (!sel || !client) return;
     const cid = obterClienteIdSeguro();
-    const { data } = await client.from('contas_bancarias').select('*').eq('cliente_id', cid);
-    sel.innerHTML = '<option value="">Selecione a conta...</option>';
+    const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
+    const sel = document.getElementById('conta_origem_cadastro');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">Selecione a conta de origem...</option>';
     if (data) {
         data.forEach(cb => {
             let nome = cb.banco || cb.nome || 'Banco';
@@ -509,58 +525,55 @@ async function carregarContasBancariasModal() {
     }
 }
 
-function abrirModalCentroCusto() { document.getElementById('modalNovoCentroCusto').style.display = 'flex'; }
-function abrirModalContaContabil() { document.getElementById('modalNovaContaContabil').style.display = 'flex'; }
-function abrirModalFornecedor() { document.getElementById('modalNovoFornecedor').style.display = 'flex'; }
+function abrirModalCentroCusto() {
+    document.getElementById('cc_nome').value = '';
+    document.getElementById('modalNovoCentroCusto').style.display = 'flex';
+}
+
+function abrirModalFornecedor() {
+    ['forn_nome','forn_doc'].forEach(id => {
+        let el = document.getElementById(id);
+        if(el) el.value = '';
+    });
+    document.getElementById('modalNovoFornecedor').style.display = 'flex';
+}
 
 async function salvarNovoCentroCusto() {
-    const client = getSupabase();
-    if (!client) return;
     const nome = document.getElementById('cc_nome').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await client.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
+    await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
     await carregarCentrosCustoSelect();
     document.getElementById('centro_custo').value = nome;
     alert("Centro de custo cadastrado e selecionado!");
 }
 
-async function salvarNovoPlanoContas() {
-    const client = getSupabase();
-    if (!client) return;
-    const desc = document.getElementById('pc_descricao').value.trim();
-    if (!desc) { alert("Informe a descrição."); return; }
-    const cid = obterClienteIdSeguro();
-    await client.from('plano_contas').insert([{ cliente_id: cid, descricao: desc }]);
-    document.getElementById('modalNovaContaContabil').style.display = 'none';
-    await carregarPlanoContasSelect();
-    document.getElementById('conta_contabil').value = desc;
-    alert("Conta contábil cadastrada e selecionada!");
-}
-
 async function salvarNovoFornecedor() {
-    const client = getSupabase();
-    if (!client) return;
     const nome = document.getElementById('forn_nome').value.trim();
-    const doc = document.getElementById('forn_doc').value.trim();
+    const doc = document.getElementById('forn_doc').value.replace(/\D/g, '');
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await client.from('parceiros').insert([{ cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Fornecedor' }]);
+    await sbGlobal.from('parceiros').insert([{
+        cliente_id: cid,
+        nome,
+        razao_social: nome,
+        cnpj_cpf: doc,
+        tipo_cadastro: 'Fornecedor'
+    }]);
     document.getElementById('modalNovoFornecedor').style.display = 'none';
     document.getElementById('fornecedor_nome').value = nome;
     document.getElementById('cpf_cnpj_fornecedor').value = doc;
+    fornecedorCadastradoNaBase = true;
     alert("Fornecedor cadastrado com sucesso!");
 }
 
 async function carregarContas() {
-    const client = getSupabase();
-    if (!client) return;
     const cid = obterClienteIdSeguro();
-    const { data, error } = await client.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
+    const { data, error } = await sbGlobal.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
     
     if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="10" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
@@ -569,11 +582,15 @@ async function carregarContas() {
         let v = parseFloat(t.valor) || 0;
         let st = (t.status || 'Pendente').toLowerCase();
         let stFinal = 'pendente';
+        
         if (st.includes('pago') || st.includes('quitado')) {
             stFinal = 'pago';
         } else if (t.vencimento && t.vencimento < hoje) {
             stFinal = 'atrasado';
+        } else {
+            stFinal = 'pendente';
         }
+
         t.valorNumerico = v;
         t.statusSeguro = stFinal;
         return t;
@@ -604,6 +621,7 @@ function atualizarDashboard() {
     document.getElementById('tot_atrasado').innerText = formatBRL(atr);
 }
 
+// FILTROS DO HISTÓRICO
 function aplicarFiltrosHistorico() {
     let dtIni = document.getElementById('histDataInicio').value;
     let dtFim = document.getElementById('histDataFim').value;
@@ -616,7 +634,7 @@ function aplicarFiltrosHistorico() {
         if (dtFim && dataRef && dataRef > dtFim) return false;
         if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
         if (txtBusca) {
-            let linha = ((t.fornecedor_nome || '') + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
+            let linha = ((t.fornecedor_nome || '') + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
         }
         return true;
@@ -636,25 +654,43 @@ function limparFiltrosHistorico() {
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada com os filtros aplicados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada com os filtros aplicados.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
-    lista.forEach(t => {
-        let badgeClass = t.statusSeguro === 'pago' ? 'badge-pago' : (t.statusSeguro === 'atrasado' ? 'badge-atrasado' : 'badge-pendente');
-        let badgeLabel = t.statusSeguro === 'pago' ? 'Pago' : (t.statusSeguro === 'atrasado' ? 'Vencido' : 'Pendente');
-        let codVirtual = formatarCodigoVirtual(t.id);
+    lista.forEach((t, index) => {
+        let badgeClass = 'badge-pendente';
+        let badgeLabel = 'Pendente';
+        if (t.statusSeguro === 'pago') {
+            badgeClass = 'badge-pago';
+            badgeLabel = 'Pago';
+        } else if (t.statusSeguro === 'atrasado') {
+            badgeClass = 'badge-atrasado';
+            badgeLabel = 'Vencido';
+        }
+
+        let codVirtual = formatarCodigoVirtual(index);
         let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
 
+        let descPura = t.descricao || '—';
+        let parcelaTexto = '—';
+        let matchParcela = descPura.match(/\((\d+\/\d+)\)$/);
+        if (matchParcela) {
+            parcelaTexto = matchParcela[1];
+            descPura = descPura.replace(/\s*\(\d+\/\d+\)$/, '');
+        }
+
         tbody.innerHTML += `
             <tr>
+                <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
                 <td><strong>${codVirtual}</strong></td>
                 <td><strong>${t.fornecedor_nome || '—'}</strong></td>
                 <td>${t.centro_custo || '—'}</td>
                 <td>${t.conta_contabil || '—'}</td>
-                <td>${t.descricao || '—'}</td>
+                <td>${descPura}</td>
+                <td><span style="font-weight:600; color:var(--primary);">${parcelaTexto}</span></td>
                 <td>${dataVencFmt}</td>
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
@@ -666,11 +702,50 @@ function renderTabelaFiltrada(lista) {
             </tr>
         `;
     });
+    atualizarContadorSelecao();
 }
 
+// SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
+function selecionarTodos(master) {
+    const checkboxes = document.querySelectorAll('.check-linha');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    atualizarContadorSelecao();
+}
+
+function atualizarContadorSelecao() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    const btnExcluir = document.getElementById('btnExcluirSelecionados');
+    const qtdSpan = document.getElementById('qtdSelecionados');
+    if (selecionados.length > 0) {
+        btnExcluir.style.display = 'inline-flex';
+        qtdSpan.innerText = selecionados.length;
+    } else {
+        btnExcluir.style.display = 'none';
+        qtdSpan.innerText = '0';
+        document.getElementById('checkMaster').checked = false;
+    }
+}
+
+async function excluirSelecionados() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    if (selecionados.length === 0) return;
+
+    if (confirm(`Deseja realmente excluir os ${selecionados.length} registos selecionados?`)) {
+        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+        const cid = obterClienteIdSeguro();
+
+        let res = await sbGlobal.from('contas_pagar').delete().in('id', ids).eq('cliente_id', cid);
+        if (res.error) {
+            alert("Erro ao excluir selecionados: " + res.error.message);
+            return;
+        }
+        alert(`${selecionados.length} registos removidos com sucesso!`);
+        carregarContas();
+    }
+}
+
+// SALVAR COM RECORRÊNCIA EM LOTE E GESTÃO INTELIGENTE DE EDIÇÃO
 async function salvarContaPagar() {
-    const client = getSupabase();
-    if (!client) return;
     const id = document.getElementById('edit_id').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
     const cpf_cnpj_fornecedor = document.getElementById('cpf_cnpj_fornecedor').value.trim();
@@ -683,6 +758,7 @@ async function salvarContaPagar() {
     const conta_origem = document.getElementById('conta_origem_cadastro').value;
     const data_pagamento = document.getElementById('data_pagamento_edicao').value;
     const recorrente = document.getElementById('recorrente').value;
+    const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
     const cliente_id = obterClienteIdSeguro();
 
     if(!fornecedor_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
@@ -690,39 +766,120 @@ async function salvarContaPagar() {
         return;
     }
 
-    let payload = { cliente_id, fornecedor_nome, cpf_cnpj_fornecedor, valor, vencimento, descricao, status, centro_custo, conta_contabil, conta_origem, data_pagamento: data_pagamento || null, recorrente, updated_at: new Date().toISOString() };
-    let res;
-
-    if(id) {
-        res = await client.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
-    } else {
-        res = await client.from('contas_pagar').insert([payload]);
+    if(cpf_cnpj_fornecedor && !fornecedorCadastradoNaBase && !id) {
+        await sbGlobal.from('parceiros').insert([{ cliente_id, nome: fornecedor_nome, razao_social: fornecedor_nome, cnpj_cpf: cpf_cnpj_fornecedor, tipo_cadastro: 'Fornecedor' }]);
     }
 
-    if(res.error) { alert("Erro ao salvar: " + res.error.message); return; }
-    
-    alert(id ? "Conta a pagar atualizada com sucesso!" : "Conta a pagar registrada com sucesso!");
+    if(id) {
+        let tOriginal = contasCache.find(x => String(x.id) === String(id));
+        let descBaseAntiga = tOriginal ? (tOriginal.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '').trim() : descricao;
+
+        await sbGlobal.from('contas_pagar').delete().eq('cliente_id', cliente_id).eq('fornecedor_nome', fornecedor_nome).eq('status', 'Pendente').ilike('descricao', `${descBaseAntiga}%`);
+
+        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+        let [ano, mes, dia] = vencimento.split('-').map(Number);
+        
+        let batch = [];
+        for(let i = 0; i < qtdGerar; i++) {
+            let targetMes = (mes - 1) + i;
+            let targetAno = ano + Math.floor(targetMes / 12);
+            let realMes = (targetMes % 12 + 1);
+            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+            let realDia = Math.min(dia, ultimoDiaMes);
+            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
+
+            batch.push({
+                cliente_id,
+                fornecedor_nome,
+                cpf_cnpj_fornecedor,
+                valor,
+                vencimento: dataIso,
+                descricao: descParcela,
+                status: (i === 0 ? status : 'Pendente'),
+                centro_custo,
+                conta_contabil,
+                conta_origem,
+                data_pagamento: data_pagamento || null,
+                recorrente,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        let res = await sbGlobal.from('contas_pagar').insert(batch);
+        if(res.error) { alert("Erro ao atualizar série: " + res.error.message); return; }
+        alert("Conta a pagar e série recorrente atualizadas com sucesso!");
+    } else {
+        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+        let [ano, mes, dia] = vencimento.split('-').map(Number);
+        
+        let batch = [];
+        for(let i = 0; i < qtdGerar; i++) {
+            let targetMes = (mes - 1) + i;
+            let targetAno = ano + Math.floor(targetMes / 12);
+            let realMes = (targetMes % 12 + 1);
+            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+            let realDia = Math.min(dia, ultimoDiaMes);
+            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
+
+            batch.push({
+                cliente_id,
+                fornecedor_nome,
+                cpf_cnpj_fornecedor,
+                valor,
+                vencimento: dataIso,
+                descricao: descParcela,
+                status,
+                centro_custo,
+                conta_contabil,
+                conta_origem,
+                data_pagamento: data_pagamento || null,
+                recorrente,
+                updated_at: new Date().toISOString()
+            });
+        }
+
+        let res = await sbGlobal.from('contas_pagar').insert(batch);
+        if(res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
+        alert(qtdGerar > 1 ? `${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a pagar registrada com sucesso!");
+    }
+
     cancelarEdicao();
     carregarContas();
 }
 
+// BOTÃO DE EDITAR (1 SÓ CLIQUE)
 window.editarConta = function(id) {
     let t = contasCache.find(x => String(x.id) === String(id));
     if(!t) return;
+
+    const cardForm = document.getElementById('formTitle').closest('.card');
+    const contentForm = cardForm.querySelector('.collapsible-content');
+    const iconForm = cardForm.querySelector('.collapse-btn i');
+    if (contentForm.classList.contains('collapsed')) {
+        contentForm.classList.remove('collapsed');
+        if (iconForm) iconForm.className = 'fas fa-chevron-up';
+    }
+
     document.getElementById('edit_id').value = t.id;
-    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(t.id);
+    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(contasCache.indexOf(t));
     document.getElementById('cpf_cnpj_fornecedor').value = t.cpf_cnpj_fornecedor || '';
     document.getElementById('fornecedor_nome').value = t.fornecedor_nome || '';
     document.getElementById('valor').value = t.valorNumerico || '';
     document.getElementById('vencimento').value = t.vencimento || '';
     document.getElementById('data_pagamento_edicao').value = t.data_pagamento || '';
     document.getElementById('conta_origem_cadastro').value = t.conta_origem || '';
-    document.getElementById('descricao').value = t.descricao || '';
+
+    let descLimpa = (t.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '');
+    document.getElementById('descricao').value = descLimpa;
+
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('recorrente').value = t.recorrente || 'Não';
+    toggleParcelas(t.recorrente || 'Não');
     document.getElementById('status_edicao').value = t.status || 'Pendente';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(t.id)})`;
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(contasCache.indexOf(t))})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'inline-block';
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -740,7 +897,11 @@ function cancelarEdicao() {
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
     document.getElementById('recorrente').value = 'Não';
+    toggleParcelas('Não');
     document.getElementById('status_edicao').value = 'Pendente';
+    let avisoF = document.getElementById('aviso_fornecedor_nao_cadastrado');
+    if(avisoF) avisoF.style.display = 'none';
+    fornecedorCadastradoNaBase = false;
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'none';
@@ -748,11 +909,9 @@ function cancelarEdicao() {
 }
 
 window.excluirConta = async function(id) {
-    const client = getSupabase();
-    if (!client) return;
     if(confirm("Deseja realmente excluir este registo?")) {
         const cid = obterClienteIdSeguro();
-        let res = await client.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
+        let res = await sbGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
         alert("Registo removido com sucesso!");
         carregarContas();
