@@ -682,7 +682,6 @@ async function salvarNovoClienteModal() {
     alert("Cliente cadastrado com sucesso!");
 }
 
-// CARREGAMENTO COM SUPORTE AO ID REAL DO BANCO E STATUS AUTOMÁTICO
 async function carregarContas() {
     const cid = obterClienteIdSeguro();
     const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
@@ -812,7 +811,6 @@ function aplicarFiltrosHistorico() {
     renderTabelaFiltrada(dadosFiltrados);
 }
 
-// RENDERIZAÇÃO DA TABELA SEPARANDO DESCRIÇÃO E PARCELA
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
@@ -837,7 +835,6 @@ function renderTabelaFiltrada(lista) {
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
         let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
 
-        // Separa a descrição pura da parcela (ex: "Teste (1/12)" -> Descrição: "Teste", Parcela: "1/12")
         let descPura = t.descricao || '—';
         let parcelaTexto = '—';
         let matchParcela = descPura.match(/\((\d+\/\d+)\)$/);
@@ -945,7 +942,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM SUPORTE À SEQUÊNCIA REAL DO BANCO (ID) E EDIÇÃO LIMPA
+// SALVAR COM SUPORTE À ATUALIZAÇÃO E GERAÇÃO INTELIGENTE DE PARCELAS ADICIONAIS NA EDIÇÃO
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -970,13 +967,49 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // ATUALIZAÇÃO ISOLADA DO REGISTRO SELECIONADO
-        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
+        // ATUALIZAÇÃO DO REGISTRO PRINCIPAL
+        let descFinal = descricao;
+        let tOriginal = contasCache.find(x => String(x.id) === String(id));
+        if (tOriginal && tOriginal.descricao) {
+            let matchP = tOriginal.descricao.match(/\((\d+\/\d+)\)$/);
+            if (matchP) descFinal = `${descricao} (${matchP[1]})`;
+        }
+
+        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao: descFinal, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
+
+        // SE O USUÁRIO AUMENTOU A QUANTIDADE DE PARCELAS NA EDIÇÃO, GERA AS RESTANTES
+        if (recorrente === 'Sim' && numParcelas > 1) {
+            let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
+            let batch = [];
+            for(let i = 1; i < numParcelas; i++) {
+                let targetMes = (mes - 1) + i;
+                let targetAno = ano + Math.floor(targetMes / 12);
+                let realMes = (targetMes % 12 + 1);
+                let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+                let realDia = Math.min(dia, ultimoDiaMes);
+                let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+                
+                batch.push({
+                    cliente_id: cid,
+                    cliente_nome,
+                    cpf_cnpj_cliente,
+                    valor,
+                    vencimento: dataIso,
+                    descricao: `${descricao} (${i + 1}/${numParcelas})`,
+                    status: 'Pendente',
+                    centro_custo,
+                    conta_contabil,
+                    recorrente,
+                    updated_at: new Date().toISOString()
+                });
+            }
+            if(batch.length > 0) await sbGlobal.from('contas_receber').insert(batch);
+        }
+
         alert("Conta a receber atualizada com sucesso!");
     } else {
-        // CRIAÇÃO EM LOTE PARA NOVOS LANÇAMENTOS
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
         
@@ -1038,7 +1071,6 @@ window.editarConta = function(id) {
     document.getElementById('valor').value = t.valorNumerico || '';
     document.getElementById('vencimento').value = t.vencimento || t.data_vencimento || '';
     
-    // Remove o sufixo de parcela da descrição ao editar para facilitar o preenchimento
     let descLimpa = (t.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '');
     document.getElementById('descricao').value = descLimpa;
 
