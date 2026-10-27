@@ -931,7 +931,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM SUPORTE COMPLETO À RECORRÊNCIA TANTO NA CRIAÇÃO QUANTO NA EDIÇÃO
+// SALVAR COM SUPORTE ROBUSTO (ATUALIZAÇÃO LIMPA NA EDIÇÃO E GERAÇÃO EM LOTE APENAS NA CRIAÇÃO)
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -956,42 +956,13 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // ATUALIZAÇÃO DO TÍTULO ATUAL E POSSÍVEL GERAÇÃO DE PARCELAS CASO MARQUE RECORRÊNCIA NA EDIÇÃO
+        // EDIÇÃO PURA E ISOLADA: ATUALIZA APENAS O REGISTRO SELECIONADO SEM DUPLICAÇÕES
         let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
-
-        if (recorrente === 'Sim' && numParcelas > 1) {
-            let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
-            let batch = [];
-            for(let i = 1; i < numParcelas; i++) {
-                let targetMes = (mes - 1) + i;
-                let targetAno = ano + Math.floor(targetMes / 12);
-                let realMes = (targetMes % 12 + 1);
-                let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-                let realDia = Math.min(dia, ultimoDiaMes);
-                let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
-                
-                batch.push({
-                    cliente_id: cid,
-                    cliente_nome,
-                    cpf_cnpj_cliente,
-                    valor,
-                    vencimento: dataIso,
-                    descricao: `${descricao} (${i + 1}/${numParcelas})`,
-                    status: 'Pendente',
-                    centro_custo,
-                    conta_contabil,
-                    recorrente,
-                    updated_at: new Date().toISOString()
-                });
-            }
-            if(batch.length > 0) await sbGlobal.from('contas_receber').insert(batch);
-        }
-
         alert("Conta a receber atualizada com sucesso!");
     } else {
-        // CRIAÇÃO EM LOTE PARA NOVOS LANÇAMENTOS
+        // CRIAÇÃO EM LOTE EXCLUSIVA PARA NOVOS LANÇAMENTOS
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
         
