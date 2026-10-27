@@ -758,7 +758,7 @@ function aplicarFiltrosRelatorio() {
     const tbody = document.getElementById('tbodyRelatorioModo');
     tbody.innerHTML = '';
     if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
         return;
     }
 
@@ -766,13 +766,18 @@ function aplicarFiltrosRelatorio() {
         let codVirtual = formatarCodigoVirtual(t.id);
         let clienteNome = t.cliente_nome || t.cliente || '—';
         let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
+        let descPura = (t.descricao || '—').replace(/\s*\(\d+\/\d+\)$/, '');
+        let matchP = (t.descricao || '').match(/\((\d+\/\d+)\)$/);
+        let parcelaTxt = matchP ? matchP[1] : '—';
         let badgeText = t.statusSeguro === 'recebido' ? 'RECEBIDO' : t.statusSeguro.toUpperCase();
+
         tbody.innerHTML += `<tr>
             <td><strong>${codVirtual}</strong></td>
             <td><strong>${clienteNome}</strong></td>
             <td>${t.centro_custo || '—'}</td>
             <td>${t.conta_contabil || '—'}</td>
-            <td>${t.descricao || '—'}</td>
+            <td>${descPura}</td>
+            <td>${parcelaTxt}</td>
             <td>${dataVencFmt}</td>
             <td style="text-align: right;"><strong>${formatBRL(t.valorNumerico)}</strong></td>
             <td>${badgeText}</td>
@@ -942,7 +947,7 @@ async function confirmarRecebimento() {
     carregarContas();
 }
 
-// SALVAR COM SUPORTE INTELIGENTE À RECORRÊNCIA NA EDIÇÃO (ATUALIZAÇÃO DE QUANTIDADE DE MESES)
+// SALVAR COM RECONSTRUÇÃO INTELIGENTE DE SÉRIE NA EDIÇÃO (EVITA DUPLICIDADE DE REGISTROS)
 async function salvarContaReceber() {
     const id = document.getElementById('edit_id').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
@@ -967,21 +972,20 @@ async function salvarContaReceber() {
     }
 
     if(id) {
-        // EDIÇÃO COM RECALCULAGEM INTELIGENTE DE PARCELAS RECORRENTES
-        let descFinal = descricao;
+        // GESTÃO INTELIGENTE DE EDIÇÃO DE SÉRIE RECORRENTE:
+        // Se o título editado possui descrição base similar, removemos os títulos pendentes futuros da mesma série para regerar limpo com a nova quantidade (numParcelas)
         let tOriginal = contasCache.find(x => String(x.id) === String(id));
-        if (tOriginal && tOriginal.descricao) {
-            let matchP = tOriginal.descricao.match(/\((\d+\/\d+)\)$/);
-            if (matchP) descFinal = `${descricao} (${matchP[1]})`;
-        }
+        let descBaseAntiga = tOriginal ? (tOriginal.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '').trim() : descricao;
 
-        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao: descFinal, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
+        // Atualiza o registro atual selecionado
+        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao: `${descricao} (1/${numParcelas})`, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
         let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
 
-        // Se alterou a recorrência para Sim, remove parcelas excedentes ou gera as faltantes com base no novo numParcelas
         if (recorrente === 'Sim' && numParcelas > 1) {
-            // Busca parcelas associadas com a mesma descrição base para reconstruir a série limpa
+            // Remove títulos futuros pendentes antigos da mesma série para evitar duplicidade ou resquícios de quantidade anterior
+            await sbGlobal.from('contas_receber').delete().eq('cliente_id', cid).eq('cliente_nome', cliente_nome).eq('status', 'Pendente').gt('vencimento', vencimentoBase).ilike('descricao', `${descBaseAntiga}%`);
+
             let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
             let batch = [];
             for(let i = 1; i < numParcelas; i++) {
@@ -1006,11 +1010,10 @@ async function salvarContaReceber() {
                     updated_at: new Date().toISOString()
                 });
             }
-            // Insere as novas parcelas ajustadas
             if(batch.length > 0) await sbGlobal.from('contas_receber').insert(batch);
         }
 
-        alert("Conta a receber atualizada com sucesso!");
+        alert("Conta a receber e série recorrente atualizadas com sucesso!");
     } else {
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
