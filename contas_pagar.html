@@ -89,18 +89,18 @@
         .print-corporative-header { display: none !important; }
 
         @media print {
-            @page { size: A4 portrait; margin: 10mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 5mm !important; width: 100% !important; display: block !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
-            .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 6mm !important; margin-bottom: 8mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
+            @page { size: A4 portrait; margin: 5mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
+            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, footer { display: none !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
+            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+            .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
             .table-container { width: 100% !important; overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; table-layout: fixed !important; margin: 0 auto !important; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
-            tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 5px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 3px 5px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
     </style>
 </head>
@@ -239,7 +239,7 @@
                     </select>
                 </div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr 1fr 1fr;">
+            <div class="form-grid" style="grid-template-columns: 2fr 1.5fr 1fr 1fr;">
                 <div>
                     <label>Descrição / Despesa / Nota Fiscal *</label>
                     <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
@@ -291,8 +291,67 @@
         </div>
     </div>
 
-    <!-- HISTÓRICO DE CONTAS A PAGAR -->
+    <!-- RELATÓRIO OPERACIONAL DE CONTAS A PAGAR -->
     <div class="card" id="cardRelatorioModo">
+        <div class="card-header">
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Pagar</h3>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
+            </div>
+        </div>
+        <div class="collapsible-content">
+            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+                <div>
+                    <label>Data Início</label>
+                    <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <label>Data Fim</label>
+                    <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <label>Status</label>
+                    <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
+                        <option value="todos">Todos os Status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="atrasado">Vencido</option>
+                        <option value="pago">Pago</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Buscar por Nome / Descrição</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
+                </div>
+                <div>
+                    <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Código</th>
+                            <th>Fornecedor</th>
+                            <th>Centro Custo</th>
+                            <th>Conta DRE</th>
+                            <th>Descrição / NF</th>
+                            <th>Parcela</th>
+                            <th>Vencimento</th>
+                            <th style="text-align: right;">Valor (R$)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyRelatorioModo">
+                        <tr><td colspan="9" style="text-align:center; padding:20px; color:var(--text-light);">A carregar relatório...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- HISTÓRICO DE CONTAS A PAGAR -->
+    <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
             <div style="display:flex; gap:10px; align-items:center;" class="ocultar-print">
@@ -596,6 +655,8 @@ async function carregarContas() {
         return t;
     });
 
+    renderTabela();
+    aplicarFiltrosRelatorio();
     aplicarFiltrosHistorico();
     atualizarDashboard();
     atualizarCodigoVirtual();
@@ -621,7 +682,65 @@ function atualizarDashboard() {
     document.getElementById('tot_atrasado').innerText = formatBRL(atr);
 }
 
-// FILTROS DO HISTÓRICO
+// RELATÓRIO OPERACIONAL
+function aplicarFiltrosRelatorio() {
+    let dtIni = document.getElementById('filtroDataInicio').value;
+    let dtFim = document.getElementById('filtroDataFim').value;
+    let stFiltro = document.getElementById('filtroStatus').value;
+    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+
+    let dadosFiltrados = contasCache.filter(t => {
+        let dataRef = t.vencimento || t.data_vencimento || '';
+        if (dtIni && dataRef && dataRef < dtIni) return false;
+        if (dtFim && dataRef && dataRef > dtFim) return false;
+        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
+        if (txtBusca) {
+            let fornNome = t.fornecedor_nome || '';
+            let linha = (fornNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
+            if (!linha.includes(txtBusca)) return false;
+        }
+        return true;
+    });
+
+    const tbody = document.getElementById('tbodyRelatorioModo');
+    tbody.innerHTML = '';
+    if(dadosFiltrados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
+        return;
+    }
+
+    dadosFiltrados.forEach((t, index) => {
+        let codVirtual = formatarCodigoVirtual(index);
+        let fornNome = t.fornecedor_nome || '—';
+        let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
+        let descPura = (t.descricao || '—').replace(/\s*\(\d+\/\d+\)$/, '');
+        let matchP = (t.descricao || '').match(/\((\d+\/\d+)\)$/);
+        let parcelaTxt = matchP ? matchP[1] : '—';
+        let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
+
+        tbody.innerHTML += `<tr>
+            <td><strong>${codVirtual}</strong></td>
+            <td><strong>${fornNome}</strong></td>
+            <td>${t.centro_custo || '—'}</td>
+            <td>${t.conta_contabil || '—'}</td>
+            <td>${descPura}</td>
+            <td>${parcelaTxt}</td>
+            <td>${dataVencFmt}</td>
+            <td style="text-align: right;"><strong>${formatBRL(t.valorNumerico)}</strong></td>
+            <td>${badgeText}</td>
+        </tr>`;
+    });
+}
+
+function limparFiltrosRelatorio() {
+    document.getElementById('filtroDataInicio').value = '';
+    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroStatus').value = 'todos';
+    document.getElementById('filtroBusca').value = '';
+    aplicarFiltrosRelatorio();
+}
+
+// HISTÓRICO PRINCIPAL
 function aplicarFiltrosHistorico() {
     let dtIni = document.getElementById('histDataInicio').value;
     let dtFim = document.getElementById('histDataFim').value;
@@ -629,26 +748,19 @@ function aplicarFiltrosHistorico() {
     let txtBusca = document.getElementById('histBusca').value.trim().toLowerCase();
 
     let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = (stFiltro === 'pago' && t.data_pagamento) ? t.data_pagamento : t.vencimento;
+        let dataRef = t.vencimento || t.data_vencimento || '';
         if (dtIni && dataRef && dataRef < dtIni) return false;
         if (dtFim && dataRef && dataRef > dtFim) return false;
         if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
         if (txtBusca) {
-            let linha = ((t.fornecedor_nome || '') + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
+            let fornNome = t.fornecedor_nome || '';
+            let linha = (fornNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
             if (!linha.includes(txtBusca)) return false;
         }
         return true;
     });
 
     renderTabelaFiltrada(dadosFiltrados);
-}
-
-function limparFiltrosHistorico() {
-    document.getElementById('histDataInicio').value = '';
-    document.getElementById('histDataFim').value = '';
-    document.getElementById('histStatus').value = 'todos';
-    document.getElementById('histBusca').value = '';
-    aplicarFiltrosHistorico();
 }
 
 function renderTabelaFiltrada(lista) {
@@ -705,6 +817,10 @@ function renderTabelaFiltrada(lista) {
     atualizarContadorSelecao();
 }
 
+function renderTabela() {
+    renderTabelaFiltrada(contasCache);
+}
+
 // SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
 function selecionarTodos(master) {
     const checkboxes = document.querySelectorAll('.check-linha');
@@ -744,7 +860,7 @@ async function excluirSelecionados() {
     }
 }
 
-// SALVAR COM RECORRÊNCIA EM LOTE E GESTÃO INTELIGENTE DE EDIÇÃO
+// SALVAR COM GERAÇÃO EM LOTE E EDIÇÃO INTELIGENTE
 async function salvarContaPagar() {
     const id = document.getElementById('edit_id').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
@@ -849,7 +965,6 @@ async function salvarContaPagar() {
     carregarContas();
 }
 
-// BOTÃO DE EDITAR (1 SÓ CLIQUE)
 window.editarConta = function(id) {
     let t = contasCache.find(x => String(x.id) === String(id));
     if(!t) return;
