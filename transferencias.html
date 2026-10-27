@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -14,7 +16,6 @@
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -49,6 +50,8 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-acao.sucesso { background: var(--success); }
         .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: 0 2px 6px rgba(239,68,68,0.2); }
+        .btn-acao.perigo:hover { background: #dc2626; }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -90,27 +93,20 @@
         .print-corporative-header { display: none !important; }
 
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 10mm;
-            }
-            body { background: #fff !important; color: #000 !important; font-size: 8.5pt; }
+            @page { size: A4 portrait; margin: 8mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
             .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 auto !important; padding: 0 5mm !important; width: 100% !important; display: block !important; }
-            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 auto !important; width: 100% !important; }
+            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
+            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
             .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 6mm !important;
-                margin-bottom: 8mm !important;
-                border-bottom: 2px solid #1e3a8a !important;
-                width: 100% !important;
+                display: block !important; background: #fff !important; padding-bottom: 3mm !important; margin-bottom: 3mm !important;
+                border-bottom: 2px solid #1e3a8a !important; width: 100% !important;
             }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 8pt !important; table-layout: fixed !important; margin: 0 auto !important; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; page-break-inside: auto; }
             thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; word-wrap: break-word; }
-            tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
+            tr { page-break-inside: avoid !important; page-break-after: auto; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 5px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 3px 5px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
     </style>
 </head>
@@ -188,7 +184,7 @@
                 <input type="text" id="conta_destino" class="form-control" placeholder="Conta interna..." list="listaContras">
             </div>
             <div>
-                <label>Valor da Movimentação (R\$) *</label>
+                <label>Valor da Movimentação (R$) *</label>
                 <input type="text" id="valor" class="form-control" placeholder="0,00" onblur="formatarCampoMoeda(this)">
             </div>
             <div>
@@ -207,7 +203,10 @@
         </div>
 
         <div class="form-row-fav">
-            <div><label>CPF / CNPJ</label><input type="text" id="favorecido_documento" class="form-control" placeholder="CPF/CNPJ..." onblur="buscarPorDocumento(this.value)"></div>
+            <div>
+                <label>CPF / CNPJ <span id="status_favorecido" style="font-weight:normal;font-size:10px;"></span></label>
+                <input type="text" id="favorecido_documento" class="form-control" placeholder="CPF/CNPJ..." oninput="buscarPorDocumento(this.value)">
+            </div>
             <div>
                 <label>Nome do Favorecido</label>
                 <input type="text" id="favorecido_nome" class="form-control" placeholder="Nome..." list="listaParceiros" onblur="buscarPorNome(this.value)">
@@ -233,7 +232,8 @@
             <div><label>Díg. Conta</label><input type="text" id="favorecido_digito_conta" class="form-control" placeholder="0"></div>
         </div>
 
-        <div class="form-row" style="grid-template-columns: 2fr 1fr; margin-top: 10px;">
+        <!-- CAMPOS DE RECORRÊNCIA E CENTRO DE CUSTO -->
+        <div class="form-row" style="grid-template-columns: 2fr 1fr 1fr 1fr; margin-top: 10px;">
             <div>
                 <label>Observação / Motivo</label>
                 <input type="text" id="observacao" class="form-control" placeholder="Informações adicionais...">
@@ -245,6 +245,19 @@
                     <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
                 </div>
             </div>
+            <div>
+                <label>Custo Recorrente?</label>
+                <select id="recorrente" class="form-control" onchange="toggleParcelas(this.value)">
+                    <option value="Não">Não (Pontual)</option>
+                    <option value="Sim">Sim (Mensal)</option>
+                </select>
+            </div>
+            <div>
+                <div id="blocoParcelas" style="display:block;">
+                    <label>Nº de Meses / Parcelas</label>
+                    <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                </div>
+            </div>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
@@ -253,9 +266,12 @@
         </div>
     </div>
 
-    <!-- FILTROS DE RELATÓRIO -->
+    <!-- RELATÓRIO OPERACIONAL DE TRANSFERÊNCIAS -->
     <div class="panel" style="padding: 18px 24px;">
-        <div class="panel-header" style="border:none; margin-bottom:8px;"><span><i class="fas fa-filter"></i> Relatório Operacional de Transferências</span></div>
+        <div class="panel-header" style="border:none; margin-bottom:8px;">
+            <span><i class="fas fa-filter"></i> Relatório Operacional de Transferências</span>
+            <button class="btn-acao" onclick="executarImpressao()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
+        </div>
         <div class="form-row" style="align-items:flex-end;">
             <div><label>Data Início</label><input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()"></div>
             <div><label>Data Fim</label><input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()"></div>
@@ -264,11 +280,13 @@
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO COM IMPRESSÃO CORPORATIVA CENTRALIZADA A4 -->
+    <!-- TABELA DE HISTÓRICO COM SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA -->
     <div class="panel" id="cardRelatorioModo">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
-            <button class="btn-acao" onclick="executarImpressao()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <div class="ocultar-print">
+                <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:34px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
+            </div>
         </div>
         <div class="table-container" id="listaTransferencias">A carregar transferências...</div>
     </div>
@@ -365,6 +383,16 @@ function parseValorBR(v){if(!v)return 0;var s=String(v).trim().replace(/[R\$\s]/
 function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.value=parseValorBR(el.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
+function toggleParcelas(val) {
+    const bloco = document.getElementById('blocoParcelas');
+    if (val === 'Sim') {
+        bloco.style.display = 'block';
+    } else {
+        bloco.style.display = 'block';
+        document.getElementById('num_parcelas').value = '12';
+    }
+}
+
 async function carregarCombosEParceiros(){
     const cid = clienteIdAtual();
     if(!cid) return;
@@ -400,17 +428,25 @@ async function carregarCombosEParceiros(){
     }
 }
 
+// BUSCA AUTOMÁTICA DE FAVORECIDO (SEM ERRO 400)
 async function buscarPorDocumento(docDigitado){
     let busca = docDigitado.trim().replace(/\D/g, '');
-    if(busca.length < 3) return;
+    let statusEl = document.getElementById('status_favorecido');
+    if(!busca) { if(statusEl) statusEl.innerHTML = ''; return; }
+    
     const cid = clienteIdAtual();
+    try {
+        let achado = listaParceirosCache.find(p => (p.cnpj_cpf||'').toString().replace(/\D/g,'') === busca);
+        if(achado){
+            preencherCamposFavorecido(achado);
+            if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Encontrado</span>';
+            document.getElementById('divCadastrarRapido').style.display = 'none';
+            return;
+        }
+    } catch(e) {}
 
-    // 1. Tenta base local de parceiros
-    let achado = listaParceirosCache.find(p => (p.cnpj_cpf||'').toString().replace(/\D/g,'') === busca);
-    if(achado){ preencherCamposFavorecido(achado); toast("Favorecido carregado da base local!", "success"); document.getElementById('divCadastrarRapido').style.display='none'; return; }
-
-    // 2. Se for CNPJ, busca na Receita Federal via BrasilAPI
     if (busca.length === 14) {
+        if(statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando...</span>';
         try {
             let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${busca}`);
             if (resp.ok) {
@@ -418,13 +454,14 @@ async function buscarPorDocumento(docDigitado){
                 if (json.razao_social) {
                     document.getElementById('favorecido_nome').value = json.razao_social;
                     document.getElementById('favorecido_banco').value = json.bancos?.[0]?.nome_banco || '';
+                    if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
                     document.getElementById('divCadastrarRapido').style.display = 'block';
-                    toast("Dados encontrados na Receita Federal!", "success");
                     return;
                 }
             }
         } catch(err) {}
     }
+    if(statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Novo</span>';
     document.getElementById('divCadastrarRapido').style.display = 'block';
 }
 
@@ -456,22 +493,25 @@ async function cadastrarFavorecidoRapido(){
     carregarCombosEParceiros();
 }
 
+// SALVAR COM SUPORTE A RECORRÊNCIA EM LOTE
 async function salvarTransferencia(){
     const id = document.getElementById('editId').value;
     const conta_origem = document.getElementById('conta_origem').value.trim();
     const conta_destino = document.getElementById('conta_destino').value.trim();
     const valor = parseValorBR(document.getElementById('valor').value);
-    const data = document.getElementById('data').value;
+    const dataBase = document.getElementById('data').value;
     const centro_custo = document.getElementById('centro_custo').value;
+    const recorrente = document.getElementById('recorrente').value;
+    const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
     const cid = clienteIdAtual();
 
-    if(!conta_origem || !valor || !data || !centro_custo || (!conta_destino && !document.getElementById('favorecido_nome').value)){
+    if(!conta_origem || !valor || !dataBase || !centro_custo || (!conta_destino && !document.getElementById('favorecido_nome').value)){
         toast("Preencha os campos obrigatórios!", "error"); return;
     }
 
-    let payload = {
+    let dadosBase = {
         cliente_id: cid,
-        conta_origem, conta_destino, valor, data, centro_custo,
+        conta_origem, conta_destino, valor, centro_custo,
         favorecido_nome: document.getElementById('favorecido_nome').value.trim() || null,
         favorecido_documento: document.getElementById('favorecido_documento').value.trim() || null,
         favorecido_banco: document.getElementById('favorecido_banco').value.trim() || null,
@@ -480,15 +520,39 @@ async function salvarTransferencia(){
         observacao: document.getElementById('observacao').value.trim() || null
     };
 
-    let r;
     if(id){
-        r = await sb.from('transferencias').update(payload).eq('id', id).eq('cliente_id', cid);
+        let payload = { ...dadosBase, data: dataBase };
+        let r = await sb.from('transferencias').update(payload).eq('id', id).eq('cliente_id', cid);
+        if(r.error){ toast("Erro ao atualizar: "+r.error.message, "error"); return; }
+        toast("Movimentação atualizada com sucesso!");
     } else {
-        r = await sb.from('transferencias').insert([payload]);
+        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+        let [ano, mes, dia] = dataBase.split('-').map(Number);
+        
+        let batch = [];
+        for(let i = 0; i < qtdGerar; i++) {
+            let targetMes = (mes - 1) + i;
+            let targetAno = ano + Math.floor(targetMes / 12);
+            let realMes = (targetMes % 12 + 1);
+            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+            let realDia = Math.min(dia, ultimoDiaMes);
+            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+            
+            let obsOriginal = dadosBase.observacao || '';
+            let obsParcela = (qtdGerar > 1) ? `${obsOriginal} (${i + 1}/${qtdGerar})`.trim() : obsOriginal;
+
+            batch.push({
+                ...dadosBase,
+                data: dataIso,
+                observacao: obsParcela
+            });
+        }
+
+        let r = await sb.from('transferencias').insert(batch);
+        if(r.error){ toast("Erro ao salvar parcelas: "+r.error.message, "error"); return; }
+        toast(qtdGerar > 1 ? `${qtdGerar} movimentações recorrentes geradas!` : "Movimentação efetuada com sucesso!");
     }
 
-    if(r.error){ toast("Erro ao salvar: "+r.error.message, "error"); return; }
-    toast("Movimentação efetuada com sucesso!");
     limparForm();
     carregarTransferencias();
 }
@@ -507,19 +571,20 @@ function renderTabelaHistorico(lista){
 
     let html = '<table class="analitica-table"><thead>';
     html += `<tr>
-        <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
+        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
             <div class="print-corporative-header">
                 <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Transferências & Movimentações</h2>
-                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
             </div>
         </th>
     </tr>`;
-    html += '<tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
+    html += '<tr><th style="width: 40px; text-align: center;"><input type="checkbox" id="checkMaster" onclick="selecionarTodos(this)"></th><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
     
     lista.forEach(t => {
         let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
         html += `<tr>
-            <td>${t.data}</td>
+            <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
+            <td>${t.data ? t.data.split('-').reverse().join('/') : ''}</td>
             <td><strong>${t.conta_origem}</strong>${dest}</td>
             <td>${t.centro_custo || '—'}</td>
             <td>${t.observacao || '—'}</td>
@@ -533,6 +598,46 @@ function renderTabelaHistorico(lista){
     });
     html += '</tbody></table>';
     el.innerHTML = html;
+    atualizarContadorSelecao();
+}
+
+// SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
+function selecionarTodos(master) {
+    const checkboxes = document.querySelectorAll('.check-linha');
+    checkboxes.forEach(cb => cb.checked = master.checked);
+    atualizarContadorSelecao();
+}
+
+function atualizarContadorSelecao() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    const btnExcluir = document.getElementById('btnExcluirSelecionados');
+    const qtdSpan = document.getElementById('qtdSelecionados');
+    if (selecionados.length > 0) {
+        btnExcluir.style.display = 'inline-flex';
+        qtdSpan.innerText = selecionados.length;
+    } else {
+        btnExcluir.style.display = 'none';
+        qtdSpan.innerText = '0';
+        document.getElementById('checkMaster').checked = false;
+    }
+}
+
+async function excluirSelecionados() {
+    const selecionados = document.querySelectorAll('.check-linha:checked');
+    if (selecionados.length === 0) return;
+
+    if (confirm(`Deseja realmente excluir as ${selecionados.length} movimentações selecionadas?`)) {
+        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+        const cid = clienteIdAtual();
+
+        let res = await sb.from('transferencias').delete().in('id', ids).eq('cliente_id', cid);
+        if (res.error) {
+            toast("Erro ao excluir selecionados: " + res.error.message, "error");
+            return;
+        }
+        toast(`${selecionados.length} movimentações removidas com sucesso!`);
+        carregarTransferencias();
+    }
 }
 
 function aplicarFiltrosRelatorio() {
@@ -563,30 +668,6 @@ function limparFiltrosRelatorio() {
 }
 
 async function executarImpressao() {
-    const selectEmp = document.getElementById('selectEmpresa');
-    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-    } else {
-        const cid = clienteIdAtual();
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) {
-                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-            } else {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-            }
-        } catch(e) {
-            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-        }
-    }
-
-    const u = obterUsuario();
-    if (u) {
-        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-    } else {
-        document.getElementById('printUsuarioNome').innerText = 'Operador';
-    }
-
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
     window.print();
 }
@@ -645,7 +726,7 @@ function imprimirComprovante(t){
     w.document.write('<h2>Comprovante de Transferência / Movimentação</h2>');
     w.document.write('<div class="sub">Sacramento ERP Gestão Empresarial &middot; Emitido em ' + new Date().toLocaleDateString('pt-BR') + '</div>');
     w.document.write('<table>');
-    w.document.write('<tr><th>Data</th><td>' + t.data + '</td></tr>');
+    w.document.write('<tr><th>Data</th><td>' + (t.data ? t.data.split('-').reverse().join('/') : '') + '</td></tr>');
     w.document.write('<tr><th>Conta de Origem</th><td>' + t.conta_origem + '</td></tr>');
     w.document.write('<tr><th>Conta de Destino / Favorecido</th><td>' + (t.conta_destino || t.favorecido_nome || '—') + '</td></tr>');
     if(t.favorecido_nome){
@@ -684,6 +765,6 @@ window.onload = inicializarPagina;
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
+<script src="erp-core.js"></script>
 </body>
 </html>
