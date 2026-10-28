@@ -7,7 +7,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="filtro_cliente.js"></script>
     <script src="auth-guard.js"></script>
     <style>
         :root {
@@ -260,7 +259,7 @@
     <div class="card" id="cardRelatorioModo">
         <div class="print-header">
             <h2>Sacramento ERP Gestão Empresarial — Relatório Operacional: Contas e Cartões</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span> | Empresa Ativa: <span id="printEmpresaInfo"></span></p>
+            <p>Emitido em: <span id="printDataEmissao"></span></p>
         </div>
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional</h3>
@@ -330,21 +329,48 @@
 
 <script>
     const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let registrosCache = [];
 
+    // BLINDAGEM MULTI-TENANCY ESTRITA
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = u.email === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) {
+                const sel = localStorage.getItem('empresaSelecionada');
+                if (sel) return parseInt(sel);
+            }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch(e) {
+            return 1;
+        }
+    }
+
     async function inicializarPagina() {
-        const u = typeof obterUsuarioAtual === 'function' ? obterUsuarioAtual() : null;
-        if (u) {
-            const elUser = document.getElementById('userName');
-            if (elUser) elUser.innerText = (u.nome || u.email || 'Utilizador').split(' ')[0];
-        }
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            if (u && u.email) {
+                const elUser = document.getElementById('userName');
+                if (elUser) elUser.innerText = (u.nome || u.email).split(' ')[0];
+            }
 
-        if (typeof carregarSeletorEmpresa === 'function') {
-            await carregarSeletorEmpresa();
-        }
+            if (typeof carregarSeletorEmpresa === 'function') {
+                await carregarSeletorEmpresa();
+            }
 
-        document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-        await carregarRegistros();
+            document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
+            await carregarRegistros();
+        } catch(e) {
+            console.error("Erro na inicialização:", e);
+        }
+    }
+
+    function trocarEmpresa() {
+        const select = document.getElementById('selectEmpresa');
+        if (!select) return;
+        localStorage.setItem('empresaSelecionada', select.value);
+        carregarRegistros();
     }
 
     function toast(msg, type='success'){
@@ -411,9 +437,13 @@
 
     async function carregarRegistros() {
         try {
-            // CORREÇÃO CRÍTICA MULTI-TENANCY: Utiliza estritamente sbFiltroLeitura para respeitar o cliente_id ativo
-            let query = typeof sbFiltroLeitura === 'function' ? sbFiltroLeitura('contas_bancarias') : sb.from('contas_bancarias').select('*');
-            const { data, error } = await query.order('id', { ascending: false });
+            const cid = obterClienteIdAtivo();
+            // CONSULTA BLINDADA: Filtra estritamente pelo cliente_id da empresa ativa
+            const { data, error } = await sb.from('contas_bancarias')
+                .select('*')
+                .eq('cliente_id', cid)
+                .order('id', { ascending: false });
+
             if (error) {
                 toast("Erro ao carregar dados", "error");
                 return;
@@ -467,7 +497,6 @@
                 situacaoHtml = vencido ? `<span class="badge badge-vencido">VENCIDO (${cartaoInfo.vencimento})</span>` : `<span style="color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Válido (${cartaoInfo.vencimento})</span>`;
             }
 
-            // Linha do Relatório Operacional Superior
             tbodyRel.innerHTML += `
                 <tr>
                     <td>${badgeTipo}</td>
@@ -478,7 +507,6 @@
                 </tr>
             `;
 
-            // Linha da Tabela de Gestão Principal
             tbodyMain.innerHTML += `
                 <tr>
                     <td><strong>#${r.id}</strong></td>
@@ -506,7 +534,7 @@
             saldo_inicial: Number(document.getElementById('saldo_inicial').value || 0),
             classificacao_saldo: document.getElementById('classificacao_saldo').value,
             titularidade: document.getElementById('titularidade').value,
-            cliente_id: typeof clienteIdAtual === 'function' ? clienteIdAtual() : 1
+            cliente_id: obterClienteIdAtivo()
         };
 
         if (cat === 'Cartao') {
@@ -533,7 +561,7 @@
 
         let res;
         if (id) {
-            res = await sb.from('contas_bancarias').update(payload).eq('id', id);
+            res = await sb.from('contas_bancarias').update(payload).eq('id', id).eq('cliente_id', payload.cliente_id);
         } else {
             res = await sb.from('contas_bancarias').insert([payload]);
         }
@@ -598,7 +626,8 @@
 
     window.excluirRegistro = async function(id) {
         if (!confirm("Deseja realmente excluir este registo?")) return;
-        let { error } = await sb.from('contas_bancarias').delete().eq('id', id);
+        const cid = obterClienteIdAtivo();
+        let { error } = await sb.from('contas_bancarias').delete().eq('id', id).eq('cliente_id', cid);
         if (error) { toast("Erro ao excluir", "error"); return; }
         toast("Removido com sucesso!");
         carregarRegistros();
