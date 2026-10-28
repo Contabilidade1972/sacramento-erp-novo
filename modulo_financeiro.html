@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.pluggy.ai/pluggy-connect/v2.2.0/pluggy-connect.js"></script>
     <script src="auth-guard.js"></script>
     <style>
         :root {
@@ -319,7 +320,17 @@
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
-    const sb = window.supabase ? window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei') : null;
+    /* ===== CONEXÃO ÚNICA (reusa window.sb do erp-core.js — fim do Multiple GoTrueClient) ===== */
+    function getSb() {
+        if (window.sb) return window.sb;
+        try {
+            if (window.supabase) {
+                window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+            }
+        } catch(e) {}
+        return window.sb || null;
+    }
+
     const EMAIL_MASTER_OBRIGATORIO = "lucianojorgesacramento@gmail.com";
 
     const rotasModulos = [
@@ -386,6 +397,7 @@
             const elUser = document.getElementById('userName');
             if (elUser) elUser.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
         }
+        const sb = getSb();
         if (sb) {
             try {
                 const select = document.getElementById('selectEmpresa');
@@ -422,61 +434,81 @@
         }
     }
 
-    // CARREGAMENTO SOB DEMANDA BLINDADO (GARANTE A ABERTURA DO WIDGET)
-    function abrirJanelaConexaoBanco(event) {
+    /* ===== OPEN FINANCE (PLUGGY) — CORRIGIDO =====
+       1) Envia o header Authorization: Bearer <access_token> (fim do 401)
+       2) Script da Pluggy carregado no <head> (fim do "Aguarde o carregamento")
+       3) Reusa a conexão única window.sb (fim do Multiple GoTrueClient)
+       4) Fallback por URL se o widget não estiver disponível */
+    async function abrirJanelaConexaoBanco(event) {
         if (event) event.preventDefault();
 
         const clienteId = clienteIdAtual();
+        const sb = getSb();
 
-        // Faz a chamada direta com tratamento inteligente de carregamento do script
-        fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-connect-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ clientUserId: String(clienteId) })
-        })
-        .then(res => {
-            if (!res.ok) throw new Error("Erro na comunicação com o servidor.");
-            return res.json();
-        })
-        .then(data => {
-            if (!data.accessToken) throw new Error("Token não gerado.");
+        /* Feedback visual imediato */
+        const btnCard = event && event.currentTarget ? event.currentTarget : null;
+        if (btnCard) btnCard.style.opacity = '0.6';
 
-            // Abre o widget oficial com o token obtido
+        try {
+            /* 1) Pega a sessão ativa para o Bearer token */
+            let accessToken = '';
+            if (sb) {
+                const { data: sess } = await sb.auth.getSession();
+                if (sess && sess.session) accessToken = sess.session.access_token;
+            }
+
+            /* 2) Chama a Edge Function COM o header de autorização */
+            const resp = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-connect-token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + accessToken,
+                    'apikey': 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
+                },
+                body: JSON.stringify({ clientUserId: String(clienteId) })
+            });
+
+            if (!resp.ok) {
+                const txt = await resp.text();
+                throw new Error('HTTP ' + resp.status + ' — ' + txt.substring(0, 120));
+            }
+
+            const data = await resp.json();
+            if (!data.accessToken) throw new Error('Token não retornado pela função.');
+
+            /* 3) Abre o widget oficial da Pluggy */
             if (typeof PluggyConnect !== 'undefined') {
                 const handler = new PluggyConnect({
-                    token: data.accessToken,
-                    onSuccess: (itemData) => {
-                        alert("Conta bancária conectada com sucesso! ID: " + itemData.id);
+                    connectToken: data.accessToken,
+                    includeSandbox: false,
+                    onSuccess: async (itemData) => {
+                        alert('Conta bancária conectada com sucesso!');
                         if (sb) {
-                            sb.from('conexoes_bancarias_pluggy').insert([{
-                                cliente_id: clienteId,
-                                item_id: itemData.id,
-                                status: 'CONNECTED'
-                            }]).then(() => {});
+                            try {
+                                await sb.from('conexoes_bancarias_pluggy').insert([{
+                                    cliente_id: clienteId,
+                                    item_id: itemData.item ? itemData.item.id : itemData.id,
+                                    status: 'CONNECTED'
+                                }]);
+                            } catch(e) {}
                         }
                     },
                     onClose: () => {},
-                    onError: (error) => { alert("Erro no Widget: " + error.message); }
+                    onError: (error) => { alert('Erro no Widget: ' + (error && error.message ? error.message : 'desconhecido')); }
                 });
-                handler.open();
+                handler.init();
             } else {
-                // Se o script demorar, abre por URL com o token diretamente
-                window.open(`https://connect.pluggy.ai/?token=${data.accessToken}`, '_blank', 'width=500,height=700');
+                /* Fallback: abre a página de conexão com o token */
+                window.open('https://connect.pluggy.ai/?token=' + encodeURIComponent(data.accessToken), '_blank', 'width=520,height=720');
             }
-        })
-        .catch(err => {
-            // Fallback imediato de chave pública caso a Edge Function falhe
-            if (typeof PluggyConnect !== 'undefined') {
-                const handlerDemo = new PluggyConnect({
-                    clientKey: '664ce712-6501-4537-9b0a-a3b8a6d81eba',
-                    onSuccess: (itemData) => { alert("Conectado (Modo Testes)! ID: " + itemData.id); },
-                    onError: (error) => { alert("Erro: " + error.message); }
-                });
-                handlerDemo.open();
-            } else {
-                window.open('https://connect.pluggy.ai/?clientKey=664ce712-6501-4537-9b0a-a3b8a6d81eba', '_blank', 'width=500,height=700');
-            }
-        });
+
+        } catch (err) {
+            /* Diagnóstico claro para o usuário */
+            console.error('[Open Finance] Falha:', err);
+            alert('Não foi possível iniciar a conexão bancária.\n\nDetalhe técnico: ' + (err && err.message ? err.message : 'erro desconhecido') + '\n\nVerifique no Supabase se a Edge Function "gerar-connect-token" está publicada e se os secrets PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET estão configurados.');
+        } finally {
+            if (btnCard) btnCard.style.opacity = '1';
+        }
     }
 
     window.onload = inicializar;
