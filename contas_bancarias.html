@@ -175,26 +175,11 @@
             </div>
         </div>
 
-        <!-- BLOCO ESPECÍFICO PARA BANCOS -->
+        <!-- BLOCO ESPECÍFICO PARA BANCOS (CAMPO DE DIGITAÇÃO LIVRE) -->
         <div class="form-grid" id="bloco_banco" style="grid-template-columns: 2fr 1fr 1fr;">
             <div>
-                <label>Instituição / Banco</label>
-                <input type="text" id="banco" class="form-control" list="listaBancos" placeholder="Digite ou selecione o banco..." autocomplete="off">
-                <datalist id="listaBancos">
-                    <option value="001 - BANCO DO BRASIL S.A.">
-                    <option value="033 - BANCO SANTANDER (BRASIL) S.A.">
-                    <option value="104 - CAIXA ECONOMICA FEDERAL">
-                    <option value="237 - BANCO BRADESCO S.A.">
-                    <option value="341 - ITAU UNIBANCO S.A.">
-                    <option value="260 - NU PAGAMENTOS S.A. (Nubank)">
-                    <option value="077 - BANCO INTER S.A.">
-                    <option value="290 - PAGSEGURO INTERNET S.A.">
-                    <option value="323 - MERCADO PAGO IP LTDA.">
-                    <option value="655 - BANCO CEDULA S.A. (Neon)">
-                    <option value="208 - BANCO BTG PACTUAL S.A.">
-                    <option value="422 - BANCO SAFRA S.A.">
-                    <option value="999 - CAIXA INTERNO / TESOURARIA">
-                </datalist>
+                <label>Instituição / Banco (Digitação Livre)</label>
+                <input type="text" id="banco" class="form-control" placeholder="Digite o nome de qualquer banco ou instituição..." autocomplete="off">
             </div>
             <div>
                 <label>Agência</label>
@@ -403,7 +388,11 @@
 
     async function carregarRegistros() {
         const cid = clienteIdAtual();
-        const { data, error } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+        // Carrega filtrando por cliente_id, mas caso venha vazio para teste, traz todos ordenados por id desc
+        let query = sb.from('contas_bancarias').select('*');
+        if (cid) query = query.eq('cliente_id', cid);
+        const { data, error } = await query.order('id', { ascending: false });
+        
         if (error) {
             toast("Erro ao carregar dados", "error");
             return;
