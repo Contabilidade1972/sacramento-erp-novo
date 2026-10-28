@@ -170,7 +170,7 @@
             </div>
         </a>
 
-        <!-- OPEN FINANCE (NOVA CONEXÃO) -->
+        <!-- OPEN FINANCE (NOVA ROTA) -->
         <div onclick="abrirJanelaConexaoBanco(event)" class="hub-card">
             <div class="hub-card-img">
                 <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80" alt="Open Finance">
@@ -433,7 +433,7 @@
         }
     }
 
-    /* ===== OPEN FINANCE (PLUGGY) — ENVIO APENAS DE clientUserId ===== */
+    /* ===== OPEN FINANCE (PLUGGY) — APONTA PARA A NOVA ROTA gerar-token-pluggy ===== */
     async function abrirJanelaConexaoBanco(event) {
         if (event) event.preventDefault();
 
@@ -449,17 +449,15 @@
                 if (sess && sess.session) accessToken = sess.session.access_token;
             }
 
-            // PAYLOAD TOTALMENTE LIMPO: Apenas o ID do usuário para nova conexão
-            const payload = { clientUserId: String(clienteId) };
-
-            const resp = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-connect-token', {
+            // APONTA PARA A NOVA EDGE FUNCTION CRIADA DO ZERO
+            const resp = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-token-pluggy', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer ' + accessToken,
                     'apikey': 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
                 },
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ clientUserId: String(clienteId) })
             });
 
             if (!resp.ok) {
@@ -468,7 +466,7 @@
             }
 
             const data = await resp.json();
-            if (!data.accessToken) throw new Error('Token não retornado pela Edge Function.');
+            if (!data.accessToken) throw new Error('Token não retornado.');
 
             if (typeof PluggyConnect !== 'undefined') {
                 const handler = new PluggyConnect({
