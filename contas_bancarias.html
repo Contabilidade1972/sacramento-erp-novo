@@ -121,7 +121,6 @@
 <div class="container">
     <div class="page-toolbar">
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
-        <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
     </div>
 
     <!-- FORMULÁRIO DE CADASTRO E EDIÇÃO -->
@@ -257,14 +256,15 @@
         </div>
     </div>
 
-    <!-- TABELA DE CONTAS CADASTRADAS -->
-    <div class="card">
+    <!-- CAMADA 1: RELATÓRIO OPERACIONAL -->
+    <div class="card" id="cardRelatorioModo">
         <div class="print-header">
-            <h2>Sacramento ERP — Relatório de Contas e Cartões</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span></p>
+            <h2>Sacramento ERP Gestão Empresarial — Relatório Operacional: Contas e Cartões</h2>
+            <p>Emitido em: <span id="printDataEmissao"></span> | Empresa Ativa: <span id="printEmpresaInfo"></span></p>
         </div>
         <div class="card-header">
-            <h3><i class="fas fa-university"></i> Contas Bancárias, Caixas e Cartões Cadastrados</h3>
+            <h3><i class="fas fa-file-alt"></i> Relatório Operacional</h3>
+            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         <div style="background:var(--bg); padding:14px; border-radius:10px; margin-bottom:16px; display:grid; grid-template-columns: 1fr 2fr auto; gap:12px; align-items:flex-end;">
             <div>
@@ -282,6 +282,29 @@
             <div>
                 <button class="btn btn-outline" onclick="document.getElementById('filtroTipo').value='todos';document.getElementById('filtroBusca').value='';renderTabelas();"><i class="fas fa-eraser"></i> Limpar</button>
             </div>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Categoria / Modalidade</th>
+                        <th>Nome / Instituição</th>
+                        <th>Detalhes</th>
+                        <th>Classificação</th>
+                        <th>Saldo / Limite</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyRelatorioModo">
+                    <tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">A carregar relatório...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CAMADA 2: TABELA DE GESTÃO E AÇÕES -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-university"></i> Contas Bancárias, Caixas e Cartões Cadastrados</h3>
         </div>
         <div class="table-container">
             <table>
@@ -388,6 +411,7 @@
 
     async function carregarRegistros() {
         try {
+            // CORREÇÃO CRÍTICA MULTI-TENANCY: Utiliza estritamente sbFiltroLeitura para respeitar o cliente_id ativo
             let query = typeof sbFiltroLeitura === 'function' ? sbFiltroLeitura('contas_bancarias') : sb.from('contas_bancarias').select('*');
             const { data, error } = await query.order('id', { ascending: false });
             if (error) {
@@ -405,6 +429,7 @@
         let tipoFiltro = document.getElementById('filtroTipo').value;
         let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
         let tbodyMain = document.getElementById('tbodyContas');
+        let tbodyRel = document.getElementById('tbodyRelatorioModo');
 
         let filtrados = registrosCache.filter(r => {
             let ehCartao = (r.tipo || '').toLowerCase().includes('cartão');
@@ -416,17 +441,20 @@
 
         if (filtrados.length === 0) {
             tbodyMain.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:30px;">Nenhum registo encontrado.</td></tr>`;
+            tbodyRel.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum registo encontrado.</td></tr>`;
             return;
         }
 
         tbodyMain.innerHTML = '';
+        tbodyRel.innerHTML = '';
+
         filtrados.forEach(r => {
             let ehCartao = (r.tipo || '').toLowerCase().includes('cartão');
             let ehPF = (r.tipo || '').toLowerCase().includes('pf');
             let badgeTipo = ehPF ? `<span class="badge badge-pf">${r.tipo}</span>` : `<span class="badge ${ehCartao ? 'badge-cartao' : 'badge-banco'}">${r.tipo}</span>`;
             let saldoVal = formatBRL(r.saldo_inicial);
             let disponivel = contaDisponivelEmpresa(r);
-            let badgeClassif = disponivel ? '<span class="badge badge-disponivel">Disponível</span>' : '<span class="badge badge-excluido">Excluído DRE</span>';
+            let badgeClassif = disponivel ? '<span class="badge badge-disponivel"><i class="fas fa-check"></i> Disponível</span>' : '<span class="badge badge-excluido"><i class="fas fa-ban"></i> Excluído</span>';
             
             let cartaoInfo = {};
             if (ehCartao && r.observacoes && r.observacoes.startsWith('{')) {
@@ -436,9 +464,21 @@
             let situacaoHtml = '-';
             if (ehCartao && cartaoInfo.vencimento) {
                 let vencido = verificarCartaoVencido(cartaoInfo.vencimento);
-                situacaoHtml = vencido ? `<span class="badge badge-vencido">VENCIDO (${cartaoInfo.vencimento})</span>` : `<span style="color:var(--success); font-weight:600;">Válido (${cartaoInfo.vencimento})</span>`;
+                situacaoHtml = vencido ? `<span class="badge badge-vencido">VENCIDO (${cartaoInfo.vencimento})</span>` : `<span style="color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Válido (${cartaoInfo.vencimento})</span>`;
             }
 
+            // Linha do Relatório Operacional Superior
+            tbodyRel.innerHTML += `
+                <tr>
+                    <td>${badgeTipo}</td>
+                    <td><strong>${r.nome || '-'}</strong><br><small>${r.banco || ''}</small></td>
+                    <td><small>${detalhes}</small></td>
+                    <td>${badgeClassif}</td>
+                    <td><strong>${saldoVal}</strong></td>
+                </tr>
+            `;
+
+            // Linha da Tabela de Gestão Principal
             tbodyMain.innerHTML += `
                 <tr>
                     <td><strong>#${r.id}</strong></td>
