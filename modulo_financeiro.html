@@ -170,7 +170,7 @@
             </div>
         </a>
 
-        <!-- OPEN FINANCE -->
+        <!-- OPEN FINANCE (NOVA CONEXÃO) -->
         <div onclick="abrirJanelaConexaoBanco(event)" class="hub-card">
             <div class="hub-card-img">
                 <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80" alt="Open Finance">
@@ -320,7 +320,6 @@
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
-    /* ===== CONEXÃO ÚNICA (reusa window.sb do erp-core.js — fim do Multiple GoTrueClient) ===== */
     function getSb() {
         if (window.sb) return window.sb;
         try {
@@ -434,29 +433,28 @@
         }
     }
 
-    /* ===== OPEN FINANCE (PLUGGY) — CORRIGIDO =====
-       1) Envia o header Authorization: Bearer <access_token> (fim do 401)
-       2) Script da Pluggy carregado no <head> (fim do "Aguarde o carregamento")
-       3) Reusa a conexão única window.sb (fim do Multiple GoTrueClient)
-       4) Fallback por URL se o widget não estiver disponível */
-    async function abrirJanelaConexaoBanco(event) {
+    /* ===== OPEN FINANCE (PLUGGY) — SUPORTE A NOVA CONEXÃO E RECONEXÃO ===== */
+    async function abrirJanelaConexaoBanco(event, itemIdReconexao = null) {
         if (event) event.preventDefault();
 
         const clienteId = clienteIdAtual();
         const sb = getSb();
-
         const btnCard = event && event.currentTarget ? event.currentTarget : null;
         if (btnCard) btnCard.style.opacity = '0.6';
 
         try {
-            /* 1) Pega a sessão ativa para o Bearer token */
             let accessToken = '';
             if (sb) {
                 const { data: sess } = await sb.auth.getSession();
                 if (sess && sess.session) accessToken = sess.session.access_token;
             }
 
-            /* 2) Chama a Edge Function COM o header de autorização */
+            // Monta o corpo da requisição estritamente diferenciando Nova Conexão vs Reconexão
+            const payload = { clientUserId: String(clienteId) };
+            if (itemIdReconexao && typeof itemIdReconexao === 'string' && itemIdReconexao.trim() !== '') {
+                payload.itemId = itemIdReconexao.trim();
+            }
+
             const resp = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-connect-token', {
                 method: 'POST',
                 headers: {
@@ -464,36 +462,35 @@
                     'Authorization': 'Bearer ' + accessToken,
                     'apikey': 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
                 },
-                body: JSON.stringify({ clientUserId: String(clienteId) })
+                body: JSON.stringify(payload)
             });
 
             if (!resp.ok) {
                 const txt = await resp.text();
-                throw new Error('HTTP ' + resp.status + ' — ' + txt.substring(0, 120));
+                throw new Error('HTTP ' + resp.status + ' — ' + txt);
             }
 
             const data = await resp.json();
-            if (!data.accessToken) throw new Error('Token não retornado pela função.');
+            if (!data.accessToken) throw new Error('Token não retornado pela Edge Function.');
 
-            /* 3) Abre o widget oficial da Pluggy */
             if (typeof PluggyConnect !== 'undefined') {
                 const handler = new PluggyConnect({
                     connectToken: data.accessToken,
-                    includeSandbox: false,
                     onSuccess: async (itemData) => {
                         alert('Conta bancária conectada com sucesso!');
                         if (sb) {
                             try {
-                                await sb.from('conexoes_bancarias_pluggy').insert([{
+                                const idConexao = itemData.item ? itemData.item.id : itemData.id;
+                                await sb.from('conexoes_bancarias_pluggy').upsert([{
                                     cliente_id: clienteId,
-                                    item_id: itemData.item ? itemData.item.id : itemData.id,
+                                    item_id: idConexao,
                                     status: 'CONNECTED'
-                                }]);
+                                }], { onConflict: 'item_id' });
                             } catch(e) {}
                         }
                     },
                     onClose: () => {},
-                    onError: (error) => { alert('Erro no Widget: ' + (error && error.message ? error.message : 'desconhecido')); }
+                    onError: (error) => { alert('Erro no Widget Pluggy: ' + (error && error.message ? error.message : 'desconhecido')); }
                 });
                 handler.init();
             } else {
@@ -501,8 +498,8 @@
             }
 
         } catch (err) {
-            console.error('[Open Finance] Falha:', err);
-            alert('Não foi possível iniciar a conexão bancária.\n\nDetalhe técnico: ' + (err && err.message ? err.message : 'erro desconhecido') + '\n\nVerifique no Supabase se a Edge Function "gerar-connect-token" está publicada e se os secrets PLUGGY_CLIENT_ID e PLUGGY_CLIENT_SECRET estão configurados.');
+            console.error('[Open Finance] Erro:', err);
+            alert('Falha ao iniciar conexão bancária.\n\nDetalhe: ' + (err && err.message ? err.message : 'erro desconhecido'));
         } finally {
             if (btnCard) btnCard.style.opacity = '1';
         }
