@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="filtro_cliente.js"></script>
     <script src="auth-guard.js"></script>
     <style>
         :root {
@@ -123,7 +124,7 @@
         <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
     </div>
 
-    <!-- FORMULÁRIO COMPLETO DE CADASTRO E EDIÇÃO -->
+    <!-- FORMULÁRIO DE CADASTRO E EDIÇÃO -->
     <div class="card">
         <div class="card-header">
             <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Cadastrar Nova Conta ou Cartão</h3>
@@ -175,7 +176,7 @@
             </div>
         </div>
 
-        <!-- BANCO DE DADOS SUPER COMPLETO DE INSTITUIÇÕES + DIGITAÇÃO LIVRE -->
+        <!-- BANCO DE DADOS SUPER COMPLETO DE INSTITUIÇÕES -->
         <div class="form-grid" id="bloco_banco" style="grid-template-columns: 2fr 1fr 1fr;">
             <div>
                 <label>Instituição / Banco (Busca Completa)</label>
@@ -234,7 +235,7 @@
             </div>
         </div>
 
-        <!-- BLOCO ESPECÍFICO PARA CARTÕES -->
+        <!-- BLOCO DE CARTÕES -->
         <div class="form-grid" id="bloco_cartao" style="display:none; grid-template-columns: 2fr 2fr 1fr;">
             <div>
                 <label>Número do Cartão <span id="info_bandeira" style="color:var(--primary); font-weight:bold;"></span></label>
@@ -256,7 +257,7 @@
         </div>
     </div>
 
-    <!-- LISTAGEM E TABELA DE CONTAS CADASTRADAS -->
+    <!-- TABELA DE CONTAS CADASTRADAS -->
     <div class="card">
         <div class="print-header">
             <h2>Sacramento ERP — Relatório de Contas e Cartões</h2>
@@ -305,66 +306,23 @@
 </div>
 
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     let registrosCache = [];
 
-    function obterUsuario() {
-        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-    }
-
-    function ehMaster() {
-        const u = obterUsuario();
-        return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-    }
-
-    function clienteIdAtual() {
-        const u = obterUsuario();
-        if (!u) return 1;
-        if (ehMaster()) {
-            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        }
-        return u.cliente_id ? parseInt(u.cliente_id) : 1;
-    }
-
     async function inicializarPagina() {
-        const u = obterUsuario();
-        if (!u) { location.href = 'login.html'; return; }
-        document.getElementById('userName').innerText = (u.nome || u.email || 'Utilizador').split('@')[0];
+        const u = obterUsuarioAtual ? obterUsuarioAtual() : null;
+        if (u) {
+            const elUser = document.getElementById('userName');
+            if (elUser) elUser.innerText = (u.nome || u.email || 'Utilizador').split(' ')[0];
+        }
 
-        const select = document.getElementById('selectEmpresa');
-        const boxSeletor = document.getElementById('boxSeletorEmpresa');
-        if (ehMaster()) {
-            boxSeletor.style.display = 'flex';
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            select.innerHTML = '';
-            if (data) {
-                data.forEach(emp => {
-                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                    select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-                });
-            }
-            select.value = localStorage.getItem('empresaSelecionada') || clienteIdAtual();
-        } else {
-            boxSeletor.style.display = 'none';
+        // Utiliza o seletor de empresa do auth-guard / filtro_cliente.js
+        if (typeof carregarSeletorEmpresa === 'function') {
+            await carregarSeletorEmpresa();
         }
 
         document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
         await carregarRegistros();
-    }
-
-    function trocarEmpresa() {
-        if (!ehMaster()) return;
-        localStorage.setItem('empresaSelecionada', document.getElementById('selectEmpresa').value);
-        carregarRegistros();
-    }
-
-    function sair() {
-        if (confirm('Deseja realmente sair?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
-        }
     }
 
     function toast(msg, type='success'){
@@ -430,17 +388,19 @@
     }
 
     async function carregarRegistros() {
-        const cid = clienteIdAtual();
-        let query = sb.from('contas_bancarias').select('*');
-        if (cid) query = query.eq('cliente_id', cid);
-        const { data, error } = await query.order('id', { ascending: false });
-        
-        if (error) {
-            toast("Erro ao carregar dados", "error");
-            return;
+        // Usa a função padrão do filtro_cliente.js para garantir a leitura correta vinculada ao cliente ID ativo
+        try {
+            let query = typeof sbFiltroLeitura === 'function' ? sbFiltroLeitura('contas_bancarias') : sb.from('contas_bancarias').select('*');
+            const { data, error } = await query.order('id', { ascending: false });
+            if (error) {
+                toast("Erro ao carregar dados", "error");
+                return;
+            }
+            registrosCache = data || [];
+            renderTabelas();
+        } catch(e) {
+            console.error(e);
         }
-        registrosCache = data || [];
-        renderTabelas();
     }
 
     function renderTabelas() {
@@ -508,7 +468,7 @@
             saldo_inicial: Number(document.getElementById('saldo_inicial').value || 0),
             classificacao_saldo: document.getElementById('classificacao_saldo').value,
             titularidade: document.getElementById('titularidade').value,
-            cliente_id: clienteIdAtual()
+            cliente_id: typeof clienteIdAtual === 'function' ? clienteIdAtual() : 1
         };
 
         if (cat === 'Cartao') {
