@@ -8,8 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <!-- GARANTINDO O CARREGAMENTO DA BIBLIOTECA DA PLUGGY -->
-    <script src="https://api.pluggy.ai/connect.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -442,14 +440,31 @@
         }
     }
 
-    // ABERTURA SEGURA DO WIDGET PLUGGY (COM SUPORTE A FUNÇÃO DO SUPABASE E FALLBACK DIRETO)
-    async function abrirJanelaConexaoBanco(event) {
+    // CARREGAMENTO DINÂMICO E SEGURO DO WIDGET PLUGGY
+    function abrirJanelaConexaoBanco(event) {
         if (event) event.preventDefault();
-        
+
+        // Carrega o script da Pluggy na hora do clique de forma isolada
+        if (typeof PluggyConnect !== 'undefined') {
+            iniciarWidgetPluggy();
+            return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://api.pluggy.ai/connect.js';
+        script.onload = () => {
+            iniciarWidgetPluggy();
+        };
+        script.onerror = () => {
+            alert("Erro: Não foi possível carregar a biblioteca Pluggy Connect. Verifique se há bloqueadores de anúncios ativos.");
+        };
+        document.head.appendChild(script);
+    }
+
+    async function iniciarWidgetPluggy() {
         const clienteId = clienteIdAtual();
 
         try {
-            // Tenta chamar a função pública do Supabase passando a chave anônima para evitar erro 401
             const response = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-connect-token', {
                 method: 'POST',
                 headers: { 
@@ -459,12 +474,10 @@
                 body: JSON.stringify({ clientUserId: clienteId })
             });
 
-            if (!response.ok) throw new Error("Erro na comunicação com a Edge Function.");
+            if (!response.ok) throw new Error("Erro ao gerar token.");
 
             const data = await response.json();
-            if (!data.accessToken) {
-                throw new Error(data.error || "Token de acesso não retornado.");
-            }
+            if (!data.accessToken) throw new Error("Token ausente.");
 
             const handler = new PluggyConnect({
                 token: data.accessToken,
@@ -472,33 +485,27 @@
                     alert("Conta bancária conectada com sucesso! ID da Conexão: " + itemData.id);
                 },
                 onClose: () => {
-                    console.log("Janela de conexão fechada.");
+                    console.log("Widget fechado.");
                 },
                 onError: (error) => {
-                    alert("Erro ao conectar conta: " + error.message);
+                    alert("Erro no Open Finance: " + error.message);
                 }
             });
 
             handler.open();
 
         } catch (err) {
-            console.warn("Aviso na Edge Function. Abrindo modo direto de testes da Pluggy:", err.message);
-            
-            // Fallback robusto direto para testes no ambiente se houver qualquer intermitência na nuvem
-            if (typeof PluggyConnect !== 'undefined') {
-                const handlerDemo = new PluggyConnect({
-                    clientKey: '664ce712-6501-4537-9b0a-a3b8a6d81eba',
-                    onSuccess: (itemData) => {
-                        alert("Conta conectada com sucesso! ID: " + itemData.id);
-                    },
-                    onError: (error) => {
-                        alert("Erro no widget: " + error.message);
-                    }
-                });
-                handlerDemo.open();
-            } else {
-                alert("Erro: A biblioteca Pluggy Connect não carregou corretamente. Verifique sua conexão com a internet.");
-            }
+            // Fallback direto com a chave para testes se a Edge Function falhar
+            const handlerDemo = new PluggyConnect({
+                clientKey: '664ce712-6501-4537-9b0a-a3b8a6d81eba',
+                onSuccess: (itemData) => {
+                    alert("Conta conectada com sucesso! ID: " + itemData.id);
+                },
+                onError: (error) => {
+                    alert("Erro: " + error.message);
+                }
+            });
+            handlerDemo.open();
         }
     }
 
