@@ -88,8 +88,8 @@
     <div class="site-brand">
         <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
         <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
+            <h1 id="headerEmpresaNome">Sacramento ERP</h1>
+            <span id="headerEmpresaSub">Portal Corporativo</span>
         </div>
     </div>
     <div class="site-nav-right">
@@ -242,6 +242,7 @@ window.ehMaster = function() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 };
 
+// BLINDAGEM ESTRITA LGPD (MULTI-TENANCY)
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
     if (!u) return 1;
@@ -260,6 +261,17 @@ function toast(msg,type='success'){
 }
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+async function carregarDadosEmpresaHeader() {
+    var cid = window.clienteIdAtual();
+    if(!cid) return;
+    var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    if(data){
+        let razao = data.razao_social || data.nome_fantasia || 'Sacramento ERP';
+        document.getElementById('headerEmpresaNome').innerText = razao;
+        document.getElementById('headerEmpresaSub').innerText = data.cnpj_cpf ? 'CNPJ: ' + data.cnpj_cpf : 'Portal Corporativo';
+    }
+}
 
 async function carregarContasBancarias(){
     var cid = window.clienteIdAtual();
@@ -286,7 +298,6 @@ function mudarSelecaoConta() {
     
     let isCaixaFisico = contaObj && (contaObj.tipo || '').toLowerCase().includes('caixa');
 
-    // Se for Caixa Físico, oculta controles de OFX e exibe Modo Consulta de Movimentações
     if(isCaixaFisico) {
         document.getElementById('blocoNaturezaConta').style.display = 'none';
         document.getElementById('blocoArquivoOfx').style.display = 'none';
@@ -319,7 +330,7 @@ async function carregarHistoricoConciliacao(){
     var contaId = document.getElementById('selectConta').value;
     var el = document.getElementById('listaConciliacao');
     if(!cid || !contaId) {
-        el.innerHTML = '<div class="empty-state">Selecione uma conta ou caixa para visualizar.</div>';
+        el.innerHTML = '<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Selecione uma conta ou caixa para visualizar.</div>';
         return;
     }
 
@@ -327,7 +338,6 @@ async function carregarHistoricoConciliacao(){
     let isCaixaFisico = contaObj && (contaObj.tipo || '').toLowerCase().includes('caixa');
 
     if(isCaixaFisico) {
-        // BUSCA MOVIMENTAÇÕES REAIS DO CAIXA FÍSICO EM TODAS AS PÁGINAS DO FINANCEIRO
         let [pagar, receber, transferencias] = await Promise.all([
             sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('status', 'Pago'),
             sb.from('contas_receber').select('*').eq('cliente_id', cid).eq('status', 'Recebido'),
@@ -339,9 +349,9 @@ async function carregarHistoricoConciliacao(){
 
         if(receber.data) {
             receber.data.forEach(r => {
-                movimentacoesCaixa.push({
+                movimentosCaixa.push({
                     data: r.data_recebimento || r.vencimento,
-                    historico: `Recebimento (Cliente): ${r.cliente_nome || r.cliente || 'Diversos'} — ${r.descricao || ''}`,
+                    historico: `Recebimento: ${r.cliente_nome || 'Diversos'} — ${r.descricao || ''}`,
                     valor: parseFloat(r.valor) || 0,
                     tipo: 'Entrada'
                 });
@@ -350,9 +360,9 @@ async function carregarHistoricoConciliacao(){
 
         if(pagar.data) {
             pagar.data.forEach(p => {
-                movimentacoesCaixa.push({
+                movimentosCaixa.push({
                     data: p.data_pagamento || p.vencimento,
-                    historico: `Pagamento (Fornecedor): ${p.fornecedor_nome || 'Diversos'} — ${p.descricao || ''}`,
+                    historico: `Pagamento: ${p.fornecedor_nome || 'Diversos'} — ${p.descricao || ''}`,
                     valor: parseFloat(p.valor) || 0,
                     tipo: 'Saida'
                 });
@@ -361,19 +371,19 @@ async function carregarHistoricoConciliacao(){
 
         if(transferencias.data) {
             transferencias.data.forEach(tr => {
-                movimentacoesCaixa.push({
+                movimentosCaixa.push({
                     data: tr.data || new Date().toISOString().split('T')[0],
-                    historico: `Movimentação / Aporte: ${tr.descricao || 'Transferência'}`,
+                    historico: `Movimentação: ${tr.observacao || 'Transferência'}`,
                     valor: parseFloat(tr.valor) || 0,
                     tipo: 'Entrada'
                 });
             });
         }
 
-        movimentacoesCaixa.sort((a, b) => new Date(b.data) - new Date(a.data));
+        movimentosCaixa.sort((a, b) => new Date(b.data) - new Date(a.data));
 
         let totalMov = 0;
-        movimentacoesCaixa.forEach(m => {
+        movimentosCaixa.forEach(m => {
             totalMov += m.valor;
             if(m.tipo === 'Entrada') saldoCaixa += m.valor; else saldoCaixa -= m.valor;
         });
@@ -383,7 +393,7 @@ async function carregarHistoricoConciliacao(){
         document.getElementById('kpiStatusConciliacao').innerText = movimentacoesCaixa.length + ' Registos';
 
         if(!movimentacoesCaixa.length) {
-            el.innerHTML = '<div class="empty-state">Nenhuma movimentação registrada para este Caixa Físico.</div>';
+            el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação registrada para este Caixa Físico.</div>';
             return;
         }
 
@@ -391,7 +401,7 @@ async function carregarHistoricoConciliacao(){
             '<th>Data</th><th>Histórico / Descrição</th><th style="text-align:right;">Valor</th><th>Tipo</th><th>Status</th>'+
         '</tr></thead><tbody>';
 
-        movimentacoesCaixa.forEach(m => {
+        movimentosCaixa.forEach(m => {
             let corVal = m.tipo === 'Entrada' ? 'color:var(--success); font-weight:700;' : 'color:var(--danger); font-weight:700;';
             let sinalVal = m.tipo === 'Entrada' ? '+ R$ ' : '- R$ ';
             let dataFmt = m.data ? m.data.split('-').reverse().join('/') : '-';
@@ -410,10 +420,9 @@ async function carregarHistoricoConciliacao(){
         return;
     }
 
-    // MODO CONCIONAL BANCÁRIA VIA OFX
     var r = await sb.from('extrato_ofx_importado').select('*').eq('cliente_id', cid).eq('conta_id', contaId).order('data_transacao', { ascending: false });
     if(r.error) {
-        el.innerHTML = '<div class="empty-state">Erro ao carregar extrato: ' + r.error.message + '</div>';
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar extrato: ' + r.error.message + '</div>';
         return;
     }
 
@@ -448,7 +457,7 @@ async function carregarHistoricoConciliacao(){
     document.getElementById('kpiStatusConciliacao').innerText = conciliados + ' / ' + pendentes;
 
     if(!filtrados.length){
-        el.innerHTML = '<div class="empty-state">Nenhum registo encontrado no extrato para esta conta. Faça a importação do OFX acima.</div>';
+        el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light)">Nenhum registo encontrado no extrato para esta conta. Faça a importação do OFX acima.</div>';
         return;
     }
 
@@ -742,11 +751,12 @@ async function excluirItem(id){
     }
 }
 
-window.trocarEmpresa = function() {
+window.trocarEmpresa = async function() {
     const select = document.getElementById('selectEmpresa');
     if (!select) return;
     localStorage.setItem('empresaSelecionada', select.value);
-    carregarContasBancarias();
+    await carregarDadosEmpresaHeader();
+    await carregarContasBancarias();
 };
 
 window.sair = function() {
@@ -788,6 +798,7 @@ window.onload = async function(){
         document.body.classList.remove('usuario-master');
     }
 
+    await carregarDadosEmpresaHeader();
     await carregarContasBancarias();
 };
 </script>
