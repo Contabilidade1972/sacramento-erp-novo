@@ -199,6 +199,7 @@
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+let movimentacoesCache = [];
 
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -343,15 +344,19 @@ async function carregarExtrato(){
     var inicio = document.getElementById('filtroInicio').value;
     var fim = document.getElementById('filtroFim').value;
 
-    // BLINDAGEM ESTRITA LGPD: Busca transferências vinculadas unicamente ao cliente_id ativo
+    // BLINDAGEM ESTRITA LGPD: Busca dados reais do Supabase estritamente vinculados ao cliente_id ativo
     var query = sb.from('transferencias').select('*').eq('cliente_id', cid);
-    if(contaIdSel && contaObj) {
-        let nomeConta = contaObj.nome || contaObj.banco || '';
-        if(nomeConta) query = query.or(`conta_origem.eq.${nomeConta},conta_destino.eq.${nomeConta}`);
-    }
-
     var r = await query.order('data', {ascending: true});
     let movimentos = r.data || [];
+
+    if(contaIdSel && contaObj) {
+        let nomeConta = (contaObj.nome || contaObj.banco || '').toLowerCase();
+        movimentos = movimentos.filter(m => {
+            let orig = (m.conta_origem || '').toLowerCase();
+            let dest = (m.conta_destino || '').toLowerCase();
+            return orig.includes(nomeConta) || dest.includes(nomeConta);
+        });
+    }
 
     if(inicio){
         movimentos = movimentos.filter(m => m.data >= inicio);
@@ -361,7 +366,7 @@ async function carregarExtrato(){
     }
 
     if (!movimentos.length) {
-        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada para o período selecionado nesta empresa.</div>';
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação real encontrada no banco de dados para esta empresa.</div>';
         return;
     }
 
