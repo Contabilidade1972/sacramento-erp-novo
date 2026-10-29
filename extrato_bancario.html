@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -14,7 +15,6 @@
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -23,7 +23,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -38,6 +37,9 @@
         .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
         .empresa-selector select option { color: #000; }
         .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
         .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
         .btn-sair:hover { background: #b91c1c; }
 
@@ -149,15 +151,15 @@
     <div class="kpi-grid">
         <div class="kpi-card">
             <div class="kpi-title">Saldo Total</div>
-            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoTotal">R\$ 0,00</div>
+            <div class="kpi-value" style="color:var(--primary);" id="kpiSaldoTotal">R$ 0,00</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Saldo Disponível</div>
-            <div class="kpi-value" style="color:var(--success);" id="kpiSaldoDisponivel">R\$ 0,00</div>
+            <div class="kpi-value" style="color:var(--success);" id="kpiSaldoDisponivel">R$ 0,00</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Saldo Bloqueado</div>
-            <div class="kpi-value" style="color:var(--danger);" id="kpiSaldoBloqueado">R\$ 0,00</div>
+            <div class="kpi-value" style="color:var(--danger);" id="kpiSaldoBloqueado">R$ 0,00</div>
         </div>
     </div>
 
@@ -194,7 +196,7 @@
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
 
@@ -207,6 +209,7 @@ window.ehMaster = function() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 };
 
+// BLINDAGEM DE SEGURANÇA ESTRITA LGPD (MULTI-TENANCY)
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
     if (!u) return 1;
@@ -249,7 +252,7 @@ async function inicializarPagina() {
     }
 
     await carregarDadosEmpresa();
-    await carregarContrasBancarias();
+    await carregarContasBancarias();
     await carregarExtrato();
 }
 
@@ -284,24 +287,27 @@ async function carregarDadosEmpresa(){
 }
 
 async function carregarContrasBancarias(){
-    var cid=window.clienteIdAtual();
+    var cid = window.clienteIdAtual();
     if(!cid) return;
-    var r=await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
+    // SEGURANÇA ESTRITA: Filtra obrigatoriamente por cliente_id
+    var r = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
         contasCache = r.data || [];
-        var sel=document.getElementById('filtroConta');
-        sel.innerHTML='<option value="">Todas as Contas (Consolidado)</option>';
+        var sel = document.getElementById('filtroConta');
+        sel.innerHTML = '<option value="">Todas as Contas (Consolidado)</option>';
+        let somaSaldo = 0;
         contasCache.forEach(function(c){
             var nomeConta = (c.nome || c.banco || 'Conta');
             let saldoConta = Number(c.saldo_inicial || c.saldo || 0);
-            var opt=document.createElement('option'); 
+            somaSaldo += saldoConta;
+            var opt = document.createElement('option'); 
             opt.value = c.id; 
-            opt.textContent = nomeConta + ' - Saldo: R\$ ' + fmtBR(saldoConta); 
+            opt.textContent = nomeConta + ' - Saldo: R$ ' + fmtBR(saldoConta); 
             sel.appendChild(opt);
         });
-        document.getElementById('kpiSaldoTotal').innerText = 'R\$ 9.833,53';
-        document.getElementById('kpiSaldoDisponivel').innerText = 'R\$ 9.833,53';
-        document.getElementById('kpiSaldoBloqueado').innerText = 'R\$ 0,00';
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(somaSaldo);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(somaSaldo);
+        document.getElementById('kpiSaldoBloqueado').innerText = 'R$ 0,00';
     }
 }
 
@@ -310,8 +316,9 @@ function atualizarDadosContaSelecionada(){
     if(!contaId){
         document.getElementById('lblInstituicao').innerText = "Consolidado / Multi-bancos";
         document.getElementById('lblAgenciaConta').innerText = "Todas as contas da empresa";
-        document.getElementById('kpiSaldoTotal').innerText = 'R\$ 9.833,53';
-        document.getElementById('kpiSaldoDisponivel').innerText = 'R\$ 9.833,53';
+        let somaT = contasCache.reduce((acc, c) => acc + Number(c.saldo_inicial || c.saldo || 0), 0);
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(somaT);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(somaT);
         return;
     }
 
@@ -320,13 +327,13 @@ function atualizarDadosContaSelecionada(){
         document.getElementById('lblInstituicao').innerText = encontrada.banco || encontrada.nome || 'Instituição Financeira';
         document.getElementById('lblAgenciaConta').innerText = 'Ag: ' + (encontrada.agencia || '0001') + ' CC: ' + (encontrada.conta || encontrada.conta_corrente || '—');
         let saldoC = Number(encontrada.saldo_inicial || encontrada.saldo || 0);
-        document.getElementById('kpiSaldoTotal').innerText = 'R\$ ' + fmtBR(saldoC);
-        document.getElementById('kpiSaldoDisponivel').innerText = 'R\$ ' + fmtBR(saldoC);
+        document.getElementById('kpiSaldoTotal').innerText = 'R$ ' + fmtBR(saldoC);
+        document.getElementById('kpiSaldoDisponivel').innerText = 'R$ ' + fmtBR(saldoC);
     }
 }
 
 async function carregarExtrato(){
-    var cid=window.clienteIdAtual();
+    var cid = window.clienteIdAtual();
     var contaIdSel = document.getElementById('filtroConta').value;
     let contaObj = contasCache.find(c => String(c.id) === String(contaIdSel));
 
@@ -336,19 +343,15 @@ async function carregarExtrato(){
     var inicio = document.getElementById('filtroInicio').value;
     var fim = document.getElementById('filtroFim').value;
 
-    let movimentos = [
-        { data: '2026-05-25', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:60701190-FERNANDA COELHO M J OLIVEIRA"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
-        { data: '2026-05-26', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:90400888-ALICE FREITAS VERSIANI"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
-        { data: '2026-05-26', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:00000000-GILBERTO MEDEIROS RIBEIRO"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
-        { data: '2026-05-27', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:18236120-Luis Adan Flores Andrade"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
-        { data: '2026-05-27', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES FONSECA"', forma: 'OFX BANCO', tipo: 'entrada', valor: 324.20 },
-        { data: '2026-05-29', origem: 'Inter PJ', descricao: 'Pix enviado: "Cp:37880206-Btb Solutions Solucoes Empresariais"', forma: 'OFX BANCO', tipo: 'saida', valor: 1621.00 },
-        { data: '2026-06-08', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:18236120-Luis Adan Flores Andrade"', forma: 'OFX BANCO', tipo: 'entrada', valor: 500.00 },
-        { data: '2026-06-08', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:00000000-FLAVIO GUIMARAES FONSECA"', forma: 'OFX BANCO', tipo: 'entrada', valor: 500.00 },
-        { data: '2026-06-09', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:60701190-FERNANDA COELHO M J OLIVEIRA"', forma: 'OFX BANCO', tipo: 'entrada', valor: 500.00 },
-        { data: '2026-06-10', origem: 'Inter PJ', descricao: 'Pix recebido: "Cp:90400888-ALICE FREITAS VERSIANI"', forma: 'OFX BANCO', tipo: 'entrada', valor: 500.00 },
-        { data: '2026-06-10', origem: 'Inter PJ', descricao: 'Pix enviado: "Cp:00360305-Flavia Batista Sacramento"', forma: 'OFX BANCO', tipo: 'saida', valor: 300.00 }
-    ];
+    // SEGURANÇA ESTRITA: Busca transferências vinculadas unicamente ao cliente_id ativo
+    var query = sb.from('transferencias').select('*').eq('cliente_id', cid);
+    if(contaIdSel && contaObj) {
+        let nomeConta = contaObj.nome || contaObj.banco || '';
+        if(nomeConta) query = query.or(`conta_origem.eq.${nomeConta},conta_destino.eq.${nomeConta}`);
+    }
+
+    var r = await query.order('data', {ascending: true});
+    let movimentos = r.data || [];
 
     if(inicio){
         movimentos = movimentos.filter(m => m.data >= inicio);
@@ -357,32 +360,34 @@ async function carregarExtrato(){
         movimentos = movimentos.filter(m => m.data <= fim);
     }
 
-    movimentos.sort((a,b) => new Date(a.data) - new Date(b.data));
-
     if (!movimentos.length) {
-        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada para o período selecionado.</div>';
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada para o período selecionado nesta empresa.</div>';
         return;
     }
 
-    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : 9833.53;
+    let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : contasCache.reduce((acc, c) => acc + Number(c.saldo_inicial || c.saldo || 0), 0);
+    
     var html = '<table class="analitica-table"><thead><tr>'+
-        '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R\$)</th><th style="text-align:right;">Saldo por Transação (R\$)</th>'+
+        '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
     '</tr></thead><tbody>';
 
     movimentos.forEach(m => {
-        if(m.tipo === 'entrada') saldoAcumulado += m.valor;
-        else saldoAcumulado -= m.valor;
+        let valM = Number(m.valor || 0);
+        let tipoM = (m.tipo || 'saida').toLowerCase();
+        if(tipoM === 'entrada') saldoAcumulado += valM;
+        else saldoAcumulado -= valM;
 
-        let corValor = m.tipo === 'entrada' ? 'color:#166534; font-weight:700;' : 'color:#991b1b; font-weight:700;';
-        let sinalValor = m.tipo === 'entrada' ? '+ R\$ ' : '- R\$ ';
+        let corValor = tipoM === 'entrada' ? 'color:#166534; font-weight:700;' : 'color:#991b1b; font-weight:700;';
+        let sinalValor = tipoM === 'entrada' ? '+ R$ ' : '- R$ ';
+        let descricaoTxt = m.observacao || m.favorecido_nome ? (`Favorecido: ${m.favorecido_nome || '—'} | ${m.observacao || ''}`) : 'Movimentação Bancária';
 
         html += '<tr>'+
             '<td>'+(m.data ? m.data.split('-').reverse().join('/') : '-')+'</td>'+
-            '<td><strong>'+m.origem+'</strong></td>'+
-            '<td>'+m.descricao+'</td>'+
-            '<td><span class="badge-tipo">'+m.forma+'</span></td>'+
-            '<td style="text-align:right; '+corValor+'">'+sinalValor+fmtBR(m.valor)+'</td>'+
-            '<td style="text-align:right; font-weight:700;">R\$ '+fmtBR(saldoAcumulado)+'</td>'+
+            '<td><strong>'+(m.conta_origem || 'Conta Principal')+'</strong></td>'+
+            '<td>'+descricaoTxt+'</td>'+
+            '<td><span class="badge-tipo">TRANSFERÊNCIA</span></td>'+
+            '<td style="text-align:right; '+corValor+'">'+sinalValor+fmtBR(valM)+'</td>'+
+            '<td style="text-align:right; font-weight:700;">R$ '+fmtBR(saldoAcumulado)+'</td>'+
         '</tr>';
     });
 
@@ -400,10 +405,9 @@ window.limparFiltros = function(){
 
 window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
+<script src="erp-core.js"></script>
 </body>
 </html>
