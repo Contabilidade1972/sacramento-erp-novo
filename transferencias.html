@@ -310,12 +310,12 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
+// BLINDAGEM MULTI-TENANCY ESTRITA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
 }
@@ -400,11 +400,19 @@ async function carregarCombosEParceiros(){
     const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     contasBancariasCache = contas || [];
     let lista = document.getElementById('listaContras');
+    let listaOrigem = document.getElementById('listaContas');
     if(lista){
         lista.innerHTML = '<option value="Capital Próprio / Recurso Externo">';
         contasBancariasCache.forEach(ct => {
             let nomeB = ct.nome || ct.banco || 'Conta';
             lista.innerHTML += `<option value="${nomeB}">`;
+        });
+    }
+    if(listaOrigem){
+        listaOrigem.innerHTML = '<option value="Capital Próprio / Recurso Externo">';
+        contasBancariasCache.forEach(ct => {
+            let nomeB = ct.nome || ct.banco || 'Conta';
+            listaOrigem.innerHTML += `<option value="${nomeB}">`;
         });
     }
 
@@ -709,8 +717,8 @@ function limparForm(){
 
 async function excluirMovimento(id){
     if(!confirm("Tem certeza que deseja excluir esta movimentação?")) return;
-    const cid = window.clienteIdAtual();
-    const { error } = await sb.from('transferencias').delete().id.eq('id', id).eq('cliente_id', cid);
+    const cid = clienteIdAtual();
+    const { error } = await sb.from('transferencias').delete().eq('id', id).eq('cliente_id', cid);
     if(error){ toast("Erro ao excluir: "+error.message, "error"); return; }
     toast("Movimentação excluída com sucesso!");
     carregarTransferencias();
@@ -748,10 +756,10 @@ window.abrirModalCentroCusto = function(){
 window.salvarNovoCentroCusto = async function(){
     const nome = document.getElementById('cc_nome').value.trim();
     if(!nome){ toast("Informe o nome.", "error"); return; }
-    const cid = window.clienteIdAtual();
+    const cid = clienteIdAtual();
     const { error } = await sb.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
     if(error){ toast("Erro: "+error.message, "error"); return; }
-    document.getElementById('modalNovoCentroCusto').style.detdisplay = 'none';
+    document.getElementById('modalNovoCentroCusto').style.display = 'none';
     toast("Centro de custo criado com sucesso!");
     carregarCombosEParceiros();
 };
@@ -759,7 +767,7 @@ window.salvarNovoCentroCusto = async function(){
 window.onload = inicializarPagina;
 </script>
 <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button, onclick="location.href='central_ajuda.html'" class="tooltip" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button onclick="location.href='central_ajuda.html'" class="tooltip" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 <script src="erp-core.js"></script>
