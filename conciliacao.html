@@ -339,15 +339,16 @@ async function carregarDadosEmpresaHeader() {
     var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
     if(data){
         let razao = data.razao_social || data.nome_fantasia || 'Sacramento ERP';
-        document.getElementById('headerEmpresaNome').innerText = razao;
-        document.getElementById('headerEmpresaSub').innerText = "MÓDULO FINANCEIRO";
+        const elNome = document.getElementById('headerEmpresaNome');
+        const elSub = document.getElementById('headerEmpresaSub');
+        if(elNome) elNome.innerText = razao;
+        if(elSub) elSub.innerText = "MÓDULO FINANCEIRO";
     }
 }
 
 async function carregarContasBancarias(){
     var cid = window.clienteIdAtual();
     if(!cid) return;
-    // SEGURANÇA ESTRITA LGPD: Busca contas estritamente do cliente atual
     var r = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
         cacheContasBancarias = r.data || [];
@@ -357,7 +358,6 @@ async function carregarContasBancarias(){
             var nome = (c.nome || c.banco || 'Conta');
             var opt = document.createElement('option'); opt.value = c.id; opt.textContent = nome; sel.appendChild(opt);
         });
-        // PRÉ-SELECIONA AUTOMATICAMENTE A PRIMEIRA CONTA DISPONÍVEL SE HOUVER REGISTOS
         if(sel.options.length > 1) {
             sel.selectedIndex = 1;
             mudarSelecaoConta();
