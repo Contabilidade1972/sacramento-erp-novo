@@ -266,19 +266,19 @@
             </div>
             <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
                 <div>
-                    <label><i class="fas fa-tags"></i> Centro de Custo / P&D *</label>
+                    <label><i class="fas fa-tags"></i> Centro de Custo / P&D (Opcional)</label>
                     <div class="campo-com-mais">
                         <select id="centro_custo" class="form-control">
-                            <option value="">Carregando centros...</option>
+                            <option value="">Selecione o Centro de Custo...</option>
                         </select>
                         <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
                     </div>
                 </div>
                 <div>
-                    <label><i class="fas fa-list-alt"></i> Conta Contábil (DRE) *</label>
+                    <label><i class="fas fa-list-alt"></i> Conta Contábil (DRE) (Opcional)</label>
                     <div class="campo-com-mais">
                         <select id="conta_contabil" class="form-control">
-                            <option value="">Carregando plano de contas...</option>
+                            <option value="">Selecione a Conta Contábil...</option>
                         </select>
                         <button class="btn-mais" onclick="abrirModalContaContabil()" title="Nova Conta Contábil"><i class="fas fa-plus"></i></button>
                     </div>
@@ -480,33 +480,6 @@ function atualizarCodigoVirtual() {
     if (elCod) elCod.value = "CP-" + String(contasCache.length + 1).padStart(3, '0');
 }
 
-// VALIDAÇÃO DE CNPJ E CPF
-function validarCNPJ(cnpj) {
-    cnpj = cnpj.replace(/\D/g, '');
-    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-    let tamanho = cnpj.length - 2;
-    let numeros = cnpj.substring(0, tamanho);
-    let digitos = cnpj.substring(tamanho);
-    let soma = 0, pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    if (resultado != digitos.charAt(0)) return false;
-    tamanho = tamanho + 1;
-    numeros = cnpj.substring(0, tamanho);
-    soma = 0;
-    pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    return resultado == digitos.charAt(1);
-}
-
-// BUSCA AUTOMÁTICA DE FORNECEDOR (SEM ERRO 400)
 async function buscarOuConsultarFornecedor() {
     let docDigitado = document.getElementById('cpf_cnpj_fornecedor').value.replace(/\D/g, '');
     let statusEl = document.getElementById('status_fornecedor');
@@ -567,7 +540,7 @@ async function carregarPlanoContasSelect() {
     const { data } = await sbGlobal.from('plano_contas').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_contabil');
     if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione a Conta Contábil (DRE)...</option>';
+    sel.innerHTML = '<option value="">Selecione a Conta Contábil...</option>';
     if (data) {
         data.forEach(pc => {
             let desc = pc.descricao || pc.nome || '';
@@ -583,7 +556,7 @@ async function carregarContasBancariasModal() {
     const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
     const sel = document.getElementById('conta_origem_cadastro');
     if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione a conta de origem...</option>';
+    sel.innerHTML = '<option value="">Selecione a conta...</option>';
     if (data) {
         data.forEach(cb => {
             let nome = cb.banco || cb.nome || 'Banco';
@@ -690,7 +663,6 @@ function atualizarDashboard() {
     document.getElementById('tot_atrasado').innerText = formatBRL(atr);
 }
 
-// RELATÓRIO OPERACIONAL
 function aplicarFiltrosRelatorio() {
     let dtIni = document.getElementById('filtroDataInicio').value;
     let dtFim = document.getElementById('filtroDataFim').value;
@@ -748,7 +720,6 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-// HISTÓRICO PRINCIPAL
 function aplicarFiltrosHistorico() {
     let dtIni = document.getElementById('histDataInicio').value;
     let dtFim = document.getElementById('histDataFim').value;
@@ -829,7 +800,6 @@ function renderTabela() {
     renderTabelaFiltrada(contasCache);
 }
 
-// SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
 function selecionarTodos(master) {
     const checkboxes = document.querySelectorAll('.check-linha');
     checkboxes.forEach(cb => cb.checked = master.checked);
@@ -868,7 +838,6 @@ async function excluirSelecionados() {
     }
 }
 
-// SALVAR COM GERAÇÃO EM LOTE E EDIÇÃO INTELIGENTE DE SÉRIE
 async function salvarContaPagar() {
     const id = document.getElementById('edit_id').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
@@ -877,16 +846,16 @@ async function salvarContaPagar() {
     const vencimento = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
     const status = document.getElementById('status_edicao').value;
-    const centro_custo = document.getElementById('centro_custo').value;
-    const conta_contabil = document.getElementById('conta_contabil').value;
+    const centro_custo = document.getElementById('centro_custo').value || 'Não informado';
+    const conta_contabil = document.getElementById('conta_contabil').value || 'Não informada';
     const conta_origem = document.getElementById('conta_origem_cadastro').value;
     const data_pagamento = document.getElementById('data_pagamento_edicao').value;
     const recorrente = document.getElementById('recorrente').value;
     const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
     const cliente_id = obterClienteIdSeguro();
 
-    if(!fornecedor_nome || isNaN(valor) || !vencimento || !centro_custo || !conta_contabil) {
-        alert("Preencha todos os campos obrigatórios.");
+    if(!fornecedor_nome || isNaN(valor) || !vencimento || !descricao) {
+        alert("Preencha todos os campos obrigatórios (Fornecedor, Valor, Vencimento e Descrição).");
         return;
     }
 
@@ -895,44 +864,25 @@ async function salvarContaPagar() {
     }
 
     if(id) {
-        let tOriginal = contasCache.find(x => String(x.id) === String(id));
-        let descBaseAntiga = tOriginal ? (tOriginal.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '').trim() : descricao;
+        // CORREÇÃO CRUCIAL: Atualiza estritamente o registo ID selecionado sem apagar os outros da série
+        let payload = {
+            fornecedor_nome,
+            cpf_cnpj_fornecedor,
+            valor,
+            vencimento,
+            descricao,
+            status,
+            centro_custo,
+            conta_contabil,
+            conta_origem,
+            data_pagamento: data_pagamento || null,
+            recorrente,
+            updated_at: new Date().toISOString()
+        };
 
-        await sbGlobal.from('contas_pagar').delete().eq('cliente_id', cliente_id).eq('fornecedor_nome', fornecedor_nome).eq('status', 'Pendente').ilike('descricao', `${descBaseAntiga}%`);
-
-        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
-        let [ano, mes, dia] = vencimento.split('-').map(Number);
-        
-        let batch = [];
-        for(let i = 0; i < qtdGerar; i++) {
-            let targetMes = (mes - 1) + i;
-            let targetAno = ano + Math.floor(targetMes / 12);
-            let realMes = (targetMes % 12 + 1);
-            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-            let realDia = Math.min(dia, ultimoDiaMes);
-            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
-            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
-
-            batch.push({
-                cliente_id,
-                fornecedor_nome,
-                cpf_cnpj_fornecedor,
-                valor,
-                vencimento: dataIso,
-                descricao: descParcela,
-                status: (i === 0 ? status : 'Pendente'),
-                centro_custo,
-                conta_contabil,
-                conta_origem,
-                data_pagamento: data_pagamento || null,
-                recorrente,
-                updated_at: new Date().toISOString()
-            });
-        }
-
-        let res = await sbGlobal.from('contas_pagar').insert(batch);
-        if(res.error) { alert("Erro ao atualizar série: " + res.error.message); return; }
-        alert("Conta a pagar e série recorrente atualizadas com sucesso!");
+        let res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+        if(res.error) { alert("Erro ao atualizar conta: " + res.error.message); return; }
+        alert("Conta a pagar atualizada com sucesso!");
     } else {
         let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
         let [ano, mes, dia] = vencimento.split('-').map(Number);
@@ -1000,7 +950,7 @@ window.editarConta = function(id) {
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('recorrente').value = t.recorrente || 'Não';
-    toggleParcelas(t.rcorrente || 'Não');
+    toggleParcelas(t.recorrente || 'Não');
     document.getElementById('status_edicao').value = t.status || 'Pendente';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(contasCache.indexOf(t))})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
@@ -1034,7 +984,7 @@ function cancelarEdicao() {
 window.excluirConta = async function(id) {
     if(confirm("Deseja realmente excluir este registo?")) {
         const cid = obterClienteIdSeguro();
-        let res = vsGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
+        let res = await sbGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
         if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
         alert("Registo removido com sucesso!");
         carregarContas();
