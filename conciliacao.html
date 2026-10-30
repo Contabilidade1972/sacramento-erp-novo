@@ -23,7 +23,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* CABEÇALHO PADRÃO UNIFICADO */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
@@ -195,7 +194,7 @@
             <span><i class="fas fa-list"></i> Extrato Importado & Auditoria de Comparação</span>
             <div style="display:flex; gap:10px; align-items:center;">
                 <button class="btn-acao" style="background:var(--success); padding:6px 12px; font-size:12px;" onclick="conciliarAutomatico()"><i class="fas fa-check"></i> Conciliar Automáticos</button>
-                <select id="filtroContaGeral" class="form-control" style="width: 220px; height: 34px; padding: 0 10px;" onchange="carregarHistoricoConciliacao()">
+                <select id="filtroContaGeral" class="form-control" style="width: 220px; height: 34px; padding: 0 10px;" onchange="sincronizarFiltroGeral()">
                     <option value="">Todas as Contas (Consolidado)</option>
                 </select>
             </div>
@@ -275,7 +274,6 @@ window.ehMaster = function() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 };
 
-// BLINDAGEM ESTRITA LGPD (MULTI-TENANCY)
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
     if (!u) return 1;
@@ -286,7 +284,6 @@ window.clienteIdAtual = function() {
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
 };
 
-// Relógio do cabeçalho
 setInterval(() => {
     let now = new Date();
     const dt = document.getElementById('current_datetime');
@@ -374,12 +371,23 @@ async function carregarContasBancarias(){
 
         if(sel.options.length > 1) {
             sel.selectedIndex = 1;
+            selGeral.value = sel.value;
         }
         carregarHistoricoConciliacao();
     }
 }
 
 function mudarSelecaoConta() {
+    let contaId = document.getElementById('selectConta').value;
+    let selGeral = document.getElementById('filtroContaGeral');
+    if(selGeral) selGeral.value = contaId;
+    carregarHistoricoConciliacao();
+}
+
+function sincronizarFiltroGeral() {
+    let contaId = document.getElementById('filtroContaGeral').value;
+    let selConta = document.getElementById('selectConta');
+    if(selConta) selConta.value = contaId;
     carregarHistoricoConciliacao();
 }
 
@@ -491,6 +499,7 @@ function limparFiltrosTabela() {
     document.getElementById('filtroTipo').value = '';
     document.getElementById('filtroStatus').value = '';
     document.getElementById('filtroContaGeral').value = '';
+    document.getElementById('selectConta').value = '';
     carregarHistoricoConciliacao();
 }
 
