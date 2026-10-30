@@ -199,7 +199,6 @@
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
-let movimentacoesCache = [];
 
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -210,7 +209,6 @@ window.ehMaster = function() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 };
 
-// BLINDAGEM DE SEGURANÇA ESTRITA LGPD (MULTI-TENANCY)
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
     if (!u) return 1;
@@ -290,7 +288,6 @@ async function carregarDadosEmpresa(){
 async function carregarContasBancarias(){
     var cid = window.clienteIdAtual();
     if(!cid) return;
-    // BLINDAGEM ESTRITA LGPD: Filtra obrigatoriamente por cliente_id
     var r = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
         contasCache = r.data || [];
@@ -344,53 +341,81 @@ async function carregarExtrato(){
     var inicio = document.getElementById('filtroInicio').value;
     var fim = document.getElementById('filtroFim').value;
 
-    // BLINDAGEM ESTRITA LGPD: Busca dados reais do Supabase estritamente vinculados ao cliente_id ativo
-    var query = sb.from('transferencias').select('*').eq('cliente_id', cid);
-    var r = await query.order('data', {ascending: true});
-    let movimentos = r.data || [];
+    // Busca movimentações de Contas a Pagar (pagas) e Contas a Receber (recebidas) ou Transferências
+    let listaMovimentos = [];
 
+    // 1. Busca transferências
+    var rTrans = await sb.from('transferencias').select('*').eq('cliente_id', cid);
+    if(rTrans.data) {
+        rTrans.data.forEach(m => {
+            listaMovimentos.push({
+                data: m.data || m.created_at?.split('T')[0],
+                conta: m.conta_origem || m.conta_destino || 'Conta Principal',
+                descricao: m.observacao || m.favorecido_nome ? `Favorecido: ${m.favorecido_nome || '—'} | ${m.observacao || ''}` : 'Transferência Bancária',
+                tipo: (m.tipo || 'saida').toLowerCase(),
+                valor: Number(m.valor || 0)
+            });
+        });
+    }
+
+    // 2. Busca contas a pagar (pagas)
+    var rPagar = await sb.from('contas_pagar').select('*').eq('cliente_id', cid).eq('status', 'Pago');
+    if(rPagar.data) {
+        rPagar.data.forEach(p => {
+            listaMovimentos.push({
+                data: p.data_pagamento || p.vencimento,
+                conta: p.conta_origem || 'Conta Principal',
+                descricao: `Pgto Fornecedor: ${p.fornecedor_nome || '—'} - ${p.descricao || ''}`,
+                tipo: 'saida',
+                valor: Number(p.valor || 0)
+            });
+        });
+    }
+
+    // Se houver uma conta específica selecionada, filtra de forma flexível pelo nome do banco ou da conta
     if(contaIdSel && contaObj) {
-        let nomeConta = (contaObj.nome || contaObj.banco || '').toLowerCase();
-        movimentos = movimentos.filter(m => {
-            let orig = (m.conta_origem || '').toLowerCase();
-            let dest = (m.conta_destino || '').toLowerCase();
-            return orig.includes(nomeConta) || dest.includes(nomeConta);
+        let nomeConta1 = (contaObj.nome || '').toLowerCase();
+        let nomeConta2 = (contaObj.banco || '').toLowerCase();
+        listaMovimentos = listaMovimentos.filter(m => {
+            let cOrigem = (m.conta || '').toLowerCase();
+            return (nomeConta1 && cOrigem.includes(nomeConta1)) || (nomeConta2 && cOrigem.includes(nomeConta2)) || cOrigem.includes('principal');
         });
     }
 
     if(inicio){
-        movimentos = movimentos.filter(m => m.data >= inicio);
+        listaMovimentos = listaMovimentos.filter(m => m.data && m.data >= inicio);
     }
     if(fim){
-        movimentos = movimentos.filter(m => m.data <= fim);
+        listaMovimentos = listaMovimentos.filter(m => m.data && m.data <= fim);
     }
 
-    if (!movimentos.length) {
-        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação real encontrada no banco de dados para esta empresa.</div>';
+    listaMovimentos.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+    if (!listaMovimentos.length) {
+        el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada para o período ou conta selecionada.</div>';
         return;
     }
 
     let saldoAcumulado = contaObj ? Number(contaObj.saldo_inicial || contaObj.saldo || 0) : contasCache.reduce((acc, c) => acc + Number(c.saldo_inicial || c.saldo || 0), 0);
     
     var html = '<table class="analitica-table"><thead><tr>'+
-        '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Forma / Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo por Transação (R$)</th>'+
-    '</tr></thead><tbody>';
+        '<th>Data</th><th>Conta / Origem</th><th>Descrição / Histórico da Transação</th><th>Tipo</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Saldo (R$)</th>'+
+    '</thead><tbody>';
 
-    movimentos.forEach(m => {
+    listaMovimentos.forEach(m => {
         let valM = Number(m.valor || 0);
-        let tipoM = (m.tipo || 'saida').toLowerCase();
+        let tipoM = m.tipo;
         if(tipoM === 'entrada') saldoAcumulado += valM;
         else saldoAcumulado -= valM;
 
         let corValor = tipoM === 'entrada' ? 'color:#166534; font-weight:700;' : 'color:#991b1b; font-weight:700;';
         let sinalValor = tipoM === 'entrada' ? '+ R$ ' : '- R$ ';
-        let descricaoTxt = m.observacao || m.favorecido_nome ? (`Favorecido: ${m.favorecido_nome || '—'} | ${m.observacao || ''}`) : 'Movimentação Bancária';
 
         html += '<tr>'+
             '<td>'+(m.data ? m.data.split('-').reverse().join('/') : '-')+'</td>'+
-            '<td><strong>'+(m.conta_origem || 'Conta Principal')+'</strong></td>'+
-            '<td>'+descricaoTxt+'</td>'+
-            '<td><span class="badge-tipo">TRANSFERÊNCIA</span></td>'+
+            '<td><strong>'+m.conta+'</strong></td>'+
+            '<td>'+m.descricao+'</td>'+
+            '<td><span class="badge-tipo">'+tipoM.toUpperCase()+'</span></td>'+
             '<td style="text-align:right; '+corValor+'">'+sinalValor+fmtBR(valM)+'</td>'+
             '<td style="text-align:right; font-weight:700;">R$ '+fmtBR(saldoAcumulado)+'</td>'+
         '</tr>';
