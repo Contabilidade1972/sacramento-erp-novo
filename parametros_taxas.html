@@ -56,7 +56,7 @@
 
         .container { max-width: 1200px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 20px; }
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; gap: 12px; margin-bottom: -10px; flex-wrap: wrap; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
         
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
@@ -65,7 +65,7 @@
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
         .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
-        .form-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+        .form-row { display: grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
         @media(max-width: 900px) { .form-row { grid-template-columns: 1fr; } }
 
         label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
@@ -125,16 +125,16 @@
     </div>
 
     <div>
-        <div class="page-title"><i class="fas fa-percentage" style="color:var(--primary);"></i> Parametrização de Taxas (MDR)</div>
-        <div class="page-subtitle">Configure as alíquotas de desconto aplicadas aos recebíveis digitais da empresa</div>
+        <div class="page-title"><i class="fas fa-percentage" style="color:var(--primary);"></i> Parametrização Avançada de Taxas por Canal e Bandeira</div>
+        <div class="page-subtitle">Informe a descrição detalhada (ex: Cartão Mastercard, PIX Banco Inter) para associar com precisão aos recebíveis.</div>
     </div>
 
     <!-- PAINEL DE CADASTRO DE TAXA -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-plus-circle"></i> Cadastrar Regra de Taxa por Canal</span></div>
+        <div class="panel-header"><span><i class="fas fa-plus-circle"></i> Cadastrar Regra Específica</span></div>
         <div class="form-row">
             <div>
-                <label>Canal / Meio de Pagamento *</label>
+                <label>Canal / Meio *</label>
                 <select id="canal_gateway" class="form-control">
                     <option value="PIX">PIX</option>
                     <option value="Cartão de Crédito">Cartão de Crédito</option>
@@ -144,7 +144,11 @@
                 </select>
             </div>
             <div>
-                <label>Taxa MDR (%) *</label>
+                <label>Identificação / Bandeira / Banco *</label>
+                <input type="text" id="operadora_nome" class="form-control" placeholder="Ex: Mastercard, Banco Inter, Stone...">
+            </div>
+            <div>
+                <label>MDR (%) *</label>
                 <input type="number" step="0.01" id="taxa_percentual_mdr" class="form-control" placeholder="0.00" value="0.00">
             </div>
             <div>
@@ -165,6 +169,7 @@
                 <thead>
                     <tr>
                         <th>Canal / Meio</th>
+                        <th>Identificação / Bandeira / Banco</th>
                         <th>Taxa MDR (%)</th>
                         <th>Tarifa Fixa (R$)</th>
                         <th>Última Atualização</th>
@@ -172,7 +177,7 @@
                     </tr>
                 </thead>
                 <tbody id="tbodyTaxas">
-                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">A carregar parâmetros...</td></tr>
+                    <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-light);">A carregar parâmetros...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -227,22 +232,24 @@ async function carregarTaxas(){
 
     var { data, error } = await sb.from('taxas_gateway_config').select('*').eq('cliente_id', cid).order('canal_gateway');
     if(error) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
         return;
     }
 
     cacheTaxas = data || [];
     if(!cacheTaxas.length) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma regra parametrizada. O sistema operará com taxa ZERO (R$ 0,00) até que uma regra seja criada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma regra parametrizada. O sistema operará com taxa ZERO (R$ 0,00) até que uma regra seja criada.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = '';
     cacheTaxas.forEach(t => {
         let dataAlt = t.updated_at ? t.updated_at.split('T')[0].split('-').reverse().join('/') : '—';
+        let opNome = t.operadora_nome || 'Geral / Padrão';
         tbody.innerHTML += `
             <tr>
                 <td><strong>${t.canal_gateway}</strong></td>
+                <td>${opNome}</td>
                 <td>${Number(t.taxa_percentual_mdr || 0).toFixed(2)}%</td>
                 <td>R$ ${fmtBR(t.tarifa_fixa_reais)}</td>
                 <td>${dataAlt}</td>
@@ -257,32 +264,32 @@ async function carregarTaxas(){
 async function salvarTaxa() {
     var cid = window.clienteIdAtual();
     var canal = document.getElementById('canal_gateway').value;
+    var operadora = document.getElementById('operadora_nome').value.trim();
     var mdr = parseFloat(document.getElementById('taxa_percentual_mdr').value) || 0;
     var fixa = parseFloat(document.getElementById('tarifa_fixa_reais').value) || 0;
+
+    if(!operadora) {
+        toast("Informe a identificação (ex: Mastercard, Banco Inter)", "error");
+        return;
+    }
 
     let payload = {
         cliente_id: cid,
         canal_gateway: canal,
+        operadora_nome: operadora,
         taxa_percentual_mdr: mdr,
         tarifa_fixa_reais: fixa,
         updated_at: new Date().toISOString()
     };
 
-    // Atualiza se já existir para este canal, ou insere se for novo
-    let check = await sb.from('taxas_gateway_config').select('id').eq('cliente_id', cid).eq('canal_gateway', canal).maybeSingle();
-    let res;
-    if(check.data) {
-        res = await sb.from('taxas_gateway_config').update(payload).eq('id', check.data.id).eq('cliente_id', cid);
-    } else {
-        res = await sb.from('taxas_gateway_config').insert([payload]);
-    }
-
+    let res = await sb.from('taxas_gateway_config').insert([payload]);
     if(res.error) {
         toast("Erro ao salvar: " + res.error.message, "error");
         return;
     }
 
-    toast("Regra de taxa salva com sucesso!");
+    toast("Regra de taxa adicionada com sucesso!");
+    document.getElementById('operadora_nome').value = '';
     document.getElementById('taxa_percentual_mdr').value = '0.00';
     document.getElementById('tarifa_fixa_reais').value = '0.00';
     carregarTaxas();
