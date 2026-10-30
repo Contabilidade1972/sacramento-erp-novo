@@ -193,8 +193,9 @@ function clienteIdAtual() {
 
 async function inicializarPagina() {
     const u = obterUsuario();
-    if (u) {
-        document.getElementById('userName').innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+    const elUser = document.getElementById('userName');
+    if (elUser && u) {
+        elUser.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
     }
 
     const select = document.getElementById('selectEmpresa');
@@ -204,16 +205,16 @@ async function inicializarPagina() {
     if (master) {
         if (boxSeletor) boxSeletor.style.display = 'flex';
         const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        if (data) {
+        if (select && data) {
+            select.innerHTML = '';
             data.forEach(emp => {
                 const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
                 select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
             });
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+            select.value = selAtual;
+            select.disabled = false;
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
     } else {
         if (boxSeletor) boxSeletor.style.display = 'none';
     }
@@ -222,9 +223,12 @@ async function inicializarPagina() {
 }
 
 function trocarEmpresa() {
+    if (!ehMaster()) return;
     const select = document.getElementById('selectEmpresa');
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarOrcamentos();
+    if (select) {
+        localStorage.setItem('empresaSelecionada', select.value);
+        carregarOrcamentos();
+    }
 }
 
 function sair() {
@@ -242,9 +246,9 @@ function formatBRL(v) {
 async function carregarOrcamentos() {
     const cid = clienteIdAtual();
     const tbody = document.getElementById('tbodyOrcamentos');
+    if(!tbody) return;
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-light);">A carregar orçamentos...</td></tr>';
 
-    // Tenta carregar da tabela orcamentos aplicando o filtro estrito de multi-tenancy
     const { data, error } = await sb.from('orcamentos').select('*').eq('cliente_id', cid).order('id', { ascending: false });
     if (error) {
         tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
@@ -257,6 +261,8 @@ async function carregarOrcamentos() {
 
 function renderTabela() {
     const tbody = document.getElementById('tbodyOrcamentos');
+    if(!tbody) return;
+
     if (!orcamentosCache.length) {
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum orçamento encontrado para esta empresa.</td></tr>';
         return;
