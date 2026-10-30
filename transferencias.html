@@ -91,22 +91,30 @@
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
         .print-corporative-header { display: none !important; }
+        .print-corporative-footer { display: none !important; }
 
         @media print {
-            @page { size: A4 landscape; margin: 10mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 9pt; margin: 0 !important; padding: 0 !important; }
-            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes, .col-check { display: none !important; }
+            @page { size: A4 portrait; margin: 10mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
+            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
             .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
+            
             .print-corporative-header {
-                display: block !important; background: #fff !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important;
+                display: block !important; background: #fff !important; padding-bottom: 3mm !important; margin-bottom: 3mm !important;
                 border-bottom: 2px solid #1e3a8a !important; width: 100% !important;
             }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 8.5pt !important; table-layout: fixed !important; margin: 0 !important; page-break-inside: auto; }
+
+            .print-corporative-footer {
+                display: block !important; position: fixed; bottom: 0; left: 0; right: 0; width: 100%;
+                font-size: 7pt; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 4px; text-align: center;
+            }
+
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; }
             thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; page-break-after: auto; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
+            tr { page-break-inside: avoid !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 3px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
@@ -569,7 +577,7 @@ async function carregarTransferencias(){
     
     let rawData = r.data || [];
 
-    // MOTOR ANTI-DUPLICIDADE RIGOROSO (Garante que a mesma transação com data, valor e histórico idênticos não duplique)
+    // MOTOR ANTI-DUPLICIDADE RIGOROSO (Impede lançamentos duplicados por data, valor e histórico)
     let mapaUnico = new Map();
     rawData.forEach(item => {
         let chave = `${item.data}_${item.valor}_${(item.conta_origem||'').trim().toLowerCase()}_${(item.observacao||'').trim().toLowerCase()}_${(item.favorecido_nome||'').trim().toLowerCase()}`;
@@ -590,12 +598,11 @@ function renderTabelaHistorico(lista){
     html += `<tr>
         <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
             <div class="print-corporative-header">
-                <h2 style="font-size: 14pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">NanoSignals — Relatório de Transferências & Movimentações</h2>
-                <p style="font-size: 8.5pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">NanoSignals — Relatório de Transferências & Movimentações</h2>
+                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
             </div>
         </th>
     </tr>`;
-    // REMOVIDO A COLUNA DE CHECKBOXES PARA EVITAR OS QUADRADINHOS NA IMPRESSÃO
     html += '<tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
     
     lista.forEach(t => {
@@ -614,6 +621,12 @@ function renderTabelaHistorico(lista){
         </tr>`;
     });
     html += '</tbody></table>';
+
+    // Rodapé fixo corporativo para impressão limpa em retrato
+    html += `<div class="print-corporative-footer">
+        Sacramento ERP &middot; Documento gerado eletronicamente por fecoelho@gmail.com em ${new Date().toLocaleString('pt-BR')} &middot; Sistema de Gestão Empresarial de Alta Performance
+    </div>`;
+
     el.innerHTML = html;
 }
 
