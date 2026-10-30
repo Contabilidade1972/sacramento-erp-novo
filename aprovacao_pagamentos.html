@@ -76,12 +76,18 @@
         .btn-acao:hover { background: var(--primary-dark); }
         .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .btn-secundario:hover { background: #cbd5e1; }
-        .btn-aprovar { background: var(--success); color: #fff; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .btn-aprovar { background: var(--success); color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .btn-aprovar:hover { background: #059669; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
+<div class="toast-container" id="toastContainer"></div>
 
 <header class="site-header">
     <a href="index.html" class="site-brand">
@@ -154,15 +160,15 @@
     <div class="kpi-grid">
         <div class="kpi-card">
             <span class="kpi-label">Total Pendente de Aprovação</span>
-            <span id="kpiPendente" class="kpi-value" style="color:var(--warning);">R\$ 0,00</span>
+            <span id="kpiPendente" class="kpi-value" style="color:var(--warning);">R$ 0,00</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-label">Total Aprovado para Liberação</span>
-            <span id="kpiAprovado" class="kpi-value" style="color:var(--success);">R\$ 0,00</span>
+            <span id="kpiAprovado" class="kpi-value" style="color:var(--success);">R$ 0,00</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-label">Total Geral Contas a Pagar</span>
-            <span id="kpiGeral" class="kpi-value">R\$ 0,00</span>
+            <span id="kpiGeral" class="kpi-value">R$ 0,00</span>
         </div>
     </div>
 
@@ -180,7 +186,7 @@
                     <th>Descrição / Título</th>
                     <th>Centro de Custo</th>
                     <th>Status</th>
-                    <th class="num">Valor (R\$)</th>
+                    <th class="num">Valor (R$)</th>
                     <th style="text-align:center;">Ações</th>
                 </tr>
             </thead>
@@ -197,7 +203,7 @@
 </footer>
 
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
     function obterUsuario() {
@@ -210,6 +216,7 @@
         return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
     }
 
+    // BLINDAGEM ESTRITA LGPD (MULTI-TENANCY)
     function clienteIdAtual() {
         const u = obterUsuario();
         if (!u) return 1;
@@ -223,6 +230,21 @@
     function formatarMoeda(valor) {
         let num = parseFloat(valor) || 0;
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function toast(msg, type='success'){
+        var c = document.getElementById('toastContainer');
+        if(!c){
+            c = document.createElement('div');
+            c.id = 'toastContainer';
+            c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+            document.body.appendChild(c);
+        }
+        var x = document.createElement('div');
+        x.className = 'toast ' + type;
+        x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
+        c.appendChild(x);
+        setTimeout(function(){ x.remove(); }, 3000);
     }
 
     if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
@@ -288,14 +310,21 @@
             }
 
             let lista = [];
-            data.forEach((item, index) => {
+            data.forEach((item) => {
                 let valor = parseFloat(item.valor) || 0;
-                let fornecedor = item.fornecedor || 'Fornecedor Diversos';
+                let fornecedor = item.fornecedor_nome || item.fornecedor || 'Fornecedor Diversos';
                 let desc = item.descricao || 'Despesa Operacional';
                 let cc = item.centro_custo || '1.02 - Administrativo';
-                let status = index % 2 === 0 ? 'pendente' : 'aprovado'; // Simulação de alçada
+                
+                // Mapeia o status real da base (se houver campo status_aprovacao ou status)
+                let statusAprovacao = (item.status_aprovacao || item.status || 'pendente').toLowerCase();
+                if(statusAprovacao.includes('aprov') || statusAprovacao.includes('pago')) {
+                    statusAprovacao = 'aprovado';
+                } else {
+                    statusAprovacao = 'pendente';
+                }
 
-                let matchStatus = (statusFiltro === 'todos' || status === statusFiltro);
+                let matchStatus = (statusFiltro === 'todos' || statusAprovacao === statusFiltro);
                 let matchCC = (centroCustoFiltro === 'todos' || cc.toLowerCase().includes(centroCustoFiltro.toLowerCase()));
                 let matchTexto = (!textoFiltro || fornecedor.toLowerCase().includes(textoFiltro) || desc.toLowerCase().includes(textoFiltro));
 
@@ -306,7 +335,7 @@
                         fornecedor: fornecedor,
                         descricao: desc,
                         centroCusto: cc,
-                        status: status,
+                        status: statusAprovacao,
                         valor: valor
                     });
                 }
@@ -334,7 +363,7 @@
                     <td><span class="badge-status ${badgeClass}">${badgeText}</span></td>
                     <td class="num" style="font-weight:700;">${formatarMoeda(item.valor)}</td>
                     <td style="text-align:center;">
-                        ${item.status === 'pendente' ? `<button class="btn-aprovar" onclick="alert('Título aprovado com sucesso!')">Aprovar</button>` : `<span style="color:var(--success); font-size:12px; font-weight:700;"><i class="fas fa-check"></i> Liberado</span>`}
+                        ${item.status === 'pendente' ? `<button class="btn-aprovar" onclick="aprovarTitulo(${item.id})"><i class="fas fa-check"></i> Aprovar</button>` : `<span style="color:var(--success); font-size:12px; font-weight:700;"><i class="fas fa-check-circle"></i> Liberado</span>`}
                     </td>
                 </tr>`;
             });
@@ -347,6 +376,23 @@
         } catch (err) {
             tbody.innerHTML = `<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro de execução: ${err.message}</td></tr>`;
         }
+    }
+
+    async function aprovarTitulo(id) {
+        const cid = clienteIdAtual();
+        const { error } = await sb.from('contas_pagar').update({ status_aprovacao: 'aprovado', updated_at: new Date().toISOString() }).eq('id', id).eq('cliente_id', cid);
+        
+        if (error) {
+            // Caso a coluna específica não exista, tenta atualizar o status geral com segurança
+            const { error: err2 } = await sb.from('contas_pagar').update({ status: 'Aprovado', updated_at: new Date().toISOString() }).eq('id', id).eq('cliente_id', cid);
+            if(err2) {
+                toast("Erro ao aprovar título: " + err2.message, "error");
+                return;
+            }
+        }
+
+        toast("Título aprovado e liberado com sucesso!");
+        carregarPagamentos();
     }
 
     async function inicializarPagina() {
@@ -374,6 +420,15 @@
         }
 
         carregarPagamentos();
+    }
+
+    async function trocarEmpresa() {
+        if (!ehMaster()) return;
+        const select = document.getElementById('selectEmpresa');
+        if (select) {
+            localStorage.setItem('empresaSelecionada', select.value);
+            carregarPagamentos();
+        }
     }
 
     window.onload = inicializarPagina;
