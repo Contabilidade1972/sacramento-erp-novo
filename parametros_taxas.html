@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parametrização de Taxas (MDR) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f0f4f8; --card: #ffffff; --text-main: #1e293b; --text-light: #64748b; --border: #e2e8f0;
+        }
+
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; margin: 0; color: #fff; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; display: block; margin-top: 2px; }
+
+        .search-global-box { position: relative; flex: 1; max-width: 320px; margin: 0 20px; }
+        .search-global-box input { width: 100%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 8px 14px 8px 36px; color: #fff; font-size: 13px; outline: none; transition: 0.2s; }
+        .search-global-box input::placeholder { color: #cbd5e1; }
+        .search-global-box input:focus { background: rgba(255,255,255,0.2); border-color: #93c5fd; }
+        .search-global-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
+
+        .search-results-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-top: 6px; display: none; z-index: 2000; overflow: hidden; border: 1px solid var(--border); }
+        .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; }
+        .search-item:hover { background: #eff6ff; color: var(--primary); }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.1); padding: 6px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); }
+        .btn-acao-topo { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-acao-topo:hover { background: rgba(255,255,255,0.2); }
+        .btn-tema { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #f59e0b; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1200px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 20px; }
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        .form-row { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 12px; align-items: flex-end; margin-bottom: 16px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 11px 12px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; background: var(--card); }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- CABEÇALHO PADRÃO UNIFICADO -->
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1 id="headerEmpresaNome">Sacramento ERP</h1>
+            <span id="headerEmpresaSub">MÓDULO FINANCEIRO</span>
+        </div>
+    </a>
+
+    <div class="search-global-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="inputBuscaGlobal" placeholder="Pesquisar módulo..." oninput="executarBuscaGlobal(this.value)">
+        <div class="search-results-dropdown" id="dropdownResultados"></div>
+    </div>
+
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
+        </div>
+        <span id="current_datetime" style="font-size:11px; color:#93c5fd; font-weight:600;">--/--/----, --:--</span>
+        <button class="btn-tema" id="btnTemaGlobal" onclick="alternarTemaGlobal()" title="Alternar tema"><i class="fas fa-moon"></i></button>
+        <a href="index.html" class="btn-acao-topo"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-percentage" style="color:var(--primary);"></i> Parametrização de Taxas (MDR e Operadoras)</div>
+        <div class="page-subtitle">Configure as alíquotas de desconto aplicadas aos recebíveis digitais da empresa</div>
+    </div>
+
+    <!-- PAINEL DE CADASTRO DE TAXA -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-plus-circle"></i> Nova Regra de Taxa por Canal</span></div>
+        <input type="hidden" id="edit_id">
+        <div class="form-row">
+            <div>
+                <label>Canal / Meio de Pagamento *</label>
+                <select id="canal_gateway" class="form-control">
+                    <option value="PIX">PIX</option>
+                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                    <option value="Cartão de Débito">Cartão de Débito</option>
+                    <option value="Boleto Bancário">Boleto Bancário</option>
+                    <option value="Outros / Gateway">Outros / Gateway</option>
+                </select>
+            </div>
+            <div>
+                <label>Taxa MDR (%) *</label>
+                <input type="number" step="0.01" id="taxa_percentual_mdr" class="form-control" placeholder="0.00" value="0.00">
+            </div>
+            <div>
+                <label>Tarifa Fixa (R$) *</label>
+                <input type="number" step="0.01" id="tarifa_fixa_reais" class="form-control" placeholder="0.00" value="0.00">
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-acao" style="background:var(--success); height:38px; width:100%; justify-content:center;" onclick="salvarTaxa()"><i class="fas fa-save"></i> Salvar Regra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DE TAXAS CADASTRADAS -->
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-list"></i> Regras de Taxas Configuradas</span></div>
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th>Canal / Meio</th>
+                        <th>Taxa MDR (%)</th>
+                        <th>Tarifa Fixa (R$)</th>
+                        <th>Última Atualização</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyTaxas">
+                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">A carregar parâmetros...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<script>
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+let cacheTaxas = [];
+
+window.obterUsuario = function() {
+    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+};
+
+window.ehMaster = function() {
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+
+window.clienteIdAtual = function() {
+    const u = window.obterUsuario();
+    if (!u) return 1;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+};
+
+setInterval(() => {
+    let now = new Date();
+    const dt = document.getElementById('current_datetime');
+    if(dt) dt.innerText = now.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+}, 1000);
+
+const rotasModulos = [
+    { nome: "Portal Principal (Início)", url: "index.html", icon: "fa-home", keywords: ["inicio", "portal", "home"] },
+    { nome: "Módulo Financeiro", url: "modulo_financeiro.html", icon: "fa-wallet", keywords: ["financeiro", "modulo"] },
+    { nome: "Parâmetros de Taxas", url: "parametros_taxas.html", icon: "fa-percentage", keywords: ["taxas", "mdr", "parametros"] }
+];
+
+function executarBuscaGlobal(termo) {
+    const dropdown = document.getElementById('dropdownResultados');
+    const query = termo.toLowerCase().trim();
+    if(!query) { dropdown.style.display = 'none'; return; }
+    let encontrados = rotasModulos.filter(m => m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query)));
+    if(encontrados.length === 0) {
+        dropdown.innerHTML = `<div class="search-item" style="color:var(--text-light);">Nenhum módulo encontrado.</div>`;
+    } else {
+        dropdown.innerHTML = encontrados.map(m => `
+            <a href="${m.url}" class="search-item">
+                <i class="fas ${m.icon}" style="color:var(--primary);"></i> ${m.nome}
+            </a>
+        `).join('');
+    }
+    dropdown.style.display = 'block';
+}
+
+function alternarTemaGlobal() {
+    let atual = localStorage.getItem('erp_tema') || 'claro';
+    let novo = atual === 'escuro' ? 'claro' : 'escuro';
+    localStorage.setItem('erp_tema', novo);
+    aplicarTemaSalvo();
+}
+
+function aplicarTemaSalvo() {
+    let tema = localStorage.getItem('erp_tema') || 'claro';
+    document.documentElement.setAttribute('data-tema', tema);
+    const btn = document.getElementById('btnTemaGlobal');
+    if (btn) btn.innerHTML = tema === 'escuro' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+}
+
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
+    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
+    setTimeout(function(){x.remove();},3000);
+}
+
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+async function carregarDadosEmpresaHeader() {
+    var cid = window.clienteIdAtual();
+    if(!cid) return;
+    var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+    if(data){
+        let razao = data.razao_social || data.nome_fantasia || 'Sacramento ERP';
+        const elNome = document.getElementById('headerEmpresaNome');
+        const elSub = document.getElementById('headerEmpresaSub');
+        if(elNome) elNome.innerText = razao;
+        if(elSub) elSub.innerText = "MÓDULO FINANCEIRO";
+    }
+}
+
+async function carregarTaxas(){
+    var cid = window.clienteIdAtual();
+    var tbody = document.getElementById('tbodyTaxas');
+    if(!cid) return;
+
+    var { data, error } = await sb.from('taxas_gateway_config').select('*').eq('cliente_id', cid).order('canal_gateway');
+    if(error) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+        return;
+    }
+
+    cacheTaxas = data || [];
+    if(!cacheTaxas.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma taxa parametrizada. O sistema operará com taxa ZERO (R$ 0,00) até que uma regra seja criada.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    cacheTaxas.forEach(t => {
+        let dataAlt = t.updated_at ? t.updated_at.split('T')[0].split('-').reverse().join('/') : '—';
+        tbody.innerHTML += `
+            <tr>
+                <td><strong>${t.canal_gateway}</strong></td>
+                <td>${Number(t.taxa_percentual_mdr || 0).toFixed(2)}%</td>
+                <td>R$ ${fmtBR(t.tarifa_fixa_reais)}</td>
+                <td>${dataAlt}</td>
+                <td style="text-align:right;">
+                    <button class="btn-acao" style="padding:4px 8px; font-size:11px; background:#ef4444;" onclick="excluirTaxa(${t.id})"><i class="fas fa-trash"></i> Excluir</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+async function salvarTaxa() {
+    var cid = window.clienteIdAtual();
+    var canal = document.getElementById('canal_gateway').value;
+    var mdr = parseFloat(document.getElementById('taxa_percentual_mdr').value) || 0;
+    var fixa = parseFloat(document.getElementById('tarifa_fixa_reais').value) || 0;
+
+    let payload = {
+        cliente_id: cid,
+        canal_gateway: canal,
+        taxa_percentual_mdr: mdr,
+        tarifa_fixa_reais: fixa,
+        updated_at: new Date().toISOString()
+    };
+
+    // Verifica se já existe regra para este canal para atualizar ou inserir
+    let check = await sb.from('taxas_gateway_config').select('id').eq('cliente_id', cid).eq('canal_gateway', canal).maybeSingle();
+    let res;
+    if(check.data) {
+        res = await sb.from('taxas_gateway_config').update(payload).eq('id', check.data.id).eq('cliente_id', cid);
+    } else {
+        res = await sb.from('taxas_gateway_config').insert([payload]);
+    }
+
+    if(res.error) {
+        toast("Erro ao salvar: " + res.error.message, "error");
+        return;
+    }
+
+    toast("Parâmetro de taxa salvo com sucesso!");
+    document.getElementById('taxa_percentual_mdr').value = '0.00';
+    document.getElementById('tarifa_fixa_reais').value = '0.00';
+    carregarTaxas();
+}
+
+async function excluirTaxa(id) {
+    if(!confirm("Deseja realmente excluir esta regra de taxa?")) return;
+    var cid = window.clienteIdAtual();
+    var { error } = await sb.from('taxas_gateway_config').delete().eq('id', id).eq('cliente_id', cid);
+    if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
+    toast("Regra removida com sucesso!");
+    carregarTaxas();
+}
+
+window.trocarEmpresa = async function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', select.value);
+    await carregarDadosEmpresaHeader();
+    await carregarTaxas();
+};
+
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+
+window.onload = async function(){
+    let u = window.obterUsuario();
+    if(!u || !u.email) { location.href = 'login.html'; return; }
+
+    if (u.email) {
+        const elUserName = document.getElementById('userName');
+        if (elUserName) {
+            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        }
+    }
+
+    const master = window.ehMaster();
+
+    if (master) {
+        document.body.classList.add('usuario-master');
+        const select = document.getElementById('selectEmpresa');
+        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+        select.innerHTML = '';
+        if (data) {
+            data.forEach(emp => {
+                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+            });
+        }
+        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+        select.value = selAtual;
+        select.disabled = false;
+    } else {
+        document.body.classList.remove('usuario-master');
+    }
+
+    aplicarTemaSalvo();
+    await carregarDadosEmpresaHeader();
+    await carregarTaxas();
+};
+</script>
+<script src="erp-core.js"></script>
+</body>
+</html>
