@@ -23,7 +23,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* CABEÇALHO PADRÃO UNIFICADO DO ERP */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
@@ -348,6 +347,7 @@ async function carregarDadosEmpresaHeader() {
 async function carregarContasBancarias(){
     var cid = window.clienteIdAtual();
     if(!cid) return;
+    // SEGURANÇA ESTRITA LGPD: Busca contas estritamente do cliente atual
     var r = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
     if(!r.error){
         cacheContasBancarias = r.data || [];
@@ -357,6 +357,7 @@ async function carregarContasBancarias(){
             var nome = (c.nome || c.banco || 'Conta');
             var opt = document.createElement('option'); opt.value = c.id; opt.textContent = nome; sel.appendChild(opt);
         });
+        // PRÉ-SELECIONA AUTOMATICAMENTE A PRIMEIRA CONTA DISPONÍVEL SE HOUVER REGISTOS
         if(sel.options.length > 1) {
             sel.selectedIndex = 1;
             mudarSelecaoConta();
