@@ -495,3 +495,24 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
   else iniciar();
 })();
+
+// CORREÇÃO GLOBAL DE IMPRESSÃO PARA TODOS OS RELATÓRIOS DO SISTEMA
+window.addEventListener('beforeprint', () => {
+    // 1. Pega o nome real da empresa selecionada no topo do ERP
+    const elEmpresaHeader = document.querySelector('.site-brand .brand-info h1') || document.querySelector('header h1');
+    const nomeEmpresa = elEmpresaHeader ? elEmpresaHeader.innerText : "Sacramento ERP";
+
+    // 2. Atualiza todos os títulos de impressão corporativa automaticamente
+    document.querySelectorAll('.print-corporative-header h2, .print-corporative-header h3').forEach(titulo => {
+        if (!titulo.innerText.includes(nomeEmpresa)) {
+            titulo.innerText = nomeEmpresa + " — " + titulo.innerText.replace("Sacramento ERP — ", "");
+        }
+    });
+
+    // 3. Preenche a data e hora da emissão em qualquer relatório impresso
+    const agora = new Date();
+    const dataHoraFmt = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+    document.querySelectorAll('#printDataEmissao, .print-data-emissao').forEach(span => {
+        span.innerText = dataHoraFmt;
+    });
+});
