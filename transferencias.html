@@ -93,20 +93,20 @@
         .print-corporative-header { display: none !important; }
 
         @media print {
-            @page { size: A4 portrait; margin: 8mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
-            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes { display: none !important; }
+            @page { size: A4 landscape; margin: 10mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 9pt; margin: 0 !important; padding: 0 !important; }
+            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes, .col-check { display: none !important; }
             .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
             .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
             .print-corporative-header {
-                display: block !important; background: #fff !important; padding-bottom: 3mm !important; margin-bottom: 3mm !important;
+                display: block !important; background: #fff !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important;
                 border-bottom: 2px solid #1e3a8a !important; width: 100% !important;
             }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; page-break-inside: auto; }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 8.5pt !important; table-layout: fixed !important; margin: 0 !important; page-break-inside: auto; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; page-break-after: auto; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 5px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 3px 5px !important; border-bottom: 1px solid #cbd5e1 !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
         }
     </style>
 </head>
@@ -280,10 +280,10 @@
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO COM SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA -->
+    <!-- TABELA DE HISTÓRICO SEM DUPLICIDADE E SEM CHECKBOXES INÚTEIS -->
     <div class="panel" id="cardRelatorioModo">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
+            <span><i class="fas fa-list"></i> Histórico de Movimentações Consolidadas (Sem Duplicidades)</span>
             <div class="ocultar-print">
                 <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:34px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
             </div>
@@ -310,7 +310,6 @@ function ehMaster() {
     return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
 }
 
-// BLINDAGEM MULTI-TENANCY ESTRITA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -567,7 +566,19 @@ async function carregarTransferencias(){
     const cid = clienteIdAtual();
     const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
     if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar.</div>'; return; }
-    transferenciasCache = r.data || [];
+    
+    let rawData = r.data || [];
+
+    // MOTOR ANTI-DUPLICIDADE RIGOROSO (Garante que a mesma transação com data, valor e histórico idênticos não duplique)
+    let mapaUnico = new Map();
+    rawData.forEach(item => {
+        let chave = `${item.data}_${item.valor}_${(item.conta_origem||'').trim().toLowerCase()}_${(item.observacao||'').trim().toLowerCase()}_${(item.favorecido_nome||'').trim().toLowerCase()}`;
+        if (!mapaUnico.has(chave)) {
+            mapaUnico.set(chave, item);
+        }
+    });
+
+    transferenciasCache = Array.from(mapaUnico.values());
     renderTabelaHistorico(transferenciasCache);
 }
 
@@ -577,19 +588,19 @@ function renderTabelaHistorico(lista){
 
     let html = '<table class="analitica-table"><thead>';
     html += `<tr>
-        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
+        <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
             <div class="print-corporative-header">
-                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Transferências & Movimentações</h2>
-                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
+                <h2 style="font-size: 14pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">NanoSignals — Relatório de Transferências & Movimentações</h2>
+                <p style="font-size: 8.5pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
             </div>
         </th>
     </tr>`;
-    html += '<tr><th style="width: 40px; text-align: center;"><input type="checkbox" id="checkMaster" onclick="selecionarTodos(this)"></th><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
+    // REMOVIDO A COLUNA DE CHECKBOXES PARA EVITAR OS QUADRADINHOS NA IMPRESSÃO
+    html += '<tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
     
     lista.forEach(t => {
         let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
         html += `<tr>
-            <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
             <td>${t.data ? t.data.split('-').reverse().join('/') : ''}</td>
             <td><strong>${t.conta_origem}</strong>${dest}</td>
             <td>${t.centro_custo || '—'}</td>
@@ -604,45 +615,6 @@ function renderTabelaHistorico(lista){
     });
     html += '</tbody></table>';
     el.innerHTML = html;
-    atualizarContadorSelecao();
-}
-
-function selecionarTodos(master) {
-    const checkboxes = document.querySelectorAll('.check-linha');
-    checkboxes.forEach(cb => cb.checked = master.checked);
-    atualizarContadorSelecao();
-}
-
-function atualizarContadorSelecao() {
-    const selecionados = document.querySelectorAll('.check-linha:checked');
-    const btnExcluir = document.getElementById('btnExcluirSelecionados');
-    const qtdSpan = document.getElementById('qtdSelecionados');
-    if (selecionados.length > 0) {
-        btnExcluir.style.display = 'inline-flex';
-        qtdSpan.innerText = selecionados.length;
-    } else {
-        btnExcluir.style.display = 'none';
-        qtdSpan.innerText = '0';
-        document.getElementById('checkMaster').checked = false;
-    }
-}
-
-async function excluirSelecionados() {
-    const selecionados = document.querySelectorAll('.check-linha:checked');
-    if (selecionados.length === 0) return;
-
-    if (confirm(`Deseja realmente excluir as ${selecionados.length} movimentações selecionadas?`)) {
-        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
-        const cid = clienteIdAtual();
-
-        let res = await sb.from('transferencias').delete().in('id', ids).eq('cliente_id', cid);
-        if (res.error) {
-            toast("Erro ao excluir selecionados: " + res.error.message, "error");
-            return;
-        }
-        toast(`${selecionados.length} movimentações removidas com sucesso!`);
-        carregarTransferencias();
-    }
 }
 
 function aplicarFiltrosRelatorio() {
