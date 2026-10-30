@@ -845,7 +845,11 @@ async function salvarContaPagar() {
     const valor = parseFloat(document.getElementById('valor').value);
     const vencimento = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
-    const status = document.getElementById('status_edicao').value;
+    
+    // CAPTURA CORRETA DO STATUS SELECIONADO NO FORMULÁRIO
+    const statusSelect = document.getElementById('status_edicao').value;
+    const status = (statusSelect.toLowerCase().includes('pago')) ? 'Pago' : 'Pendente';
+
     const centro_custo = document.getElementById('centro_custo').value || 'Não informado';
     const conta_contabil = document.getElementById('conta_contabil').value || 'Não informada';
     const conta_origem = document.getElementById('conta_origem_cadastro').value;
@@ -864,14 +868,13 @@ async function salvarContaPagar() {
     }
 
     if(id) {
-        // CORREÇÃO CRUCIAL: Atualiza estritamente o registo ID selecionado sem apagar os outros da série
         let payload = {
             fornecedor_nome,
             cpf_cnpj_fornecedor,
             valor,
             vencimento,
             descricao,
-            status,
+            status: status, // Grava explicitamente "Pago" ou "Pendente" no banco
             centro_custo,
             conta_contabil,
             conta_origem,
@@ -904,7 +907,7 @@ async function salvarContaPagar() {
                 valor,
                 vencimento: dataIso,
                 descricao: descParcela,
-                status,
+                status: (i === 0 ? status : 'Pendente'),
                 centro_custo,
                 conta_contabil,
                 conta_origem,
