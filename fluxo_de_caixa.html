@@ -134,7 +134,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-coins"></i></div>
             <div>
-                <h4>Balanço Abertura</h4>
+                <h4>Saldo Inicial Auditado</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
             </div>
         </div>
@@ -155,7 +155,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Saldo Final PJ</h4>
+                <h4>Saldo Final PJ (Inter)</h4>
                 <div class="value" id="resumoSaldoFinal">R$ 0,00</div>
             </div>
         </div>
@@ -238,7 +238,7 @@
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoInicialReal = 4000.00;
+let saldoInicialReal = 1365.76; // Saldo auditado de encerramento de 2025
 
 function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -288,6 +288,19 @@ async function carregarCentrosCustoFiltro() {
 }
 
 async function carregarSaldoInicial() {
+    try {
+        const { data: contas } = await sbFiltroLeitura('contas_bancarias');
+        if(contas) {
+            contas.forEach(c => {
+                let nomeConta = (c.nome || c.descricao || '').toLowerCase();
+                if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj')) {
+                    if (c.saldo_inicial !== undefined && c.saldo_inicial !== null) {
+                        saldoInicialReal = parseFloat(c.saldo_inicial);
+                    }
+                }
+            });
+        }
+    } catch(e) {}
     document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
 }
 
@@ -322,17 +335,20 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios
+    // 2. Transferências / Aportes de Sócios (A partir de 01/01/2026 para frente)
     transferencias.forEach(t => {
+        let dataT = t.data || t.created_at || '';
+        if (dataT.split('T')[0] < '2026-01-01') return; // Ignora saldos antigos de 2025 já englobados no saldo inicial
+
         let obs = (t.observacao || '').toLowerCase();
         let valorT = parseFloat(t.valor) || 0;
         let ehAporteReal = obs.includes('aporte') || obs.includes('empréstimo') || obs.includes('mútuo') || (obs.includes('pix recebido') && !obs.includes('fatura') && !obs.includes('cartao'));
         if (ehAporteReal) {
-            let chave = `${t.data || t.created_at}_${valorT}_${t.observacao}`;
+            let chave = `${dataT}_${valorT}_${t.observacao}`;
             if (!chavesUnicas.has(chave)) {
                 chavesUnicas.add(chave);
                 movs.push({
-                    data: t.data || t.created_at,
+                    data: dataT,
                     tipo: 'entrada',
                     descricao: t.observacao || 'Aporte / Pix Recebido',
                     referencia: t.conta_destino || t.conta_origem || '',
@@ -343,15 +359,18 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas - Incluindo saída do Luis)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas a partir de 01/01/2026)
     pagar.forEach(p => {
+        let dataP = p.data_pagamento || p.vencimento || p.created_at || '';
+        if (dataP.split('T')[0] < '2026-01-01') return;
+
         let st = (p.status || '').toLowerCase();
         if(st.includes('pago') || st.includes('quitado')) {
-            let chave = `${p.vencimento}_${p.valor}_${p.fornecedor_nome}`;
+            let chave = `${dataP}_${p.valor}_${p.fornecedor_nome}`;
             if (!chavesUnicas.has(chave)) {
                 chavesUnicas.add(chave);
                 movs.push({
-                    data: p.data_pagamento || p.vencimento || p.created_at,
+                    data: dataP,
                     tipo: 'saida',
                     descricao: p.descricao || 'Pagamento',
                     referencia: p.fornecedor_nome || p.fornecedor || '',
