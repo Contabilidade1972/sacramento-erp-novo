@@ -129,13 +129,20 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- CARDS DE RESUMO DO FLUXO DE CAIXA -->
+    <!-- CARDS DE RESUMO DO FLUXO DE CAIXA COM SEGREGAÇÃO DO CARTÃO PRÉ-PAGO -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
-            <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-coins"></i></div>
+            <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
-                <h4>Saldo Inicial Auditado</h4>
+                <h4>Saldo Conta PJ (Inter)</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-credit-card"></i></div>
+            <div>
+                <h4>Cartão Pré-Pago (Teto)</h4>
+                <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">R$ 400,00</div>
             </div>
         </div>
         <div class="dash-card">
@@ -146,16 +153,9 @@
             </div>
         </div>
         <div class="dash-card">
-            <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-arrow-up"></i></div>
-            <div>
-                <h4>Total de Saídas</h4>
-                <div class="value" id="resumoSaidas" style="color:var(--danger)">R$ 0,00</div>
-            </div>
-        </div>
-        <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Saldo Final PJ (Inter)</h4>
+                <h4>Saldo Final (Disponível PJ)</h4>
                 <div class="value" id="resumoSaldoFinal">R$ 0,00</div>
             </div>
         </div>
@@ -208,7 +208,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Geral (Sem Filtros)</span></p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Geral (Sem Filtros)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo do Cartão Pré-Pago segregado (Teto Fixo R$ 400,00)</p>
                             </div>
                         </th>
                     </tr>
@@ -238,7 +238,8 @@
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoInicialReal = 1365.76; // Saldo auditado de encerramento de 2025
+let saldoInicialReal = 491.84; // Saldo oficial conferido no extrato do Banco Inter em 20/10/2026
+let saldoCartaoPrePago = 400.00;
 
 function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -287,21 +288,22 @@ async function carregarCentrosCustoFiltro() {
     } catch(e) {}
 }
 
-async function carregarSaldoInicial() {
+async function carregarSaldosContas() {
     try {
         const { data: contas } = await sbFiltroLeitura('contas_bancarias');
         if(contas) {
             contas.forEach(c => {
-                let nomeConta = (c.nome || c.descricao || '').toLowerCase();
-                if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj')) {
-                    if (c.saldo_inicial !== undefined && c.saldo_inicial !== null) {
-                        saldoInicialReal = parseFloat(c.saldo_inicial);
-                    }
+                let nomeConta = (c.nome || c.descricao || c.tipo || '').toLowerCase();
+                if (nomeConta.includes('pré-pago') || nomeConta.includes('pre-pago') || nomeConta.includes('virtual')) {
+                    saldoCartaoPrePago = parseFloat(c.saldo_inicial || 400.00);
+                } else if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj')) {
+                    saldoInicialReal = parseFloat(c.saldo_inicial || 491.84);
                 }
             });
         }
     } catch(e) {}
     document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
+    document.getElementById('resumoCartaoPrePago').innerText = formatarMoeda(saldoCartaoPrePago);
 }
 
 async function carregarFluxo() {
@@ -335,20 +337,20 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios (A partir de 01/01/2026 para frente)
+    // 2. Transferências / Aportes de Sócios (Excluindo movimentações do cartão pré-pago para manter a conta PJ isolada)
     transferencias.forEach(t => {
-        let dataT = t.data || t.created_at || '';
-        if (dataT.split('T')[0] < '2026-01-01') return; // Ignora saldos antigos de 2025 já englobados no saldo inicial
-
         let obs = (t.observacao || '').toLowerCase();
+        let origem = (t.conta_origem || '').toLowerCase();
+        if (obs.includes('cartão') || obs.includes('google') || origem.includes('cartão')) return;
+
         let valorT = parseFloat(t.valor) || 0;
-        let ehAporteReal = obs.includes('aporte') || obs.includes('empréstimo') || obs.includes('mútuo') || (obs.includes('pix recebido') && !obs.includes('fatura') && !obs.includes('cartao'));
+        let ehAporteReal = obs.includes('aporte') || obs.includes('empréstimo') || obs.includes('mútuo') || (obs.includes('pix recebido') && !obs.includes('fatura'));
         if (ehAporteReal) {
-            let chave = `${dataT}_${valorT}_${t.observacao}`;
+            let chave = `${t.data || t.created_at}_${valorT}_${t.observacao}`;
             if (!chavesUnicas.has(chave)) {
                 chavesUnicas.add(chave);
                 movs.push({
-                    data: dataT,
+                    data: t.data || t.created_at,
                     tipo: 'entrada',
                     descricao: t.observacao || 'Aporte / Pix Recebido',
                     referencia: t.conta_destino || t.conta_origem || '',
@@ -359,18 +361,15 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas a partir de 01/01/2026)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas)
     pagar.forEach(p => {
-        let dataP = p.data_pagamento || p.vencimento || p.created_at || '';
-        if (dataP.split('T')[0] < '2026-01-01') return;
-
         let st = (p.status || '').toLowerCase();
         if(st.includes('pago') || st.includes('quitado')) {
-            let chave = `${dataP}_${p.valor}_${p.fornecedor_nome}`;
+            let chave = `${p.vencimento}_${p.valor}_${p.fornecedor_nome}`;
             if (!chavesUnicas.has(chave)) {
                 chavesUnicas.add(chave);
                 movs.push({
-                    data: dataP,
+                    data: p.data_pagamento || p.vencimento || p.created_at,
                     tipo: 'saida',
                     descricao: p.descricao || 'Pagamento',
                     referencia: p.fornecedor_nome || p.fornecedor || '',
@@ -383,7 +382,7 @@ async function carregarFluxo() {
 
     movs.sort((a,b) => new Date(a.data) - new Date(b.data));
     movimentacoesCache = movs;
-    await carregarSaldoInicial();
+    await carregarSaldosContas();
     aplicarFiltros();
 }
 
