@@ -129,7 +129,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO COM PATRIMÔNIO LÍQUIDO CONSOLIDADO -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -178,11 +178,11 @@
         <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(5, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
             <div>
                 <label>Data Início</label>
-                <input type="date" id="filtroDataInicio" class="form-control" value="2026-09-21" onchange="aplicarFiltros()">
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltros()">
             </div>
             <div>
                 <label>Data Fim</label>
-                <input type="date" id="filtroDataFim" class="form-control" value="2026-10-21" onchange="aplicarFiltros()">
+                <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltros()">
             </div>
             <div>
                 <label>Tipo de Lançamento</label>
@@ -215,7 +215,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Período Extrato Oficial (21/09/2026 a 21/10/2026)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo do Cartão Pré-Pago segregado (Teto R$ 400,00)</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Geral (Sem Filtros)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo do Cartão Pré-Pago segregado (Teto R$ 400,00)</p>
                             </div>
                         </th>
                     </tr>
@@ -230,7 +230,7 @@
                     </tr>
                 </thead>
                 <tbody id="tbodyFluxo">
-                    <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados...</td></tr>
+                    <tr><td colspan="7" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados do Supabase...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -245,7 +245,7 @@
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoInicialReal = 491.84; // Saldo oficial exato conferido no extrato oficial do Banco Inter (20/10/2026)
+let saldoInicialReal = 491.84;
 let saldoCartaoPrePago = 400.00;
 
 function obterUsuario() {
@@ -329,11 +329,11 @@ async function carregarFluxo() {
     let movs = [];
     let chavesUnicas = new Set();
 
-    // 1. Contas a Receber (Quitadas) - Focadas a partir de 21/09/2026 conforme extrato oficial
+    // 1. Contas a Receber (Quitadas)
     receber.forEach(r => {
         let st = (r.status || '').toLowerCase();
-        let dataMov = r.data_recebimento || r.vencimento || r.created_at;
         if(st.includes('recebido') || st.includes('pago') || st.includes('quitado')) {
+            let dataMov = r.data_recebimento || r.vencimento || r.created_at;
             let chave = `${dataMov}_${r.valor}_${r.descricao}`;
             if (!chavesUnicas.has(chave)) {
                 chavesUnicas.add(chave);
@@ -349,7 +349,7 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios (Excluindo duplicidades de extrato)
+    // 2. Transferências / Aportes de Sócios
     transferencias.forEach(t => {
         let dataMov = t.data || t.created_at;
         let obs = (t.observacao || '').toLowerCase();
@@ -374,7 +374,7 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas no período do extrato oficial)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas)
     pagar.forEach(p => {
         let st = (p.status || '').toLowerCase();
         let desc = (p.descricao || '').toLowerCase();
@@ -454,14 +454,14 @@ function aplicarFiltros() {
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     
     let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Período Extrato Oficial (21/09/2026 a 21/10/2026)';
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
 
     const tbody = document.getElementById('tbodyFluxo');
     if(!tbody) return;
     tbody.innerHTML = '';
     
     if(filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período do extrato selecionado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>`;
         return;
     }
 
@@ -517,7 +517,7 @@ async function executarImpressao() {
 }
 
 function limparFiltros() {
-    document.getElementById('filtroDataInicio.value = '';
+    document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     document.getElementById('filtroTipo').value = 'todos';
     document.getElementById('filtroCentro').value = 'todos';
@@ -565,8 +565,6 @@ async function inicializarPagina() {
     }
 
     await carregarCentrosCustoFiltro();
-    document.getElementById('filtroDataInicio').value = '2026-09-21';
-    document.getElementById('filtroDataFim').value = '2026-10-21';
     await carregarFluxo();
 }
 
