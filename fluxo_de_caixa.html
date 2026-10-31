@@ -85,46 +85,17 @@
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .print-corporative-header { display: none !important; }
 
-        /* REGRA RIGOROSA DE IMPRESSÃO CORPORATIVA COM MARGENS A4 */
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 15mm;
-            }
-            body {
-                background: #fff !important;
-                color: #000 !important;
-                font-size: 8pt !important;
-            }
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt !important; }
             body * { visibility: hidden !important; }
             #cardRelatorioModo, #cardRelatorioModo * { visibility: visible !important; }
-            #cardRelatorioModo {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-            }
+            #cardRelatorioModo { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; margin: 0 !important; }
             .ocultar-print { display: none !important; }
-            .print-corporative-header {
-                display: block !important;
-                margin-bottom: 6mm !important;
-                border-bottom: 2px solid #1e3a8a !important;
-                padding-bottom: 4mm !important;
-                width: 100% !important;
-            }
+            .print-corporative-header { display: block !important; margin-bottom: 6mm !important; border-bottom: 2px solid #1e3a8a !important; padding-bottom: 4mm !important; width: 100% !important; }
             .table-container { width: 100% !important; overflow: visible !important; }
             table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; }
-            thead th {
-                background: #1e3a8a !important;
-                color: #fff !important;
-                padding: 5px 6px !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 5px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             tbody td { padding: 4px 6px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
     </style>
@@ -184,7 +155,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Saldo Final (Disponível)</h4>
+                <h4>Saldo Final (Disponível PJ)</h4>
                 <div class="value" id="resumoSaldoFinal">R$ 0,00</div>
             </div>
         </div>
@@ -317,24 +288,8 @@ async function carregarCentrosCustoFiltro() {
 }
 
 async function carregarSaldoInicial() {
-    try {
-        const { data: contas } = await sbFiltroLeitura('contas_bancarias');
-        let soma = 0;
-        if(contas) {
-            contas.forEach(c => {
-                let nomeConta = (c.nome || c.descricao || '').toLowerCase();
-                // Considera estritamente a Conta PJ do Banco Inter (excluindo cartões pré-pagos ou contas particulares para isolar o saldo)
-                if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj')) {
-                    soma += parseFloat(c.saldo_inicial || 0);
-                }
-            });
-        }
-        saldoInicialReal = soma !== 0 ? soma : 4000.00; // Balanço de abertura base padrão NanoSignals
-        document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
-    } catch(e) {
-        saldoInicialReal = 4000.00;
-        document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
-    }
+    saldoInicialReal = 4000.00; // Balanço de abertura padrão NanoSignals
+    document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
 }
 
 async function carregarFluxo() {
@@ -368,11 +323,10 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências/Aportes (Filtro rigoroso para evitar duplicidades de caixa)
+    // 2. Transferências / Aportes Reais
     transferencias.forEach(t => {
         let obs = (t.observacao || '').toLowerCase();
         let valorT = parseFloat(t.valor) || 0;
-
         let ehAporteReal = obs.includes('aporte') || obs.includes('empréstimo') || obs.includes('mútuo') || (obs.includes('pix recebido') && !obs.includes('fatura') && !obs.includes('cartao'));
         if (ehAporteReal) {
             let chave = `${t.data || t.created_at}_${valorT}_${t.observacao}`;
@@ -390,7 +344,7 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas - Incluindo a saída do Luis)
     pagar.forEach(p => {
         let st = (p.status || '').toLowerCase();
         if(st.includes('pago') || st.includes('quitado')) {
