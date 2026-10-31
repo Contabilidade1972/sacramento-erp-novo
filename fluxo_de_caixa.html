@@ -134,7 +134,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
-                <h4>Saldo Conta PJ</h4>
+                <h4>Saldo Inicial (PJ)</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 491,84</div>
             </div>
         </div>
@@ -245,7 +245,7 @@
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoInicialReal = 491.84; // Saldo oficial exato do Banco Inter em 20/10/2026
+let saldoBaseInter = 491.84; // Saldo base oficial exato do extrato do Banco Inter em 20/10/2026
 let saldoCartaoPrePago = 400.00;
 
 function obterUsuario() {
@@ -305,15 +305,13 @@ async function carregarSaldosContas() {
                 if (nomeConta.includes('pré') || nomeConta.includes('pre') || contaStr.includes('pre') || contaStr.includes('cartao')) {
                     saldoCartaoPrePago = parseFloat(c.saldo_inicial || 400.00);
                 } else if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj') || contaStr.includes('47318646')) {
-                    saldoInicialReal = parseFloat(c.saldo_inicial || 491.84);
+                    saldoBaseInter = parseFloat(c.saldo_inicial || 491.84);
                 }
             });
         }
     } catch(e) {}
     
-    let elSaldo = document.getElementById('resumoSaldoInicial');
     let elCartao = document.getElementById('resumoCartaoPrePago');
-    if(elSaldo) elSaldo.innerText = formatarMoeda(saldoInicialReal);
     if(elCartao) elCartao.innerText = formatarMoeda(saldoCartaoPrePago);
 }
 
@@ -349,11 +347,9 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios (A partir de 21/09/2026 para alinhar com o extrato oficial e evitar poluição retroativa)
+    // 2. Transferências / Aportes de Sócios
     transferencias.forEach(t => {
         let dataMov = t.data || t.created_at;
-        if (!dataMov || dataMov.split('T')[0] < '2026-09-21') return;
-
         let obs = (t.observacao || '').toLowerCase();
         let origem = (t.conta_origem || '').toLowerCase();
         if (obs.includes('cartão') || obs.includes('google') || origem.includes('cartão')) return;
@@ -376,14 +372,12 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas a partir de 21/09/2026 correspondentes ao extrato oficial)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas)
     pagar.forEach(p => {
-        let dataMov = p.data_pagamento || p.vencimento || p.created_at;
-        if (!dataMov || dataMov.split('T')[0] < '2026-09-21') return;
-
         let st = (p.status || '').toLowerCase();
         let desc = (p.descricao || '').toLowerCase();
         let fornecedor = (p.fornecedor_nome || p.fornecedor || '').toLowerCase();
+        let dataMov = p.data_pagamento || p.vencimento || p.created_at;
         
         if (desc.includes('favorecido') || fornecedor.includes('favorecido')) return;
 
@@ -407,7 +401,7 @@ async function carregarFluxo() {
     movimentacoesCache = movs;
     await carregarSaldosContas();
     
-    // Define o período padrão inicial igual ao do extrato oficial (21/09/2026 a 21/10/2026)
+    // Inicializa as datas padrão com o período do extrato oficial (21/09/2026 a 21/10/2026)
     const elDataInicio = document.getElementById('filtroDataInicio');
     const elDataFim = document.getElementById('filtroDataFim');
     if(elDataInicio && !elDataInicio.value) elDataInicio.value = '2026-09-21';
@@ -422,6 +416,19 @@ function aplicarFiltros() {
     let tipoFiltro = document.getElementById('filtroTipo').value;
     let centroFiltro = document.getElementById('filtroCentro').value;
     let textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
+
+    // 1. Calcula o Saldo Inicial Contábil Ajustado caso haja um filtro de Data Início anterior às transações exibidas
+    let saldoInicialAjustado = saldoBaseInter;
+    if (dIni) {
+        // Subtrai entradas e soma saídas ocorridas APÓS a data do extrato oficial ou ajusta retroativamente de forma matemática exata
+        movimentacoesCache.forEach(m => {
+            let dataStr = (m.data || '').split('T')[0];
+            if (dataStr < dIni) {
+                if (m.tipo === 'entrada') saldoInicialAjustado += m.valor;
+                else saldoInicialAjustado -= m.valor;
+            }
+        });
+    }
 
     let filtrados = movimentacoesCache.filter(m => {
         if (!m.data) return false;
@@ -443,13 +450,15 @@ function aplicarFiltros() {
         else totalSaidas += m.valor;
     });
 
-    let saldoFinalPJ = saldoInicialReal + totalEntradas - totalSaidas;
+    let saldoFinalPJ = saldoInicialAjustado + totalEntradas - totalSaidas;
     let patrimonioTotal = saldoFinalPJ + saldoCartaoPrePago;
     
+    let elSaldoIni = document.getElementById('resumoSaldoInicial');
     let elEntradas = document.getElementById('resumoEntradas');
     let elSaidas = document.getElementById('resumoSaidas');
     let elPatrimonio = document.getElementById('resumoPatrimonioTotal');
 
+    if(elSaldoIni) elSaldoIni.innerText = formatarMoeda(saldoInicialAjustado);
     if(elEntradas) elEntradas.innerText = formatarMoeda(totalEntradas);
     if(elSaidas) elSaidas.innerText = formatarMoeda(totalSaidas);
     if(elPatrimonio) {
@@ -465,18 +474,18 @@ function aplicarFiltros() {
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     
     let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Período Extrato Oficial (21/09/2026 a 21/10/2026)';
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
 
     const tbody = document.getElementById('tbodyFluxo');
     if(!tbody) return;
     tbody.innerHTML = '';
     
     if(filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período selecionado.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>`;
         return;
     }
 
-    let saldoAcumulado = saldoInicialReal;
+    let saldoAcumulado = saldoInicialAjustado;
     filtrados.forEach(m => {
         let dataFmt = m.data ? m.data.split('T')[0].split('-').reverse().join('/') : '-';
         let ehEntrada = m.tipo === 'entrada';
