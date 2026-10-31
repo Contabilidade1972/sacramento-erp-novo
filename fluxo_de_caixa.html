@@ -56,11 +56,11 @@
         .btn-acao.sucesso { background: var(--success); }
         .btn-acao.sucesso:hover { background: #059669; }
 
-        .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .dash-card { background: var(--card); border-radius: 14px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid var(--border); display: flex; align-items: center; gap: 16px; }
-        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
-        .dash-card h4 { font-size: 11px; color: var(--text-light); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; }
-        .dash-card .value { font-size: 20px; font-weight: 800; color: var(--secondary); }
+        .dash-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
+        .dash-card { background: var(--card); border-radius: 14px; padding: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); border: 1px solid var(--border); display: flex; align-items: center; gap: 14px; }
+        .dash-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; flex-shrink: 0; }
+        .dash-card h4 { font-size: 10px; color: var(--text-light); font-weight: 700; margin-bottom: 2px; text-transform: uppercase; }
+        .dash-card .value { font-size: 17px; font-weight: 800; color: var(--secondary); }
 
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
@@ -129,33 +129,40 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- CARDS DE RESUMO DO FLUXO DE CAIXA COM SEGREGAÇÃO DO CARTÃO PRÉ-PAGO -->
+    <!-- 5 CARDS DE RESUMO ORGANIZADOS COM SEGREGAÇÃO DO CARTÃO PRÉ-PAGO -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
-                <h4>Saldo Conta PJ (Inter)</h4>
+                <h4>Saldo Conta PJ</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-credit-card"></i></div>
             <div>
-                <h4>Cartão Pré-Pago (Teto)</h4>
+                <h4>Cartão Pré-Pago</h4>
                 <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">R$ 400,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--success)"><i class="fas fa-arrow-down"></i></div>
             <div>
-                <h4>Total de Entradas</h4>
+                <h4>Total Entradas</h4>
                 <div class="value" id="resumoEntradas" style="color:var(--success)">R$ 0,00</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-arrow-up"></i></div>
+            <div>
+                <h4>Total Saídas</h4>
+                <div class="value" id="resumoSaidas" style="color:var(--danger)">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Saldo Final (Disponível PJ)</h4>
+                <h4>Saldo Final PJ</h4>
                 <div class="value" id="resumoSaldoFinal">R$ 0,00</div>
             </div>
         </div>
@@ -208,7 +215,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Geral (Sem Filtros)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo do Cartão Pré-Pago segregado (Teto Fixo R$ 400,00)</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Geral (Sem Filtros)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo do Cartão Pré-Pago segregado (Teto R$ 400,00)</p>
                             </div>
                         </th>
                     </tr>
@@ -294,16 +301,20 @@ async function carregarSaldosContas() {
         if(contas) {
             contas.forEach(c => {
                 let nomeConta = (c.nome || c.descricao || c.tipo || '').toLowerCase();
-                if (nomeConta.includes('pré-pago') || nomeConta.includes('pre-pago') || nomeConta.includes('virtual')) {
+                let contaStr = (c.conta || '').toLowerCase();
+                if (nomeConta.includes('pré') || nomeConta.includes('pre') || contaStr.includes('pre') || contaStr.includes('cartao')) {
                     saldoCartaoPrePago = parseFloat(c.saldo_inicial || 400.00);
-                } else if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj')) {
+                } else if (nomeConta.includes('inter') || nomeConta.includes('principal') || nomeConta.includes('pj') || contaStr.includes('47318646')) {
                     saldoInicialReal = parseFloat(c.saldo_inicial || 491.84);
                 }
             });
         }
     } catch(e) {}
-    document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
-    document.getElementById('resumoCartaoPrePago').innerText = formatarMoeda(saldoCartaoPrePago);
+    
+    let elSaldo = document.getElementById('resumoSaldoInicial');
+    let elCartao = document.getElementById('resumoCartaoPrePago');
+    if(elSaldo) elSaldo.innerText = formatarMoeda(saldoInicialReal);
+    if(elCartao) elCartao.innerText = formatarMoeda(saldoCartaoPrePago);
 }
 
 async function carregarFluxo() {
@@ -337,7 +348,7 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios (Excluindo movimentações do cartão pré-pago para manter a conta PJ isolada)
+    // 2. Transferências / Aportes de Sócios
     transferencias.forEach(t => {
         let obs = (t.observacao || '').toLowerCase();
         let origem = (t.conta_origem || '').toLowerCase();
@@ -414,11 +425,17 @@ function aplicarFiltros() {
     });
 
     let saldoFinal = saldoInicialReal + totalEntradas - totalSaidas;
-    document.getElementById('resumoEntradas').innerText = formatarMoeda(totalEntradas);
-    document.getElementById('resumoSaidas').innerText = formatarMoeda(totalSaidas);
-    document.getElementById('resumoSaldoFinal').innerText = formatarMoeda(saldoFinal);
-    document.getElementById('resumoSaldoFinal').style.color = saldoFinal >= 0 ? 'var(--success)' : 'var(--danger)';
-    document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoInicialReal);
+    
+    let elEntradas = document.getElementById('resumoEntradas');
+    let elSaidas = document.getElementById('resumoSaidas');
+    let elSaldoFinal = document.getElementById('resumoSaldoFinal');
+
+    if(elEntradas) elEntradas.innerText = formatarMoeda(totalEntradas);
+    if(elSaidas) elSaidas.innerText = formatarMoeda(totalSaidas);
+    if(elSaldoFinal) {
+        elSaldoFinal.innerText = formatarMoeda(saldoFinal);
+        elSaldoFinal.style.color = saldoFinal >= 0 ? 'var(--success)' : 'var(--danger)';
+    }
 
     let infoFiltros = [];
     if(dIni) infoFiltros.push(`Início: ${dIni.split('-').reverse().join('/')}`);
@@ -426,12 +443,16 @@ function aplicarFiltros() {
     if(tipoFiltro !== 'todos') infoFiltros.push(`Tipo: ${tipoFiltro.toUpperCase()}`);
     if(centroFiltro !== 'todos') infoFiltros.push(`Centro: ${centroFiltro}`);
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
-    document.getElementById('printFiltrosInfo').innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+    
+    let elPrintFiltros = document.getElementById('printFiltrosInfo');
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
 
     const tbody = document.getElementById('tbodyFluxo');
+    if(!tbody) return;
     tbody.innerHTML = '';
+    
     if(filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>`;
         return;
     }
 
