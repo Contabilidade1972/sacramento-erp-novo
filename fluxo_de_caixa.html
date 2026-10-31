@@ -245,7 +245,7 @@
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoInicialReal = 491.84;
+let saldoInicialReal = 491.84; // Saldo oficial exato do Banco Inter em 20/10/2026
 let saldoCartaoPrePago = 400.00;
 
 function obterUsuario() {
@@ -349,9 +349,11 @@ async function carregarFluxo() {
         }
     });
 
-    // 2. Transferências / Aportes de Sócios
+    // 2. Transferências / Aportes de Sócios (A partir de 21/09/2026 para alinhar com o extrato oficial e evitar poluição retroativa)
     transferencias.forEach(t => {
         let dataMov = t.data || t.created_at;
+        if (!dataMov || dataMov.split('T')[0] < '2026-09-21') return;
+
         let obs = (t.observacao || '').toLowerCase();
         let origem = (t.conta_origem || '').toLowerCase();
         if (obs.includes('cartão') || obs.includes('google') || origem.includes('cartão')) return;
@@ -374,12 +376,14 @@ async function carregarFluxo() {
         }
     });
 
-    // 3. Contas a Pagar (Apenas pagas/liquidadas)
+    // 3. Contas a Pagar (Apenas pagas/liquidadas a partir de 21/09/2026 correspondentes ao extrato oficial)
     pagar.forEach(p => {
+        let dataMov = p.data_pagamento || p.vencimento || p.created_at;
+        if (!dataMov || dataMov.split('T')[0] < '2026-09-21') return;
+
         let st = (p.status || '').toLowerCase();
         let desc = (p.descricao || '').toLowerCase();
         let fornecedor = (p.fornecedor_nome || p.fornecedor || '').toLowerCase();
-        let dataMov = p.data_pagamento || p.vencimento || p.created_at;
         
         if (desc.includes('favorecido') || fornecedor.includes('favorecido')) return;
 
@@ -402,6 +406,13 @@ async function carregarFluxo() {
     movs.sort((a,b) => new Date(a.data) - new Date(b.data));
     movimentacoesCache = movs;
     await carregarSaldosContas();
+    
+    // Define o período padrão inicial igual ao do extrato oficial (21/09/2026 a 21/10/2026)
+    const elDataInicio = document.getElementById('filtroDataInicio');
+    const elDataFim = document.getElementById('filtroDataFim');
+    if(elDataInicio && !elDataInicio.value) elDataInicio.value = '2026-09-21';
+    if(elDataFim && !elDataFim.value) elDataFim.value = '2026-10-21';
+
     aplicarFiltros();
 }
 
@@ -454,14 +465,14 @@ function aplicarFiltros() {
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     
     let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Geral (Sem Filtros)';
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Período Extrato Oficial (21/09/2026 a 21/10/2026)';
 
     const tbody = document.getElementById('tbodyFluxo');
     if(!tbody) return;
     tbody.innerHTML = '';
     
     if(filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para os filtros selecionados.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período selecionado.</td></tr>`;
         return;
     }
 
@@ -517,8 +528,8 @@ async function executarImpressao() {
 }
 
 function limparFiltros() {
-    document.getElementById('filtroDataInicio').value = '';
-    document.getElementById('filtroDataFim').value = '';
+    document.getElementById('filtroDataInicio').value = '2026-09-21';
+    document.getElementById('filtroDataFim').value = '2026-10-21';
     document.getElementById('filtroTipo').value = 'todos';
     document.getElementById('filtroCentro').value = 'todos';
     document.getElementById('filtroTexto').value = '';
