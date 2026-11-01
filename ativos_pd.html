@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -86,6 +87,7 @@
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { background: #f1f5f9; padding: 12px 14px; font-weight: 800; border-top: 2px solid var(--border); color: var(--secondary); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
@@ -94,78 +96,23 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
-        .print-corporative-header {
-            display: none !important;
-        }
+        .print-corporative-header { display: none !important; }
 
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
         @media print {
-            @page {
-                size: A4 portrait;
-                margin: 20mm 15mm 20mm 15mm;
-                @bottom-right {
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    font-family: 'Inter', sans-serif;
-                    color: #475569;
-                }
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt !important; }
+            body * { visibility: hidden !important; }
+            .panel:last-child, .panel:last-child * { visibility: visible !important; }
+            .panel:last-child {
+                position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; margin: 0 !important;
             }
-            .site-header, .page-toolbar, .panel:not(:last-child), .toast-container, footer, 
-            .assistant-widget, .assistant-avatar, .assistant-bubble, 
-            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-            body {
-                background: #fff !important;
-                color: #000 !important;
-                font-size: 9.5pt;
-            }
-            .container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 10mm !important;
-                gap: 0 !important;
-                width: 100% !important;
-            }
-            .panel {
-                border: none !important;
-                box-shadow: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                width: 100% !important;
-            }
-            table {
-                font-size: 9pt !important;
-                width: 100% !important;
-            }
-            thead {
-                display: table-header-group !important;
-            }
-            tr {
-                page-break-inside: avoid !important;
-            }
+            .ocultar-print { display: none !important; }
             .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 8px !important;
-                margin-bottom: 12px !important;
-                border-bottom: 2px solid #1e3a8a !important;
+                display: block !important; margin-bottom: 6mm !important; border-bottom: 2px solid #1e3a8a !important; padding-bottom: 4mm !important; width: 100% !important;
             }
-            thead th {
-                background: #1e3a8a !important;
-                color: #fff !important;
-                padding: 6px 8px !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            tbody td {
-                padding: 6px 8px !important;
-                border-bottom: 1px solid #cbd5e1 !important;
-            }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td, tfoot td { padding: 5px 6px !important; border-bottom: 1px solid #cbd5e1 !important; }
         }
     </style>
 </head>
@@ -315,6 +262,9 @@
                 <tbody id="tbodyAtivos">
                     <tr><td colspan="7" class="empty-state">A carregar ativos...</td></tr>
                 </tbody>
+                <tfoot id="tfootAtivos">
+                    <!-- Somatório final dinâmico -->
+                </tfoot>
             </table>
         </div>
     </div>
@@ -406,6 +356,7 @@ async function carregarAtivos(){
 
 function renderTabelaAtivos(){
     var tbody=document.getElementById('tbodyAtivos');
+    var tfoot=document.getElementById('tfootAtivos');
     const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
     const projFiltro = document.getElementById('filtroProjeto').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
@@ -423,11 +374,15 @@ function renderTabelaAtivos(){
 
     if(!dadosFiltrados.length){
         tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento encontrado com os filtros aplicados.</td></tr>';
+        tfoot.innerHTML='';
         return;
     }
     
     var html='';
+    var somaTotalAtivos = 0;
+
     dadosFiltrados.forEach(function(a){
+        somaTotalAtivos += parseFloat(a.valor_aquisicao) || 0;
         var proj = null;
         for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(a.projeto_id)) proj = projetosCache[i]; }
         var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
@@ -451,6 +406,12 @@ function renderTabelaAtivos(){
 
         tbody.appendChild(tr);
     });
+
+    tfoot.innerHTML = `<tr>
+        <td colspan="5" style="text-align:right; text-transform:uppercase;">Total Geral de Aquisição:</td>
+        <td style="text-align:right;">R$ ${fmtBR(somaTotalAtivos)}</td>
+        <td class="ocultar-print"></td>
+    </tr>`;
 }
 
 function limparFiltrosAtivos(){
@@ -615,10 +576,9 @@ async function inicializarPagina(){
 
 window.onload=inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
+<script src="erp-core.js"></script>
 </body>
 </html>
