@@ -22,7 +22,6 @@
             --border: #e2e8f0;
         }
 
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
         body:not(.usuario-master) .empresa-selector {
             display: none !important;
             visibility: hidden !important;
@@ -31,7 +30,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
         .site-header {
             background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
@@ -89,6 +87,7 @@
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { background: #f1f5f9; padding: 12px 14px; font-weight: 800; border-top: 2px solid var(--border); color: var(--secondary); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
@@ -96,6 +95,24 @@
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        .print-corporative-header { display: none !important; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 15mm; }
+            body { background: #fff !important; color: #000 !important; font-size: 8pt !important; }
+            body * { visibility: hidden !important; }
+            .panel:last-child, .panel:last-child * { visibility: visible !important; }
+            .panel:last-child {
+                position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; margin: 0 !important;
+            }
+            .ocultar-print { display: none !important; }
+            .print-corporative-header {
+                display: block !important; margin-bottom: 6mm !important; border-bottom: 2px solid #1e3a8a !important; padding-bottom: 4mm !important; width: 100% !important;
+            }
+            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; }
+            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody td, tfoot td { padding: 5px 6px !important; border-bottom: 1px solid #cbd5e1 !important; }
+        }
     </style>
 </head>
 <body>
@@ -124,16 +141,16 @@
 </header>
 
 <div class="container">
-    <div class="page-toolbar">
+    <div class="page-toolbar ocultar-print">
         <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
     </div>
 
-    <div>
+    <div class="ocultar-print">
         <div class="page-title"><i class="fas fa-money-bill-wave" style="color:var(--primary);"></i> Aportes Recebidos de P&D</div>
         <div class="page-subtitle">Registro e controle de entradas de recursos vinculados a contratos de fomento e subvenções</div>
     </div>
 
-    <div class="panel">
+    <div class="panel ocultar-print">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
             <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar entrada de recurso (aporte)</span>
         </div>
@@ -179,6 +196,7 @@
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Aportes registrados</span>
+            <button class="btn-acao sucesso ocultar-print" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         <div id="listaAportes" style="overflow-x:auto;">Carregando aportes...</div>
     </div>
@@ -221,7 +239,6 @@ window.clienteIdAtual = function() {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
-    // BLINDAGEM LGPD: Força estritamente o próprio cliente_id do utilizador comum
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
 };
 
@@ -316,8 +333,13 @@ async function carregarAportes(){
     aportesCache=r.data||[];
     if(!aportesCache.length){el.innerHTML='<div class="empty-state">Nenhum aporte registrado.</div>';return;}
     
-    var html='<table class="analitica-table"><thead><tr><th>Data</th><th>Contrato</th><th>Projeto</th><th style="text-align:right;">Valor</th><th>Tratamento Contábil</th><th>Observações</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    let somaTotalAportes = 0;
+    var html='<table class="analitica-table"><thead>'+
+        '<tr><th colspan="7" style="background:#fff !important; padding:0 !important; border:none !important;"><div class="print-corporative-header"><h2 style="font-size:11pt; font-weight:800; color:#1e3a8a; text-transform:uppercase; margin:0;">Sacramento ERP — Relatório de Aportes de P&D</h2><p style="font-size:7pt; color:#475569; margin:2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p></div></th></tr>'+
+        '<tr><th>Data</th><th>Contrato</th><th>Projeto</th><th style="text-align:right;">Valor</th><th>Tratamento Contábil</th><th>Observações</th><th style="text-align:right;" class="ocultar-print">Ações</th></tr></thead><tbody>';
+    
     aportesCache.forEach(function(a){
+        somaTotalAportes += parseFloat(a.valor) || 0;
         var c=null;
         for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==a.contrato_id)c=contratosCache[i];}
         var info=NATUREZA[(c&&c.natureza_contabil)||'subvencao_custeio'];
@@ -328,14 +350,48 @@ async function carregarAportes(){
             '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(a.valor)+'</td>'+
             '<td><span class="badge '+info.classe+'">'+info.rotulo+'</span></td>'+
             '<td>'+(a.observacoes||'—')+'</td>'+
-            '<td style="text-align:right; white-space:nowrap;">'+
+            '<td style="text-align:right; white-space:nowrap;" class="ocultar-print">'+
                 '<button class="btn-secondary" onclick="editarAporte('+a.id+')" title="Editar"><i class="fas fa-pen"></i></button>'+
                 '<button class="btn-secondary" onclick="excluirAporte('+a.id+')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
-    html+='</tbody></table>';
+    
+    html+='</tbody><tfoot><tr>'+
+        '<td colspan="3" style="text-align:right; text-transform:uppercase;">Total Geral de Aportes:</td>'+
+        '<td style="text-align:right;">R$ '+fmtBR(somaTotalAportes)+'</td>'+
+        '<td colspan="3"></td>'+
+    '</tr></tfoot></table>';
     el.innerHTML=html;
+}
+
+async function executarImpressao(){
+    const selectEmp = document.getElementById('selectEmpresa');
+    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
+        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
+    } else {
+        const cid = window.clienteIdAtual();
+        try {
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
+            if (data) {
+                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
+            } else {
+                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
+            }
+        } catch(e) {
+            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
+        }
+    }
+
+    const u = window.obterUsuario();
+    if (u) {
+        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
+    } else {
+        document.getElementById('printUsuarioNome').innerText = 'Operador';
+    }
+
+    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
+    window.print();
 }
 
 window.editarAporte = function(id){
@@ -470,10 +526,9 @@ async function inicializarPagina(){
 
 window.onload=inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
+<script src="erp-core.js"></script>
 </body>
 </html>
