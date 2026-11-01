@@ -147,25 +147,25 @@
 
     <div class="ocultar-print">
         <div class="page-title"><i class="fas fa-microscope" style="color:var(--primary);"></i> Gestão de Ativos e Equipamentos de P&D</div>
-        <div class="page-subtitle">Controle de instrumentos laboratoriais, maquinário, depreciação e alocação em projetos de inovação</div>
+        <div class="page-subtitle">Controle de instrumentos laboratoriais, maquinário e alocação em projetos de inovação tecnológica</div>
     </div>
 
     <div class="panel ocultar-print">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
-            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo / equipamento</span>
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo / equipamento de P&D</span>
         </div>
         <input type="hidden" id="edit_id">
 
         <div class="form-row">
             <div>
-                <label>Projeto Vinculado *</label>
+                <label>Projeto P&D Vinculado *</label>
                 <select id="projeto_id" class="form-control">
                     <option value="">— Selecione o projeto —</option>
                 </select>
             </div>
             <div>
                 <label>Nome do Equipamento / Ativo *</label>
-                <input id="nome_ativo" class="form-control" placeholder="Ex.: Espectrofotômetro UV-Vis / Estação de Trabalho CAD">
+                <input id="nome_ativo" class="form-control" placeholder="Ex.: Espectrofotômetro UV-Vis / Estação CAD">
             </div>
         </div>
 
@@ -197,22 +197,22 @@
 
         <div>
             <label>Especificações Técnicas / Laboratório de Alocação *</label>
-            <input id="especificacoes" class="form-control" placeholder="Descreva especificações técnicas, modelo, fabricante e laboratório físico...">
+            <input id="especificacoes" class="form-control" placeholder="Descreva especificações técnicas, modelo e laboratório físico...">
         </div>
 
         <div style="display:flex; gap:10px; margin-top:4px;">
-            <button class="btn-primary" id="btnSalvar" onclick="salvarAtivo()"><i class="fas fa-save"></i> Salvar ativo</button>
+            <button class="btn-primary" id="btnSalvar" onclick="salvarAtivo()"><i class="fas fa-save"></i> Salvar ativo de P&D</button>
             <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
     </div>
 
     <div class="panel">
         <div class="panel-header">
-            <h3><i class="fas fa-list"></i> Ativos e Equipamentos Alocados</h3>
+            <h3><i class="fas fa-list"></i> Ativos e Equipamentos de P&D Alocados</h3>
             <button class="btn-primary ocultar-print" style="background: var(--success); padding: 7px 14px;" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
 
-        <!-- PAINEL DE FILTROS AVANÇADOS COMPLETOS -->
+        <!-- PAINEL DE FILTROS AVANÇADOS -->
         <div class="filter-grid ocultar-print">
             <div>
                 <label>Pesquisar (Ativo / Patrimônio)</label>
@@ -260,7 +260,7 @@
                     </tr>
                 </thead>
                 <tbody id="tbodyAtivos">
-                    <tr><td colspan="7" class="empty-state">A carregar ativos...</td></tr>
+                    <tr><td colspan="7" class="empty-state">A carregar ativos de P&D...</td></tr>
                 </tbody>
                 <tfoot id="tfootAtivos">
                     <!-- Somatório final dinâmico -->
@@ -382,8 +382,8 @@ async function carregarAtivos(){
     var cid = window.clienteIdAtual();
     var tbody = document.getElementById('tbodyAtivos');
     if(!cid){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Cliente não identificado.</td></tr>';return;}
-    var r = await window.sbFiltro('ativos_equipamentos');
-    if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Tabela em configuração ou vazia.</td></tr>';return;}
+    var r = await window.sbFiltro('ativos_equipamentos_pd');
+    if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Tabela ativos_equipamentos_pd em configuração.</td></tr>';return;}
     ativosCache = r.data || [];
     renderTabelaAtivos();
 }
@@ -407,7 +407,7 @@ function renderTabelaAtivos(){
     });
 
     if(!dadosFiltrados.length){
-        tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento encontrado com os filtros aplicados.</td></tr>';
+        tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo ou equipamento de P&D encontrado.</td></tr>';
         tfoot.innerHTML='';
         return;
     }
@@ -442,7 +442,7 @@ function renderTabelaAtivos(){
     });
 
     tfoot.innerHTML = `<tr>
-        <td colspan="5" style="text-align:right; text-transform:uppercase;">Total Geral de Aquisição:</td>
+        <td colspan="5" style="text-align:right; text-transform:uppercase;">Total Geral de Aquisição (P&D):</td>
         <td style="text-align:right;">R$ ${fmtBR(somaTotalAtivos)}</td>
         <td class="ocultar-print"></td>
     </tr>`;
@@ -499,7 +499,7 @@ function editarAtivo(id){
     document.getElementById('status_ativo').value=a.status_ativo||'operacional';
     document.getElementById('especificacoes').value=a.especificacoes||'';
 
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando ativo / equipamento';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando ativo / equipamento de P&D';
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar ativo';
     document.getElementById('btnCancelar').style.display='inline-flex';
     window.scrollTo({top:0,behavior:'smooth'});
@@ -515,8 +515,8 @@ function cancelarEdicao(){
     document.getElementById('status_ativo').value='operacional';
     document.getElementById('especificacoes').value='';
 
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo / equipamento';
-    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Salvar ativo';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo / equipamento de P&D';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Salvar ativo de P&D';
     document.getElementById('btnCancelar').style.display='none';
 }
 
@@ -549,27 +549,27 @@ async function salvarAtivo(){
 
     var editId=document.getElementById('edit_id').value;
     if(editId){
-        var ru=await sb.from('ativos_equipamentos').update(dados).eq('id', editId);
+        var ru=await sb.from('ativos_equipamentos_pd').update(dados).eq('id', editId);
         if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
-        toast('Ativo atualizado com sucesso!');
+        toast('Ativo de P&D atualizado com sucesso!');
         cancelarEdicao();
     }else{
-        var ri=await sb.from('ativos_equipamentos').insert([dados]);
+        var ri=await sb.from('ativos_equipamentos_pd').insert([dados]);
         if(ri.error){
             toast('Erro ao salvar: ' + ri.error.message, 'error');
             return;
         }
-        toast('Ativo cadastrado com sucesso!');
+        toast('Ativo de P&D cadastrado com sucesso!');
         cancelarEdicao();
     }
     carregarAtivos();
 }
 
 async function excluirAtivo(id){
-    if(!confirm('Tem certeza que deseja excluir este registro de ativo?'))return;
-    var r=await sb.from('ativos_equipamentos').delete().eq('id', id);
+    if(!confirm('Tem certeza que deseja excluir este registro de ativo de P&D?'))return;
+    var r=await sb.from('ativos_equipamentos_pd').delete().eq('id', id);
     if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
-    toast('Ativo excluído com sucesso!');
+    toast('Ativo de P&D excluído com sucesso!');
     carregarAtivos();
 }
 
