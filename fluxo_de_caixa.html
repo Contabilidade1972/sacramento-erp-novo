@@ -130,7 +130,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS SEGUROS -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -292,6 +292,7 @@ async function carregarSaldosBancariosDinamicos() {
         const { data } = await sbFiltroLeitura('contas_bancarias');
         saldoAtualPJ = 0;
         saldoCartaoPrePago = 0;
+        
         if (data && data.length > 0) {
             data.forEach(cb => {
                 let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
@@ -303,12 +304,22 @@ async function carregarSaldosBancariosDinamicos() {
                 }
             });
         }
-        
-        // Se for a NanoSignals (ID 2) e não houver contas cadastradas ou retornarem 0, aplica o fallback original garantido
-        if (cid === 2 && saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
-            saldoAtualPJ = 491.84;
-            saldoCartaoPrePago = 400.00;
-            saldoAbertura2025 = 4000.00;
+
+        // FALLBACK ISOLADO EXCLUSIVO POR EMPRESA
+        if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
+            if (cid === 2) { // NanoSignals
+                saldoAtualPJ = 491.84;
+                saldoCartaoPrePago = 400.00;
+                saldoAbertura2025 = 4000.00;
+            } else if (cid === 1 || cid === 3) { // SCEII ou outras, se aplicável
+                saldoAtualPJ = 0.00;
+                saldoCartaoPrePago = 0.00;
+                saldoAbertura2025 = 0.00;
+            } else {
+                saldoAtualPJ = 0.00;
+                saldoCartaoPrePago = 0.00;
+                saldoAbertura2025 = 0.00;
+            }
         } else {
             saldoAbertura2025 = saldoAtualPJ;
         }
@@ -318,9 +329,9 @@ async function carregarSaldosBancariosDinamicos() {
             saldoCartaoPrePago = 400.00;
             saldoAbertura2025 = 4000.00;
         } else {
-            saldoAtualPJ = 0;
-            saldoCartaoPrePago = 0;
-            saldoAbertura2025 = 0;
+            saldoAtualPJ = 0.00;
+            saldoCartaoPrePago = 0.00;
+            saldoAbertura2025 = 0.00;
         }
     }
 }
