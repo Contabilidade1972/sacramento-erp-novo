@@ -263,7 +263,7 @@ function ehMaster() {
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
 
-// ISOLAMENTO MULTI-TENANT ESTRITO BASEADO NA TABELA DE CLIENTES (ID 1 = NanoSignals, ID 2 = SCEII)
+// ISOLAMENTO MULTI-TENANT ESTRITO (ID 1 = NanoSignals, ID 2 = SCEII)
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -292,7 +292,7 @@ function formatarMoeda(valor) {
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CARREGAMENTO DE SALDOS ISOLADO COM FALLBACK EXCLUSIVO PARA O ID 1 (NANOSIGNALS)
+// CARREGAMENTO DE SALDOS DINÂMICO E ISOLADO POR TENANT
 async function carregarSaldosBancariosDinamicos() {
     const cid = clienteIdAtual();
     saldoAtualPJ = 0;
@@ -314,7 +314,7 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAbertura2025 = saldoAtualPJ;
         }
         
-        // Se após ler o banco os saldos continuarem zero, aplica o fallback restrito e exclusivo do ID 1 (NanoSignals)
+        // Fallback restrito e exclusivo para o ID 1 (NanoSignals) caso esteja sem registos na tabela
         if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0 && cid === 1) {
             saldoAtualPJ = 491.84;
             saldoCartaoPrePago = 400.00;
