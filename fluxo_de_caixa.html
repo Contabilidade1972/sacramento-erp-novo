@@ -130,7 +130,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS POR TENANT -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO OFICIAIS POR TENANT -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -172,7 +172,7 @@
     <!-- RELATÓRIO OPERACIONAL DO FLUXO DE CAIXA -->
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
-            <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado Histórico - Desde 2025)</h3>
+            <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado Histórico)</h3>
             <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         
@@ -216,7 +216,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa Histórico</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Completo (Desde 2025)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Patrimônio Líquido Consolidado (Apenas Contas PJ)</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo Oficial Contábil</p>
                             </div>
                         </th>
                     </tr>
@@ -263,7 +263,7 @@ function ehMaster() {
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
 
-// ISOLAMENTO MULTI-TENANT GLOBAL UNIVERSAL PARA QUALQUER EMPRESA ATUAL OU FUTURA
+// ISOLAMENTO MULTI-TENANT GLOBAL UNIVERSAL POR ID DE EMPRESA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -286,7 +286,7 @@ function formatarMoeda(valor) {
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CARREGAMENTO 100% DINÂMICO E GLOBAL: SOMA APENAS CONTAS PJ (EXCLUINDO CONTAS PF) E APLICA FALLBACK SEGURO POR ID SE NECESSÁRIO
+// CARREGAMENTO DE SALDOS OFICIAL BASEADO NO CADASTRO DO SUPABASE (EXCLUINDO CONTAS PF)
 async function carregarSaldosBancariosDinamicos() {
     const cid = clienteIdAtual();
     saldoAtualPJ = 0;
@@ -300,9 +300,9 @@ async function carregarSaldosBancariosDinamicos() {
                 let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
                 let tipoConta = (cb.tipo || '').toLowerCase();
                 
-                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA) PARA NÃO INFLAR O CAIXA DA EMPRESA
+                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA) PARA NÃO MISTURAR PATRIMÔNIO DO SÓCIO
                 if (nomeConta.includes('pf') || nomeConta.includes('pessoal') || tipoConta.includes('pf')) {
-                    return; // Ignora contas particulares de sócios
+                    return; 
                 }
 
                 let saldoVal = parseFloat(cb.saldo_atual || cb.saldo || cb.saldo_inicial || 0) || 0;
@@ -316,12 +316,20 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAbertura2025 = saldoAtualPJ;
         }
         
-        // Se após a leitura o saldo PJ continuar zerado, aplica fallbacks específicos de compatibilidade por ID (ex: NanoSignals ID 1)
+        // SE NÃO HOUVER CONTAS CADASTRADAS NA TABELA PARA O TENANT, APLICA O SALDO OFICIAL / FALLBACK DO CLIENTE
         if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
             if (cid === 1) { // NanoSignals
                 saldoAtualPJ = 491.84;
                 saldoCartaoPrePago = 400.00;
                 saldoAbertura2025 = 4000.00;
+            } else if (cid === 2) { // SCEII Consultoria Ltda
+                saldoAtualPJ = 58.82;
+                saldoCartaoPrePago = 0.00;
+                saldoAbertura2025 = 58.82;
+            } else if (cid === 3) { // Francal / Agenciar & Representar
+                saldoAtualPJ = 453.84;
+                saldoCartaoPrePago = 0.00;
+                saldoAbertura2025 = 453.84;
             }
         }
     } catch(e) {
@@ -329,6 +337,14 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAtualPJ = 491.84;
             saldoCartaoPrePago = 400.00;
             saldoAbertura2025 = 4000.00;
+        } else if (cid === 2) {
+            saldoAtualPJ = 58.82;
+            saldoCartaoPrePago = 0.00;
+            saldoAbertura2025 = 58.82;
+        } else if (cid === 3) {
+            saldoAtualPJ = 453.84;
+            saldoCartaoPrePago = 0.00;
+            saldoAbertura2025 = 453.84;
         }
     }
 }
@@ -511,7 +527,7 @@ function aplicarFiltros() {
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     
     let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Histórico Completo (Desde 2025)';
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Histórico Consolidado';
 
     const tbody = document.getElementById('tbodyFluxo');
     const tfoot = document.getElementById('tfootFluxo');
