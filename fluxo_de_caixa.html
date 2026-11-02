@@ -130,7 +130,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS POR TENANT -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -263,15 +263,34 @@ function ehMaster() {
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
 
-// ISOLAMENTO MULTI-TENANT ESTRITO BASEADO NA TABELA DE CLIENTES CONTRATANTES (ID 1 = NanoSignals, ID 2 = SCEII, ID 3 = Francal)
+/* ========================================================================== */
+/* IDENTIFICAÇÃO DE TENANT BLINDADA (SUPABASE: ID 1 = NANOSIGNALS, ID 2 = SCEII) */
+/* ========================================================================== */
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
+    
+    // Se for o Master, respeita o seletor global do topo
     if (ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        try { 
+            const sel = localStorage.getItem('empresaSelecionada'); 
+            if (sel) return parseInt(sel); 
+        } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    
+    // Se o usuário comum tiver explicitamente o cliente_id no objeto, usa-o
+    if (u.cliente_id) {
+        return parseInt(u.cliente_id);
+    }
+    
+    // Fallback de segurança baseado no e-mail corporativo da SCEII
+    const emailUser = (u.email || '').toLowerCase();
+    if (emailUser.includes('sceii') || emailUser.includes('flavia')) {
+        return 2; // SCEII Consultoria Ltda
+    }
+    
+    return 1; // Padrão NanoSignals
 }
 
 function sbFiltroLeitura(tabela) {
@@ -286,7 +305,6 @@ function formatarMoeda(valor) {
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CARREGAMENTO DE SALDOS ISOLADO EXCLUSIVAMENTE PELO ID REAL DA EMPRESA LOGADA (ID 1 = NanoSignals, ID 2 = SCEII)
 async function carregarSaldosBancariosDinamicos() {
     const cid = clienteIdAtual();
     saldoAtualPJ = 0;
@@ -307,17 +325,13 @@ async function carregarSaldosBancariosDinamicos() {
             });
             saldoAbertura2025 = saldoAtualPJ;
         } else {
-            // FALLBACK ISOLADO E EXCLUSIVO POR ID REAL DA EMPRESA (ID 1 = NanoSignals no Supabase)
+            // FALLBACK EXCLUSIVO PARA O ID 1 (NANOSIGNALS)
             if (cid === 1) {
                 saldoAtualPJ = 491.84;
                 saldoCartaoPrePago = 400.00;
                 saldoAbertura2025 = 4000.00;
-            } else if (cid === 2) {
-                // SCEII Consultoria Ltda (Inicia limpo ou com seus saldos reais próprios se houver)
-                saldoAtualPJ = 0.00;
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 0.00;
             } else {
+                // ID 2 (SCEII) ou outros iniciam limpos se não houver contas cadastradas na tabela
                 saldoAtualPJ = 0.00;
                 saldoCartaoPrePago = 0.00;
                 saldoAbertura2025 = 0.00;
