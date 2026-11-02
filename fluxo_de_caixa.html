@@ -216,7 +216,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa Histórico</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Completo (Desde 2025)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Patrimônio Líquido Consolidado</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Completo (Desde 2025)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Patrimônio Líquido Consolidado (Apenas Contas PJ)</p>
                             </div>
                         </th>
                     </tr>
@@ -263,7 +263,7 @@ function ehMaster() {
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
 
-// ISOLAMENTO MULTI-TENANT ESTRITO (ID 1 = NanoSignals, ID 2 = SCEII)
+// ISOLAMENTO MULTI-TENANT GLOBAL UNIVERSAL PARA QUALQUER EMPRESA ATUAL OU FUTURA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -271,13 +271,7 @@ function clienteIdAtual() {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
         return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    
-    if (u.cliente_id) return parseInt(u.cliente_id);
-    
-    const emailUser = (u.email || '').toLowerCase();
-    if (emailUser.includes('sceii') || emailUser.includes('flavia')) return 2;
-    
-    return 1;
+    return u.cliente_id ? parseInt(u.cliente_id) : 1;
 }
 
 function sbFiltroLeitura(tabela) {
@@ -292,7 +286,7 @@ function formatarMoeda(valor) {
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CARREGAMENTO DE SALDOS DINÂMICO COM FALLBACK SEGURO POR TENANT
+// CARREGAMENTO 100% DINÂMICO E GLOBAL: SOMA APENAS CONTAS PJ (EXCLUINDO CONTAS PF) E APLICA FALLBACK SEGURO POR ID SE NECESSÁRIO
 async function carregarSaldosBancariosDinamicos() {
     const cid = clienteIdAtual();
     saldoAtualPJ = 0;
@@ -304,8 +298,16 @@ async function carregarSaldosBancariosDinamicos() {
         if (!error && data && data.length > 0) {
             data.forEach(cb => {
                 let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
-                let saldoVal = parseFloat(cb.saldo_atual || cb.saldo || 0) || 0;
-                if (nomeConta.includes('cartão') || nomeConta.includes('pre-pago') || nomeConta.includes('cartao')) {
+                let tipoConta = (cb.tipo || '').toLowerCase();
+                
+                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA) PARA NÃO INFLAR O CAIXA DA EMPRESA
+                if (nomeConta.includes('pf') || nomeConta.includes('pessoal') || tipoConta.includes('pf')) {
+                    return; // Ignora contas particulares de sócios
+                }
+
+                let saldoVal = parseFloat(cb.saldo_atual || cb.saldo || cb.saldo_inicial || 0) || 0;
+                
+                if (nomeConta.includes('cartão') || nomeConta.includes('pre-pago') || nomeConta.includes('cartao') || tipoConta.includes('cartão')) {
                     saldoCartaoPrePago += saldoVal;
                 } else {
                     saldoAtualPJ += saldoVal;
@@ -314,16 +316,12 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAbertura2025 = saldoAtualPJ;
         }
         
-        // Se a tabela retornou zero, aplica os saldos reais conhecidos e exclusivos de cada tenant
+        // Se após a leitura o saldo PJ continuar zerado, aplica fallbacks específicos de compatibilidade por ID (ex: NanoSignals ID 1)
         if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
             if (cid === 1) { // NanoSignals
                 saldoAtualPJ = 491.84;
                 saldoCartaoPrePago = 400.00;
                 saldoAbertura2025 = 4000.00;
-            } else if (cid === 2) { // SCEII Consultoria (Saldo real da Cora SCFI visto no extrato)
-                saldoAtualPJ = 58.82;
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 58.82;
             }
         }
     } catch(e) {
@@ -331,10 +329,6 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAtualPJ = 491.84;
             saldoCartaoPrePago = 400.00;
             saldoAbertura2025 = 4000.00;
-        } else if (cid === 2) {
-            saldoAtualPJ = 58.82;
-            saldoCartaoPrePago = 0.00;
-            saldoAbertura2025 = 58.82;
         }
     }
 }
