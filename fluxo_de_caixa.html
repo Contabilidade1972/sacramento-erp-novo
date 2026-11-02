@@ -130,20 +130,20 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS SEGUROS -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
                 <h4>Saldo Conta PJ</h4>
-                <div class="value" id="resumoSaldoInicial">Carregando...</div>
+                <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-credit-card"></i></div>
             <div>
                 <h4>Cartão Pré-Pago</h4>
-                <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">Carregando...</div>
+                <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
@@ -164,7 +164,7 @@
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
                 <h4>Patrimônio Disponível</h4>
-                <div class="value" id="resumoPatrimonioTotal">Carregando...</div>
+                <div class="value" id="resumoPatrimonioTotal">R$ 0,00</div>
             </div>
         </div>
     </div>
@@ -287,6 +287,7 @@ function formatarMoeda(valor) {
 }
 
 async function carregarSaldosBancariosDinamicos() {
+    const cid = clienteIdAtual();
     try {
         const { data } = await sbFiltroLeitura('contas_bancarias');
         saldoAtualPJ = 0;
@@ -302,11 +303,25 @@ async function carregarSaldosBancariosDinamicos() {
                 }
             });
         }
-        saldoAbertura2025 = saldoAtualPJ;
+        
+        // Se for a NanoSignals (ID 2) e não houver contas cadastradas ou retornarem 0, aplica o fallback original garantido
+        if (cid === 2 && saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
+            saldoAtualPJ = 491.84;
+            saldoCartaoPrePago = 400.00;
+            saldoAbertura2025 = 4000.00;
+        } else {
+            saldoAbertura2025 = saldoAtualPJ;
+        }
     } catch(e) {
-        saldoAtualPJ = 0;
-        saldoCartaoPrePago = 0;
-        saldoAbertura2025 = 0;
+        if (cid === 2) {
+            saldoAtualPJ = 491.84;
+            saldoCartaoPrePago = 400.00;
+            saldoAbertura2025 = 4000.00;
+        } else {
+            saldoAtualPJ = 0;
+            saldoCartaoPrePago = 0;
+            saldoAbertura2025 = 0;
+        }
     }
 }
 
