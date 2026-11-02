@@ -130,7 +130,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO 100% DINÂMICOS -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -172,7 +172,7 @@
     <!-- RELATÓRIO OPERACIONAL DO FLUXO DE CAIXA -->
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
-            <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado Histórico - Desde 2025)</h3>
+            <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado Histórico)</h3>
             <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         
@@ -216,7 +216,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa Histórico</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Completo (Desde 2025)</span> &nbsp;|&nbsp; <strong>Nota:</strong> Patrimônio Líquido Consolidado (Conta PJ + Cartão Pré-Pago)</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Completo</span></p>
                             </div>
                         </th>
                     </tr>
@@ -287,13 +287,12 @@ function formatarMoeda(valor) {
 }
 
 async function carregarSaldosBancariosDinamicos() {
-    const cid = clienteIdAtual();
     try {
-        const { data } = await sbFiltroLeitura('contas_bancarias');
+        const { data, error } = await sbFiltroLeitura('contas_bancarias');
         saldoAtualPJ = 0;
         saldoCartaoPrePago = 0;
         
-        if (data && data.length > 0) {
+        if (!error && data && data.length > 0) {
             data.forEach(cb => {
                 let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
                 let saldoVal = parseFloat(cb.saldo_atual || cb.saldo || 0) || 0;
@@ -304,35 +303,11 @@ async function carregarSaldosBancariosDinamicos() {
                 }
             });
         }
-
-        // CARREGAMENTO DINÂMICO SEGURO: Se for NanoSignals (ID 2) ou SCEII (ID 1), lê do banco ou aplica valores corretos por tenant
-        if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
-            if (cid === 2) { // NanoSignals
-                saldoAtualPJ = 491.84;
-                saldoCartaoPrePago = 400.00;
-                saldoAbertura2025 = 4000.00;
-            } else if (cid === 1 || cid === 3) { // SCEII ou outras
-                saldoAtualPJ = 0.00;
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 0.00;
-            } else {
-                saldoAtualPJ = 0.00;
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 0.00;
-            }
-        } else {
-            saldoAbertura2025 = saldoAtualPJ;
-        }
+        saldoAbertura2025 = saldoAtualPJ;
     } catch(e) {
-        if (cid === 2) {
-            saldoAtualPJ = 491.84;
-            saldoCartaoPrePago = 400.00;
-            saldoAbertura2025 = 4000.00;
-        } else {
-            saldoAtualPJ = 0.00;
-            saldoCartaoPrePago = 0.00;
-            saldoAbertura2025 = 0.00;
-        }
+        saldoAtualPJ = 0.00;
+        saldoCartaoPrePago = 0.00;
+        saldoAbertura2025 = 0.00;
     }
 }
 
@@ -514,7 +489,7 @@ function aplicarFiltros() {
     if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
     
     let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Histórico Completo (Desde 2025)';
+    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Histórico Completo';
 
     const tbody = document.getElementById('tbodyFluxo');
     const tfoot = document.getElementById('tfootFluxo');
