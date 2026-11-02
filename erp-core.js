@@ -1,16 +1,17 @@
 /* ============================================================
-   erp-core.js — Motor Central v6.2 (DEFINITIVO & CORRIGIDO)
-   - White-Label lê de configuracoes_sistema (fonte única)
-   - Reusa a conexão única window.sb (nunca cria outra)
-   - Relógio próprio (fim da data estática)
-   - Remove cabeçalhos duplicados com blindagem total
-   - Lista completa de módulos + busca global corrigida
-   - Limpa filtro pré-preenchido com e-mail do usuário
-   - Impressão v6.2: margens compactas, cabeçalho repetido
+    erp-core.js — Motor Central v6.3 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - White-Label lê de configuracoes_sistema (fonte única)
+    - Reusa a conexão única window.sb (nunca cria outra)
+    - Relógio próprio (fim da data estática)
+    - Remove cabeçalhos duplicados com blindagem total
+    - Lista completa de módulos + busca global corrigida
+    - Limpa filtro pré-preenchido com e-mail do usuário
+    - Impressão v6.2: margens compactas, cabeçalho repetido
+    - Blindagem Multi-Tenant: Tenant estrito por usuário (LGPD)
    ============================================================ */
 (function() {
     'use strict';
-    var styleId = 'erp-core-styles-universal-v55';
+    var styleId = 'erp-core-styles-universal-v56';
     if (!document.getElementById(styleId)) {
         var style = document.createElement('style');
         style.id = styleId;
@@ -117,6 +118,37 @@
 
     function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
 
+    function ehMasterCore() {
+        var u = usuario();
+        return !!(u && u.email && u.email.toLowerCase().trim() === 'lucianojorgesacramento@gmail.com');
+    }
+
+    /* ===== BLINDAGEM MULTI-TENANT DE SEGURANÇA (LGPD) ===== */
+    window.clienteIdAtual = function() {
+        var u = usuario();
+        if (!u) return 1;
+        if (!ehMasterCore()) {
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        }
+        try {
+            var sel = localStorage.getItem('empresaSelecionada');
+            if (sel) return parseInt(sel);
+        } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    };
+
+    window.sbFiltroSeguro = function(tabela) {
+        var sb = getSb();
+        if (!sb) return null;
+        var cid = window.clienteIdAtual();
+        var tabelasGlobais = ['clientes_contratantes', 'usuarios', 'usuarios_empresa', 'cliente_modulos', 'configuracoes_sistema', 'logs'];
+        var q = sb.from(tabela).select('*');
+        if (tabelasGlobais.indexOf(tabela) === -1 && cid) {
+            q = q.eq('cliente_id', cid);
+        }
+        return q;
+    };
+
     function iniciarRelogio() {
         if (window.__relogioCoreAtivo) return;
         window.__relogioCoreAtivo = true;
@@ -128,14 +160,12 @@
         setTimeout(tick, 100);
     }
 
-    /* ===== BLINDAGEM CONTRA DUPLICAÇÃO DE CABEÇALHO ===== */
     function limparAntigos() {
-        // Remove qualquer header que NÃO seja o gerado pelo motor oficial (#brandTitleCore)
         var headers = document.querySelectorAll('header, .site-header');
         for (var i = 0; i < headers.length; i++) {
             var el = headers[i];
             if (!el.parentNode) continue;
-            if (el.querySelector('#brandTitleCore')) continue; // Mantém o oficial
+            if (el.querySelector('#brandTitleCore')) continue;
             el.parentNode.removeChild(el);
         }
     }
@@ -144,10 +174,7 @@
     function aplicarWhiteLabel() {
         tentativasWL++;
         if (!document.getElementById('brandTitleCore')) { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); return; }
-        var u = usuario();
-        if (!u) return;
-        var cid = (u.cliente_id != null) ? u.cliente_id : 1;
-        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
+        var cid = window.clienteIdAtual();
         var sb = getSb();
         if (!sb) { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); return; }
         sb.from('configuracoes_sistema').select('app_name, app_logo_url').eq('cliente_id', cid).limit(1)
@@ -189,7 +216,6 @@
     window.addEventListener('DOMContentLoaded', function() {
         try { if (localStorage.getItem('erp_tema_noite') === 'true') document.body.classList.add('dark-mode'); } catch(e) {}
         
-        // Limpeza agressiva imediata de cabeçalhos estáticos pré-existentes
         limparAntigos();
 
         var mod = nomeModuloAtual();
@@ -203,7 +229,6 @@
         var isDark = document.body.classList.contains('dark-mode');
         var iconeTema = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
 
-        // Garante que não injeta se já existir um header oficial
         if (!document.getElementById('brandTitleCore')) {
             var headerHtml = '<header class="site-header">' +
                 '<a href="index.html" class="site-brand">' +
@@ -227,7 +252,7 @@
         }
 
         var u = usuario();
-        var ehMaster = u && u.email && u.email.toLowerCase().trim() === 'lucianojorgesacramento@gmail.com';
+        var ehMaster = ehMasterCore();
         if (!ehMaster) {
             var selEmp = document.getElementById('seletorEmpresaCoreContainer');
             if (selEmp) selEmp.style.display = 'none';
@@ -436,8 +461,7 @@
     var tituloDoc = (document.title || 'Relatório').replace(/\s*[—-]\s*Sacramento ERP.*/i, '').trim();
     var agora = new Date().toLocaleString('pt-BR');
     var usuario = u ? (u.nome || u.email || '') : '';
-    var cid = (u && u.cliente_id != null) ? u.cliente_id : 1;
-    try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) cid = parseInt(sel); } catch (e) {}
+    var cid = window.clienteIdAtual();
 
     var header = document.createElement('div');
     header.className = 'print-doc-header';
@@ -498,18 +522,15 @@
 
 // CORREÇÃO GLOBAL DE IMPRESSÃO PARA TODOS OS RELATÓRIOS DO SISTEMA
 window.addEventListener('beforeprint', () => {
-    // 1. Pega o nome real da empresa selecionada no topo do ERP
     const elEmpresaHeader = document.querySelector('.site-brand .brand-info h1') || document.querySelector('header h1');
     const nomeEmpresa = elEmpresaHeader ? elEmpresaHeader.innerText : "Sacramento ERP";
 
-    // 2. Atualiza todos os títulos de impressão corporativa automaticamente
     document.querySelectorAll('.print-corporative-header h2, .print-corporative-header h3').forEach(titulo => {
         if (!titulo.innerText.includes(nomeEmpresa)) {
             titulo.innerText = nomeEmpresa + " — " + titulo.innerText.replace("Sacramento ERP — ", "");
         }
     });
 
-    // 3. Preenche a data e hora da emissão em qualquer relatório impresso
     const agora = new Date();
     const dataHoraFmt = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
     document.querySelectorAll('#printDataEmissao, .print-data-emissao').forEach(span => {
