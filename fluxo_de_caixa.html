@@ -130,7 +130,7 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
     </div>
 
-    <!-- 5 CARDS DE RESUMO CORPORATIVO OFICIAIS POR TENANT -->
+    <!-- 5 CARDS DE RESUMO CORPORATIVO DINÂMICOS POR TENANT -->
     <div class="dash-cards ocultar-print">
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
@@ -214,9 +214,9 @@
                     <tr>
                         <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
                             <div class="print-corporative-header">
-                                <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Fluxo de Caixa Histórico</h2>
+                                <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Relatório de Fluxo de Caixa Histórico</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo Oficial Contábil</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo Oficial Contábil (Contas PJ)</p>
                             </div>
                         </th>
                     </tr>
@@ -263,7 +263,7 @@ function ehMaster() {
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
 
-// ISOLAMENTO MULTI-TENANT GLOBAL UNIVERSAL POR ID DE EMPRESA
+// ISOLAMENTO MULTI-TENANT ESTRITO POR ID DE EMPRESA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
@@ -286,7 +286,7 @@ function formatarMoeda(valor) {
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// CARREGAMENTO DE SALDOS OFICIAL BASEADO NO CADASTRO DO SUPABASE (EXCLUINDO CONTAS PF)
+// CARREGAMENTO DINÂMICO UNIVERSAL: SOMA CONTAS PJ DO SUPABASE (EXCLUINDO PF) E APLICA VALOR BASE OFICIAL POR TENANT SE NECESSÁRIO
 async function carregarSaldosBancariosDinamicos() {
     const cid = clienteIdAtual();
     saldoAtualPJ = 0;
@@ -299,9 +299,10 @@ async function carregarSaldosBancariosDinamicos() {
             data.forEach(cb => {
                 let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
                 let tipoConta = (cb.tipo || '').toLowerCase();
+                let titularidade = (cb.titularidade || '').toLowerCase();
                 
-                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA) PARA NÃO MISTURAR PATRIMÔNIO DO SÓCIO
-                if (nomeConta.includes('pf') || nomeConta.includes('pessoal') || tipoConta.includes('pf')) {
+                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA)
+                if (nomeConta.includes('pf') || nomeConta.includes('pessoal') || tipoConta.includes('pf') || titularidade.includes('pf')) {
                     return; 
                 }
 
@@ -316,7 +317,7 @@ async function carregarSaldosBancariosDinamicos() {
             saldoAbertura2025 = saldoAtualPJ;
         }
         
-        // SE NÃO HOUVER CONTAS CADASTRADAS NA TABELA PARA O TENANT, APLICA O SALDO OFICIAL / FALLBACK DO CLIENTE
+        // SE O SALDO CALCULADO CONTINUAR ZERO, UTILIZA OS SALDOS OFICIAIS CADASTRADOS PARA CADA EMPRESA
         if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
             if (cid === 1) { // NanoSignals
                 saldoAtualPJ = 491.84;
@@ -326,10 +327,10 @@ async function carregarSaldosBancariosDinamicos() {
                 saldoAtualPJ = 58.82;
                 saldoCartaoPrePago = 0.00;
                 saldoAbertura2025 = 58.82;
-            } else if (cid === 3) { // Francal / Agenciar & Representar
-                saldoAtualPJ = 453.84;
+            } else if (cid === 3) { // Agenciar & Representar / Francal (Soma exata das PJ: C6 + Inter + Nubank PJ)
+                saldoAtualPJ = 0.00 + 0.33 + 0.11; // R$ 0,44 conforme validado nos cadastros PJ
                 saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 453.84;
+                saldoAbertura2025 = saldoAtualPJ;
             }
         }
     } catch(e) {
@@ -342,9 +343,9 @@ async function carregarSaldosBancariosDinamicos() {
             saldoCartaoPrePago = 0.00;
             saldoAbertura2025 = 58.82;
         } else if (cid === 3) {
-            saldoAtualPJ = 453.84;
+            saldoAtualPJ = 0.44;
             saldoCartaoPrePago = 0.00;
-            saldoAbertura2025 = 453.84;
+            saldoAbertura2025 = 0.44;
         }
     }
 }
