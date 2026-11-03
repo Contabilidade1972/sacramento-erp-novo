@@ -346,10 +346,27 @@
         } catch (e) {}
     }
 
+    // procura outro cadastro com o mesmo CNPJ/CPF (ignora o que está sendo editado)
+    function acharDuplicado(d) {
+        if (!d) return null;
+        const idEdit = val('edit_id');
+        return parceirosCache.find(function (p) { return soDigitos(p.cnpj_cpf) === d && String(p.id) !== String(idEdit); }) || null;
+    }
+
     async function consultarOuValidarDocumento() {
         const d = soDigitos(val('cnpj_cpf'));
         const st = document.getElementById('status_doc');
         if (!d) { st.textContent = ''; return; }
+        const dup = acharDuplicado(d);
+        if (dup) {
+            st.textContent = '⚠ já cadastrado'; st.style.color = '#b45309';
+            if (confirm('Este documento JÁ ESTÁ CADASTRADO:\n\n' + (dup.nome || '') + ' (#' + dup.id + ')\n\nDeseja abrir o cadastro existente para EDITAR?\n\n(Cancelar = limpar o campo, para digitar outro documento.)')) {
+                editarParceiro(dup.id);
+            } else {
+                setVal('cnpj_cpf', ''); st.textContent = '';
+            }
+            return;
+        }
         if (!documentoValido(d)) { st.textContent = '✗ documento inválido'; st.style.color = '#b91c1c'; return; }
         st.textContent = '✓ válido'; st.style.color = '#047857';
         if (d.length !== 14) return;
@@ -524,9 +541,11 @@
         const tipo_cadastro = val('tipo_cadastro'), cnpj_cpf = val('cnpj_cpf'), nome = val('nome'), centro_custo = val('centro_custo');
         if (!nome || !cnpj_cpf || !centro_custo) { toast('Preencha o documento, o nome e selecione o centro de custo.', 'error'); return; }
         if (!documentoValido(cnpj_cpf) && !confirm('O CNPJ/CPF informado parece INVÁLIDO. Deseja salvar mesmo assim?')) return;
-        const d = soDigitos(cnpj_cpf);
-        const dup = parceirosCache.find(function (p) { return soDigitos(p.cnpj_cpf) === d && d && String(p.id) !== String(id); });
-        if (dup && !confirm('Já existe um parceiro com este documento: "' + dup.nome + '" (#' + dup.id + '). Salvar mesmo assim?')) return;
+        const dup = acharDuplicado(soDigitos(cnpj_cpf));
+        if (dup) {
+            if (confirm('Não é possível salvar: já existe um cadastro com este documento:\n\n' + (dup.nome || '') + ' (#' + dup.id + ')\n\nDeseja abrir o cadastro existente para EDITAR?')) editarParceiro(dup.id);
+            return;
+        }
 
         const payload = {
             tipo_cadastro: tipo_cadastro, cnpj_cpf: cnpj_cpf, nome: nome, centro_custo: centro_custo, cliente_id: cid,
