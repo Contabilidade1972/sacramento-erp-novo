@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -16,23 +18,6 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -79,43 +64,16 @@
         .toast { padding: 12px 18px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); }
 
-        .print-header { display: none; }
-        @media print {
-            .site-header, .page-toolbar, .card:first-child, .btn-icon, .toast-container, button { display: none !important; }
-            body { background: #fff !important; }
-            .card { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            .print-header { display: block !important; border-bottom: 2px solid var(--secondary); padding-bottom: 12px; margin-bottom: 16px; }
-            table { width: 100% !important; border: 1px solid #cbd5e1 !important; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 8px !important; color: #000 !important; }
-            th { background: #1e3a8a !important; color: #fff !important; }
-        }
+        .totais-linha { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+        .tot-card { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--secondary); border-radius: 10px; padding: 12px 16px; }
+        .tot-card .t { font-size: 10px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: .5px; }
+        .tot-card .v { font-size: 18px; font-weight: 800; color: var(--secondary); margin-top: 2px; }
+        .aviso-saldo { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 10px; padding: 10px 14px; font-size: 12.5px; line-height: 1.5; margin-bottom: 16px; }
     </style>
 </head>
 <body>
 
 <div class="toast-container" id="toastContainer"></div>
-
-<!-- HEADER PADRÃO DO ERP -->
-<header class="site-header">
-    <a href="modulo_financeiro.html" class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </a>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
 
 <div class="container">
     <div class="page-toolbar">
@@ -151,7 +109,7 @@
                 </select>
             </div>
             <div>
-                <label>Saldo / Limite Inicial (R$)</label>
+                <label>Saldo / Limite Atual (R$)</label>
                 <input type="number" step="0.01" id="saldo_inicial" class="form-control" value="0.00">
             </div>
         </div>
@@ -250,21 +208,25 @@
         </div>
 
         <div style="margin-top: 16px; display:flex; gap:12px;">
-            <button class="btn btn-primary" id="btnSalvar" onclick="salvarCadastro()"><i class="fas fa-save"></i> Salvar Cadastro</button>
-            <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="btnSalvar" onclick="salvarCadastro()"><i class="fas fa-save"></i> Salvar Cadastro</button>
+            <button type="button" class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar</button>
         </div>
     </div>
 
     <!-- CAMADA 1: RELATÓRIO OPERACIONAL -->
     <div class="card" id="cardRelatorioModo">
-        <div class="print-header">
-            <h2>Sacramento ERP Gestão Empresarial — Relatório Operacional: Contas e Cartões</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span></p>
-        </div>
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional</h3>
-            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button type="button" class="btn-acao sucesso" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
+
+        <div class="totais-linha">
+            <div class="tot-card"><div class="t">Conta PJ + Caixa (disponível)</div><div class="v" id="totContas">R$ 0,00</div></div>
+            <div class="tot-card" style="border-left-color:var(--warning);"><div class="t">Cartões pré-pagos (disponível)</div><div class="v" id="totCartoes">R$ 0,00</div></div>
+            <div class="tot-card" style="border-left-color:var(--success);"><div class="t">Total disponível da empresa</div><div class="v" id="totGeral">R$ 0,00</div></div>
+        </div>
+        <div class="aviso-saldo"><i class="fas fa-info-circle"></i> <strong>Estes saldos são informados por você</strong> e servem de base para o Fluxo de Caixa. Pagar uma conta em Contas a Pagar <strong>não altera</strong> o saldo aqui: depois de uma recarga do cartão ou de uma conferência com o extrato, atualize o valor da conta (botão de editar).</div>
+
         <div style="background:var(--bg); padding:14px; border-radius:10px; margin-bottom:16px; display:grid; grid-template-columns: 1fr 2fr auto; gap:12px; align-items:flex-end;">
             <div>
                 <label>Filtrar por Categoria</label>
@@ -279,7 +241,7 @@
                 <input type="text" id="filtroBusca" class="form-control" placeholder="Nome ou instituição..." oninput="renderTabelas()">
             </div>
             <div>
-                <button class="btn btn-outline" onclick="document.getElementById('filtroTipo').value='todos';document.getElementById('filtroBusca').value='';renderTabelas();"><i class="fas fa-eraser"></i> Limpar</button>
+                <button type="button" class="btn btn-outline" onclick="document.getElementById('filtroTipo').value='todos';document.getElementById('filtroBusca').value='';renderTabelas();"><i class="fas fa-eraser"></i> Limpar</button>
             </div>
         </div>
         <div class="table-container">
@@ -331,12 +293,28 @@
     const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let registrosCache = [];
+    let salvando = false;
+
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+    function numero(v) {
+        if (typeof v === 'number') return v;
+        let s = String(v === null || v === undefined ? '' : v).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
 
     // BLINDAGEM MULTI-TENANCY ESTRITA
     function obterClienteIdAtivo() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-            const isMaster = u.email === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
             if (isMaster) {
                 const sel = localStorage.getItem('empresaSelecionada');
                 if (sel) return parseInt(sel);
@@ -350,291 +328,340 @@
     async function inicializarPagina() {
         try {
             const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-            if (u && u.email) {
-                const elUser = document.getElementById('userName');
-                if (elUser) elUser.innerText = (u.nome || u.email).split(' ')[0];
-            }
-
-            if (typeof carregarSeletorEmpresa === 'function') {
-                await carregarSeletorEmpresa();
-            }
-
-            document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
+            if (u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER) document.body.classList.add('usuario-master');
             await carregarRegistros();
         } catch(e) {
             console.error("Erro na inicialização:", e);
         }
     }
 
-    function trocarEmpresa() {
-        const select = document.getElementById('selectEmpresa');
-        if (!select) return;
-        localStorage.setItem('empresaSelecionada', select.value);
-        carregarRegistros();
-    }
-
-    function toast(msg, type='success'){
-        var c = document.getElementById('toastContainer'), x = document.createElement('div');
-        if(!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px'; document.body.appendChild(c); }
-        x.className = 'toast '+type; x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg; c.appendChild(x);
-        setTimeout(function(){ x.remove(); }, 3000);
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div');
+        x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function(){ x.remove(); }, type === 'error' ? 6000 : 3500);
     }
 
     function formatBRL(v) {
-        return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
+        const n = Math.round((Number(v) || 0) * 100) / 100;
+        return (n < 0 ? '-R$ ' : 'R$ ') + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function mudarCategoriaCadastro() {
-        let cat = document.getElementById('categoria').value;
-        let tipoSel = document.getElementById('tipo');
-        let blocoBanco = document.getElementById('bloco_banco');
-        let blocoCartao = document.getElementById('bloco_cartao');
+        const cat = document.getElementById('categoria').value;
+        const tipoSel = document.getElementById('tipo');
+        const blocoBanco = document.getElementById('bloco_banco');
+        const blocoCartao = document.getElementById('bloco_cartao');
         if (cat === 'Cartao') {
-            tipoSel.innerHTML = `
-                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                <option value="Cartão de Débito">Cartão de Débito</option>
-                <option value="Cartão Pré-Pago">Cartão Pré-Pago</option>
-            `;
+            tipoSel.innerHTML = '<option value="Cartão de Crédito">Cartão de Crédito</option><option value="Cartão de Débito">Cartão de Débito</option><option value="Cartão Pré-Pago">Cartão Pré-Pago</option>';
             blocoBanco.style.display = 'none';
             blocoCartao.style.display = 'grid';
         } else {
-            tipoSel.innerHTML = `
-                <option value="Conta Corrente PJ">Conta Corrente PJ</option>
-                <option value="Conta Corrente PF">Conta Corrente PF</option>
-                <option value="Conta Poupança">Conta Poupança</option>
-                <option value="Conta Investimento">Conta Investimento</option>
-                <option value="Caixa Físico">Caixa Físico</option>
-            `;
+            tipoSel.innerHTML = '<option value="Conta Corrente PJ">Conta Corrente PJ</option><option value="Conta Corrente PF">Conta Corrente PF</option><option value="Conta Poupança">Conta Poupança</option><option value="Conta Investimento">Conta Investimento</option><option value="Caixa Físico">Caixa Físico</option>';
             blocoBanco.style.display = 'grid';
             blocoCartao.style.display = 'none';
         }
     }
 
     function detectarBandeiraEValidar(input) {
-        let val = input.value.replace(/\D/g, '');
-        let spanBandeira = document.getElementById('info_bandeira');
-        if (!val) { spanBandeira.innerHTML = ''; return; }
-        spanBandeira.innerHTML = `(4 últimos dígitos)`;
+        const val = input.value.replace(/\D/g, '');
+        document.getElementById('info_bandeira').innerHTML = val ? '(4 últimos dígitos)' : '';
     }
 
     function verificarCartaoVencido(vencStr) {
         if (!vencStr || !vencStr.includes('/')) return false;
-        let partes = vencStr.split('/');
-        let mes = parseInt(partes[0], 10);
+        const partes = vencStr.split('/');
+        const mes = parseInt(partes[0], 10);
         let ano = parseInt(partes[1], 10);
         if (isNaN(mes) || isNaN(ano)) return false;
         if (ano < 100) ano += 2000;
-        let hoje = new Date();
+        const hoje = new Date();
         return (ano < hoje.getFullYear() || (ano === hoje.getFullYear() && mes < (hoje.getMonth() + 1)));
     }
 
+    function ehCartaoReg(r) { return norm(r.tipo).indexOf('cartao') >= 0; }
+
     function contaDisponivelEmpresa(r) {
         if (r.classificacao_saldo) return r.classificacao_saldo === 'disponivel';
-        let tipo = (r.tipo || '').toLowerCase();
-        if (tipo.includes('pf')) return false;
-        return true;
+        return norm(r.tipo).indexOf('pf') < 0;
+    }
+
+    // MESMA regra do Fluxo de Caixa: assim os totais daqui são exatamente os saldos que o Fluxo usa
+    function entraNoSaldoEmpresa(cb) {
+        const titular = norm(cb.titularidade);
+        const identificacao = norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || ''));
+        if (/\bpf\b/.test(titular) || titular.indexOf('fisica') >= 0 || titular.indexOf('pessoal') >= 0 || /\bpf\b/.test(identificacao) || identificacao.indexOf('pessoal') >= 0) return false;
+        const classe = norm(cb.classificacao_saldo || 'disponivel');
+        return classe === 'disponivel';
+    }
+    function ehCartaoFluxo(cb) {
+        return /cartao|pre-pago|prepago|pre pago/.test(norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || '')));
+    }
+
+    function infoCartao(r) {
+        if (ehCartaoReg(r) && r.observacoes && String(r.observacoes).startsWith('{')) {
+            try { return JSON.parse(r.observacoes); } catch(e) {}
+        }
+        return {};
+    }
+    function detalhesTexto(r) {
+        if (ehCartaoReg(r)) { const c = infoCartao(r); return 'Nº: **** ' + (c.numero || '****') + ' | Venc: ' + (c.vencimento || '-'); }
+        return 'Ag: ' + (r.agencia || '-') + ' | CC: ' + (r.conta || '-');
     }
 
     async function carregarRegistros() {
         try {
             const cid = obterClienteIdAtivo();
-            // CONSULTA BLINDADA: Filtra estritamente pelo cliente_id da empresa ativa
-            const { data, error } = await sb.from('contas_bancarias')
-                .select('*')
-                .eq('cliente_id', cid)
-                .order('id', { ascending: false });
-
-            if (error) {
-                toast("Erro ao carregar dados", "error");
-                return;
-            }
+            const { data, error } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: false });
+            if (error) { toast('Erro ao carregar dados: ' + error.message, 'error'); return; }
             registrosCache = data || [];
             renderTabelas();
-        } catch(e) {
-            console.error(e);
-        }
+        } catch(e) { console.error(e); }
+    }
+
+    function listaFiltrada() {
+        const tipoFiltro = document.getElementById('filtroTipo').value;
+        const txt = norm(document.getElementById('filtroBusca').value);
+        return registrosCache.filter(r => {
+            const ehCartao = ehCartaoReg(r);
+            if (tipoFiltro === 'Conta' && ehCartao) return false;
+            if (tipoFiltro === 'Cartão' && !ehCartao) return false;
+            if (txt && norm((r.nome || '') + ' ' + (r.banco || '')).indexOf(txt) < 0) return false;
+            return true;
+        });
+    }
+
+    function renderTotais() {
+        let contas = 0, cartoes = 0;
+        registrosCache.forEach(cb => {
+            if (!entraNoSaldoEmpresa(cb)) return;
+            const s = numero(cb.saldo_inicial !== undefined && cb.saldo_inicial !== null ? cb.saldo_inicial : (cb.saldo_atual !== undefined ? cb.saldo_atual : cb.saldo));
+            if (ehCartaoFluxo(cb)) cartoes += s; else contas += s;
+        });
+        document.getElementById('totContas').innerText = formatBRL(contas);
+        document.getElementById('totCartoes').innerText = formatBRL(cartoes);
+        document.getElementById('totGeral').innerText = formatBRL(contas + cartoes);
+        return { contas: contas, cartoes: cartoes, total: contas + cartoes };
     }
 
     function renderTabelas() {
-        let tipoFiltro = document.getElementById('filtroTipo').value;
-        let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
-        let tbodyMain = document.getElementById('tbodyContas');
-        let tbodyRel = document.getElementById('tbodyRelatorioModo');
-
-        let filtrados = registrosCache.filter(r => {
-            let ehCartao = (r.tipo || '').toLowerCase().includes('cartão');
-            if (tipoFiltro === 'Conta' && ehCartao) return false;
-            if (tipoFiltro === 'Cartão' && !ehCartao) return false;
-            if (txtBusca && !((r.nome || '') + ' ' + (r.banco || '')).toLowerCase().includes(txtBusca)) return false;
-            return true;
-        });
+        const tbodyMain = document.getElementById('tbodyContas');
+        const tbodyRel = document.getElementById('tbodyRelatorioModo');
+        renderTotais();
+        const filtrados = listaFiltrada();
 
         if (filtrados.length === 0) {
-            tbodyMain.innerHTML = `<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:30px;">Nenhum registo encontrado.</td></tr>`;
-            tbodyRel.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum registo encontrado.</td></tr>`;
+            tbodyMain.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:30px;">Nenhum registo encontrado.</td></tr>';
+            tbodyRel.innerHTML = '<tr><td colspan="5" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum registo encontrado.</td></tr>';
             return;
         }
 
-        tbodyMain.innerHTML = '';
-        tbodyRel.innerHTML = '';
-
+        let htmlMain = '', htmlRel = '';
         filtrados.forEach(r => {
-            let ehCartao = (r.tipo || '').toLowerCase().includes('cartão');
-            let ehPF = (r.tipo || '').toLowerCase().includes('pf');
-            let badgeTipo = ehPF ? `<span class="badge badge-pf">${r.tipo}</span>` : `<span class="badge ${ehCartao ? 'badge-cartao' : 'badge-banco'}">${r.tipo}</span>`;
-            let saldoVal = formatBRL(r.saldo_inicial);
-            let disponivel = contaDisponivelEmpresa(r);
-            let badgeClassif = disponivel ? '<span class="badge badge-disponivel"><i class="fas fa-check"></i> Disponível</span>' : '<span class="badge badge-excluido"><i class="fas fa-ban"></i> Excluído</span>';
-            
-            let cartaoInfo = {};
-            if (ehCartao && r.observacoes && r.observacoes.startsWith('{')) {
-                try { cartaoInfo = JSON.parse(r.observacoes); } catch(e){}
-            }
-            let detalhes = ehCartao ? `Nº: **** ${cartaoInfo.numero || '****'} | Venc: ${cartaoInfo.vencimento || '-'}` : `Ag: ${r.agencia || '-'} | CC: ${r.conta || '-'}`;
+            const ehCartao = ehCartaoReg(r);
+            const ehPF = norm(r.tipo).indexOf('pf') >= 0;
+            const badgeTipo = '<span class="badge ' + (ehPF ? 'badge-pf' : (ehCartao ? 'badge-cartao' : 'badge-banco')) + '">' + esc(r.tipo) + '</span>';
+            const saldoVal = formatBRL(numero(r.saldo_inicial));
+            const disponivel = contaDisponivelEmpresa(r);
+            const badgeClassif = disponivel ? '<span class="badge badge-disponivel"><i class="fas fa-check"></i> Disponível</span>' : '<span class="badge badge-excluido"><i class="fas fa-ban"></i> Excluído</span>';
+            const ci = infoCartao(r);
             let situacaoHtml = '-';
-            if (ehCartao && cartaoInfo.vencimento) {
-                let vencido = verificarCartaoVencido(cartaoInfo.vencimento);
-                situacaoHtml = vencido ? `<span class="badge badge-vencido">VENCIDO (${cartaoInfo.vencimento})</span>` : `<span style="color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Válido (${cartaoInfo.vencimento})</span>`;
+            if (ehCartao && ci.vencimento) {
+                situacaoHtml = verificarCartaoVencido(ci.vencimento)
+                    ? '<span class="badge badge-vencido">VENCIDO (' + esc(ci.vencimento) + ')</span>'
+                    : '<span style="color:var(--success); font-weight:600;"><i class="fas fa-check-circle"></i> Válido (' + esc(ci.vencimento) + ')</span>';
             }
+            const det = '<small>' + esc(detalhesTexto(r)) + '</small>';
+            const nomeInst = '<strong>' + esc(r.nome || '-') + '</strong><br><small>' + esc(r.banco || '') + '</small>';
+            htmlRel += '<tr><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td><strong>' + saldoVal + '</strong></td></tr>';
+            htmlMain += '<tr><td><strong>#' + esc(r.id) + '</strong></td><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td><strong>' + saldoVal + '</strong></td><td>' + situacaoHtml + '</td>' +
+                '<td style="text-align:right;"><button type="button" class="btn-icon" data-acao="editar" data-id="' + esc(r.id) + '" title="Editar"><i class="fas fa-edit"></i></button> ' +
+                '<button type="button" class="btn-icon excluir" data-acao="excluir" data-id="' + esc(r.id) + '" title="Excluir"><i class="fas fa-trash-alt"></i></button></td></tr>';
+        });
+        tbodyMain.innerHTML = htmlMain;
+        tbodyRel.innerHTML = htmlRel;
+    }
 
-            tbodyRel.innerHTML += `
-                <tr>
-                    <td>${badgeTipo}</td>
-                    <td><strong>${r.nome || '-'}</strong><br><small>${r.banco || ''}</small></td>
-                    <td><small>${detalhes}</small></td>
-                    <td>${badgeClassif}</td>
-                    <td><strong>${saldoVal}</strong></td>
-                </tr>
-            `;
+    document.addEventListener('click', function (ev) {
+        const b = ev.target.closest('button[data-acao]');
+        if (!b) return;
+        const id = b.getAttribute('data-id');
+        if (b.getAttribute('data-acao') === 'editar') editarRegistro(id);
+        else if (b.getAttribute('data-acao') === 'excluir') excluirRegistro(id);
+    });
 
-            tbodyMain.innerHTML += `
-                <tr>
-                    <td><strong>#${r.id}</strong></td>
-                    <td>${badgeTipo}</td>
-                    <td><strong>${r.nome || '-'}</strong><br><small>${r.banco || ''}</small></td>
-                    <td><small>${detalhes}</small></td>
-                    <td>${badgeClassif}</td>
-                    <td><strong>${saldoVal}</strong></td>
-                    <td>${situacaoHtml}</td>
-                    <td style="text-align:right;">
-                        <button class="btn-icon" onclick="editarRegistro(${r.id})" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button class="btn-icon excluir" onclick="excluirRegistro(${r.id})" title="Excluir"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `;
+    /* ---------- impressão padronizada ---------- */
+    function executarImpressao() {
+        if (!window.ERPPrint) { toast('Módulo de impressão não carregado. Atualize a página (Ctrl+F5).', 'error'); return; }
+        const lista = listaFiltrada().slice().sort((a, b) => (ehCartaoReg(a) - ehCartaoReg(b)) || String(a.nome).localeCompare(String(b.nome)));
+        const tot = renderTotais();
+        const tf = document.getElementById('filtroTipo').value;
+        const filtros = [['Categoria', tf === 'todos' ? 'Todos os registros' : (tf === 'Conta' ? 'Contas bancárias / caixa' : 'Cartões')]];
+        const busca = document.getElementById('filtroBusca').value.trim();
+        if (busca) filtros.push(['Busca', '“' + busca + '”']);
+        const linhas = lista.map(r => {
+            const disp = contaDisponivelEmpresa(r);
+            return [r.tipo, (r.nome || '—') + (r.banco && r.banco !== 'Cartão' ? ' — ' + r.banco : ''), detalhesTexto(r),
+                { t: disp ? 'Disponível' : 'Excluído do saldo', cls: disp ? 'pos' : 'muted' }, { t: formatBRL(numero(r.saldo_inicial)), cls: 'bold' }];
+        });
+        ERPPrint.imprimir({
+            titulo: 'Relatório de Contas Bancárias, Caixa e Cartões',
+            subtitulo: 'Posição dos saldos informados no cadastro',
+            codigo: 'FIN-CB',
+            orientacao: 'portrait',
+            filtros: filtros,
+            resumo: [['Conta PJ + caixa', formatBRL(tot.contas)], ['Cartões pré-pagos', formatBRL(tot.cartoes)], ['Total disponível da empresa', formatBRL(tot.total)], ['Registros listados', String(lista.length)]],
+            colunas: [{ t: 'Modalidade', w: 1.5 }, { t: 'Nome / Instituição', w: 2.6 }, { t: 'Detalhes', w: 2.2 }, { t: 'Classificação', w: 1.4 }, { t: 'Saldo / Limite', w: 1.3, a: 'right' }],
+            linhas: linhas,
+            observacao: 'Os saldos são os valores informados no cadastro de cada conta (não são calculados automaticamente) e são a base do Saldo Real do Fluxo de Caixa. Contas particulares (PF) e limites não entram no total disponível da empresa.'
         });
     }
 
+    /* ---------- salvar ---------- */
     async function salvarCadastro() {
-        let id = document.getElementById('edit_id').value;
-        let cat = document.getElementById('categoria').value;
-        let payload = {
+        if (salvando) return;
+        const id = document.getElementById('edit_id').value;
+        const cat = document.getElementById('categoria').value;
+        const payload = {
             tipo: document.getElementById('tipo').value,
             nome: document.getElementById('nome').value.trim(),
-            saldo_inicial: Number(document.getElementById('saldo_inicial').value || 0),
+            saldo_inicial: Math.round(Number(document.getElementById('saldo_inicial').value || 0) * 100) / 100,
             classificacao_saldo: document.getElementById('classificacao_saldo').value,
             titularidade: document.getElementById('titularidade').value,
             cliente_id: obterClienteIdAtivo()
         };
+        if (!payload.nome) { toast('Informe o nome ou identificação!', 'error'); return; }
+        if (isNaN(payload.saldo_inicial)) { toast('Informe um saldo válido.', 'error'); return; }
 
         if (cat === 'Cartao') {
             payload.banco = 'Cartão';
-            let cartaoObj = {
+            payload.observacoes = JSON.stringify({
                 numero: document.getElementById('cartao_numero').value.trim(),
                 titular: document.getElementById('cartao_nome').value.trim(),
                 vencimento: document.getElementById('cartao_vencimento').value.trim()
-            };
-            payload.observacoes = JSON.stringify(cartaoObj);
+            });
             payload.agencia = '';
             payload.conta = '';
         } else {
             payload.banco = document.getElementById('banco').value.trim();
             payload.agencia = document.getElementById('agencia').value.trim();
             payload.conta = document.getElementById('conta').value.trim();
-            payload.observacoes = '';
+            if (!id) payload.observacoes = '';   // ao editar uma conta, as observações existentes são preservadas
         }
 
-        if (!payload.nome) {
-            toast("Informe o nome ou identificação!", "error");
-            return;
-        }
-
-        let res;
+        // o nome é o vínculo com os lançamentos: avisa sobre duplicado e sobre troca de nome
+        const mesmoNome = registrosCache.find(x => String(x.id) !== String(id) && norm(x.nome) === norm(payload.nome));
+        if (mesmoNome && !confirm('Já existe um cadastro chamado "' + mesmoNome.nome + '" (#' + mesmoNome.id + ').\n\nDois cadastros com o mesmo nome confundem os lançamentos. Deseja salvar mesmo assim?')) return;
         if (id) {
-            res = await sb.from('contas_bancarias').update(payload).eq('id', id).eq('cliente_id', payload.cliente_id);
-        } else {
-            res = await sb.from('contas_bancarias').insert([payload]);
+            const atual = registrosCache.find(x => String(x.id) === String(id));
+            if (atual && norm(atual.nome) !== norm(payload.nome) &&
+                !confirm('Você está trocando o nome de "' + atual.nome + '" para "' + payload.nome + '".\n\nOs lançamentos já feitos guardam o nome ANTIGO da conta e deixarão de ser reconhecidos por ela (extrato e baixas). Se só quer corrigir o saldo, mantenha o nome.\n\nDeseja trocar o nome mesmo assim?')) return;
         }
 
-        if (res.error) {
-            toast("Erro ao salvar: " + res.error.message, "error");
-            return;
+        salvando = true;
+        const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+        try {
+            let res;
+            if (id) res = await sb.from('contas_bancarias').update(payload).eq('id', id).eq('cliente_id', payload.cliente_id);
+            else res = await sb.from('contas_bancarias').insert([payload]);
+            if (res.error) { toast('Erro ao salvar: ' + res.error.message, 'error'); return; }
+            toast(id ? 'Atualizado com sucesso!' : 'Cadastrado com sucesso!');
+            cancelarEdicao();
+            await carregarRegistros();
+        } finally {
+            salvando = false; btn.disabled = false;
         }
-
-        toast(id ? "Atualizado com sucesso!" : "Cadastrado com sucesso!");
-        cancelarEdicao();
-        carregarRegistros();
     }
 
     window.editarRegistro = function(id) {
-        let r = registrosCache.find(x => String(x.id) === String(id));
+        const r = registrosCache.find(x => String(x.id) === String(id));
         if (!r) return;
         document.getElementById('edit_id').value = r.id;
-        let ehCartao = (r.tipo || '').toLowerCase().includes('cartão');
+        const ehCartao = ehCartaoReg(r);
         document.getElementById('categoria').value = ehCartao ? 'Cartao' : 'Conta Bancaria';
         mudarCategoriaCadastro();
         document.getElementById('tipo').value = r.tipo || 'Conta Corrente PJ';
         document.getElementById('nome').value = r.nome || '';
-        document.getElementById('saldo_inicial').value = r.saldo_inicial || 0;
+        document.getElementById('saldo_inicial').value = numero(r.saldo_inicial);
         document.getElementById('classificacao_saldo').value = r.classificacao_saldo || 'disponivel';
         document.getElementById('titularidade').value = r.titularidade || 'Empresarial (PJ)';
 
         if (ehCartao) {
-            let cartaoObj = {};
-            try { cartaoObj = JSON.parse(r.observacoes || '{}'); } catch(e){}
-            document.getElementById('cartao_numero').value = cartaoObj.numero || '';
-            document.getElementById('cartao_nome').value = cartaoObj.titular || '';
-            document.getElementById('cartao_vencimento').value = cartaoObj.vencimento || '';
+            const c = infoCartao(r);
+            document.getElementById('cartao_numero').value = c.numero || '';
+            document.getElementById('cartao_nome').value = c.titular || '';
+            document.getElementById('cartao_vencimento').value = c.vencimento || '';
         } else {
             document.getElementById('banco').value = r.banco || '';
             document.getElementById('agencia').value = r.agencia || '';
             document.getElementById('conta').value = r.conta || '';
         }
-
-        document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Cadastro (#${r.id})`;
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit"></i> Editando Cadastro (#' + esc(r.id) + ')';
         document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar';
-        document.getElementById('btnCancelar').style.display = 'inline-block';
-        window.scrollTo({top: 0, behavior: 'smooth'});
-    }
+        document.getElementById('btnCancelar').style.display = 'inline-flex';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
 
     function cancelarEdicao() {
         document.getElementById('edit_id').value = '';
         document.getElementById('categoria').value = 'Conta Bancaria';
         mudarCategoriaCadastro();
-        document.getElementById('nome').value = '';
-        document.getElementById('banco').value = '';
-        document.getElementById('agencia').value = '';
-        document.getElementById('conta').value = '';
+        ['nome', 'banco', 'agencia', 'conta', 'cartao_numero', 'cartao_nome', 'cartao_vencimento'].forEach(i => { document.getElementById(i).value = ''; });
         document.getElementById('saldo_inicial').value = '0.00';
-        document.getElementById('cartao_numero').value = '';
-        document.getElementById('cartao_nome').value = '';
-        document.getElementById('cartao_vencimento').value = '';
+        document.getElementById('classificacao_saldo').value = 'disponivel';
+        document.getElementById('titularidade').value = 'Empresarial (PJ)';
+        document.getElementById('info_bandeira').innerHTML = '';
         document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cadastrar Nova Conta ou Cartão';
         document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Cadastro';
         document.getElementById('btnCancelar').style.display = 'none';
     }
 
-    window.excluirRegistro = async function(id) {
-        if (!confirm("Deseja realmente excluir este registo?")) return;
+    // quantos lançamentos usam esta conta (pelo nome)? evita excluir uma conta em uso sem aviso
+    async function contarUsos(r) {
         const cid = obterClienteIdAtivo();
-        let { error } = await sb.from('contas_bancarias').delete().eq('id', id).eq('cliente_id', cid);
-        if (error) { toast("Erro ao excluir", "error"); return; }
-        toast("Removido com sucesso!");
-        carregarRegistros();
+        const nome = norm(r.nome || r.banco);
+        if (nome.length < 3) return { pagar: 0, receber: 0, transf: 0, erro: false };
+        async function ler(tabela, cols) {
+            const out = []; const PAG = 1000;
+            for (let i = 0; i < 100000; i += PAG) {
+                const x = await sb.from(tabela).select(cols).eq('cliente_id', cid).range(i, i + PAG - 1);
+                if (x.error) throw x.error;
+                out.push.apply(out, x.data || []);
+                if (!x.data || x.data.length < PAG) break;
+            }
+            return out;
+        }
+        try {
+            const [p, rc, t] = await Promise.all([ler('contas_pagar', 'conta_origem'), ler('contas_receber', 'conta_destino'), ler('transferencias', 'conta_origem,conta_destino')]);
+            return {
+                pagar: p.filter(x => norm(x.conta_origem).indexOf(nome) >= 0).length,
+                receber: rc.filter(x => norm(x.conta_destino).indexOf(nome) >= 0).length,
+                transf: t.filter(x => norm(x.conta_origem).indexOf(nome) >= 0 || norm(x.conta_destino).indexOf(nome) >= 0).length,
+                erro: false
+            };
+        } catch (e) { return { pagar: 0, receber: 0, transf: 0, erro: true }; }
     }
+
+    window.excluirRegistro = async function(id) {
+        const r = registrosCache.find(x => String(x.id) === String(id));
+        if (!r) return;
+        const u = await contarUsos(r);
+        const total = u.pagar + u.receber + u.transf;
+        let msg = 'Excluir "' + (r.nome || r.banco) + '" (#' + r.id + ')?';
+        if (u.erro) msg += '\n\nNão foi possível verificar se a conta está em uso.';
+        else if (total > 0) msg += '\n\nATENÇÃO: esta conta aparece em ' + total + ' lançamento(s) (' + u.pagar + ' pagamentos, ' + u.receber + ' recebimentos, ' + u.transf + ' transferências). Excluir NÃO apaga os lançamentos, mas eles ficarão sem a conta cadastrada e o saldo do Fluxo de Caixa será alterado.';
+        msg += '\n\nEsta ação não pode ser desfeita.';
+        if (!confirm(msg)) return;
+        const cid = obterClienteIdAtivo();
+        const res = await sb.from('contas_bancarias').delete().eq('id', id).eq('cliente_id', cid);
+        if (res.error) { toast('Erro ao excluir: ' + res.error.message, 'error'); return; }
+        toast('Removido com sucesso!');
+        carregarRegistros();
+    };
 
     window.onload = inicializarPagina;
 </script>
-<script src="erp-core.js"></script>
 </body>
 </html>
