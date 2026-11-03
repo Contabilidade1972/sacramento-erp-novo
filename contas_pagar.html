@@ -180,6 +180,21 @@
                 </select>
             </div>
         </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+                <label>Juros / multa / encargos (R$)</label>
+                <input type="number" step="0.01" min="0" id="juros_baixa" class="form-control" placeholder="0,00" oninput="recalcularValorPago()">
+            </div>
+            <div>
+                <label>Desconto (R$)</label>
+                <input type="number" step="0.01" min="0" id="desconto_baixa" class="form-control" placeholder="0,00" oninput="recalcularValorPago()">
+            </div>
+            <div>
+                <label>Valor efetivamente pago</label>
+                <div id="valor_pago_baixa" style="height:42px; display:flex; align-items:center; font-size:15px; font-weight:800; color:var(--success);">R$ 0,00</div>
+            </div>
+        </div>
+        <div class="dica" style="margin:-2px 0 8px 0;">Valor pago = valor do título + juros − desconto. É o valor pago que entra no Fluxo de Caixa; o valor original fica guardado no título.</div>
         <div id="info_cartao_baixa" class="dica cartao" style="display:none;"></div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px;">
             <button class="btn-acao" style="background:#64748b;" onclick="fecharModalPagamento()">Cancelar</button>
@@ -483,6 +498,18 @@ function limpo(v) { // esconde os textos-padrão "Não informado/Não informada"
     return (!x || /^n[aã]o informad[oa]$/i.test(x)) ? '—' : x;
 }
 function arred(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
+function textoAjuste(t) { // "orig. R$ 81,80 · juros +R$ 2,00 · desc. -R$ 0,50"
+    if (t.valor_original === undefined || t.valor_original === null) return '';
+    const o = numero(t.valor_original);
+    if (Math.abs(o - t.valorNumerico) < 0.005) return '';
+    let x = 'orig. ' + formatBRL(o);
+    if (numero(t.juros) > 0) x += ' · juros +' + formatBRL(numero(t.juros));
+    if (numero(t.desconto) > 0) x += ' · desc. -' + formatBRL(numero(t.desconto));
+    return x;
+}
+function erroColunaAjuste(msg) {
+    return /valor_original|juros|desconto/i.test(String(msg || '')) && /column|coluna/i.test(String(msg || ''));
+}
 function codigoDe(t) { return 'CP-' + String(t.id).padStart(3, '0'); }
 function sufixoParcela(desc) {
     const m = String(desc || '').match(/\s*\((\d+\/\d+)\)\s*$/);
@@ -988,7 +1015,7 @@ function renderTabelaFiltrada(lista) {
                 <td>${esc(semSufixo(t.descricao) || '—')}</td>
                 <td><span style="font-weight:600; color:var(--primary);">${esc(parcela)}</span></td>
                 <td>${fmtData(t.vencimento)}</td>
-                <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
+                <td><strong>${formatBRL(t.valorNumerico)}</strong>${textoAjuste(t) ? '<br><span style="font-size:11px;color:var(--text-light);">' + esc(textoAjuste(t)) + '</span>' : ''}</td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
                 <td>${pagoEm}</td>
                 <td style="text-align:right; white-space:nowrap;">
@@ -1031,7 +1058,7 @@ function imprimirRelatorio(modo) {
             sufixoParcela(t.descricao).replace(/[()]/g, '') || '—',
             limpo(t.centro_custo),
             limpo(t.conta_contabil),
-            t.statusSeguro === 'pago' ? (fmtData(t.data_pagamento || t.vencimento) + (t.conta_origem ? ' · ' + t.conta_origem : '')) : '—',
+            t.statusSeguro === 'pago' ? (fmtData(t.data_pagamento || t.vencimento) + (t.conta_origem ? ' · ' + t.conta_origem : '') + (textoAjuste(t) ? ' (' + textoAjuste(t) + ')' : '')) : '—',
             { t: formatBRL(t.valorNumerico), cls: 'bold' },
             { t: label, cls: cor }
         ];
@@ -1120,19 +1147,41 @@ window.abrirModalPagamento = function (id) {
     document.getElementById('modal_forn_venc').innerText = fmtData(t.vencimento);
     document.getElementById('modal_forn_valor').innerText = formatBRL(t.valorNumerico);
     document.getElementById('data_pagamento_baixa').value = hojeLocal();
-    selecionarComFallback('conta_origem_baixa', t.conta_origem || '');
-    atualizarInfoCartaoBaixa();
+    document.getElementById('juros_baixa').value = '';
+    document.getElementById('desconto_baixa').value = '';
+    // sugere a última conta usada com este fornecedor, quando o título não tem conta
+    let contaSug = t.conta_origem || '';
+    if (!contaSug) {
+        const ult = contasCache.filter(x => x.statusSeguro === 'pago' && x.conta_origem && norm(x.fornecedor_nome) === norm(t.fornecedor_nome))
+            .sort((a, b) => iso10(b.data_pagamento || b.vencimento).localeCompare(iso10(a.data_pagamento || a.vencimento)))[0];
+        if (ult) contaSug = ult.conta_origem;
+    }
+    selecionarComFallback('conta_origem_baixa', contaSug);
+    recalcularValorPago();
     document.getElementById('modalPagamento').style.display = 'flex';
 };
 
 function fecharModalPagamento() { document.getElementById('modalPagamento').style.display = 'none'; }
 
+function valorPagoAtual() {
+    const t = contasCache.find(x => String(x.id) === String(document.getElementById('pagamento_id_baixa').value));
+    const orig = t ? t.valorNumerico : 0;
+    const j = Math.max(0, parseFloat(document.getElementById('juros_baixa').value) || 0);
+    const d = Math.max(0, parseFloat(document.getElementById('desconto_baixa').value) || 0);
+    return { orig, j, d, pago: arred(orig + j - d) };
+}
+
+function recalcularValorPago() {
+    const v = valorPagoAtual();
+    document.getElementById('valor_pago_baixa').innerText = formatBRL(v.pago);
+    atualizarInfoCartaoBaixa();
+}
+
 function atualizarInfoCartaoBaixa() {
     const el = document.getElementById('info_cartao_baixa');
     const conta = buscarContaBanc(document.getElementById('conta_origem_baixa').value);
-    const t = contasCache.find(x => String(x.id) === String(document.getElementById('pagamento_id_baixa').value));
     if (conta && conta.ehCartao) {
-        el.innerHTML = textoInfoCartao(conta, t ? t.valorNumerico : 0);
+        el.innerHTML = textoInfoCartao(conta, valorPagoAtual().pago);
         el.style.display = 'block';
     } else { el.style.display = 'none'; }
 }
@@ -1145,21 +1194,30 @@ async function confirmarPagamento() {
     if (!dataPg) { alert("Informe a data do pagamento."); return; }
     if (!conta) { alert("Selecione a conta de origem (de onde saiu o dinheiro)."); return; }
     if (dataPg > hojeLocal() && !confirm("A data de pagamento é FUTURA (" + fmtData(dataPg) + "). Registrar como pago mesmo assim?")) return;
+    const v = valorPagoAtual();
+    if (v.pago <= 0) { alert("O valor efetivamente pago precisa ser maior que zero. Confira o desconto."); return; }
+    const temAjuste = (v.j > 0 || v.d > 0);
+    if (temAjuste && !confirm("O título é de " + formatBRL(v.orig) + " e será quitado por " + formatBRL(v.pago) + " (juros " + formatBRL(v.j) + ", desconto " + formatBRL(v.d) + ").\n\nConfirmar?")) return;
 
     salvando = true;
     const btn = document.getElementById('btnConfirmarPagamento');
     btn.disabled = true;
     try {
         const cid = obterClienteIdSeguro();
-        const res = await sbGlobal.from('contas_pagar')
-            .update({ status: 'Pago', data_pagamento: dataPg, conta_origem: conta, updated_at: new Date().toISOString() })
-            .eq('id', id).eq('cliente_id', cid);
-        if (res.error) { alert("Erro ao registrar pagamento: " + res.error.message); return; }
+        const payload = { status: 'Pago', data_pagamento: dataPg, conta_origem: conta, updated_at: new Date().toISOString() };
+        if (temAjuste) { payload.valor_original = v.orig; payload.juros = v.j; payload.desconto = v.d; payload.valor = v.pago; }
+        const res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cid);
+        if (res.error) {
+            alert(erroColunaAjuste(res.error.message)
+                ? "Faltou preparar o banco para juros/desconto (rodar o SQL do passo combinado). Nada foi alterado."
+                : "Erro ao registrar pagamento: " + res.error.message);
+            return;
+        }
         const cb = buscarContaBanc(conta);
         fecharModalPagamento();
-        alert(cb && cb.ehCartao
+        alert((cb && cb.ehCartao
             ? "Pagamento registrado!\n\nLembrete: o pagamento foi no cartão pré-pago. Atualize o saldo do cartão em Contas Bancárias."
-            : "Pagamento registrado com sucesso!");
+            : "Pagamento registrado com sucesso!") + (temAjuste ? "\n\nValor pago: " + formatBRL(v.pago) + " (original " + formatBRL(v.orig) + ")." : ""));
         await carregarContas();
     } finally {
         salvando = false;
@@ -1172,9 +1230,11 @@ window.desfazerPagamento = async function (id) {
     if (!t) return;
     if (!confirm("Desfazer o pagamento de " + (t.fornecedor_nome || '') + " (" + formatBRL(t.valorNumerico) + ")?\n\nO título volta para Pendente e a saída some do Fluxo de Caixa.")) return;
     const cid = obterClienteIdSeguro();
-    const res = await sbGlobal.from('contas_pagar')
-        .update({ status: 'Pendente', data_pagamento: null, updated_at: new Date().toISOString() })
-        .eq('id', id).eq('cliente_id', cid);
+    const payload = { status: 'Pendente', data_pagamento: null, updated_at: new Date().toISOString() };
+    if (t.valor_original !== undefined && t.valor_original !== null) {
+        payload.valor = numero(t.valor_original); payload.valor_original = null; payload.juros = null; payload.desconto = null;
+    }
+    const res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cid);
     if (res.error) { alert("Erro ao desfazer pagamento: " + res.error.message); return; }
     const cb = buscarContaBanc(t.conta_origem);
     alert(cb && cb.ehCartao ? "Pagamento desfeito.\n\nLembrete: o pagamento era do cartão pré-pago. Ajuste o saldo do cartão em Contas Bancárias." : "Pagamento desfeito. O título voltou para Pendente.");
@@ -1242,6 +1302,11 @@ async function salvarContaPagar() {
                 recorrente,
                 updated_at: new Date().toISOString()
             };
+
+            if (original && original.valor_original !== undefined && original.valor_original !== null && status === 'Pendente') {
+                if (Math.abs(valor - original.valorNumerico) < 0.005) payload.valor = numero(original.valor_original);
+                payload.valor_original = null; payload.juros = null; payload.desconto = null;
+            }
 
             let idsSerie = [];
             if (document.getElementById('aplicarSerie').checked && original) {
