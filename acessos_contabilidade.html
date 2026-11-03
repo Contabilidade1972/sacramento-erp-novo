@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quem Acessou Minha Empresa — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .contexto { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+        .contexto.alerta { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.azul { border-top-color: var(--primary); } .kpi-card.cinza { border-top-color: #94a3b8; }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); line-height: 1.15; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+
+        .vinc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 16px; }
+        .vinc { border: 1px solid var(--border); border-radius: 14px; padding: 18px; background: #fff; display: flex; flex-direction: column; gap: 12px; }
+        .vinc h4 { font-size: 15px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .vinc .meta { font-size: 11.5px; color: var(--text-light); }
+        .perm { display: flex; align-items: center; gap: 10px; font-size: 13px; padding: 7px 0; border-top: 1px dashed var(--border); }
+        .perm i { width: 18px; text-align: center; }
+        .perm .sim { color: var(--success); } .perm .nao { color: #cbd5e1; }
+        .perm small { display: block; font-size: 11px; color: var(--text-light); }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
+        .st-ativo { background: #dcfce7; color: #166534; } .st-inativo { background: #e2e8f0; color: #475569; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1.3fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .acao-tag { padding: 3px 9px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; white-space: nowrap; display: inline-block; }
+        .a-abriu { background: #fef3c7; color: #92400e; } .a-consulta { background: #dbeafe; color: #1e40af; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box { grid-template-columns: 1fr; } .vinc-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Portal</a>
+        <a href="documentos_contabeis.html" class="btn-acao cinza"><i class="fas fa-folder-open"></i> Documentos Contábeis</a>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Registro de Acessos</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-user-shield" style="color:var(--primary);"></i> <span id="titulo">Quem Acessou Minha Empresa</span></div>
+        <div class="page-subtitle" id="subtitulo">Transparência (LGPD): permissões concedidas à contabilidade e registro de cada acesso</div>
+    </div>
+
+    <div class="contexto" id="contexto"><i class="fas fa-circle-info"></i><span>Carregando...</span></div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-handshake" style="color:var(--primary);"></i> <span id="tituloVinculos">Contabilidade vinculada e permissões</span></span></div>
+        <div class="vinc-grid" id="listaVinculos"><div style="padding:20px; color:var(--text-light);">Carregando...</div></div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><span class="kpi-title">Acessos nos últimos 30 dias</span><span class="kpi-value" id="kpiAcessos">0</span><span class="kpi-sub">Aberturas da empresa + telas consultadas</span></div>
+        <div class="kpi-card amarelo"><span class="kpi-title">Vezes que abriu a empresa</span><span class="kpi-value" id="kpiAberturas">0</span><span class="kpi-sub">Entradas pelo seletor de empresas (30 dias)</span></div>
+        <div class="kpi-card verde"><span class="kpi-title">Pessoas diferentes</span><span class="kpi-value" id="kpiPessoas">0</span><span class="kpi-sub">Usuários da contabilidade (30 dias)</span></div>
+        <div class="kpi-card cinza"><span class="kpi-title">Último acesso</span><span class="kpi-value" id="kpiUltimo" style="font-size:17px;">—</span><span class="kpi-sub" id="kpiUltimoSub">&nbsp;</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-clock-rotate-left" style="color:var(--primary);"></i> Registro de acessos</span><span id="contaLog" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
+        <div class="atalhos">
+            <button class="chip" type="button" data-p="7" onclick="setPeriodo('7')">Últimos 7 dias</button>
+            <button class="chip ativo" type="button" data-p="30" onclick="setPeriodo('30')">Últimos 30 dias</button>
+            <button class="chip" type="button" data-p="90" onclick="setPeriodo('90')">Últimos 90 dias</button>
+            <button class="chip" type="button" data-p="tudo" onclick="setPeriodo('tudo')">Todo o período</button>
+        </div>
+        <div class="filtros-box">
+            <div><label for="fDe">Data inicial</label><input type="date" id="fDe" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="fAte">Data final</label><input type="date" id="fAte" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="fAcao">Tipo de acesso</label>
+                <select id="fAcao" class="form-control" onchange="aplicar()">
+                    <option value="todos">Todos</option><option value="troca_empresa">Abriu a empresa</option><option value="consulta_pagina">Consultou uma tela</option>
+                </select></div>
+            <div id="boxFiltroEmpresa" style="display:none;"><label for="fEmpresa">Empresa</label><select id="fEmpresa" class="form-control" onchange="aplicar()"></select></div>
+            <div><label for="fTexto">Buscar</label><input type="text" id="fTexto" class="form-control" placeholder="Usuário ou tela..." oninput="aplicar()"></div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
+        </div>
+        <div class="table-wrap" id="listaLog"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+        <div style="text-align:center; margin-top:14px; display:none;" id="boxMais"><button class="btn-acao cinza" type="button" onclick="mostrarMais()"><i class="fas fa-plus"></i> Mostrar mais</button></div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    const POR_PAGINA = 200;
+    const TELAS = {
+        'index.html': 'Portal', 'modulo_financeiro.html': 'Módulo Financeiro', 'contas_pagar.html': 'Contas a Pagar', 'contas_receber.html': 'Contas a Receber',
+        'contas_bancarias.html': 'Contas Bancárias', 'fluxo_de_caixa.html': 'Fluxo de Caixa', 'extrato_bancario.html': 'Extrato Bancário', 'extrato_analitico.html': 'Extrato Analítico',
+        'conciliacao.html': 'Conciliação Bancária', 'conciliacao_cartoes.html': 'Conciliação de Cartões', 'fechamento_caixa.html': 'Fechamento de Caixa',
+        'relatorios.html': 'Central de Relatórios', 'relatorio_parceiros_financeiro.html': 'Posição por Parceiro', 'transferencias.html': 'Transferências',
+        'parceiros.html': 'Parceiros', 'centros_custo.html': 'Centros de Custo', 'socios.html': 'Sócios', 'ativos_equipamentos.html': 'Ativos e Equipamentos',
+        'dados_empresa.html': 'Dados da Empresa', 'dre.html': 'DRE Gerencial', 'dashboard.html': 'Dashboard', 'faturas.html': 'Faturas',
+        'calendario.html': 'Calendário Fiscal', 'documentos_contabeis.html': 'Documentos Contábeis', 'acessos_contabilidade.html': 'Registro de Acessos',
+        'projetos_pd.html': 'Projetos de P&D', 'custos_pd.html': 'Gastos de P&D', 'aportes_pd.html': 'Aportes de P&D', 'contratos_fomento.html': 'Contratos de Fomento',
+        'auditoria_sistema.html': 'Trilha de Auditoria', 'folha_rh.html': 'Folha / RH'
+    };
+
+    let U = {}, ehMaster = false, ehContador = false, minhaEmpresaId = 0, empresaAtivaId = 0;
+    let nomes = {};          // id -> nome (empresa ou contabilidade)
+    let vinculos = [];       // permissões
+    let log = [], filtrados = [], limite = POR_PAGINA, periodo = '30';
+
+    function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function dataHoraBR(ts) { if (!ts) return '—'; const d = new Date(ts); if (isNaN(d)) return '—'; return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    function dataBR(ts) { if (!ts) return '—'; const d = new Date(ts); return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR'); }
+    function tela(p) { const k = String(p || '').toLowerCase(); return TELAS[k] || (k ? k.replace('.html', '').replace(/_/g, ' ') : '—'); }
+    function nome(id) { return nomes[id] || ('Empresa ' + id); }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+
+    // ---------- contexto ----------
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        empresaAtivaId = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) empresaAtivaId = parseInt(sel); }
+        minhaEmpresaId = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : empresaAtivaId;
+
+        if (!ehMaster) {
+            // é uma contabilidade com clientes vinculados?
+            const rv = await sb.from('vinculos_contador')
+                .select('id, empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos, pode_emitir_nf, pode_usar_certificado, concedido_por, concedido_em, criado_em')
+                .eq('contador_cliente_id', minhaEmpresaId);
+            const lista = (rv && rv.data) || [];
+            if (lista.length) {
+                ehContador = true;
+                vinculos = lista;
+                const ids = lista.map(function (v) { return parseInt(v.empresa_cliente_id); }).concat([minhaEmpresaId]);
+                const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', ids);
+                ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+                return;
+            }
+        }
+        // visão da empresa-cliente (ou Master vendo a empresa escolhida)
+        ehContador = false;
+        minhaEmpresaId = empresaAtivaId;
+        const re = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', empresaAtivaId);
+        ((re && re.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+        const rf = await sb.rpc('app_minhas_contabilidades', { p_empresa_id: empresaAtivaId });
+        if (rf.error) throw new Error('Função do banco indisponível (aplique o pacote 2 de SQL): ' + rf.error.message);
+        vinculos = (rf.data || []).map(function (v) {
+            nomes[v.contador_cliente_id] = v.contador_nome || ('Contabilidade ' + v.contador_cliente_id);
+            return { id: v.vinculo_id, contador_cliente_id: v.contador_cliente_id, status: v.status, pode_visualizar: v.pode_visualizar, pode_trocar_documentos: v.pode_trocar_documentos,
+                     pode_emitir_nf: v.pode_emitir_nf, pode_usar_certificado: v.pode_usar_certificado, concedido_por: v.concedido_por, concedido_em: v.concedido_em, criado_em: v.criado_em };
+        });
+    }
+
+    function permLinha(ok, titulo, sub) {
+        return '<div class="perm"><i class="fas ' + (ok ? 'fa-circle-check sim' : 'fa-circle-xmark nao') + '"></i><div><b>' + titulo + '</b><small>' + sub + '</small></div></div>';
+    }
+    function montarVinculos() {
+        const ctx = document.getElementById('contexto');
+        if (ehContador) {
+            document.getElementById('titulo').textContent = 'Meus Acessos aos Clientes';
+            document.getElementById('subtitulo').textContent = 'Registro dos acessos da sua contabilidade às empresas vinculadas e permissões concedidas por cada cliente';
+            document.getElementById('tituloVinculos').textContent = 'Clientes vinculados e permissões concedidas';
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-briefcase"></i><span>Visão da contabilidade (' + esc(nome(minhaEmpresaId)) + '). Cada abertura de empresa e cada tela consultada em modo consulta ficam registradas e podem ser vistas pelo cliente.</span>';
+            document.getElementById('boxFiltroEmpresa').style.display = 'block';
+            document.getElementById('fEmpresa').innerHTML = '<option value="todos">Todas as empresas</option>' +
+                vinculos.map(function (v) { return '<option value="' + v.empresa_cliente_id + '">' + esc(nome(v.empresa_cliente_id)) + '</option>'; }).join('');
+        } else if (vinculos.length) {
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-shield-halved"></i><span>A contabilidade vinculada só consegue <b>visualizar, salvar PDF e imprimir</b> os dados da sua empresa. Ela <b>não altera nem apaga</b> nenhum lançamento. Todo acesso fica registrado abaixo e não pode ser editado nem excluído.</span>';
+        } else {
+            ctx.className = 'contexto alerta';
+            ctx.innerHTML = '<i class="fas fa-circle-info"></i><span>Esta empresa não tem contabilidade vinculada ao sistema. Nenhum acesso de terceiros é possível.</span>';
+        }
+        const el = document.getElementById('listaVinculos');
+        if (!vinculos.length) { el.innerHTML = '<div style="padding:20px; color:var(--text-light);">Nenhum vínculo cadastrado.</div>'; return; }
+        el.innerHTML = vinculos.map(function (v) {
+            const nomeAlvo = ehContador ? nome(v.empresa_cliente_id) : nome(v.contador_cliente_id);
+            const ativo = String(v.status || '').toLowerCase() === 'ativo';
+            return '<div class="vinc"><h4><span><i class="fas ' + (ehContador ? 'fa-building' : 'fa-briefcase') + '" style="color:var(--primary);"></i> ' + esc(nomeAlvo) + '</span>' +
+                '<span class="badge-st ' + (ativo ? 'st-ativo' : 'st-inativo') + '">' + esc(v.status || '—') + '</span></h4>' +
+                '<div class="meta">Vínculo desde ' + dataBR(v.criado_em) + (v.concedido_por ? ' · Concedido por: ' + esc(v.concedido_por) : '') + (v.concedido_em ? ' em ' + dataBR(v.concedido_em) : '') + '</div>' +
+                permLinha(!!v.pode_visualizar, 'Visualizar dados e relatórios', 'Somente leitura: ver, salvar PDF e imprimir') +
+                permLinha(!!v.pode_trocar_documentos, 'Trocar documentos', 'Enviar e receber documentos do mês') +
+                permLinha(!!v.pode_emitir_nf, 'Emitir notas fiscais', 'Em nome da empresa (quando o módulo fiscal estiver ativo)') +
+                permLinha(!!v.pode_usar_certificado, 'Usar certificado digital', 'Acesso a órgãos oficiais em nome da empresa') + '</div>';
+        }).join('');
+    }
+
+    // ---------- registro ----------
+    async function carregarLog() {
+        const out = []; const passo = 1000; let ini = 0;
+        for (;;) {
+            let q = sb.from('acessos_contabilidade').select('*');
+            q = ehContador ? q.eq('contador_cliente_id', minhaEmpresaId) : q.eq('empresa_cliente_id', empresaAtivaId);
+            const r = await q.order('id', { ascending: false }).range(ini, ini + passo - 1);
+            if (r.error) throw r.error;
+            const parte = r.data || [];
+            out.push.apply(out, parte);
+            if (parte.length < passo || out.length >= 10000) break;
+            ini += passo;
+        }
+        log = out;
+    }
+    function setPeriodo(p) {
+        periodo = p;
+        document.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('ativo', c.getAttribute('data-p') === p); });
+        const h = new Date();
+        if (p === 'tudo') { document.getElementById('fDe').value = ''; document.getElementById('fAte').value = ''; }
+        else { const i = new Date(h); i.setDate(i.getDate() - parseInt(p) + 1); document.getElementById('fDe').value = iso(i); document.getElementById('fAte').value = iso(h); }
+        limite = POR_PAGINA; aplicar();
+    }
+    function filtroManual() { document.querySelectorAll('.chip').forEach(function (c) { c.classList.remove('ativo'); }); limite = POR_PAGINA; aplicar(); }
+    function limparFiltros() { document.getElementById('fAcao').value = 'todos'; document.getElementById('fEmpresa').value = 'todos'; document.getElementById('fTexto').value = ''; setPeriodo('30'); }
+    function mostrarMais() { limite += POR_PAGINA; renderLog(); }
+
+    function kpis() {
+        const lim = new Date(); lim.setDate(lim.getDate() - 30);
+        const ult30 = log.filter(function (l) { return new Date(l.criado_em) >= lim; });
+        document.getElementById('kpiAcessos').textContent = ult30.length;
+        document.getElementById('kpiAberturas').textContent = ult30.filter(function (l) { return l.acao === 'troca_empresa'; }).length;
+        const pessoas = {}; ult30.forEach(function (l) { pessoas[l.usuario || l.user_id || '?'] = 1; });
+        document.getElementById('kpiPessoas').textContent = Object.keys(pessoas).length;
+        if (log.length) {
+            document.getElementById('kpiUltimo').textContent = dataHoraBR(log[0].criado_em);
+            document.getElementById('kpiUltimoSub').textContent = (log[0].usuario || '—') + (ehContador ? ' · ' + nome(log[0].empresa_cliente_id) : '');
+        } else { document.getElementById('kpiUltimo').textContent = 'Nenhum acesso'; document.getElementById('kpiUltimoSub').innerHTML = '&nbsp;'; }
+    }
+
+    function aplicar() {
+        const de = document.getElementById('fDe').value, ate = document.getElementById('fAte').value;
+        const ac = document.getElementById('fAcao').value, em = document.getElementById('fEmpresa').value, tx = norm(document.getElementById('fTexto').value);
+        filtrados = log.filter(function (l) {
+            const d = iso(new Date(l.criado_em));
+            if (de && d < de) return false;
+            if (ate && d > ate) return false;
+            if (ac !== 'todos' && l.acao !== ac) return false;
+            if (ehContador && em !== 'todos' && String(l.empresa_cliente_id) !== em) return false;
+            if (tx && norm((l.usuario || '') + ' ' + tela(l.pagina) + ' ' + (l.pagina || '') + ' ' + (ehContador ? nome(l.empresa_cliente_id) : nome(l.contador_cliente_id))).indexOf(tx) === -1) return false;
+            return true;
+        });
+        document.getElementById('contaLog').textContent = filtrados.length + ' de ' + log.length + ' registro(s)';
+        renderLog();
+    }
+    function renderLog() {
+        const el = document.getElementById('listaLog');
+        if (!filtrados.length) { el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">' + (log.length ? 'Nenhum acesso com esses filtros.' : 'Nenhum acesso registrado até agora.') + '</div>'; document.getElementById('boxMais').style.display = 'none'; return; }
+        const parte = filtrados.slice(0, limite);
+        let h = '<table class="tabela"><thead><tr><th>Data e hora</th><th>' + (ehContador ? 'Empresa acessada' : 'Contabilidade') + '</th><th>Usuário</th><th>Tipo de acesso</th><th>Tela</th></tr></thead><tbody>';
+        parte.forEach(function (l) {
+            const quem = ehContador ? nome(l.empresa_cliente_id) : nome(l.contador_cliente_id);
+            h += '<tr><td><b>' + dataHoraBR(l.criado_em) + '</b></td><td>' + esc(quem) + '</td><td>' + esc(l.usuario || '—') + '</td>' +
+                 '<td><span class="acao-tag ' + (l.acao === 'troca_empresa' ? 'a-abriu' : 'a-consulta') + '">' + (l.acao === 'troca_empresa' ? 'Abriu a empresa' : 'Consultou uma tela') + '</span></td>' +
+                 '<td>' + esc(tela(l.pagina)) + '</td></tr>';
+        });
+        el.innerHTML = h + '</tbody></table>';
+        document.getElementById('boxMais').style.display = filtrados.length > limite ? 'block' : 'none';
+    }
+
+    // ---------- impressão padrão ERPPrint ----------
+    function executarImpressao() {
+        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
+        if (!filtrados.length) { toast('Não há acessos para imprimir com esses filtros.', 'info'); return; }
+        const de = document.getElementById('fDe').value, ate = document.getElementById('fAte').value;
+        const filtros = [['Período', (de ? dataBR(de + 'T12:00:00') : 'Início') + ' a ' + (ate ? dataBR(ate + 'T12:00:00') : 'hoje')], ['Tipo de acesso', document.getElementById('fAcao').selectedOptions[0].textContent]];
+        if (ehContador) filtros.push(['Empresa', document.getElementById('fEmpresa').selectedOptions[0].textContent]);
+        const pessoas = {}; filtrados.forEach(function (l) { pessoas[l.usuario || '?'] = 1; });
+        const linhas = filtrados.map(function (l) {
+            return [dataHoraBR(l.criado_em), ehContador ? nome(l.empresa_cliente_id) : nome(l.contador_cliente_id), l.usuario || '—', l.acao === 'troca_empresa' ? 'Abriu a empresa' : 'Consultou uma tela', tela(l.pagina)];
+        });
+        ERPPrint.imprimir({
+            titulo: ehContador ? 'Registro de Acessos da Contabilidade aos Clientes' : 'Registro de Acessos da Contabilidade à Empresa',
+            subtitulo: 'Controle de acessos de terceiros aos dados da empresa (LGPD)',
+            codigo: 'SEG-AC',
+            orientacao: 'portrait',
+            filtros: filtros,
+            resumo: [['Registros no filtro', String(filtrados.length)], ['Aberturas da empresa', String(filtrados.filter(function (l) { return l.acao === 'troca_empresa'; }).length)],
+                     ['Telas consultadas', String(filtrados.filter(function (l) { return l.acao !== 'troca_empresa'; }).length)], ['Pessoas diferentes', String(Object.keys(pessoas).length)]],
+            colunas: [{ t: 'Data e hora', w: 1.6 }, { t: ehContador ? 'Empresa acessada' : 'Contabilidade', w: 2.2 }, { t: 'Usuário', w: 2.2 }, { t: 'Tipo de acesso', w: 1.6 }, { t: 'Tela', w: 2 }],
+            linhas: linhas,
+            totais: null,
+            observacao: 'A contabilidade vinculada tem acesso somente de leitura (visualizar, salvar PDF e imprimir). Este registro é gerado automaticamente pelo sistema e não pode ser alterado nem excluído por nenhum usuário.',
+            assinaturas: ['Responsável pela empresa']
+        });
+    }
+
+    async function inicializarPagina() {
+        try {
+            await descobrirContexto();
+            montarVinculos();
+            await carregarLog();
+            kpis();
+            setPeriodo('30');
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : 'erro desconhecido';
+            document.getElementById('listaVinculos').innerHTML = '<div style="padding:20px; color:var(--danger);">Não foi possível carregar: ' + esc(msg) + '</div>';
+            document.getElementById('listaLog').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">' + esc(msg) + '</div>';
+        }
+    }
+    window.onload = inicializarPagina;
+</script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+</body>
+</html>
