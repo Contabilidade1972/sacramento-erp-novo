@@ -394,8 +394,11 @@ async function carregarFluxo() {
         const ehAporte = obs.indexOf('aporte') >= 0 || obs.indexOf('emprestimo') >= 0 || obs.indexOf('mutuo') >= 0 || obs.indexOf('inicial') >= 0 ||
             (obs.indexOf('pix recebido') >= 0 && obs.indexOf('fatura') < 0 && obs.indexOf('pagamento') < 0);
         if (!ehAporte) return;
-        movs.push({ id: 't' + t.id, data: d, tipo: 'entrada', descricao: t.observacao || 'Aporte / Capital Social',
-            referencia: t.conta_destino || t.conta_origem || '', centro: t.centro_custo || '', valor: numero(t.valor) });
+        // Mostra primeiro QUEM aportou (conta de origem = nome do sócio), depois a observação e a conta que recebeu
+        const quem = String(t.conta_origem || '').trim();
+        movs.push({ id: 't' + t.id, data: d, tipo: 'entrada',
+            descricao: (quem ? quem + ' — ' : '') + (t.observacao || 'Aporte / Capital Social'),
+            referencia: t.conta_destino || '', centro: t.centro_custo || '', valor: numero(t.valor) });
     });
 
     // SAÍDAS: contas a pagar já pagas.
