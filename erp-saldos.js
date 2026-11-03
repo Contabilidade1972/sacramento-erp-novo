@@ -1,5 +1,5 @@
 /* ============================================================
-   Sacramento ERP — erp-saldos.js v1.0
+   Sacramento ERP — erp-saldos.js v1.1
    Cálculo ÚNICO dos saldos (usado por Contas Bancárias e Fluxo de Caixa).
 
    REGRA:
@@ -8,6 +8,7 @@
         saldo = valor da recarga − gastos pagos no cartão depois da última recarga.
    3) Conta principal (a única conta corrente disponível) = saldo total − cartões − demais contas.
    Contas sem regra automática continuam com o saldo informado manualmente.
+   v1.1: empresa sem nenhum lançamento usa o saldo informado no cadastro (não calcula zero).
    O saldo digitado em cada conta serve de CONFERÊNCIA com o extrato.
    ============================================================ */
 (function (w) {
@@ -159,7 +160,10 @@
         var naoCartao = disp.filter(function (i) { return !i.cartao; });
         var correntes = naoCartao.filter(function (i) { return /corrente/.test(norm(i.cb.tipo)); });
         var automatico = false;
-        if (correntes.length === 1 && cartoes.every(function (i) { return i.auto; })) {
+        // Empresa SEM nenhum lançamento ainda (recém-cadastrada): não há o que calcular, vale o saldo informado no cadastro da conta.
+        // Assim que houver lançamentos, volta a valer o cálculo automático (empresas com histórico não são afetadas).
+        var semLancamentos = movs.length === 0;
+        if (!semLancamentos && correntes.length === 1 && cartoes.every(function (i) { return i.auto; })) {
             var pr = correntes[0];
             var somaCartoes = cartoes.reduce(function (s, i) { return s + i.calculado; }, 0);
             var outros = naoCartao.filter(function (i) { return i !== pr; }).reduce(function (s, i) { return s + i.informado; }, 0);
@@ -178,7 +182,7 @@
         itens.forEach(function (i) { i.diferenca = (i.calculado !== null) ? arred(i.informado - i.calculado) : null; });
 
         return { total: total, contas: arred(contasSaldo), cartoes: arred(cartoesSaldo), patrimonio: arred(contasSaldo + cartoesSaldo),
-                 informadoTotal: arred(informadoTotal), itens: itens, automatico: automatico };
+                 informadoTotal: arred(informadoTotal), itens: itens, automatico: automatico, semLancamentos: semLancamentos };
     }
 
     w.ERPSaldos = { carregarMovimentos: carregarMovimentos, calcular: calcular, entraNoSaldo: entraNoSaldo, ehCartao: ehCartao, ultimaRecarga: ultimaRecarga };
