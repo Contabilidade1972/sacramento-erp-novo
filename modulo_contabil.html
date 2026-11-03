@@ -53,7 +53,9 @@
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
-        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: -10px; }
+        .btn-acao.sec { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); box-shadow: none; }
+        .btn-acao.sec:hover { background: #eff6ff; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
 
@@ -122,6 +124,9 @@
 <div class="container">
     <div class="page-toolbar">
         <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Painel Principal</a>
+        <a href="calendario_fiscal.html" class="btn-acao sec"><i class="fas fa-calendar-alt"></i> Calendário Fiscal</a>
+        <a href="documentos_contabeis.html" class="btn-acao sec"><i class="fas fa-folder-open"></i> Documentos Contábeis</a>
+        <a href="acessos_contabilidade.html" class="btn-acao sec"><i class="fas fa-user-shield"></i> Registro de Acessos</a>
     </div>
 
     <div>
@@ -514,18 +519,21 @@ async function inicializarPagina(){
 
     if (master) {
         document.body.classList.add('usuario-master');
+        // O cabeçalho padrão (erp-core.js) pode substituir este seletor; por isso só mexe nele se ainda existir
         const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
+        if (select) {
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
+            select.innerHTML = '';
+            if (data) {
+                data.forEach(emp => {
+                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                    select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
+                });
+            }
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
+            select.value = selAtual;
+            select.disabled = false;
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
     } else {
         document.body.classList.remove('usuario-master');
     }
