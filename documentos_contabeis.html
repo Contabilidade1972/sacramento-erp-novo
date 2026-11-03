@@ -29,6 +29,8 @@
         .btn-acao.cinza:hover { background: #475569; }
         .btn-acao.perigo { background: var(--danger); box-shadow: none; }
         .btn-acao.perigo:hover { background: #dc2626; }
+        .btn-acao.alerta { background: #dc2626; box-shadow: none; }
+        .btn-acao.alerta:hover { background: #b91c1c; }
         .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
         .btn-mini { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
 
@@ -79,6 +81,9 @@
         .modal-box { background: #fff; width: 100%; max-width: 480px; border-radius: 14px; padding: 22px; box-shadow: 0 20px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 14px; }
         .modal-box h3 { font-size: 16px; font-weight: 800; color: var(--secondary); }
 
+        .pend-nota { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; font-size: 13.5px; color: #7f1d1d; white-space: pre-line; line-height: 1.5; }
+        .pend-quem { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px; }
+        .pend-hist { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--text-light); white-space: pre-line; max-height: 140px; overflow: auto; }
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
@@ -168,6 +173,26 @@
         <div style="display:flex; gap:10px; justify-content:flex-end;">
             <button class="btn-acao cinza" type="button" onclick="fecharModal()">Cancelar</button>
             <button class="btn-acao sucesso" type="button" id="btnSalvarStatus" onclick="salvarStatus()"><i class="fas fa-check"></i> Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de pendência de correção -->
+<div class="modal-overlay" id="modalPendencia">
+    <div class="modal-box" style="max-width:560px;">
+        <h3><i class="fas fa-circle-exclamation" style="color:#dc2626;"></i> Pendência de correção</h3>
+        <div id="pendDocInfo" style="font-size:13px; color:var(--text-light); line-height:1.5;"></div>
+        <div>
+            <div class="pend-quem" id="pendQuem">Motivo informado</div>
+            <div class="pend-nota" id="pendMotivo"></div>
+        </div>
+        <div id="pendHistBox" style="display:none;">
+            <div class="pend-quem">Histórico de observações</div>
+            <div class="pend-hist" id="pendHist"></div>
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap;">
+            <button class="btn-acao cinza" type="button" onclick="fecharPendencia()">Fechar</button>
+            <button class="btn-acao sucesso" type="button" id="btnReenviar" onclick="reenviarCorrigido()"><i class="fas fa-rotate"></i> Enviar versão corrigida</button>
         </div>
     </div>
 </div>
@@ -365,12 +390,15 @@
             if (ehContador) h += '<td>' + esc(nomeEmpresa(d.cliente_id)) + '</td>';
             h += '<td>' + esc(d.tipo || 'Documento') + (d.descricao ? ' — ' + esc(d.descricao) : '') +
                  '<span class="sub"><i class="fas fa-paperclip"></i> ' + esc(d.arquivo_nome || 'sem arquivo') + (d.arquivo_tamanho ? ' · ' + tamanho(d.arquivo_tamanho) : '') + '</span>' +
-                 (d.observacoes ? '<span class="sub" style="white-space:pre-line;">' + esc(d.observacoes) + '</span>' : '') + '</td>' +
+                 (d.status === 'pendente_correcao'
+                    ? '<span class="sub" style="color:#b91c1c; font-weight:700;"><i class="fas fa-circle-exclamation"></i> Há uma pendência: clique em “Pendência” para ver o que precisa ser corrigido</span>'
+                    : (d.observacoes ? '<span class="sub" style="white-space:pre-line;">' + esc(d.observacoes) + '</span>' : '')) + '</td>' +
                  '<td class="sentido">' + sentido + '</td>' +
                  '<td>' + esc(d.enviado_por || '—') + '<span class="sub">' + dataHoraBR(d.criado_em) + '</span></td>' +
                  '<td><span class="badge-st st-' + esc(d.status) + '">' + esc(ST_ROTULO[d.status] || d.status) + '</span>' +
                  (d.atualizado_em && d.status !== 'enviado' ? '<span class="sub">' + dataHoraBR(d.atualizado_em) + '</span>' : '') + '</td>' +
                  '<td><div class="acoes">' +
+                 (d.status === 'pendente_correcao' ? '<button class="btn-acao btn-mini alerta" type="button" title="Ver o que precisa ser corrigido" onclick="abrirPendencia(' + d.id + ')"><i class="fas fa-circle-exclamation"></i> Pendência</button>' : '') +
                  (d.arquivo_path ? '<button class="btn-acao btn-mini" type="button" title="Baixar arquivo" onclick="baixar(' + d.id + ')"><i class="fas fa-download"></i> Baixar</button>' : '') +
                  (posso_mudar_status(d) ? '<button class="btn-acao btn-mini sucesso" type="button" title="Atualizar situação" onclick="abrirModal(' + d.id + ')"><i class="fas fa-check-double"></i> Situação</button>' : '') +
                  (souOrigem(d) ? '<button class="btn-acao btn-mini perigo" type="button" title="Excluir documento enviado por você" onclick="excluir(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '') +
@@ -466,6 +494,46 @@
         toast('Situação atualizada para "' + ST_ROTULO[novo] + '".');
         fecharModal();
         await carregar();
+    }
+
+    // ---------- pendência de correção ----------
+    function notasDe(d) {
+        // observações são gravadas como linhas "[data usuário] texto"; a última é a mais recente
+        const linhas = String(d.observacoes || '').split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+        const marcadas = linhas.filter(function (l) { return /^\[[^\]]+\]/.test(l); });
+        return { linhas: linhas, ultima: marcadas.length ? marcadas[marcadas.length - 1] : (linhas.length ? linhas[linhas.length - 1] : ''), anteriores: linhas.filter(function (l) { return l !== (marcadas.length ? marcadas[marcadas.length - 1] : linhas[linhas.length - 1]); }) };
+    }
+    function abrirPendencia(id) {
+        docAtual = docs.find(function (x) { return x.id === id; });
+        if (!docAtual) return;
+        const n = notasDe(docAtual);
+        const m = n.ultima.match(/^\[([^\]]+)\]\s*(.*)$/);
+        document.getElementById('pendDocInfo').innerHTML = '<b>' + esc(docAtual.tipo || 'Documento') + '</b>' + (docAtual.descricao ? ' — ' + esc(docAtual.descricao) : '') +
+            '<br><i class="fas fa-paperclip"></i> ' + esc(docAtual.arquivo_nome || 'sem arquivo') + ' · Competência ' + esc(compBR(docAtual.competencia)) +
+            (ehContador ? '<br>Empresa: ' + esc(nomeEmpresa(docAtual.cliente_id)) : '');
+        document.getElementById('pendQuem').textContent = m ? ('Informado por ' + m[1]) : 'Motivo informado';
+        document.getElementById('pendMotivo').textContent = m ? m[2] : (n.ultima || 'A contabilidade marcou este documento como pendente, mas não deixou observação.');
+        const ant = n.anteriores;
+        document.getElementById('pendHistBox').style.display = ant.length ? 'block' : 'none';
+        document.getElementById('pendHist').textContent = ant.join('\n');
+        // enviar versão corrigida: quem enviou o original (o cliente) ou a contabilidade, se ela mesma recebeu
+        document.getElementById('btnReenviar').style.display = (podeEnviar && souOrigem(docAtual)) ? 'inline-flex' : 'none';
+        document.getElementById('modalPendencia').style.display = 'flex';
+    }
+    function fecharPendencia() { document.getElementById('modalPendencia').style.display = 'none'; }
+    function reenviarCorrigido() {
+        if (!docAtual) return;
+        const d = docAtual;
+        fecharPendencia();
+        document.getElementById('envCompetencia').value = d.competencia || document.getElementById('envCompetencia').value;
+        const tp = document.getElementById('envTipo');
+        Array.from(tp.options).forEach(function (o) { if (o.text === d.tipo) tp.value = o.value; });
+        document.getElementById('envDescricao').value = ('Corrigido: ' + (d.arquivo_nome || '')).substring(0, 120);
+        if (ehContador && document.getElementById('envEmpresa')) document.getElementById('envEmpresa').value = String(d.cliente_id);
+        const painel = document.getElementById('painelEnvio');
+        painel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        document.getElementById('envArquivos').focus();
+        toast('Selecione o arquivo corrigido e clique em Enviar.', 'info');
     }
 
     // ---------- exclusão ----------
