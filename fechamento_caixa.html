@@ -3,390 +3,362 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fechamento de Caixa & Conciliação Diária — Sacramento ERP</title>
+    <title>Fechamento de Caixa — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <script src="erp-saldos.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
-
-        body:not(.usuario-master) .empresa-selector {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
-
-        .container { max-width: 1350px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-        .btn-voltar { background: #64748b; color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; }
-        .btn-voltar:hover { background: #475569; }
-
-        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; width: 100%; }
-        .filtro-group { display: flex; flex-direction: column; gap: 6px; }
-        .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
-        .filtro-group input, .filtro-group select { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
-        .filtro-group input:focus, .filtro-group select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-
-        .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
-
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .kpi-label { font-size: 12px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
-        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); }
-
-        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
-        tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tbody tr:hover { background: #f8fafc; }
-        .num { text-align: right; }
-        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
-
-        .badge-tipo { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-        .badge-entrada { background: #d1fae5; color: #065f46; }
-        .badge-saida { background: #fee2e2; color: #991b1b; }
-
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
         .btn-acao:hover { background: var(--primary-dark); }
-        .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-secundario:hover { background: #cbd5e1; }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
 
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.cinza { border-top-color: #94a3b8; } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1fr 1.2fr 1.6fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+
+        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
+        .pos { color: #047857; font-weight: 700; } .neg { color: #b91c1c; font-weight: 700; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .badge-ent { background: #dcfce7; color: #166534; } .badge-sai { background: #fee2e2; color: #991b1b; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
-
-<header class="site-header">
-    <a href="index.html" class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </a>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
+<div class="toast-container" id="toastContainer"></div>
 
 <div class="container">
-    
     <div class="page-toolbar">
-        <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Fechamento</button>
     </div>
 
-    <!-- BARRA DE FILTROS AVANÇADA -->
-    <div class="toolbar">
-        <div class="filtro-grid">
-            <div class="filtro-group">
-                <label>Data Inicial</label>
-                <input type="date" id="filtroDataInicio">
-            </div>
-            <div class="filtro-group">
-                <label>Data Final</label>
-                <input type="date" id="filtroDataFim">
-            </div>
-            <div class="filtro-group">
-                <label>Tipo de Movimento</label>
-                <select id="filtroTipo">
-                    <option value="todos">Todos (Entradas e Saídas)</option>
-                    <option value="receber">Apenas Entradas (Receitas)</option>
-                    <option value="pagar">Apenas Saídas (Despesas)</option>
-                </select>
-            </div>
-            <div class="filtro-group">
-                <label>Centro de Custo</label>
-                <select id="filtroCentroCusto">
-                    <option value="todos">Todos os Centros de Custo</option>
-                    <option value="1.02 - Administrativo">1.02 - Administrativo</option>
-                    <option value="2.01 - Comercial & Vendas">2.01 - Comercial & Vendas</option>
-                    <option value="3.02 - P&D e Inovação">3.02 - P&D e Inovação</option>
-                </select>
-            </div>
-        </div>
-        <div class="toolbar-actions">
-            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
-            <button class="btn-acao" onclick="carregarFechamento()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button>
-        </div>
+    <div>
+        <div class="page-title"><i class="fas fa-cash-register" style="color:var(--primary);"></i> Fechamento de Caixa</div>
+        <div class="page-subtitle">Resultado de caixa do período: somente o que foi efetivamente recebido e pago, com saldo inicial, movimento do dia e saldo final</div>
     </div>
 
-    <!-- KPIS DE CAIXA -->
     <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-label">Total Entradas do Período</span>
-            <span id="kpiEntradas" class="kpi-value" style="color:var(--success);">R\$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Total Saídas do Período</span>
-            <span id="kpiSaidas" class="kpi-value" style="color:var(--danger);">R\$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-label">Saldo Líquido do Período</span>
-            <span id="kpiSaldo" class="kpi-value">R\$ 0,00</span>
-        </div>
+        <div class="kpi-card cinza"><span class="kpi-title">Saldo inicial do período</span><span class="kpi-value" id="kpiInicial">R$ 0,00</span><span class="kpi-sub" id="kpiInicialSub">Tudo o que entrou e saiu antes da data inicial</span></div>
+        <div class="kpi-card verde"><span class="kpi-title">Entradas realizadas</span><span class="kpi-value" id="kpiEntradas" style="color:var(--success);">R$ 0,00</span><span class="kpi-sub" id="kpiEntradasSub">&nbsp;</span></div>
+        <div class="kpi-card vermelho"><span class="kpi-title">Saídas pagas</span><span class="kpi-value" id="kpiSaidas" style="color:var(--danger);">R$ 0,00</span><span class="kpi-sub" id="kpiSaidasSub">&nbsp;</span></div>
+        <div class="kpi-card azul"><span class="kpi-title">Saldo final do período</span><span class="kpi-value" id="kpiFinal">R$ 0,00</span><span class="kpi-sub" id="kpiFinalSub">Inicial + entradas − saídas</span></div>
     </div>
 
-    <!-- TABELA DE MOVIMENTOS DO DIA -->
-    <div class="card-table">
-        <div style="margin-bottom: 20px;">
-            <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Movimentações Caixa & Bancos Apuradas</h3>
-            <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Títulos liquidados e movimentados no intervalo de datas selecionado.</p>
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-filter" style="color:var(--primary);"></i> Filtros do fechamento</span></div>
+        <div class="atalhos">
+            <button class="chip" type="button" data-p="hoje" onclick="atalho('hoje')">Hoje</button>
+            <button class="chip" type="button" data-p="semana" onclick="atalho('semana')">Últimos 7 dias</button>
+            <button class="chip ativo" type="button" data-p="mes" onclick="atalho('mes')">Mês atual</button>
+            <button class="chip" type="button" data-p="mesant" onclick="atalho('mesant')">Mês anterior</button>
+            <button class="chip" type="button" data-p="ano" onclick="atalho('ano')">Ano atual</button>
         </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Data</th>
-                    <th>Tipo</th>
-                    <th>Histórico / Descrição</th>
-                    <th>Favorecido / Pagador</th>
-                    <th>Centro de Custo</th>
-                    <th class="num">Valor (R\$)</th>
-                </tr>
-            </thead>
-            <tbody id="tbodyCaixa">
-                <tr><td colspan="6" class="vazio">A carregar lançamentos...</td></tr>
-            </tbody>
-        </table>
+        <div class="filtros-box">
+            <div><label for="filtroDataInicio">Data inicial</label><input type="date" id="filtroDataInicio" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="filtroDataFim">Data final</label><input type="date" id="filtroDataFim" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="filtroTipo">Tipo de movimento</label>
+                <select id="filtroTipo" class="form-control" onchange="aplicar()">
+                    <option value="todos">Entradas e saídas</option>
+                    <option value="entrada">Apenas entradas</option>
+                    <option value="saida">Apenas saídas</option>
+                </select></div>
+            <div><label for="filtroCentro">Centro de custo</label>
+                <select id="filtroCentro" class="form-control" onchange="aplicar()"><option value="todos">Todos os centros de custo</option></select></div>
+            <div><label for="filtroTexto">Buscar</label><input type="text" id="filtroTexto" class="form-control" placeholder="Descrição ou favorecido..." oninput="aplicar()"></div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
+        </div>
+        <div class="aviso" id="avisoCaixa"></div>
+
+        <div class="panel-title" style="margin-top:6px;"><span class="t"><i class="fas fa-calendar-day" style="color:var(--primary);"></i> Fechamento dia a dia</span></div>
+        <div class="table-wrap" id="listaDias"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
     </div>
 
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Movimentos do período (analítico)</span><span id="contaMov" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
+        <div class="table-wrap" id="listaMov"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+    </div>
 </div>
 
-<footer>
-    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
-</footer>
-
 <script>
-    const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
-    function obterUsuario() {
-        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+    let todosMovs = [];     // todos os movimentos realizados da empresa (mesma regra do Fluxo de Caixa)
+    let ignorados = 0;
+    let R = null;           // resultado do último filtro
+
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function B(n) { return 'R$ ' + fmtBR(n); }
+    function arred(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+    function dataBR(ts) { if (!ts) return '—'; const s = String(ts).substring(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : '—'; }
+    function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function diaSemana(isoStr) { return ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][new Date(isoStr + 'T12:00:00').getDay()]; }
 
-    function ehMaster() {
-        const u = obterUsuario();
-        if (!u || !u.email) return false;
-        return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
-    }
-
-    function clienteIdAtual() {
-        const u = obterUsuario();
-        if (!u) return 1;
-        if (ehMaster()) {
-            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-            return u.cliente_id ? parseInt(u.cliente_id) : 2;
-        }
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
-    }
-
-    function formatarMoeda(valor) {
-        let num = parseFloat(valor) || 0;
-        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    // Inicializa datas com o mês corrente
-    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
-    }
-
-    function limparFiltros() {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
-        document.getElementById('filtroTipo').value = 'todos';
-        document.getElementById('filtroCentroCusto').value = 'todos';
-        carregarFechamento();
-    }
-
-    function sair() {
-        if (confirm('Deseja realmente sair?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
-        }
-    }
-
-    async function carregarFechamento() {
-        const cid = clienteIdAtual();
-        const dataInicio = document.getElementById('filtroDataInicio').value;
-        const dataFim = document.getElementById('filtroDataFim').value;
-        const tipoFiltro = document.getElementById('filtroTipo').value;
-        const centroCustoFiltro = document.getElementById('filtroCentroCusto').value;
-
-        const tbody = document.getElementById('tbodyCaixa');
-        tbody.innerHTML = `<tr><td colspan="6" class="vazio">A apurar dados de caixa...</td></tr>`;
-
+    function obterClienteIdAtivo() {
         try {
-            let promessas = [];
-            if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
-                let qRec = sb.from('contas_receber').select('*').eq('cliente_id', cid);
-                if (dataInicio) qRec = qRec.gte('vencimento', dataInicio);
-                if (dataFim) qRec = qRec.lte('vencimento', dataFim);
-                promessas.push(qRec);
-            } else {
-                promessas.push(Promise.resolve({ data: [] }));
-            }
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
 
-            if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
-                let qPag = sb.from('contas_pagar').select('*').eq('cliente_id', cid);
-                if (dataInicio) qPag = qPag.gte('vencimento', dataInicio);
-                if (dataFim) qPag = qPag.lte('vencimento', dataFim);
-                promessas.push(qPag);
-            } else {
-                promessas.push(Promise.resolve({ data: [] }));
-            }
+    // ---------- período ----------
+    function definirPeriodo(de, ate) {
+        document.getElementById('filtroDataInicio').value = de;
+        document.getElementById('filtroDataFim').value = ate;
+    }
+    function marcarChip(p) {
+        document.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('ativo', c.getAttribute('data-p') === p); });
+    }
+    function atalho(p) {
+        const h = new Date(), a = h.getFullYear(), m = h.getMonth();
+        if (p === 'hoje') definirPeriodo(iso(h), iso(h));
+        else if (p === 'semana') { const i = new Date(h); i.setDate(i.getDate() - 6); definirPeriodo(iso(i), iso(h)); }
+        else if (p === 'mes') definirPeriodo(iso(new Date(a, m, 1)), iso(new Date(a, m + 1, 0)));
+        else if (p === 'mesant') definirPeriodo(iso(new Date(a, m - 1, 1)), iso(new Date(a, m, 0)));
+        else if (p === 'ano') definirPeriodo(a + '-01-01', a + '-12-31');
+        marcarChip(p);
+        aplicar();
+    }
+    function filtroManual() { marcarChip(''); aplicar(); }
+    function limparFiltros() {
+        document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroCentro').value = 'todos';
+        document.getElementById('filtroTexto').value = '';
+        atalho('mes');
+    }
 
-            const [resRec, resPag] = await Promise.all(promessas);
-            let lista = [];
-
-            if (resRec.data) {
-                resRec.data.forEach(r => {
-                    lista.push({
-                        data: r.vencimento || '',
-                        tipo: 'Entrada',
-                        descricao: r.descricao || 'Recebimento',
-                        favorecido: r.cliente || 'Cliente',
-                        centroCusto: r.centro_custo || 'N/A',
-                        valor: parseFloat(r.valor) || 0
-                    });
-                });
-            }
-
-            if (resPag.data) {
-                resPag.data.forEach(p => {
-                    lista.push({
-                        data: p.vencimento || '',
-                        tipo: 'Saída',
-                        descricao: p.descricao || 'Pagamento',
-                        favorecido: p.fornecedor || 'Fornecedor',
-                        centroCusto: p.centro_custo || 'N/A',
-                        valor: parseFloat(p.valor) || 0
-                    });
-                });
-            }
-
-            // Filtro por centro de custo em memória
-            let listaFiltrada = lista.filter(item => {
-                return (centroCustoFiltro === 'todos' || (item.centroCusto && item.centroCusto.toLowerCase().includes(centroCustoFiltro.toLowerCase())));
+    // ---------- carga (mesma regra do Fluxo de Caixa: só realizado) ----------
+    async function carregarCentros(cid) {
+        const sel = document.getElementById('filtroCentro');
+        try {
+            const r = await sb.from('centros_custo').select('codigo, nome, ativo').eq('cliente_id', cid).order('codigo', { ascending: true });
+            if (r.error) return;
+            const vistos = {};
+            (r.data || []).forEach(function (c) {
+                const rot = (c.codigo ? c.codigo + ' - ' : '') + (c.nome || '');
+                if (!rot.trim() || vistos[rot]) return;
+                vistos[rot] = true;
+                const o = document.createElement('option'); o.value = rot; o.textContent = rot; sel.appendChild(o);
             });
+        } catch (e) { /* segue só com "todos" */ }
+    }
 
-            listaFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
+    function casaCentro(m, filtro) {
+        if (filtro === 'todos') return true;
+        const f = norm(filtro), c = norm(m.centro);
+        if (!c) return false;
+        if (c === f) return true;
+        const partes = f.split(' - ');
+        const cod = partes[0], nome = partes.slice(1).join(' - ');
+        const primeiro = c.split(' ')[0].replace(/-$/, '');
+        if (/^[0-9.]+$/.test(cod) && (c === cod || primeiro === cod)) return true;   // "4.01", "4.01 Pesquisa..." ou "4.01 - Pesquisa..."
+        return !!nome && (c === nome || c.indexOf(nome) >= 0);
+    }
 
-            let totalEntradas = 0;
-            let totalSaidas = 0;
-            listaFiltrada.forEach(item => {
-                if (item.tipo === 'Entrada') totalEntradas += item.valor;
-                else totalSaidas += item.valor;
+    function aplicar() {
+        if (!todosMovs) return;
+        const de = document.getElementById('filtroDataInicio').value;
+        const ate = document.getElementById('filtroDataFim').value;
+        const tipo = document.getElementById('filtroTipo').value;
+        const centro = document.getElementById('filtroCentro').value;
+        const txt = norm(document.getElementById('filtroTexto').value);
+        const aviso = document.getElementById('avisoCaixa');
+        aviso.style.display = 'none';
+        if (de && ate && de > ate) { aviso.textContent = 'A data inicial é maior que a data final. Ajuste o período.'; aviso.style.display = 'block'; }
+
+        // saldo inicial = tudo antes da data inicial (sempre com todos os tipos/centros, para bater com o Fluxo de Caixa)
+        let saldoIni = 0;
+        if (de) todosMovs.forEach(function (m) { if (m.data < de) saldoIni += (m.tipo === 'entrada' ? m.valor : -m.valor); });
+        saldoIni = arred(saldoIni);
+
+        const filtrados = todosMovs.filter(function (m) {
+            if (de && m.data < de) return false;
+            if (ate && m.data > ate) return false;
+            if (tipo !== 'todos' && m.tipo !== tipo) return false;
+            if (!casaCentro(m, centro)) return false;
+            if (txt && (norm(m.descricao) + ' ' + norm(m.referencia)).indexOf(txt) < 0) return false;
+            return true;
+        });
+
+        let ent = 0, sai = 0, nEnt = 0, nSai = 0;
+        const dias = {};
+        filtrados.forEach(function (m) {
+            const d = dias[m.data] = dias[m.data] || { data: m.data, ent: 0, sai: 0, n: 0 };
+            d.n++;
+            if (m.tipo === 'entrada') { ent += m.valor; d.ent += m.valor; nEnt++; } else { sai += m.valor; d.sai += m.valor; nSai++; }
+        });
+        ent = arred(ent); sai = arred(sai);
+        const listaDias = Object.keys(dias).sort().map(function (k) { return dias[k]; });
+        let acum = saldoIni;
+        listaDias.forEach(function (d) { d.ent = arred(d.ent); d.sai = arred(d.sai); d.liquido = arred(d.ent - d.sai); acum = arred(acum + d.liquido); d.acum = acum; });
+        const parcial = (tipo !== 'todos') || (centro !== 'todos') || !!txt;
+
+        R = { de: de, ate: ate, tipo: tipo, centro: centro, txt: txt, saldoIni: saldoIni, ent: ent, sai: sai, nEnt: nEnt, nSai: nSai,
+              saldoFim: arred(saldoIni + ent - sai), dias: listaDias, movs: filtrados, parcial: parcial };
+        desenhar();
+    }
+
+    function desenhar() {
+        document.getElementById('kpiInicial').textContent = B(R.saldoIni);
+        document.getElementById('kpiEntradas').textContent = B(R.ent);
+        document.getElementById('kpiEntradasSub').textContent = R.nEnt + (R.nEnt === 1 ? ' lançamento' : ' lançamentos');
+        document.getElementById('kpiSaidas').textContent = B(R.sai);
+        document.getElementById('kpiSaidasSub').textContent = R.nSai + (R.nSai === 1 ? ' lançamento' : ' lançamentos');
+        const kf = document.getElementById('kpiFinal');
+        kf.textContent = B(R.saldoFim);
+        kf.style.color = R.saldoFim >= 0 ? 'var(--success)' : 'var(--danger)';
+        document.getElementById('kpiFinalSub').textContent = R.parcial ? 'Resultado do filtro aplicado (não é o caixa total)' : 'Inicial + entradas − saídas';
+
+        const aviso = document.getElementById('avisoCaixa');
+        if (R.parcial) { aviso.textContent = 'Há filtro de tipo, centro de custo ou busca ativo: os totais mostram só esse recorte. O saldo inicial continua sendo o caixa total anterior ao período.'; aviso.style.display = 'block'; }
+
+        const elDias = document.getElementById('listaDias');
+        if (!R.dias.length) {
+            elDias.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum movimento realizado no período e filtros selecionados.</div>';
+        } else {
+            let h = '<table class="tabela"><thead><tr><th>Data</th><th class="num">Lançamentos</th><th class="num">Entradas (R$)</th><th class="num">Saídas (R$)</th><th class="num">Resultado do dia (R$)</th><th class="num">Saldo acumulado (R$)</th></tr></thead><tbody>';
+            R.dias.forEach(function (d) {
+                h += '<tr><td><strong>' + dataBR(d.data) + '</strong><span class="sub">' + diaSemana(d.data) + '</span></td><td class="num">' + d.n + '</td>' +
+                     '<td class="num pos">' + (d.ent ? fmtBR(d.ent) : '—') + '</td><td class="num neg">' + (d.sai ? fmtBR(d.sai) : '—') + '</td>' +
+                     '<td class="num ' + (d.liquido >= 0 ? 'pos' : 'neg') + '">' + fmtBR(d.liquido) + '</td><td class="num"><strong>' + fmtBR(d.acum) + '</strong></td></tr>';
             });
-
-            document.getElementById('kpiEntradas').innerText = formatarMoeda(totalEntradas);
-            document.getElementById('kpiSaidas').innerText = formatarMoeda(totalSaidas);
-            let saldo = totalEntradas - totalSaidas;
-            const kpiSaldo = document.getElementById('kpiSaldo');
-            kpiSaldo.innerText = formatarMoeda(saldo);
-            kpiSaldo.style.color = saldo >= 0 ? 'var(--success)' : 'var(--danger)';
-
-            if (listaFiltrada.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="vazio">Nenhum movimento registrado para o período e filtros selecionados.</td></tr>`;
-                return;
-            }
-
-            let html = '';
-            listaFiltrada.forEach(item => {
-                let badgeClass = item.tipo === 'Entrada' ? 'badge-entrada' : 'badge-saida';
-                let valorCor = item.tipo === 'Entrada' ? 'color:var(--success);' : 'color:var(--danger);';
-                let valorSinal = item.tipo === 'Entrada' ? '+ ' : '- ';
-                let dataFmt = item.data ? item.data.split('-').reverse().join('/') : '--/--/----';
-
-                html += `<tr>
-                    <td>${dataFmt}</td>
-                    <td><span class="badge-tipo ${badgeClass}">${item.tipo}</span></td>
-                    <td><strong>${item.descricao}</strong></td>
-                    <td>${item.favorecido}</td>
-                    <td>${item.centroCusto}</td>
-                    <td class="num" style="font-weight:700; ${valorCor}">${valorSinal}${formatarMoeda(item.valor)}</td>
-                </tr>`;
-            });
-
-            tbody.innerHTML = html;
-
-        } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="6" class="vazio" style="color:var(--danger);">Erro ao apurar fechamento: ${err.message}</td></tr>`;
+            h += '</tbody><tfoot><tr><td>TOTAL DO PERÍODO</td><td class="num">' + R.movs.length + '</td><td class="num">' + fmtBR(R.ent) + '</td><td class="num">' + fmtBR(R.sai) + '</td><td class="num">' + fmtBR(R.ent - R.sai) + '</td><td class="num">' + fmtBR(R.saldoFim) + '</td></tr></tfoot></table>';
+            elDias.innerHTML = h;
         }
+
+        document.getElementById('contaMov').textContent = R.movs.length + (R.movs.length === 1 ? ' movimento' : ' movimentos');
+        const elMov = document.getElementById('listaMov');
+        if (!R.movs.length) {
+            elMov.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum movimento para exibir.</div>';
+        } else {
+            let h = '<table class="tabela"><thead><tr><th>Data</th><th>Tipo</th><th>Descrição / Favorecido</th><th>Centro de custo</th><th class="num">Valor (R$)</th></tr></thead><tbody>';
+            R.movs.forEach(function (m) {
+                const ent = m.tipo === 'entrada';
+                h += '<tr><td>' + dataBR(m.data) + '</td><td><span class="badge-st ' + (ent ? 'badge-ent' : 'badge-sai') + '">' + (ent ? 'Entrada' : 'Saída') + '</span></td>' +
+                     '<td><strong>' + esc(m.descricao) + '</strong>' + (m.referencia ? '<span class="sub">' + esc(m.referencia) + '</span>' : '') + '</td>' +
+                     '<td>' + esc(m.centro || '—') + '</td><td class="num ' + (ent ? 'pos' : 'neg') + '">' + (ent ? '+ ' : '− ') + fmtBR(m.valor) + '</td></tr>';
+            });
+            h += '</tbody></table>';
+            elMov.innerHTML = h;
+        }
+    }
+
+    // ---------- impressão padrão ERPPrint ----------
+    function executarImpressao() {
+        if (!R) { toast('Aguarde o carregamento.', 'info'); return; }
+        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
+        const filtros = [['Período', dataBR(R.de) + ' a ' + dataBR(R.ate)], ['Tipo', R.tipo === 'todos' ? 'Entradas e saídas' : (R.tipo === 'entrada' ? 'Apenas entradas' : 'Apenas saídas')],
+                         ['Centro de custo', R.centro === 'todos' ? 'Todos' : R.centro]];
+        if (R.txt) filtros.push(['Busca', document.getElementById('filtroTexto').value]);
+        const linhas = R.movs.map(function (m) {
+            const ent = m.tipo === 'entrada';
+            return [dataBR(m.data), ent ? 'Entrada' : 'Saída', m.descricao + (m.referencia ? ' — ' + m.referencia : ''), m.centro || '—',
+                    ent ? fmtBR(m.valor) : '', ent ? '' : fmtBR(m.valor)];
+        });
+        ERPPrint.imprimir({
+            titulo: 'Fechamento de Caixa',
+            subtitulo: 'Entradas e saídas efetivamente realizadas no período',
+            codigo: 'FIN-FX',
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: [['Saldo inicial do período', B(R.saldoIni)], ['Entradas realizadas', B(R.ent)], ['Saídas pagas', B(R.sai)], ['Saldo final do período', B(R.saldoFim)]],
+            colunas: [{ t: 'Data', w: 1 }, { t: 'Tipo', w: 1 }, { t: 'Descrição / Favorecido', w: 5 }, { t: 'Centro de custo', w: 2 },
+                      { t: 'Entrada (R$)', w: 1.3, a: 'right' }, { t: 'Saída (R$)', w: 1.3, a: 'right' }],
+            linhas: linhas,
+            totais: R.movs.length ? ['TOTAL DO PERÍODO', '', '', '', fmtBR(R.ent), fmtBR(R.sai)] : null,
+            observacao: 'Considera somente títulos recebidos e pagos (regra idêntica à do Fluxo de Caixa). Títulos em aberto não entram no caixa.' +
+                (R.parcial ? ' Relatório com filtro aplicado: os totais mostram apenas o recorte selecionado; o saldo inicial é o caixa total anterior ao período.' : ''),
+            assinaturas: ['Responsável financeiro', 'Conferência / Contador']
+        });
     }
 
     async function inicializarPagina() {
-        let u = obterUsuario();
-        if(!u || !u.email) { location.href = 'login.html'; return; }
-        if (u.email) {
-            const elUserName = document.getElementById('userName');
-            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
+        const cid = obterClienteIdAtivo();
+        carregarCentros(cid);
+        atalho('mes');
+        try {
+            const mv = await ERPSaldos.carregarMovimentos(sb, cid);
+            if (mv.erro) throw mv.erro;
+            todosMovs = mv.movs || [];
+            ignorados = mv.ignorados || 0;
+            aplicar();
+        } catch (err) {
+            const msg = (err && err.message) ? err.message : 'erro desconhecido';
+            document.getElementById('listaDias').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">Não foi possível carregar o caixa: ' + esc(msg) + '</div>';
+            document.getElementById('listaMov').innerHTML = '';
+            toast('Erro ao carregar: ' + msg, 'error');
         }
-
-        const master = ehMaster();
-        if (master) {
-            document.body.classList.add('usuario-master');
-            const select = document.getElementById('selectEmpresa');
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            if (data && select) {
-                select.innerHTML = '';
-                data.forEach(emp => {
-                    select.innerHTML += `<option value="${emp.id}">${emp.nome_fantasia || emp.razao_social}</option>`;
-                });
-                select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-            }
-        } else {
-            document.body.classList.remove('usuario-master');
-        }
-
-        carregarFechamento();
     }
-
     window.onload = inicializarPagina;
 </script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
 </body>
 </html>
