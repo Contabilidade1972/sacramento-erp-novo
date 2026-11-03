@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faturas & Emissão Fiscal Avançada — Sacramento ERP</title>
+    <title>Faturas & Pré-nota — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="erp-core.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
         :root{--primary:#2563eb;--primary-dark:#1d4ed8;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
@@ -69,6 +68,9 @@
         .badge{padding:4px 8px;border-radius:6px;font-weight:600;font-size:10px;text-transform:uppercase;display:inline-block;}
         .badge-pendente{background:#fef3c7;color:#d97706}
         .badge-autorizada{background:#d1fae5;color:#065f46}
+        .badge-prenota{background:#dbeafe;color:#1e40af}
+        .badge-legado{background:#e2e8f0;color:#475569}
+        .aviso-fiscal{background:#fffbeb;border:1.5px solid #fcd34d;color:#78350f;border-radius:12px;padding:12px 16px;font-size:12.5px;line-height:1.55;display:flex;gap:10px;align-items:flex-start}
 
         .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:3000;display:none;align-items:center;justify-content:center;padding:16px;}
         .modal-card{background:var(--card);width:100%;max-width:215mm;border-radius:14px;box-shadow:0 25px 50px rgba(15,23,42,0.3);padding:0;overflow:hidden;max-height:98vh;display:flex;flex-direction:column}
@@ -200,24 +202,21 @@
 <div class="modal-overlay" id="modalFiscal">
     <div class="modal-card" style="max-width: 850px; max-height: 90vh;">
         <div class="modal-header">
-            <h3><i class="fas fa-sliders-h"></i> Parametrização Fiscal & Certificado Digital (A1/A3)</h3>
+            <h3><i class="fas fa-file-invoice"></i> Gerar Pré-nota e Classificação Contábil</h3>
             <button class="modal-close" onclick="document.getElementById('modalFiscal').style.display='none'"><i class="fas fa-times"></i></button>
         </div>
         <input type="hidden" id="fatura_id_atual">
         <input type="hidden" id="base_calculo_atual">
         <div style="padding: 20px; overflow-y: auto;">
-            <div style="background:var(--bg); border:1.5px solid var(--border); border-radius:8px; padding:12px; margin-bottom:16px; font-size:12px; color:var(--text-main); display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                    <strong><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Token A1 ICP-Brasil Conectado:</strong>
-                    <span id="statusCertificado" style="font-weight:600; color:var(--success);">CNPJ Ativo (Validade Válida)</span>
-                </div>
-                <button class="btn btn-info" style="padding:4px 8px; font-size:11px;" onclick="testarCertificadoDigital()"><i class="fas fa-key"></i> Testar Senha PIN</button>
+            <div class="aviso-fiscal" style="margin-bottom:16px;">
+                <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
+                <div><strong>Pré-nota: documento sem valor fiscal.</strong> Esta ação organiza a fatura, lança a receita no Contas a Receber e gera um espelho para conferência. A nota fiscal oficial (NFS-e Nacional ou NF-e) deve ser emitida no emissor oficial ou por um provedor autorizado.</div>
             </div>
             <div style="background:#f0fdf4; border:1px solid #16a34a; border-radius:8px; padding:10px; margin-bottom:16px; font-size:12px; color:#166534; display:flex; justify-content:space-between; align-items:center;">
                 <strong><i class="fas fa-calculator"></i> Base de Cálculo (Valor Líquido):</strong>
                 <span id="display_base_calculo" style="font-size:16px; font-weight:800;">R\$ 0,00</span>
             </div>
-            <h4 style="font-size:12px; margin-bottom:8px; color:var(--secondary); text-transform:uppercase;">1. Enquadramento e Operação (CONFAZ)</h4>
+            <h4 style="font-size:12px; margin-bottom:8px; color:var(--secondary); text-transform:uppercase;">1. Tipo previsto da operação (referência)</h4>
             <div class="form-grid">
                 <div>
                     <label>Tipo de Documento</label>
@@ -238,7 +237,7 @@
                     <input type="text" id="cfop" list="lista-cfop" class="form-control" placeholder="Selecione o CFOP...">
                 </div>
             </div>
-            <h4 style="font-size:12px; margin:16px 0 8px; color:var(--secondary); text-transform:uppercase;">2. Motor de Cálculo e Contabilidade DRE</h4>
+            <h4 style="font-size:12px; margin:16px 0 8px; color:var(--secondary); text-transform:uppercase;">2. Classificação e Contabilidade (DRE)</h4>
             <div class="form-grid">
                 <div style="grid-column: span 2;">
                     <label>NBS / NCM</label>
@@ -252,7 +251,7 @@
                 </div>
             </div>
             <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                <button class="btn btn-primary" onclick="transmitirNF()"><i class="fas fa-signature"></i> Assinar Digitalmente e Emitir SEFAZ</button>
+                <button class="btn btn-primary" id="btnGerarPreNota" onclick="gerarPreNota()"><i class="fas fa-file-circle-check"></i> Gerar Pré-nota e lançar no Contas a Receber</button>
             </div>
         </div>
     </div>
@@ -262,7 +261,7 @@
 <div class="modal-overlay" id="modalDanfe">
     <div class="modal-card">
         <div class="modal-header">
-            <h3><i class="fas fa-file-invoice" style="color:#60a5fa;"></i> Espelho Oficial A4 (DANFE / NFS-e)</h3>
+            <h3><i class="fas fa-file-invoice" style="color:#60a5fa;"></i> Espelho da Pré-nota (sem valor fiscal)</h3>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Documento</button>
                 <button class="modal-close" onclick="document.getElementById('modalDanfe').style.display='none'"><i class="fas fa-times"></i></button>
@@ -291,10 +290,15 @@
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
     </div>
 
+    <div class="aviso-fiscal">
+        <i class="fas fa-circle-info" style="margin-top:2px;"></i>
+        <div>Esta tela gera a <strong>fatura comercial</strong> e a <strong>pré-nota</strong> (sem valor fiscal). A emissão oficial de NFS-e (Emissor Nacional) ou NF-e (SEFAZ) é feita no emissor oficial ou por provedor autorizado. A integração direta está em planejamento.</div>
+    </div>
+
     <div class="card">
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border);">
             <h3 style="font-size:16px; font-weight:700; color:var(--secondary); display:flex; align-items:center; gap:8px;">
-                <i class="fas fa-file-invoice"></i> Central de Faturamento, Faturas Comerciais & Transmissão XML
+                <i class="fas fa-file-invoice"></i> Central de Faturamento, Faturas Comerciais & Pré-nota
             </h3>
         </div>
         <div class="table-container">
@@ -329,6 +333,11 @@ let faturasCache = [];
 let parceirosCache = [];
 let logoUniversalBase64 = "";
 let nomeEmpresaGlobal = "Sacramento ERP";
+let empresaDados = {};
+let contaBancariaUnica = null;
+let gerandoPreNota = false;
+
+function esc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -397,27 +406,28 @@ function buscarDadosParceiro(faturaObj) {
         if (nomeFatura && pNome && (pNome.includes(nomeFatura) || nomeFatura.includes(pNome))) return true;
         return false;
     });
+    const ND = '—';
     if (match) {
         return {
-            nome: match.nome || match.razao_social || faturaObj.cliente_nome,
-            cnpj_cpf: match.cnpj_cpf || faturaObj.cliente_cnpj || '',
-            endereco: match.endereco || match.logradouro || match.rua || 'Endereço não informado',
-            bairro: match.bairro || 'Centro',
-            cidade: match.cidade || match.municipio || 'Belo Horizonte',
-            uf: match.uf || 'MG',
-            cep: match.cep || '30000-000',
-            telefone: match.telefone || match.fone || '(31) 99999-9999'
+            nome: match.nome || match.razao_social || faturaObj.cliente_nome || ND,
+            cnpj_cpf: match.cnpj_cpf || faturaObj.cliente_cnpj || ND,
+            endereco: match.endereco || match.logradouro || match.rua || ND,
+            bairro: match.bairro || ND,
+            cidade: match.cidade || match.municipio || ND,
+            uf: match.uf || ND,
+            cep: match.cep || ND,
+            telefone: match.telefone || match.fone || ND
         };
     }
     return {
         nome: faturaObj.cliente_nome || 'Cliente não identificado',
-        cnpj_cpf: faturaObj.cliente_cnpj || '',
-        endereco: faturaObj.cliente_endereco || 'Endereço não cadastrado',
-        bairro: faturaObj.cliente_bairro || 'Centro',
-        cidade: faturaObj.cliente_cidade || 'Belo Horizonte',
-        uf: faturaObj.cliente_uf || 'MG',
-        cep: faturaObj.cliente_cep || '30000-000',
-        telefone: faturaObj.cliente_tel || '(31) 3222-1111'
+        cnpj_cpf: faturaObj.cliente_cnpj || ND,
+        endereco: faturaObj.cliente_endereco || ND,
+        bairro: faturaObj.cliente_bairro || ND,
+        cidade: faturaObj.cliente_cidade || ND,
+        uf: faturaObj.cliente_uf || ND,
+        cep: faturaObj.cliente_cep || ND,
+        telefone: faturaObj.cliente_tel || ND
     };
 }
 
@@ -465,17 +475,22 @@ function renderTabela() {
     }
     faturasCache.forEach(f => {
         let statusRaw = (f.status || 'Pendente').trim().toLowerCase();
-        let isAutorizada = statusRaw.includes('autorizada') || statusRaw.includes('emitida');
-        let badge = isAutorizada ? '<span class="badge badge-autorizada">NF Autorizada</span>' : '<span class="badge badge-pendente">Fatura Pendente</span>';
-        let ccFmt = f.centro_custo || 'Não informado';
+        // 'NF Autorizada' é status antigo: era gravado por uma simulação, sem transmissão real à SEFAZ.
+        let isLegado = statusRaw.includes('autorizada') || statusRaw.includes('emitida');
+        let isPreNota = statusRaw.includes('pré-nota') || statusRaw.includes('pre-nota') || statusRaw.includes('prenota');
+        let jaGerada = isLegado || isPreNota;
+        let badge = isPreNota ? '<span class="badge badge-prenota">Pré-nota gerada</span>'
+                  : (isLegado ? '<span class="badge badge-legado" title="Registro antigo: não houve transmissão real à SEFAZ">Pré-nota (registro antigo)</span>'
+                  : '<span class="badge badge-pendente">Fatura Pendente</span>');
+        let ccFmt = esc(f.centro_custo || 'Não informado');
         let btnAcoes = `
             <button class="btn btn-outline" style="border:1.5px solid var(--primary); color:var(--primary); padding:6px 10px;" onclick="imprimirFaturaComercial(${f.id})" title="Imprimir Fatura Comercial"><i class="fas fa-file-invoice-dollar"></i> Fatura</button>
         `;
-        if (isAutorizada) {
-            btnAcoes += ` <button class="btn btn-info" style="padding:6px 10px;" onclick="verDanfe(${f.id})"><i class="fas fa-print"></i> Imprimir NF (SEFAZ)</button>`;
+        if (jaGerada) {
+            btnAcoes += ` <button class="btn btn-info" style="padding:6px 10px;" onclick="verPreNota(${f.id})"><i class="fas fa-print"></i> Ver Pré-nota</button>`;
         } else {
             btnAcoes += `
-                <button class="btn btn-warning" style="padding:6px 10px;" onclick="abrirComplementoFiscal(${f.id}, ${f.valor})"><i class="fas fa-paperplane"></i> Emitir NF-e</button>
+                <button class="btn btn-warning" style="padding:6px 10px;" onclick="abrirComplementoFiscal(${f.id}, ${Number(f.valor) || 0})"><i class="fas fa-file-invoice"></i> Gerar Pré-nota</button>
                 <button class="btn btn-primary" style="padding:6px 10px;" onclick="abrirEdicaoFatura(${f.id})" title="Editar Fatura"><i class="fas fa-edit"></i></button>
                 <button class="btn btn-danger" style="padding:6px 10px;" onclick="excluirFatura(${f.id})" title="Excluir Fatura"><i class="fas fa-trash"></i></button>
             `;
@@ -483,8 +498,8 @@ function renderTabela() {
         let dataReg = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : '-';
         let dataAlt = f.updated_at ? f.updated_at.split('T')[0].split('-').reverse().join('/') : '-';
         tbody.innerHTML += `<tr>
-            <td><strong>${f.cliente_nome || ''}</strong><br><small style="color:var(--text-light);">${f.cliente_cnpj || ''}</small></td>
-            <td>${f.descricao ? f.descricao.split('|')[0] : ''}</td>
+            <td><strong>${esc(f.cliente_nome)}</strong><br><small style="color:var(--text-light);">${esc(f.cliente_cnpj)}</small></td>
+            <td>${esc(f.descricao ? f.descricao.split('|')[0] : '')}</td>
             <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${ccFmt}</span></td>
             <td><strong>R$ ${Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong></td>
             <td>${badge}</td>
@@ -543,15 +558,6 @@ async function excluirFatura(id) {
     carregarFaturas();
 }
 
-function testarCertificadoDigital() {
-    let senha = prompt("Insira a senha PIN do Token do Certificado Digital A1 (ICP-Brasil):");
-    if(senha !== null && senha !== "") {
-        toast("Certificado Digital A1 validado e assinado com sucesso! Token seguro.", "success");
-    } else if (senha === "") {
-        toast("Senha PIN não pode ser vazia.", "error");
-    }
-}
-
 function sugerirCFOP() {
     let tipo = document.getElementById('tipo_doc').value;
     let destino = document.getElementById('destino_op').value;
@@ -572,7 +578,8 @@ window.abrirComplementoFiscal = function(id, valorBase) {
     document.getElementById('modalFiscal').style.display = 'flex';
 }
 
-window.transmitirNF = async function() {
+window.gerarPreNota = async function() {
+    if (gerandoPreNota) return;
     let id = document.getElementById('fatura_id_atual').value;
     let tipo = document.getElementById('tipo_doc').value;
     let contaContabil = document.getElementById('modal_conta_contabil').value;
@@ -580,20 +587,24 @@ window.transmitirNF = async function() {
         toast("Selecione a Conta Contábil (DRE)!", "error");
         return;
     }
-    const cidAtual = clienteIdAtual();
-    toast("Assinando digitalmente com Certificado A1 e transmitindo à SEFAZ...", "info");
-    setTimeout(async () => {
-        let faturaAlvo = faturasCache.find(x => x.id == id);
+    let faturaAlvo = faturasCache.find(x => x.id == id);
+    if (!faturaAlvo) { toast("Fatura não encontrada. Atualize a página.", "error"); return; }
+    gerandoPreNota = true;
+    const btn = document.getElementById('btnGerarPreNota');
+    if (btn) btn.disabled = true;
+    try {
+        const cidAtual = clienteIdAtual();
         let baseDesc = faturaAlvo.descricao ? faturaAlvo.descricao.split('|')[0].trim() : '';
-        let payload = { 
-            status: 'NF Autorizada',
+        let payload = {
+            status: 'Pré-nota gerada',
             tipo_operacao: tipo,
-            descricao: baseDesc + ` | Autorizado SEFAZ`,
+            descricao: baseDesc + ' | Pré-nota (sem valor fiscal)',
             updated_at: new Date().toISOString()
         };
         let upd = sb.from('faturas').update(payload).eq('id', id);
         if (cidAtual) upd = upd.eq('cliente_id', cidAtual);
-        await upd;
+        const { error: erroFatura } = await upd;
+        if (erroFatura) { toast("Erro ao atualizar a fatura: " + erroFatura.message, "error"); return; }
 
         let hoje = new Date().toISOString().split('T')[0];
         let payloadReceber = {
@@ -608,32 +619,64 @@ window.transmitirNF = async function() {
             updated_at: new Date().toISOString()
         };
         if (cidAtual) payloadReceber.cliente_id = cidAtual;
-        await sb.from('contas_receber').insert([payloadReceber]);
+        const { error: erroReceber } = await sb.from('contas_receber').insert([payloadReceber]);
+        if (erroReceber) {
+            // desfaz o status para não deixar a fatura "gerada" sem receita lançada
+            let desf = sb.from('faturas').update({ status: faturaAlvo.status || 'Pendente', descricao: faturaAlvo.descricao, updated_at: new Date().toISOString() }).eq('id', id);
+            if (cidAtual) desf = desf.eq('cliente_id', cidAtual);
+            await desf;
+            toast("Erro ao lançar no Contas a Receber: " + erroReceber.message, "error");
+            return;
+        }
 
-        await registrarLogAuditoria('INSERT', 'faturas', `Transmissão NF-e/SEFAZ da Fatura ID: ${id} (${faturaAlvo.cliente_nome || ''} - R$ ${faturaAlvo.valor || 0}) | Tipo: ${tipo} | Integrado ao Contas a Receber`);
-        toast("Nota Autorizada com sucesso pela SEFAZ e integrada ao Financeiro!");
+        await registrarLogAuditoria('INSERT', 'faturas', `Pré-nota (sem valor fiscal) da Fatura ID: ${id} (${faturaAlvo.cliente_nome || ''} - R$ ${faturaAlvo.valor || 0}) | Tipo previsto: ${tipo} | Integrado ao Contas a Receber`);
+        toast("Pré-nota gerada e receita lançada no Contas a Receber. Lembre-se: emita a nota oficial no emissor fiscal.");
         document.getElementById('modalFiscal').style.display = 'none';
-        carregarFaturas();
-        setTimeout(() => { verDanfe(id); }, 500);
-    }, 2000);
+        await carregarFaturas();
+        setTimeout(() => { verPreNota(id); }, 300);
+    } finally {
+        gerandoPreNota = false;
+        if (btn) btn.disabled = false;
+    }
+}
+
+function dadosEmitente() {
+    const d = empresaDados || {};
+    const end = [d.logradouro, d.numero, d.bairro].filter(Boolean).join(', ');
+    const cidUf = [d.cidade, d.uf].filter(Boolean).join(' - ');
+    return {
+        nome: nomeEmpresaGlobal,
+        cnpj: d.cnpj || 'CNPJ não cadastrado (Parâmetros Fiscais)',
+        endereco: end,
+        cidadeUf: cidUf,
+        cep: d.cep || '',
+        im: d.inscricao_municipal || ''
+    };
 }
 
 window.imprimirFaturaComercial = function(id) {
     let f = faturasCache.find(x => x.id == id);
     if(!f) return;
     let parc = buscarDadosParceiro(f);
+    let em = dadosEmitente();
     let dataEmissao = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
     let descPura = f.descricao ? f.descricao.split('|')[0] : '';
     let valorFmt = Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    let logoHtml = logoUniversalBase64 ? `<img src="${logoUniversalBase64}" style="width:48px; height:48px; object-fit:contain; border-radius:8px; background:#fff;">` : `<div style="width:48px; height:48px; background:var(--secondary); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px;"><i class="fas fa-dna"></i></div>`;
+    let logoHtml = logoUniversalBase64 ? `<img src="${esc(logoUniversalBase64)}" style="width:48px; height:48px; object-fit:contain; border-radius:8px; background:#fff;">` : `<div style="width:48px; height:48px; background:var(--secondary); border-radius:10px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:24px;"><i class="fas fa-dna"></i></div>`;
+    let blocoBanco = contaBancariaUnica
+        ? `<strong><i class="fas fa-university"></i> Dados Bancários para Depósito / Transferência:</strong><br>
+            ${esc(contaBancariaUnica.banco)} | Agência: ${esc(contaBancariaUnica.agencia)} | Conta: ${esc(contaBancariaUnica.conta)}<br>
+            Favorecido: ${esc(em.nome)}${em.cnpj ? ' | CNPJ: ' + esc(em.cnpj) : ''}`
+        : `<strong><i class="fas fa-university"></i> Dados para pagamento:</strong><br>
+            Solicite os dados bancários à empresa emitente (${esc(em.nome)}).`;
     let html = `
     <div class="fatura-comercial" id="conteudoFaturaComercial">
         <div class="fc-top">
             <div style="display:flex; align-items:center; gap:12px;">
                 ${logoHtml}
                 <div>
-                    <h2 style="color:var(--primary); font-size:20px; font-weight:800;">${nomeEmpresaGlobal}</h2>
-                    <p style="font-size:11px; color:var(--text-light); margin-top:2px;">CNPJ: 61.926.954/0001-14 | Belo Horizonte - MG</p>
+                    <h2 style="color:var(--primary); font-size:20px; font-weight:800;">${esc(em.nome)}</h2>
+                    <p style="font-size:11px; color:var(--text-light); margin-top:2px;">CNPJ: ${esc(em.cnpj)}${em.cidadeUf ? ' | ' + esc(em.cidadeUf) : ''}</p>
                 </div>
             </div>
             <div style="text-align:right;">
@@ -645,16 +688,16 @@ window.imprimirFaturaComercial = function(id) {
         <div class="fc-grid">
             <div class="fc-box">
                 <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Emitente / Credor:</strong>
-                <span style="font-size:13px; font-weight:700;">${nomeEmpresaGlobal}</span><br>
-                CNPJ: 61.926.954/0001-14<br>
-                Belo Horizonte - MG
+                <span style="font-size:13px; font-weight:700;">${esc(em.nome)}</span><br>
+                CNPJ: ${esc(em.cnpj)}<br>
+                ${esc([em.endereco, em.cidadeUf].filter(Boolean).join(' — '))}
             </div>
             <div class="fc-box">
                 <strong style="font-size:11px; text-transform:uppercase; color:var(--text-light); display:block; margin-bottom:4px;">Tomador / Cliente:</strong>
-                <span style="font-size:14px; font-weight:700;">${parc.nome}</span><br>
-                CNPJ / CPF: ${parc.cnpj_cpf}<br>
-                Endereço: ${parc.endereco}, ${parc.bairro}<br>
-                ${parc.cidade} - ${parc.uf} | CEP: ${parc.cep}
+                <span style="font-size:14px; font-weight:700;">${esc(parc.nome)}</span><br>
+                CNPJ / CPF: ${esc(parc.cnpj_cpf)}<br>
+                Endereço: ${esc(parc.endereco)}, ${esc(parc.bairro)}<br>
+                ${esc(parc.cidade)} - ${esc(parc.uf)} | CEP: ${esc(parc.cep)}
             </div>
         </div>
         <table class="fc-table">
@@ -669,7 +712,7 @@ window.imprimirFaturaComercial = function(id) {
             <tbody>
                 <tr>
                     <td>1,00</td>
-                    <td><strong>${descPura}</strong></td>
+                    <td><strong>${esc(descPura)}</strong></td>
                     <td style="text-align:right;">R$ ${valorFmt}</td>
                     <td style="text-align:right; font-weight:700;">R$ ${valorFmt}</td>
                 </tr>
@@ -688,141 +731,95 @@ window.imprimirFaturaComercial = function(id) {
             </div>
         </div>
         <div class="fc-banco">
-            <strong><i class="fas fa-university"></i> Dados Bancários para Depósito / Pix / Transferência:</strong><br>
-            Banco Inter (077) | Agência: 0001 | Conta Corrente: 926954-0<br>
-            Chave Pix (CNPJ): 61.926.954/0001-14 | Favorecido: ${nomeEmpresaGlobal}
+            ${blocoBanco}
         </div>
         <div style="font-size:11px; color:var(--text-light); border-top:1px solid var(--border); padding-top:14px; line-height:1.4;">
-            <strong>Termos e Instruções:</strong> O pagamento desta fatura deve ser efetuado até a data de vencimento na conta informada acima. Este documento constitui fatura comercial para cobrança, não substituindo o documento fiscal oficial.
+            <strong>Termos e Instruções:</strong> O pagamento desta fatura deve ser efetuado até a data de vencimento. Este documento constitui fatura comercial para cobrança, não substituindo o documento fiscal oficial.
         </div>
     </div>`;
     document.getElementById('conteudoFaturaComercial').innerHTML = html;
     document.getElementById('modalFaturaComercial').style.display = 'flex';
 }
 
-function dvMod11(chave43) {
-    let peso = 2, soma = 0;
-    for (let i = chave43.length - 1; i >= 0; i--) {
-        soma += parseInt(chave43.charAt(i), 10) * peso;
-        peso = peso === 9 ? 2 : peso + 1;
-    }
-    const resto = soma % 11;
-    return (resto < 2) ? 0 : (11 - resto);
-}
-function montarChaveAcesso(uf, aamm, cnpj, modelo, serie, numero, tpEmis, cnf) {
-    const base = uf + aamm + cnpj + modelo + serie.padStart(3, '0') + numero.padStart(9, '0') + tpEmis + cnf.padStart(8, '0');
-    return base + dvMod11(base);
-}
-function formatarChave(chave) { return chave.replace(/(\d{4})(?=\d)/g, '\$1 '); }
-
-window.verDanfe = function(id) {
+window.verPreNota = function(id) {
     let f = faturasCache.find(x => x.id == id);
     if(!f) return;
     let parc = buscarDadosParceiro(f);
-    let chaveSemEspacos = f.chave_nfe || montarChaveAcesso('31', '2607', '61926954000114', '55', '001', String(f.id), '1', '00000001');
-    let chaveAcesso = formatarChave(chaveSemEspacos);
+    let em = dadosEmitente();
     let descPura = f.descricao ? f.descricao.split('|')[0] : '';
     let dataEmissao = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+    let dataGeracao = f.updated_at ? f.updated_at.split('T')[0].split('-').reverse().join('/') : dataEmissao;
     let valorFmt = Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    let isAutorizada = (f.status || '').toLowerCase().includes('autorizada');
-    let tarjaHomologacao = isAutorizada ? '' : '<div class="marca-dagua">SEM VALOR FISCAL</div>';
-    let logoDanfeSrc = logoUniversalBase64 || "";
-    let logoHtmlDanfe = logoDanfeSrc ? `<img src="${logoDanfeSrc}" style="width:36px; height:36px; object-fit:contain; border-radius:4px; background:#fff;">` : `<i class="fas fa-dna" style="font-size:20px; color:var(--secondary);"></i>`;
+    let tipoPrev = f.tipo_operacao === 'NF-e' ? 'NF-e (produtos)' : (f.tipo_operacao === 'NFS-e' ? 'NFS-e (serviços)' : '—');
+    let logoHtmlDanfe = logoUniversalBase64 ? `<img src="${esc(logoUniversalBase64)}" style="width:36px; height:36px; object-fit:contain; border-radius:4px; background:#fff;">` : `<i class="fas fa-dna" style="font-size:20px; color:var(--secondary);"></i>`;
     let htmlDanfe = `
     <div class="danfe-container">
-        ${tarjaHomologacao}
+        <div class="marca-dagua">SEM VALOR FISCAL</div>
         <div class="danfe-a4" id="conteudoDanfe">
             <table class="danfe-table">
                 <tr>
                     <td colspan="4" style="padding: 0;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
-                                <td style="width: 36%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main);">
+                                <td style="width: 38%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main);">
                                     <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
                                         ${logoHtmlDanfe}
-                                        <strong style="font-size: 10.5px;">${nomeEmpresaGlobal}</strong>
+                                        <strong style="font-size: 10.5px;">${esc(em.nome)}</strong>
                                     </div>
-                                    <span style="font-size: 7.5px;">Belo Horizonte - MG<br>CNPJ: 61.926.954/0001-14<br>Fone: (31) 3333-4444</span>
+                                    <span style="font-size: 7.5px;">${esc(em.cidadeUf)}<br>CNPJ: ${esc(em.cnpj)}${em.im ? '<br>Inscrição Municipal: ' + esc(em.im) : ''}</span>
                                 </td>
-                                <td style="width: 24%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main); vertical-align: middle;">
-                                    <strong style="font-size: 12px;">DANFE / NFS-e</strong><br>
-                                    <span style="font-size: 7px;">Documento Auxiliar da Nota Fiscal</span><br><br>
-                                    <span style="font-size: 7.5px; font-weight: bold;">1 - SAÍDA</span><br><br>
-                                    <span style="font-size: 7.5px; font-weight: bold;">Nº ${String(f.id).padStart(9,'0')} | SÉRIE 001</span>
+                                <td style="width: 26%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main); vertical-align: middle;">
+                                    <strong style="font-size: 13px;">PRÉ-NOTA</strong><br>
+                                    <span style="font-size: 7px;">Espelho gerencial para conferência</span><br><br>
+                                    <span style="font-size: 7.5px; font-weight: bold;">Nº ${String(f.id).padStart(9,'0')}</span>
                                 </td>
-                                <td style="width: 40%; padding: 6px; text-align: center; vertical-align: middle;">
-                                    <div style="font-size: 7.5px; font-weight: bold; margin-bottom:2px;">CONTROLE DO FISCO</div>
-                                    <svg id="barcodeDanfe" style="max-width:100%; height:32px; display:block; margin: 0 auto;"></svg>
-                                    <span class="df-label" style="margin-top:2px;">CHAVE DE ACESSO</span>
-                                    <span style="font-size: 8px; font-family: monospace; font-weight: bold;">${chaveAcesso}</span>
+                                <td style="width: 36%; padding: 6px; text-align: center; vertical-align: middle;">
+                                    <div style="font-size: 8px; font-weight: bold; color:#b91c1c; margin-bottom:3px;">DOCUMENTO SEM VALOR FISCAL</div>
+                                    <span style="font-size: 7.5px;">Não é DANFE nem NFS-e. A nota fiscal oficial deve ser emitida no emissor oficial (SEFAZ / NFS-e Nacional) ou por provedor autorizado.</span>
                                 </td>
                             </tr>
                         </table>
                     </td>
                 </tr>
                 <tr>
-                    <td colspan="3"><span class="df-label">Natureza da Operação</span><span class="df-val">PRESTAÇÃO DE SERVIÇOS</span></td>
-                    <td style="width: 25%;"><span class="df-label">CFOP</span><span class="df-val">5.933</span></td>
+                    <td colspan="3"><span class="df-label">Tipo de documento fiscal previsto</span><span class="df-val">${esc(tipoPrev)}</span></td>
+                    <td style="width: 25%;"><span class="df-label">Data da pré-nota</span><span class="df-val">${dataGeracao}</span></td>
                 </tr>
                 <tr>
-                    <td colspan="4" class="df-title">DESTINATÁRIO / TOMADOR DOS SERVIÇOS</td>
+                    <td colspan="4" class="df-title">DESTINATÁRIO / TOMADOR</td>
                 </tr>
                 <tr>
-                    <td colspan="2"><span class="df-label">Nome / Razão Social</span><span class="df-val">${parc.nome}</span></td>
-                    <td><span class="df-label">CNPJ / CPF</span><span class="df-val">${parc.cnpj_cpf}</span></td>
-                    <td><span class="df-label">Data de Emissão</span><span class="df-val">${dataEmissao}</span></td>
+                    <td colspan="2"><span class="df-label">Nome / Razão Social</span><span class="df-val">${esc(parc.nome)}</span></td>
+                    <td><span class="df-label">CNPJ / CPF</span><span class="df-val">${esc(parc.cnpj_cpf)}</span></td>
+                    <td><span class="df-label">Data da fatura</span><span class="df-val">${dataEmissao}</span></td>
                 </tr>
                 <tr>
-                    <td colspan="2"><span class="df-label">Endereço</span><span class="df-val">${parc.endereco}</span></td>
-                    <td><span class="df-label">Bairro / Distrito</span><span class="df-val">${parc.bairro}</span></td>
-                    <td><span class="df-label">CEP</span><span class="df-val">${parc.cep}</span></td>
+                    <td colspan="2"><span class="df-label">Endereço</span><span class="df-val">${esc(parc.endereco)}</span></td>
+                    <td><span class="df-label">Bairro / Distrito</span><span class="df-val">${esc(parc.bairro)}</span></td>
+                    <td><span class="df-label">CEP</span><span class="df-val">${esc(parc.cep)}</span></td>
                 </tr>
                 <tr>
-                    <td><span class="df-label">Município</span><span class="df-val">${parc.cidade}</span></td>
-                    <td style="width: 10%;"><span class="df-label">UF</span><span class="df-val">${parc.uf}</span></td>
-                    <td><span class="df-label">Telefone</span><span class="df-val">${parc.telefone}</span></td>
-                    <td><span class="df-label">Inscrição Municipal</span><span class="df-val">1684185/001</span></td>
+                    <td><span class="df-label">Município</span><span class="df-val">${esc(parc.cidade)}</span></td>
+                    <td style="width: 10%;"><span class="df-label">UF</span><span class="df-val">${esc(parc.uf)}</span></td>
+                    <td colspan="2"><span class="df-label">Telefone</span><span class="df-val">${esc(parc.telefone)}</span></td>
                 </tr>
                 <tr>
-                    <td colspan="4" class="df-title">CÁLCULO DO IMPOSTO</td>
-                </tr>
-                <tr>
-                    <td><span class="df-label">Base de Cálculo</span><span class="df-val">R$ 0,00</span></td>
-                    <td><span class="df-label">Valor do ISS</span><span class="df-val">R$ 0,00</span></td>
-                    <td><span class="df-label">Base ICMS ST</span><span class="df-val">R$ 0,00</span></td>
-                    <td><span class="df-label">Valor Total dos Serviços</span><span class="df-val">R$ ${valorFmt}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="3"></td>
-                    <td style="background:var(--bg);"><span class="df-label">VALOR TOTAL DA NOTA</span><span class="df-val" style="color:var(--primary);">R$ ${valorFmt}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="4" class="df-title">DADOS DO PRODUTO / SERVIÇO</td>
+                    <td colspan="4" class="df-title">SERVIÇO / ITEM</td>
                 </tr>
                 <tr>
                     <td colspan="4" style="padding: 0;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 8px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5px;">
                             <thead>
                                 <tr style="background: var(--bg); border-bottom: 1px solid var(--text-main);">
-                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main);">CÓDIGO</th>
-                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main); width: 40%;">DESCRIÇÃO DO ITEM / SERVIÇO</th>
-                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">NCM/NBS</th>
-                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">CST</th>
-                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">CFOP</th>
-                                    <th style="padding: 3px; text-align: center; border-right: 1px solid var(--text-main);">UNID.</th>
+                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main); width: 60%;">DESCRIÇÃO</th>
                                     <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">QTD.</th>
-                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">V. UNIT.</th>
-                                    <th style="padding: 3px; text-align: right;">V. TOTAL</th>
+                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">V. UNIT. (R$)</th>
+                                    <th style="padding: 3px; text-align: right;">V. TOTAL (R$)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);">PRD-002</td>
-                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);"><strong>${descPura}</strong></td>
-                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">1.01</td>
-                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">00</td>
-                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">5.933</td>
-                                    <td style="padding: 4px; text-align: center; border-right: 1px solid var(--text-main);">UN</td>
+                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);"><strong>${esc(descPura)}</strong></td>
                                     <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">1,00</td>
                                     <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">${valorFmt}</td>
                                     <td style="padding: 4px; text-align: right; font-weight: bold;">${valorFmt}</td>
@@ -832,37 +829,44 @@ window.verDanfe = function(id) {
                     </td>
                 </tr>
                 <tr>
+                    <td colspan="3"></td>
+                    <td style="background:var(--bg);"><span class="df-label">VALOR TOTAL</span><span class="df-val" style="color:var(--primary);">R$ ${valorFmt}</span></td>
+                </tr>
+                <tr>
                     <td colspan="4" class="df-title">DADOS ADICIONAIS</td>
                 </tr>
                 <tr>
-                    <td colspan="4"><span class="df-label">Informações Complementares</span><span style="font-size: 7.5px;">Documento emitido por ME ou EPP optante pelo Simples Nacional. Lei Complementar 123/2006. Protocolo de Autorização SEFAZ: 3126600${f.id} em ${dataEmissao}. Assinado digitalmente via Certificado A1 ICP-Brasil. Ref Fatura #${f.id}. Centro de Custo: ${f.centro_custo || 'Geral'}.</span></td>
+                    <td colspan="4"><span class="df-label">Informações complementares</span><span style="font-size: 7.5px;">Pré-nota gerada pelo Sacramento ERP em ${dataGeracao}, apenas para conferência e classificação contábil. Não possui valor fiscal e não substitui a nota fiscal eletrônica. Tributos (ISS/ICMS, IBS/CBS) são calculados e destacados somente no emissor oficial. Ref. Fatura #${f.id}. Centro de Custo: ${esc(f.centro_custo || 'Geral')}.</span></td>
                 </tr>
             </table>
         </div>
+    </div>
     `;
     document.getElementById('conteudoDanfe').innerHTML = htmlDanfe;
     document.getElementById('modalDanfe').style.display = 'flex';
-    setTimeout(() => {
-        try {
-            JsBarcode("#barcodeDanfe", chaveSemEspacos, {
-                format: "CODE128C", width: 1.1, height: 32, displayValue: false, margin: 0
-            });
-        } catch (e) {}
-    }, 50);
 }
 
 async function carregarMarcaSistema(clienteId) {
     try {
-        const { data: clientes } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteId).maybeSingle();
+        const { data: clientes } = await sb.from('clientes_contratantes').select('*').eq('id', clienteId).maybeSingle();
         if (clientes) {
+            empresaDados = clientes;
             const nomeEmp = clientes.nome_fantasia || clientes.razao_social;
             if (nomeEmp) nomeEmpresaGlobal = nomeEmp;
         }
+    } catch(e) {}
+    try {
         const { data } = await sb.from('configuracoes_sistema').select('*').eq('cliente_id', clienteId).limit(1);
         if (data && data.length > 0) {
             if (data[0].app_logo_url) logoUniversalBase64 = data[0].app_logo_url;
         }
     } catch(e) {}
+    try {
+        // Só imprime dados bancários se a empresa tiver exatamente UMA conta bancária cadastrada
+        const { data: contas } = await sb.from('contas_bancarias').select('banco, agencia, conta, tipo').eq('cliente_id', clienteId);
+        const bancarias = (contas || []).filter(c => c.banco && c.banco !== 'Cartão' && c.agencia && c.conta);
+        contaBancariaUnica = bancarias.length === 1 ? bancarias[0] : null;
+    } catch(e) { contaBancariaUnica = null; }
 }
 
 async function inicializarPagina() {
@@ -880,18 +884,21 @@ async function inicializarPagina() {
 
     if (master) {
         document.body.classList.add('usuario-master');
+        // O cabeçalho padrão (erp-core.js) pode substituir este seletor; só mexe nele se ainda existir
         const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
+        if (select) {
+            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+            select.innerHTML = '';
+            if (data) {
+                data.forEach(emp => {
+                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                    select.innerHTML += `<option value="${esc(emp.id)}">${esc(nome)}</option>`;
+                });
+            }
+            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
+            select.value = selAtual;
+            select.disabled = false;
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
     } else {
         // Remove a classe master caso venha gravada e esconde via CSS global
         document.body.classList.remove('usuario-master');
