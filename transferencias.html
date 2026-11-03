@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -90,77 +91,31 @@
         .modal-card { background: var(--card); width: 100%; max-width: 420px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
-        .print-corporative-header { display: none !important; }
-        .print-corporative-footer { display: none !important; }
-
-        @media print {
-            /* Margem inferior ampla para afastar a área de impressão do rodapé gerado pelo navegador */
-            @page { size: A4 portrait; margin: 10mm 10mm 20mm 10mm; }
-            
-            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
-            .site-header, .page-toolbar, .panel:has(label), footer, button, .toast-container, .col-acoes { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
-            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            
-            .print-corporative-header {
-                display: block !important; background: #fff !important; padding-bottom: 3mm !important; margin-bottom: 3mm !important;
-                border-bottom: 2px solid #1e3a8a !important; width: 100% !important;
-            }
-
-            /* Rodapé corporativo blindado: cobre totalmente qualquer texto nativo que o navegador tente injetar na base */
-            .print-corporative-footer {
-                display: block !important; position: fixed; bottom: -12mm; left: 0; right: 0; width: 100%; height: 15mm;
-                font-size: 7.5pt; color: #475569; background: #ffffff !important; border-top: 1px solid #cbd5e1; 
-                padding-top: 6px; text-align: center; z-index: 999999;
-            }
-
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 3px 6px !important; border-bottom: 1px solid #cbd5e1 !important; word-wrap: break-word; }
-        }
+        .badge-dup { display:inline-block; background:#fef3c7; color:#b45309; border:1px solid #fcd34d; border-radius:6px; font-size:10px; font-weight:800; padding:1px 6px; margin-left:6px; white-space:nowrap; }
+        .codigo-tr { font-weight:800; color:var(--secondary); white-space:nowrap; }
+        .resumo-lista { display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:var(--text-light); margin-bottom:12px; }
+        .resumo-lista b { color:var(--secondary); }
+        .form-row-fav .form-control { margin-bottom:0; }
+        @media (max-width: 900px) { .form-row-fav { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
-
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
-        </div>
-        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
 
 <!-- MODAL CADASTRO RÁPIDO: CENTRO DE CUSTO -->
 <div class="modal-overlay" id="modalNovoCentroCusto">
     <div class="modal-card">
         <div class="modal-header">
             <h3 style="font-size:15px;font-weight:700;color:var(--secondary);display:flex;align-items:center;gap:8px;"><i class="fas fa-tags" style="color:var(--primary)"></i> Novo Centro de Custo</h3>
-            <button onclick="document.getElementById('modalNovoCentroCusto').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
         </div>
         <div style="margin-bottom:12px;">
             <label>Nome / Descrição *</label>
             <input type="text" id="cc_nome" class="form-control" placeholder="Ex: Transporte, Manutenção...">
         </div>
         <div style="display:flex; justify-content:flex-end; gap:10px;">
-            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
-            <button class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
+            <button type="button" class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalNovoCentroCusto').style.display='none'">Cancelar</button>
+            <button type="button" class="btn-acao" onclick="salvarNovoCentroCusto()"><i class="fas fa-save"></i> Salvar</button>
         </div>
     </div>
 </div>
@@ -188,16 +143,17 @@
         <div class="form-row">
             <div>
                 <label>Conta de Origem (Sai o Dinheiro) *</label>
-                <input type="text" id="conta_origem" class="form-control" placeholder="Digite ou selecione..." list="listaContas">
+                <input type="text" id="conta_origem" class="form-control" placeholder="Digite ou selecione..." list="listaContas" autocomplete="off">
                 <datalist id="listaContas"></datalist>
             </div>
             <div>
                 <label>Conta de Destino (Opcional - Se Interna)</label>
-                <input type="text" id="conta_destino" class="form-control" placeholder="Conta interna..." list="listaContras">
+                <input type="text" id="conta_destino" class="form-control" placeholder="Conta interna..." list="listaContras" autocomplete="off">
+                <datalist id="listaContras"></datalist>
             </div>
             <div>
                 <label>Valor da Movimentação (R$) *</label>
-                <input type="text" id="valor" class="form-control" placeholder="0,00" onblur="formatarCampoMoeda(this)">
+                <input type="text" id="valor" class="form-control" placeholder="0,00" inputmode="decimal" onblur="formatarCampoMoeda(this)">
             </div>
             <div>
                 <label>Data *</label>
@@ -210,18 +166,18 @@
                 <i class="fas fa-university"></i> Dados Bancários do Favorecido / Terceiro Externo
             </div>
             <div id="divCadastrarRapido" style="display:none;">
-                <button class="btn-acao" style="padding:4px 10px; font-size:11px; background:var(--success);" onclick="cadastrarFavorecidoRapido()"><i class="fas fa-user-plus"></i> Cadastrar Favorecido</button>
+                <button type="button" class="btn-acao" style="padding:4px 10px; font-size:11px; background:var(--success);" onclick="cadastrarFavorecidoRapido()"><i class="fas fa-user-plus"></i> Cadastrar Favorecido</button>
             </div>
         </div>
 
         <div class="form-row-fav">
             <div>
                 <label>CPF / CNPJ <span id="status_favorecido" style="font-weight:normal;font-size:10px;"></span></label>
-                <input type="text" id="favorecido_documento" class="form-control" placeholder="CPF/CNPJ..." oninput="buscarPorDocumento(this.value)">
+                <input type="text" id="favorecido_documento" class="form-control" placeholder="CPF/CNPJ..." oninput="agendarBuscaDocumento(this.value)">
             </div>
             <div>
                 <label>Nome do Favorecido</label>
-                <input type="text" id="favorecido_nome" class="form-control" placeholder="Nome..." list="listaParceiros" onblur="buscarPorNome(this.value)">
+                <input type="text" id="favorecido_nome" class="form-control" placeholder="Nome..." list="listaParceiros" autocomplete="off" onchange="buscarPorNome(this.value)">
                 <datalist id="listaParceiros"></datalist>
             </div>
             <div>
@@ -239,9 +195,9 @@
                 </datalist>
             </div>
             <div><label>Agência</label><input type="text" id="favorecido_agencia" class="form-control" placeholder="0000"></div>
-            <div><label>Díg. Ag.</label><input type="text" id="favorecido_digito_agencia" class="form-control" placeholder="0"></div>
+            <div><label>Díg. Ag.</label><input type="text" id="favorecido_digito_agencia" class="form-control" placeholder="0" maxlength="2"></div>
             <div><label>Conta</label><input type="text" id="favorecido_conta" class="form-control" placeholder="00000"></div>
-            <div><label>Díg. Conta</label><input type="text" id="favorecido_digito_conta" class="form-control" placeholder="0"></div>
+            <div><label>Díg. Conta</label><input type="text" id="favorecido_digito_conta" class="form-control" placeholder="0" maxlength="2"></div>
         </div>
 
         <!-- CAMPOS DE RECORRÊNCIA E CENTRO DE CUSTO -->
@@ -254,7 +210,7 @@
                 <label>Centro de Custo / Projeto *</label>
                 <div class="campo-com-mais">
                     <select id="centro_custo" class="form-control"><option value="">Selecione...</option></select>
-                    <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
+                    <button type="button" class="btn-mais" onclick="abrirModalCentroCusto()" title="Novo Centro de Custo"><i class="fas fa-plus"></i></button>
                 </div>
             </div>
             <div>
@@ -265,16 +221,16 @@
                 </select>
             </div>
             <div>
-                <div id="blocoParcelas" style="display:block;">
+                <div id="blocoParcelas" style="display:none;">
                     <label>Nº de Meses / Parcelas</label>
-                    <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                    <input type="number" id="num_parcelas" class="form-control" value="12" min="2" max="120" placeholder="Ex: 12">
                 </div>
             </div>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
-            <button id="btnSalvar" class="btn-acao" onclick="salvarTransferencia()"><i class="fas fa-save"></i> Efetuar Lançamento</button>
-            <button id="btnCancelar" class="btn-acao" style="background:#64748b; display:none;" onclick="limparForm()">Cancelar</button>
+            <button type="button" id="btnSalvar" class="btn-acao" onclick="salvarTransferencia()"><i class="fas fa-save"></i> Efetuar Lançamento</button>
+            <button type="button" id="btnCancelar" class="btn-acao" style="background:#64748b; display:none;" onclick="limparForm()">Cancelar</button>
         </div>
     </div>
 
@@ -282,483 +238,532 @@
     <div class="panel" style="padding: 18px 24px;">
         <div class="panel-header" style="border:none; margin-bottom:8px;">
             <span><i class="fas fa-filter"></i> Relatório Operacional de Transferências</span>
-            <button class="btn-acao" onclick="executarImpressao()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button type="button" class="btn-acao" onclick="executarImpressao()" style="background:var(--secondary); padding:6px 12px; font-size:12px;"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         <div class="form-row" style="align-items:flex-end;">
             <div><label>Data Início</label><input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()"></div>
             <div><label>Data Fim</label><input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()"></div>
-            <div><label>Buscar por Origem, Destino ou Favorecido</label><input type="text" id="filtroBusca" class="form-control" placeholder="Pesquisar..." oninput="aplicarFiltrosRelatorio()"></div>
-            <div><button class="btn-acao" style="background:#64748b; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button></div>
+            <div><label>Buscar por código, origem, destino, favorecido ou observação</label><input type="text" id="filtroBusca" class="form-control" placeholder="Pesquisar..." oninput="aplicarFiltrosRelatorio()"></div>
+            <div><button type="button" class="btn-acao" style="background:#64748b; width:100%; justify-content:center; margin-bottom:12px;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button></div>
         </div>
     </div>
 
-    <!-- TABELA DE HISTÓRICO SEM DUPLICIDADE E SEM CHECKBOXES INÚTEIS -->
+    <!-- TABELA DE HISTÓRICO -->
     <div class="panel" id="cardRelatorioModo">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Histórico de Movimentações Consolidadas (Sem Duplicidades)</span>
-            <div class="ocultar-print">
-                <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:34px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
-            </div>
+            <span><i class="fas fa-list"></i> Histórico de Movimentações</span>
         </div>
-        <div class="table-container" id="listaTransferencias">A carregar transferências...</div>
+        <div class="resumo-lista" id="resumoLista"></div>
+        <div class="table-container" id="listaTransferencias" style="overflow-x:auto;">A carregar transferências...</div>
     </div>
 </div>
 
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
-const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+const sbGlobal = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let transferenciasCache = [];
 let contasBancariasCache = [];
 let listaParceirosCache = [];
+let salvando = false;
+let timerDoc = null;
 
-function obterUsuario() {
-    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+/* ---------- utilitários ---------- */
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-
-function ehMaster() {
-    const u = obterUsuario();
-    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim(); }
+function hojeLocal() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
-
-function clienteIdAtual() {
-    const u = obterUsuario();
-    if (!u) return 1;
-    if (ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+function fmtData(iso) { if (!iso) return '—'; const p = String(iso).substring(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : String(iso); }
+function parseValorBR(v) { if (v === null || v === undefined || v === '') return 0; if (typeof v === 'number') return v; let s = String(v).trim().replace(/[R\$\s]/g, ''); if (s.indexOf(',') > -1) s = s.replace(/\./g, '').replace(',', '.'); return parseFloat(s) || 0; }
+function arred(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function formatarCampoMoeda(el) { if (!el.value.trim()) { el.value = ''; return; } el.value = fmtBR(parseValorBR(el.value)); }
+function codigoDe(t) { return 'TR-' + String(t.id).padStart(3, '0'); }
+function toast(msg, type) {
+    type = type || 'success';
+    let c = document.getElementById('toastContainer');
+    if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+    const x = document.createElement('div');
+    x.className = 'toast ' + type;
+    x.textContent = msg;
+    c.appendChild(x);
+    setTimeout(function () { x.remove(); }, type === 'error' ? 6000 : 3500);
+}
+function obterClienteIdSeguro() {
+    try {
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const emailU = (u && u.email ? u.email : '').toLowerCase().trim();
+        if (emailU === EMAIL_MASTER.toLowerCase().trim()) {
+            const sel = localStorage.getItem('empresaSelecionada');
+            if (sel) return parseInt(sel);
+        }
+        return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
+    } catch (e) { return 1; }
+}
+function dataValida(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s || '')) return false;
+    const p = s.split('-').map(Number);
+    const d = new Date(p[0], p[1] - 1, p[2]);
+    return d.getFullYear() === p[0] && d.getMonth() === p[1] - 1 && d.getDate() === p[2] && p[0] >= 2000 && p[0] <= 2100;
+}
+async function buscarTudo(montar) {
+    const out = []; const PAG = 1000;
+    for (let ini = 0; ini < 100000; ini += PAG) {
+        const r = await montar().range(ini, ini + PAG - 1);
+        if (r.error) return { data: null, error: r.error };
+        out.push.apply(out, r.data || []);
+        if (!r.data || r.data.length < PAG) break;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    return { data: out, error: null };
+}
+function divideDigito(txt) {
+    const s = String(txt || '').trim();
+    const k = s.lastIndexOf('-');
+    if (k > 0 && s.length - k <= 3) return [s.substring(0, k).trim(), s.substring(k + 1).trim()];
+    return [s, ''];
+}
+function juntaDigito(num, dig) {
+    num = String(num || '').trim(); dig = String(dig || '').trim();
+    if (!num) return null;
+    return dig ? num + '-' + dig : num;
 }
 
+/* ---------- inicialização ---------- */
 async function inicializarPagina() {
-    let u = obterUsuario();
-    if(!u || !u.email) { location.href = 'login.html'; return; }
-
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
-
-    carregarCombosEParceiros();
-    carregarTransferencias();
-    document.getElementById('data').value = new Date().toISOString().split('T')[0];
+    try {
+        const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        const emailU = (u && u.email ? u.email : '').toLowerCase().trim();
+        if (emailU === EMAIL_MASTER.toLowerCase().trim()) document.body.classList.add('usuario-master');
+    } catch (e) {}
+    document.getElementById('data').value = hojeLocal();
+    await carregarCombosEParceiros();
+    await carregarTransferencias();
 }
-
-window.trocarEmpresa = function() {
-    const select = document.getElementById('selectEmpresa');
-    if (!select) return;
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarCombosEParceiros();
-    carregarTransferencias();
-};
-
-window.sair = function() {
-    if (confirm('Deseja realmente sair?')) {
-        localStorage.removeItem('usuarioLogado');
-        localStorage.removeItem('empresaSelecionada');
-        location.href = 'login.html';
-    }
-};
-
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
-    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
-}
-
-function parseValorBR(v){if(!v)return 0;var s=String(v).trim().replace(/[R\$\s]/g,'');if(s.indexOf(',')>-1)s=s.replace(/\./g,'').replace(',','.');return parseFloat(s)||0;}
-function formatarCampoMoeda(el){if(!el.value.trim()){el.value='';return;}el.value=parseValorBR(el.value).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
 
 function toggleParcelas(val) {
     const bloco = document.getElementById('blocoParcelas');
-    if (val === 'Sim') {
-        bloco.style.display = 'block';
-    } else {
-        bloco.style.display = 'block';
-        document.getElementById('num_parcelas').value = '12';
+    bloco.style.display = (val === 'Sim') ? 'block' : 'none';
+    if (val !== 'Sim') document.getElementById('num_parcelas').value = '12';
+}
+
+async function carregarCombosEParceiros() {
+    const cid = obterClienteIdSeguro();
+    if (!cid) return;
+
+    const rc = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
+    contasBancariasCache = rc.data || [];
+    const opcoes = '<option value="Capital Próprio / Recurso Externo">' +
+        contasBancariasCache.map(ct => '<option value="' + esc(ct.nome || ct.banco || 'Conta') + '">').join('');
+    const l1 = document.getElementById('listaContras'), l2 = document.getElementById('listaContas');
+    if (l1) l1.innerHTML = opcoes;
+    if (l2) l2.innerHTML = opcoes;
+
+    const rp = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid).order('nome');
+    listaParceirosCache = rp.data || [];
+    const lp = document.getElementById('listaParceiros');
+    if (lp) lp.innerHTML = listaParceirosCache.map(p => '<option value="' + esc(p.nome) + '">').join('');
+
+    await carregarCentros();
+}
+
+async function carregarCentros(selecionar) {
+    const cid = obterClienteIdSeguro();
+    const r = await sbGlobal.from('centros_custo').select('*').eq('cliente_id', cid).order('nome');
+    const sel = document.getElementById('centro_custo');
+    if (!sel) return;
+    const atual = selecionar || sel.value;
+    sel.innerHTML = '<option value="">Selecione o Centro de Custo...</option>' +
+        (r.data || []).map(cc => {
+            const cod = cc.codigo || cc.id || '';
+            const nome = cc.nome || cc.descricao || 'Centro de Custo';
+            const v = cod + ' - ' + nome;
+            return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+        }).join('');
+    if (atual) {
+        const achou = Array.from(sel.options).find(o => o.value === atual || o.value.endsWith(' - ' + atual));
+        if (achou) sel.value = achou.value; else definirCentro(atual);
+    }
+}
+function definirCentro(valor) {
+    const sel = document.getElementById('centro_custo');
+    if (!valor) { sel.value = ''; return; }
+    sel.value = valor;
+    if (sel.value !== valor) { // valor antigo que não existe mais na lista: mantém para não perder a informação
+        const o = document.createElement('option'); o.value = valor; o.textContent = valor; sel.appendChild(o); sel.value = valor;
     }
 }
 
-async function carregarCombosEParceiros(){
-    const cid = clienteIdAtual();
-    if(!cid) return;
+/* ---------- favorecidos ---------- */
+function agendarBuscaDocumento(v) { clearTimeout(timerDoc); timerDoc = setTimeout(function () { buscarPorDocumento(v); }, 500); }
 
-    const { data: contas } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('nome');
-    contasBancariasCache = contas || [];
-    let lista = document.getElementById('listaContras');
-    let listaOrigem = document.getElementById('listaContas');
-    if(lista){
-        lista.innerHTML = '<option value="Capital Próprio / Recurso Externo">';
-        contasBancariasCache.forEach(ct => {
-            let nomeB = ct.nome || ct.banco || 'Conta';
-            lista.innerHTML += `<option value="${nomeB}">`;
-        });
+async function buscarPorDocumento(docDigitado) {
+    const busca = String(docDigitado || '').replace(/\D/g, '');
+    const statusEl = document.getElementById('status_favorecido');
+    if (!busca) { if (statusEl) statusEl.innerHTML = ''; return; }
+
+    const achado = listaParceirosCache.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === busca);
+    if (achado) {
+        preencherCamposFavorecido(achado);
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Encontrado</span>';
+        document.getElementById('divCadastrarRapido').style.display = 'none';
+        return;
     }
-    if(listaOrigem){
-        listaOrigem.innerHTML = '<option value="Capital Próprio / Recurso Externo">';
-        contasBancariasCache.forEach(ct => {
-            let nomeB = ct.nome || ct.banco || 'Conta';
-            listaOrigem.innerHTML += `<option value="${nomeB}">`;
-        });
-    }
-
-    const { data: parceiros } = await sb.from('parceiros').select('*').eq('cliente_id', cid).order('nome');
-    listaParceirosCache = parceiros || [];
-    let listaParc = document.getElementById('listaParceiros');
-    if(listaParc){
-        listaParc.innerHTML = '';
-        listaParceirosCache.forEach(p => { listaParc.innerHTML += `<option value="${p.nome}">`; });
-    }
-
-    const { data: centros } = await sb.from('centros_custo').select('*').eq('cliente_id', cid).order('nome');
-    let selCC = document.getElementById('centro_custo');
-    if(selCC){
-        selCC.innerHTML = '<option value="">Selecione o Centro de Custo...</option>';
-        (centros || []).forEach(cc => {
-            let codigoCC = cc.codigo || cc.id || '';
-            let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
-            selCC.innerHTML += `<option value="${codigoCC} - ${nomeCC}">${codigoCC} - ${nomeCC}</option>`;
-        });
-    }
-}
-
-async function buscarPorDocumento(docDigitado){
-    let busca = docDigitado.trim().replace(/\D/g, '');
-    let statusEl = document.getElementById('status_favorecido');
-    if(!busca) { if(statusEl) statusEl.innerHTML = ''; return; }
-    
-    const cid = clienteIdAtual();
-    try {
-        let achado = listaParceirosCache.find(p => (p.cnpj_cpf||'').toString().replace(/\D/g,'') === busca);
-        if(achado){
-            preencherCamposFavorecido(achado);
-            if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Encontrado</span>';
-            document.getElementById('divCadastrarRapido').style.display = 'none';
-            return;
-        }
-    } catch(e) {}
-
     if (busca.length === 14) {
-        if(statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando...</span>';
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando...</span>';
         try {
-            let resp = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${busca}`);
+            const resp = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + busca);
             if (resp.ok) {
-                let json = await resp.json();
+                const json = await resp.json();
                 if (json.razao_social) {
                     document.getElementById('favorecido_nome').value = json.razao_social;
-                    document.getElementById('favorecido_banco').value = json.bancos?.[0]?.nome_banco || '';
-                    if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
+                    if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ encontrado</span>';
                     document.getElementById('divCadastrarRapido').style.display = 'block';
                     return;
                 }
             }
-        } catch(err) {}
+        } catch (err) {}
     }
-    if(statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Novo</span>';
+    if (statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Novo</span>';
     document.getElementById('divCadastrarRapido').style.display = 'block';
 }
 
-function buscarPorNome(nomeDigitado){
-    let busca = nomeDigitado.trim().toLowerCase();
-    if(!busca) return;
-    let achado = listaParceirosCache.find(p => p.nome && p.nome.toLowerCase().includes(busca));
-    if(achado){ preencherCamposFavorecido(achado); toast("Favorecido carregado!", "success"); }
+function buscarPorNome(nomeDigitado) {
+    const busca = norm(nomeDigitado);
+    if (!busca) return;
+    let achado = listaParceirosCache.find(p => norm(p.nome) === busca);
+    if (!achado) {
+        const parecidos = listaParceirosCache.filter(p => norm(p.nome).includes(busca));
+        if (parecidos.length === 1) achado = parecidos[0];
+    }
+    if (achado) { preencherCamposFavorecido(achado); toast('Favorecido carregado!', 'success'); }
 }
 
-function preencherCamposFavorecido(p){
+function preencherCamposFavorecido(p) {
     document.getElementById('favorecido_nome').value = p.nome || '';
     document.getElementById('favorecido_documento').value = p.cnpj_cpf || '';
     document.getElementById('favorecido_banco').value = p.banco || '';
-    document.getElementById('favorecido_agencia').value = p.agencia || '';
-    document.getElementById('favorecido_conta').value = p.conta_corrente || '';
+    const ag = divideDigito(p.agencia), cc = divideDigito(p.conta_corrente);
+    document.getElementById('favorecido_agencia').value = ag[0];
+    document.getElementById('favorecido_digito_agencia').value = ag[1];
+    document.getElementById('favorecido_conta').value = cc[0];
+    document.getElementById('favorecido_digito_conta').value = cc[1];
 }
 
-async function cadastrarFavorecidoRapido(){
-    let nome = document.getElementById('favorecido_nome').value.trim();
-    let cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
-    if(!nome || !cnpj_cpf){ toast("Informe pelo menos o Nome e o CPF/CNPJ!", "error"); return; }
-    const cid = clienteIdAtual();
-    let payload = { cliente_id: cid, nome: nome, tipo_cadastro: 'Fornecedor', cnpj_cpf: cnpj_cpf, banco: document.getElementById('favorecido_banco').value.trim(), agencia: document.getElementById('favorecido_agencia').value.trim(), conta_corrente: document.getElementById('favorecido_conta').value.trim() };
-    const { error } = await sb.from('parceiros').insert([payload]);
-    if(error){ toast("Erro ao cadastrar: "+error.message, "error"); return; }
-    toast("Favorecido cadastrado com sucesso!");
+async function cadastrarFavorecidoRapido() {
+    const nome = document.getElementById('favorecido_nome').value.trim();
+    const cnpj_cpf = document.getElementById('favorecido_documento').value.trim();
+    if (!nome || !cnpj_cpf) { toast('Informe pelo menos o Nome e o CPF/CNPJ!', 'error'); return; }
+    const cid = obterClienteIdSeguro();
+    const payload = {
+        cliente_id: cid, nome: nome, tipo_cadastro: 'Fornecedor', cnpj_cpf: cnpj_cpf,
+        banco: document.getElementById('favorecido_banco').value.trim(),
+        agencia: juntaDigito(document.getElementById('favorecido_agencia').value, document.getElementById('favorecido_digito_agencia').value) || '',
+        conta_corrente: juntaDigito(document.getElementById('favorecido_conta').value, document.getElementById('favorecido_digito_conta').value) || ''
+    };
+    const r = await sbGlobal.from('parceiros').insert([payload]);
+    if (r.error) { toast('Erro ao cadastrar: ' + r.error.message, 'error'); return; }
+    toast('Favorecido cadastrado com sucesso!');
     document.getElementById('divCadastrarRapido').style.display = 'none';
     carregarCombosEParceiros();
 }
 
-async function salvarTransferencia(){
+/* ---------- salvar ---------- */
+async function salvarTransferencia() {
+    if (salvando) return;
     const id = document.getElementById('editId').value;
     const conta_origem = document.getElementById('conta_origem').value.trim();
     const conta_destino = document.getElementById('conta_destino').value.trim();
-    const valor = parseValorBR(document.getElementById('valor').value);
+    const valor = arred(parseValorBR(document.getElementById('valor').value));
     const dataBase = document.getElementById('data').value;
     const centro_custo = document.getElementById('centro_custo').value;
     const recorrente = document.getElementById('recorrente').value;
     const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
-    const cid = clienteIdAtual();
+    const favNome = document.getElementById('favorecido_nome').value.trim();
+    const cid = obterClienteIdSeguro();
 
-    if(!conta_origem || !valor || !dataBase || !centro_custo || (!conta_destino && !document.getElementById('favorecido_nome').value)){
-        toast("Preencha os campos obrigatórios!", "error"); return;
-    }
+    if (!conta_origem) { toast('Informe a conta de origem.', 'error'); return; }
+    if (!(valor > 0)) { toast('Informe um valor maior que zero.', 'error'); return; }
+    if (!dataValida(dataBase)) { toast('Informe uma data válida.', 'error'); return; }
+    if (!centro_custo) { toast('Selecione o centro de custo.', 'error'); return; }
+    if (!conta_destino && !favNome) { toast('Informe a conta de destino ou o nome do favorecido.', 'error'); return; }
+    if (conta_destino && norm(conta_destino) === norm(conta_origem)) { toast('A conta de origem e a de destino não podem ser a mesma.', 'error'); return; }
+    if (!id && recorrente === 'Sim' && (numParcelas < 2 || numParcelas > 120)) { toast('Para recorrência informe de 2 a 120 meses.', 'error'); return; }
 
-    let dadosBase = {
+    const dadosBase = {
         cliente_id: cid,
-        conta_origem, conta_destino, valor, centro_custo,
-        favorecido_nome: document.getElementById('favorecido_nome').value.trim() || null,
+        conta_origem: conta_origem, conta_destino: conta_destino || null, valor: valor, centro_custo: centro_custo,
+        favorecido_nome: favNome || null,
         favorecido_documento: document.getElementById('favorecido_documento').value.trim() || null,
         favorecido_banco: document.getElementById('favorecido_banco').value.trim() || null,
-        favorecido_agencia: document.getElementById('favorecido_agencia').value.trim() || null,
-        favorecido_conta: document.getElementById('favorecido_conta').value.trim() || null,
+        favorecido_agencia: juntaDigito(document.getElementById('favorecido_agencia').value, document.getElementById('favorecido_digito_agencia').value),
+        favorecido_conta: juntaDigito(document.getElementById('favorecido_conta').value, document.getElementById('favorecido_digito_conta').value),
         observacao: document.getElementById('observacao').value.trim() || null
     };
 
-    if(id){
-        let payload = { ...dadosBase, data: dataBase };
-        let r = await sb.from('transferencias').update(payload).eq('id', id).eq('cliente_id', cid);
-        if(r.error){ toast("Erro ao atualizar: "+r.error.message, "error"); return; }
-        toast("Movimentação atualizada com sucesso!");
-    } else {
-        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
-        let [ano, mes, dia] = dataBase.split('-').map(Number);
-        
-        let batch = [];
-        for(let i = 0; i < qtdGerar; i++) {
-            let targetMes = (mes - 1) + i;
-            let targetAno = ano + Math.floor(targetMes / 12);
-            let realMes = (targetMes % 12 + 1);
-            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-            let realDia = Math.min(dia, ultimoDiaMes);
-            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
-            
-            let obsOriginal = dadosBase.observacao || '';
-            let obsParcela = (qtdGerar > 1) ? `${obsOriginal} (${i + 1}/${qtdGerar})`.trim() : obsOriginal;
+    // aviso de possível lançamento repetido
+    const chaveDest = norm(conta_destino || favNome);
+    const repetido = transferenciasCache.find(t => String(t.id) !== String(id) && t.data === dataBase && arred(t.valor) === valor &&
+        norm(t.conta_origem) === norm(conta_origem) && norm(t.conta_destino || t.favorecido_nome) === chaveDest);
+    if (repetido && !confirm('Já existe um lançamento igual (' + codigoDe(repetido) + ': mesma data, valor, origem e destino).\n\nDeseja lançar mesmo assim?')) return;
 
-            batch.push({
-                ...dadosBase,
-                data: dataIso,
-                observacao: obsParcela
-            });
+    salvando = true;
+    const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+    try {
+        if (id) {
+            const r = await sbGlobal.from('transferencias').update({ ...dadosBase, data: dataBase }).eq('id', id).eq('cliente_id', cid);
+            if (r.error) { toast('Erro ao atualizar: ' + r.error.message, 'error'); return; }
+            toast('Movimentação atualizada com sucesso!');
+        } else {
+            const qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+            const p = dataBase.split('-').map(Number);
+            const batch = [];
+            for (let i = 0; i < qtdGerar; i++) {
+                const targetMes = (p[1] - 1) + i;
+                const targetAno = p[0] + Math.floor(targetMes / 12);
+                const realMes = (targetMes % 12) + 1;
+                const ultimoDia = new Date(targetAno, realMes, 0).getDate();
+                const realDia = Math.min(p[2], ultimoDia);
+                const dataIso = targetAno + '-' + String(realMes).padStart(2, '0') + '-' + String(realDia).padStart(2, '0');
+                const obsOriginal = dadosBase.observacao || '';
+                const obsParcela = (qtdGerar > 1) ? (obsOriginal + ' (' + (i + 1) + '/' + qtdGerar + ')').trim() : (obsOriginal || null);
+                batch.push({ ...dadosBase, data: dataIso, observacao: obsParcela });
+            }
+            const r = await sbGlobal.from('transferencias').insert(batch);
+            if (r.error) { toast('Erro ao salvar: ' + r.error.message, 'error'); return; }
+            toast(qtdGerar > 1 ? qtdGerar + ' movimentações recorrentes geradas!' : 'Movimentação efetuada com sucesso!');
         }
-
-        let r = await sb.from('transferencias').insert(batch);
-        if(r.error){ toast("Erro ao salvar parcelas: "+r.error.message, "error"); return; }
-        toast(qtdGerar > 1 ? `${qtdGerar} movimentações recorrentes geradas!` : "Movimentação efetuada com sucesso!");
+        limparForm();
+        await carregarTransferencias();
+    } finally {
+        salvando = false; btn.disabled = false;
     }
-
-    limparForm();
-    carregarTransferencias();
 }
 
-async function carregarTransferencias(){
-    const cid = clienteIdAtual();
-    const r = await sb.from('transferencias').select('*').eq('cliente_id', cid).order('data', {ascending:false});
-    if(r.error){ document.getElementById('listaTransferencias').innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Erro ao carregar.</div>'; return; }
-    
-    let rawData = r.data || [];
-
-    // MOTOR ANTI-DUPLICIDADE RIGOROSO
-    let mapaUnico = new Map();
-    rawData.forEach(item => {
-        let chave = `${item.data}_${item.valor}_${(item.conta_origem||'').trim().toLowerCase()}_${(item.observacao||'').trim().toLowerCase()}_${(item.favorecido_nome||'').trim().toLowerCase()}`;
-        if (!mapaUnico.has(chave)) {
-            mapaUnico.set(chave, item);
-        }
-    });
-
-    transferenciasCache = Array.from(mapaUnico.values());
-    renderTabelaHistorico(transferenciasCache);
+/* ---------- listagem ---------- */
+function chaveDup(t) {
+    return [t.data, arred(t.valor), norm(t.conta_origem), norm(t.conta_destino), norm(t.observacao), norm(t.favorecido_nome)].join('|');
 }
 
-function renderTabelaHistorico(lista){
-    const el = document.getElementById('listaTransferencias');
-    if(!lista.length){ el.innerHTML='<div class="empty-state" style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
-
-    let html = '<table class="analitica-table"><thead>';
-    html += `<tr>
-        <th colspan="6" style="background: #fff !important; padding: 0 !important; border: none !important;">
-            <div class="print-corporative-header">
-                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">NanoSignals — Relatório de Transferências & Movimentações</h2>
-                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-            </div>
-        </th>
-    </tr>`;
-    html += '<tr><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;" class="col-acoes">Ações</th></tr></thead><tbody>';
-    
-    lista.forEach(t => {
-        let dest = t.conta_destino ? ' ➔ '+t.conta_destino : (t.favorecido_nome ? ' ➔ Fav.: '+t.favorecido_nome : '');
-        html += `<tr>
-            <td>${t.data ? t.data.split('-').reverse().join('/') : ''}</td>
-            <td><strong>${t.conta_origem}</strong>${dest}</td>
-            <td>${t.centro_custo || '—'}</td>
-            <td>${t.observacao || '—'}</td>
-            <td style="text-align:right; font-weight:bold;">R$ ${fmtBR(t.valor)}</td>
-            <td style="text-align:right; white-space:nowrap;" class="col-acoes">
-                <button class="btn-icon" onclick='prepararEdicao(${JSON.stringify(t)})' title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn-icon imprimir" onclick='imprimirComprovante(${JSON.stringify(t)})' title="Imprimir Comprovante"><i class="fas fa-print"></i></button>
-                <button class="btn-icon excluir" onclick='excluirMovimento(${t.id})' title="Excluir"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-
-    // Rodapé corporativo oficial com tarja bloqueadora opaca na base
-    html += `<div class="print-corporative-footer">
-        Sacramento ERP &middot; Documento gerado eletronicamente por fecoelho@gmail.com em ${new Date().toLocaleString('pt-BR')} &middot; Sistema de Gestão Empresarial
-    </div>`;
-
-    el.innerHTML = html;
+async function carregarTransferencias() {
+    const cid = obterClienteIdSeguro();
+    const r = await buscarTudo(() => sbGlobal.from('transferencias').select('*').eq('cliente_id', cid).order('data', { ascending: false }).order('id', { ascending: false }));
+    if (r.error) {
+        document.getElementById('listaTransferencias').innerHTML = '<div style="padding:20px; text-align:center; color:var(--danger)">Erro ao carregar: ' + esc(r.error.message) + '</div>';
+        return;
+    }
+    transferenciasCache = r.data || [];
+    aplicarFiltrosRelatorio();
 }
 
-function aplicarFiltrosRelatorio() {
-    const inicio = document.getElementById('filtroDataInicio').value;
-    const fim = document.getElementById('filtroDataFim').value;
-    const busca = document.getElementById('filtroBusca').value.toLowerCase();
+function lerFiltros() {
+    return {
+        inicio: document.getElementById('filtroDataInicio').value,
+        fim: document.getElementById('filtroDataFim').value,
+        busca: norm(document.getElementById('filtroBusca').value),
+        buscaOriginal: document.getElementById('filtroBusca').value.trim()
+    };
+}
 
-    const filtradas = transferenciasCache.filter(t => {
-        if (inicio && t.data < inicio) return false;
-        if (fim && t.data > fim) return false;
-        if (busca) {
-            const origem = (t.conta_origem || '').toLowerCase();
-            const destino = (t.conta_destino || '').toLowerCase();
-            const fav = (t.favorecido_nome || '').toLowerCase();
-            if (!origem.includes(busca) && !destino.includes(busca) && !fav.includes(busca)) return false;
+function listaFiltrada() {
+    const f = lerFiltros();
+    return transferenciasCache.filter(t => {
+        const d = String(t.data || '').substring(0, 10);
+        if (f.inicio && d < f.inicio) return false;
+        if (f.fim && d > f.fim) return false;
+        if (f.busca) {
+            const texto = norm([codigoDe(t), t.conta_origem, t.conta_destino, t.favorecido_nome, t.observacao, t.centro_custo].join(' '));
+            if (!texto.includes(f.busca)) return false;
         }
         return true;
     });
-
-    renderTabelaHistorico(filtradas);
 }
+
+function aplicarFiltrosRelatorio() { renderTabelaHistorico(listaFiltrada()); }
+
+function destinoTexto(t) { return t.conta_destino ? t.conta_destino : (t.favorecido_nome ? 'Fav.: ' + t.favorecido_nome : '—'); }
+
+function renderTabelaHistorico(lista) {
+    const el = document.getElementById('listaTransferencias');
+    const resumo = document.getElementById('resumoLista');
+    const total = lista.reduce((s, t) => s + (Number(t.valor) || 0), 0);
+    if (resumo) resumo.innerHTML = '<span>Movimentações: <b>' + lista.length + '</b></span><span>Valor total: <b>R$ ' + fmtBR(total) + '</b></span>';
+    if (!lista.length) { el.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-light)">Nenhuma movimentação encontrada.</div>'; return; }
+
+    const cont = {};
+    transferenciasCache.forEach(t => { const k = chaveDup(t); cont[k] = (cont[k] || 0) + 1; });
+
+    let html = '<table class="analitica-table"><thead><tr><th>Código</th><th>Data</th><th>Origem ➔ Destino / Favorecido</th><th>Centro de Custo</th><th>Observação</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    lista.forEach(t => {
+        const dup = cont[chaveDup(t)] > 1 ? '<span class="badge-dup" title="Existe outro lançamento idêntico (mesma data, valor, origem, destino e observação). Confira se não foi lançado em duplicidade.">⚠ repetido</span>' : '';
+        html += '<tr>' +
+            '<td class="codigo-tr">' + esc(codigoDe(t)) + '</td>' +
+            '<td>' + esc(fmtData(t.data)) + '</td>' +
+            '<td><strong>' + esc(t.conta_origem) + '</strong> ➔ ' + esc(destinoTexto(t)) + dup + '</td>' +
+            '<td>' + esc(t.centro_custo || '—') + '</td>' +
+            '<td>' + esc(t.observacao || '—') + '</td>' +
+            '<td style="text-align:right; font-weight:bold;">R$ ' + fmtBR(t.valor) + '</td>' +
+            '<td style="text-align:right; white-space:nowrap;">' +
+                '<button type="button" class="btn-icon" data-acao="editar" data-id="' + esc(t.id) + '" title="Editar"><i class="fas fa-edit"></i></button>' +
+                '<button type="button" class="btn-icon imprimir" data-acao="comprovante" data-id="' + esc(t.id) + '" title="Imprimir Comprovante"><i class="fas fa-print"></i></button>' +
+                '<button type="button" class="btn-icon excluir" data-acao="excluir" data-id="' + esc(t.id) + '" title="Excluir"><i class="fas fa-trash"></i></button>' +
+            '</td></tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+document.addEventListener('click', function (ev) {
+    const b = ev.target.closest('button[data-acao]');
+    if (!b) return;
+    const t = transferenciasCache.find(x => String(x.id) === String(b.getAttribute('data-id')));
+    if (!t) return;
+    const a = b.getAttribute('data-acao');
+    if (a === 'editar') prepararEdicao(t);
+    else if (a === 'comprovante') imprimirComprovante(t);
+    else if (a === 'excluir') excluirMovimento(t);
+});
 
 function limparFiltrosRelatorio() {
     document.getElementById('filtroDataInicio').value = '';
     document.getElementById('filtroDataFim').value = '';
     document.getElementById('filtroBusca').value = '';
-    renderTabelaHistorico(transferenciasCache);
+    aplicarFiltrosRelatorio();
 }
 
-async function executarImpressao() {
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    window.print();
+/* ---------- impressão padronizada ---------- */
+function executarImpressao() {
+    if (!window.ERPPrint) { toast('Módulo de impressão não carregado. Atualize a página (Ctrl+F5).', 'error'); return; }
+    const lista = listaFiltrada().slice().sort((a, b) => String(a.data).localeCompare(String(b.data)) || (a.id - b.id));
+    const f = lerFiltros();
+    const filtros = [];
+    if (f.inicio || f.fim) filtros.push(['Período', (f.inicio ? fmtData(f.inicio) : 'início') + ' a ' + (f.fim ? fmtData(f.fim) : 'hoje')]);
+    if (f.buscaOriginal) filtros.push(['Busca', '“' + f.buscaOriginal + '”']);
+    const total = lista.reduce((s, t) => s + (Number(t.valor) || 0), 0);
+    const maior = lista.reduce((m, t) => Math.max(m, Number(t.valor) || 0), 0);
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Transferências e Movimentações',
+        subtitulo: 'Movimentações ordenadas por data',
+        codigo: 'FIN-TR',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [['Movimentações', String(lista.length)], ['Valor total', ERPPrint.fmtBRL(total)], ['Maior movimentação', ERPPrint.fmtBRL(maior)]],
+        colunas: [
+            { t: 'Código', w: 1 }, { t: 'Data', w: 1.1 }, { t: 'Origem', w: 2.2 }, { t: 'Destino / Favorecido', w: 2.6 },
+            { t: 'Centro de custo', w: 1.8 }, { t: 'Observação', w: 2.6 }, { t: 'Valor (R$)', w: 1.3, a: 'right' }
+        ],
+        linhas: lista.map(t => [codigoDe(t), fmtData(t.data), t.conta_origem, destinoTexto(t), t.centro_custo, t.observacao, { t: ERPPrint.fmtBRL(t.valor), cls: 'bold' }]),
+        totais: lista.length ? ['TOTAL', '', '', '', '', '', ERPPrint.fmtBRL(total)] : null,
+        observacao: 'Valores em reais. Transferências entre contas próprias não representam receita ou despesa; aportes e empréstimos de sócios são classificados conforme a observação do lançamento.'
+    });
 }
 
-function prepararEdicao(t){
+function imprimirComprovante(t) {
+    if (!window.ERPPrint) { toast('Módulo de impressão não carregado. Atualize a página (Ctrl+F5).', 'error'); return; }
+    const linhas = [
+        ['Código', codigoDe(t)],
+        ['Data', fmtData(t.data)],
+        ['Conta de origem', t.conta_origem],
+        ['Conta de destino', t.conta_destino || '—'],
+        ['Favorecido', t.favorecido_nome || '—']
+    ];
+    if (t.favorecido_nome) {
+        linhas.push(['CPF / CNPJ', t.favorecido_documento || '—']);
+        linhas.push(['Banco / Agência / Conta', [t.favorecido_banco || '—', t.favorecido_agencia || '—', t.favorecido_conta || '—'].join('  |  ')]);
+    }
+    linhas.push(['Centro de custo', t.centro_custo || '—']);
+    linhas.push([{ t: 'Valor', cls: 'bold' }, { t: ERPPrint.fmtBRL(t.valor), cls: 'bold' }]);
+    linhas.push(['Observação', t.observacao || '—']);
+    ERPPrint.imprimir({
+        titulo: 'Comprovante de Transferência / Movimentação',
+        subtitulo: 'Documento ' + codigoDe(t),
+        codigo: 'FIN-TR-COMP',
+        orientacao: 'portrait',
+        filtros: [],
+        resumo: [['Código', codigoDe(t)], ['Data', fmtData(t.data)], ['Valor', ERPPrint.fmtBRL(t.valor)]],
+        colunas: [{ t: 'Campo', w: 1.2 }, { t: 'Informação', w: 3.2 }],
+        linhas: linhas,
+        assinaturas: ['Responsável pelo lançamento', 'Aprovação']
+    });
+}
+
+/* ---------- edição / exclusão ---------- */
+function prepararEdicao(t) {
     document.getElementById('editId').value = t.id;
     document.getElementById('conta_origem').value = t.conta_origem || '';
     document.getElementById('conta_destino').value = t.conta_destino || '';
     document.getElementById('valor').value = fmtBR(t.valor);
-    document.getElementById('data').value = t.data || '';
+    document.getElementById('data').value = String(t.data || '').substring(0, 10);
     document.getElementById('favorecido_nome').value = t.favorecido_nome || '';
     document.getElementById('favorecido_documento').value = t.favorecido_documento || '';
     document.getElementById('favorecido_banco').value = t.favorecido_banco || '';
-    document.getElementById('favorecido_agencia').value = t.favorecido_agencia || '';
-    document.getElementById('favorecido_conta').value = t.favorecido_conta || '';
+    const ag = divideDigito(t.favorecido_agencia), cc = divideDigito(t.favorecido_conta);
+    document.getElementById('favorecido_agencia').value = ag[0];
+    document.getElementById('favorecido_digito_agencia').value = ag[1];
+    document.getElementById('favorecido_conta').value = cc[0];
+    document.getElementById('favorecido_digito_conta').value = cc[1];
     document.getElementById('observacao').value = t.observacao || '';
-    document.getElementById('centro_custo').value = t.centro_custo || '';
-    
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit" style="color:var(--primary)"></i> Editando Movimentação #${t.id}`;
+    definirCentro(t.centro_custo || '');
+    document.getElementById('recorrente').value = 'Não';
+    toggleParcelas('Não');
+    document.getElementById('recorrente').disabled = true;
+    document.getElementById('status_favorecido').innerHTML = '';
+
+    document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary)"></i> Editando Movimentação ' + esc(codigoDe(t));
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Atualizar Movimentação';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    window.scrollTo({top:0, behavior:'smooth'});
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function limparForm(){
-    document.getElementById('editId').value='';
-    document.getElementById('conta_origem').value='';
-    document.getElementById('conta_destino').value='';
-    document.getElementById('valor').value='';
-    document.getElementById('observacao').value='';
-    document.getElementById('favorecido_nome').value='';
-    document.getElementById('favorecido_documento').value='';
-    document.getElementById('favorecido_banco').value='';
-    document.getElementById('favorecido_agencia').value='';
-    document.getElementById('favorecido_conta').value='';
-    document.getElementById('centro_custo').value='';
-    
+function limparForm() {
+    ['editId', 'conta_origem', 'conta_destino', 'valor', 'observacao', 'favorecido_nome', 'favorecido_documento', 'favorecido_banco',
+     'favorecido_agencia', 'favorecido_digito_agencia', 'favorecido_conta', 'favorecido_digito_conta'].forEach(i => { document.getElementById(i).value = ''; });
+    document.getElementById('centro_custo').value = '';
+    document.getElementById('data').value = hojeLocal();
+    document.getElementById('recorrente').disabled = false;
+    document.getElementById('recorrente').value = 'Não';
+    toggleParcelas('Não');
+    document.getElementById('status_favorecido').innerHTML = '';
+    document.getElementById('divCadastrarRapido').style.display = 'none';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Movimentação Financeira';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Efetuar Lançamento';
     document.getElementById('btnCancelar').style.display = 'none';
 }
 
-async function excluirMovimento(id){
-    if(!confirm("Tem certeza que deseja excluir esta movimentação?")) return;
-    const cid = clienteIdAtual();
-    const { error } = await sb.from('transferencias').delete().eq('id', id).eq('cliente_id', cid);
-    if(error){ toast("Erro ao excluir: "+error.message, "error"); return; }
-    toast("Movimentação excluída com sucesso!");
+async function excluirMovimento(t) {
+    if (!confirm('Excluir a movimentação ' + codigoDe(t) + '?\n\n' + fmtData(t.data) + ' — R$ ' + fmtBR(t.valor) + '\n' + t.conta_origem + ' ➔ ' + destinoTexto(t) + '\n\nEsta ação não pode ser desfeita e altera o Fluxo de Caixa.')) return;
+    const cid = obterClienteIdSeguro();
+    const r = await sbGlobal.from('transferencias').delete().eq('id', t.id).eq('cliente_id', cid);
+    if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
+    toast('Movimentação excluída com sucesso!');
     carregarTransferencias();
 }
 
-function imprimirComprovante(t){
-    var w = window.open('', '_blank');
-    w.document.write('<html><head><meta charset="UTF-8"><title>Comprovante de Movimentação</title>');
-    w.document.write('<style>body{font-family:Arial,sans-serif;padding:30px;color:#0f172a}h2{font-size:18px;margin-bottom:4px;color:#1e3a8a}.sub{color:#64748b;font-size:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #cbd5e1;padding:8px 12px;font-size:13px;text-align:left}th{background:#f8fafc;width:200px;color:#475569}</style></head><body>');
-    w.document.write('<h2>Comprovante de Transferência / Movimentação</h2>');
-    w.document.write('<div class="sub">Sacramento ERP Gestão Empresarial &middot; Emitido em ' + new Date().toLocaleDateString('pt-BR') + '</div>');
-    w.document.write('<table>');
-    w.document.write('<tr><th>Data</th><td>' + (t.data ? t.data.split('-').reverse().join('/') : '') + '</td></tr>');
-    w.document.write('<tr><th>Conta de Origem</th><td>' + t.conta_origem + '</td></tr>');
-    w.document.write('<tr><th>Conta de Destino / Favorecido</th><td>' + (t.conta_destino || t.favorecido_nome || '—') + '</td></tr>');
-    if(t.favorecido_nome){
-        w.document.write('<tr><th>Dados do Favorecido</th><td>CPF/CNPJ: '+(t.favorecido_documento||'—')+' | Banco: '+(t.favorecido_banco||'—')+' | Ag: '+(t.favorecido_agencia||'—')+' | CC: '+(t.favorecido_conta||'—')+'</td></tr>');
-    }
-    w.document.write('<tr><th>Centro de Custo</th><td>' + (t.centro_custo || '—') + '</td></tr>');
-    w.document.write('<tr><th>Valor</th><td><strong>R\$ ' + fmtBR(t.valor) + '</strong></td></tr>');
-    w.document.write('<tr><th>Observação</th><td>' + (t.observacao || '—') + '</td></tr>');
-    w.document.write('</table>');
-    w.document.write('<div style="margin-top:50px;border-top:1px solid #cbd5e1;width:260px;padding-top:6px;font-size:12px;color:#64748b">Assinatura do Responsável</div>');
-    w.document.write('</body></html>');
-    w.document.close();
-    w.focus();
-    setTimeout(function(){ w.print(); }, 300);
-}
-
-window.abrirModalCentroCusto = function(){
+/* ---------- centro de custo rápido ---------- */
+window.abrirModalCentroCusto = function () {
     document.getElementById('cc_nome').value = '';
     document.getElementById('modalNovoCentroCusto').style.display = 'flex';
+    setTimeout(function () { document.getElementById('cc_nome').focus(); }, 50);
 };
 
-window.salvarNovoCentroCusto = async function(){
+window.salvarNovoCentroCusto = async function () {
     const nome = document.getElementById('cc_nome').value.trim();
-    if(!nome){ toast("Informe o nome.", "error"); return; }
-    const cid = clienteIdAtual();
-    const { error } = await sb.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
-    if(error){ toast("Erro: "+error.message, "error"); return; }
+    if (!nome) { toast('Informe o nome.', 'error'); return; }
+    const cid = obterClienteIdSeguro();
+    const r = await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome: nome, descricao: nome, status: 'Ativo' }]);
+    if (r.error) { toast('Erro: ' + r.error.message, 'error'); return; }
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
-    toast("Centro de custo criado com sucesso!");
-    carregarCombosEParceiros();
+    toast('Centro de custo criado com sucesso!');
+    await carregarCentros(nome);
 };
 
 window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" class="tooltip" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
-<script src="erp-core.js"></script>
 </body>
 </html>
