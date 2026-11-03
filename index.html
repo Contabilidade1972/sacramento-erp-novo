@@ -167,7 +167,7 @@
         </div>
         <div style="padding:24px; display:flex; flex-direction:column; gap:18px;">
             <div>
-                <label style="font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Nova Senha</label>
+                <label style="font-size:10.5px; font-weight:800; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:6px;">Nova Senha (mínimo 10 caracteres, com letras e números)</label>
                 <input type="password" id="novaSenhaInput" placeholder="Digite a nova senha" style="width:100%; height:42px; padding:0 14px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px; outline:none; color:#0f172a;">
             </div>
             <div>
@@ -297,6 +297,7 @@
             </div>
         </a>
 
+        <div id="cardUsuariosContainer"></div>
         <div id="cardWhiteLabelContainer"></div>
         <div id="cardGestaoClientesContainer"></div>
     </div>
@@ -358,12 +359,13 @@
     function abrirModalSenha() { document.getElementById('modalAlterarSenha').style.display = 'flex'; }
     function fecharModalSenha() { document.getElementById('modalAlterarSenha').style.display = 'none'; }
 
+    /* Troca de senha pelo sistema de autenticação (a senha nunca mais é gravada em tabela) */
     async function salvarNovaSenha() {
         const novaSenha = document.getElementById('novaSenhaInput').value.trim();
         const confirmaSenha = document.getElementById('confirmaSenhaInput').value.trim();
 
-        if (!novaSenha || novaSenha.length < 6) {
-            alert("A nova senha deve ter pelo menos 6 caracteres.");
+        if (!novaSenha || novaSenha.length < 10 || !/[0-9]/.test(novaSenha) || !/[A-Za-z]/.test(novaSenha)) {
+            alert("A nova senha deve ter pelo menos 10 caracteres, com letras e números.");
             return;
         }
         if (novaSenha !== confirmaSenha) {
@@ -371,13 +373,13 @@
             return;
         }
 
-        const u = obterUsuarioAtual();
-        if (!u || !u.email) {
+        const { data: sessao } = await sb.auth.getSession();
+        if (!sessao || !sessao.session) {
             alert("Sessão expirada. Faça login novamente.");
             location.href = 'login.html';
             return;
         }
-        const { error } = await sb.from('usuarios').update({ senha: novaSenha }).eq('email', u.email);
+        const { error } = await sb.auth.updateUser({ password: novaSenha });
         if (error) {
             alert("Erro ao atualizar senha: " + error.message);
             return;
@@ -388,7 +390,7 @@
         document.getElementById('confirmaSenhaInput').value = '';
     }
 
-    /* ===== WHITE-LABEL CORRIGIDO: lê de configuracoes_sistema (fonte única, igual ao erp-core.js) ===== */
+    /* ===== WHITE-LABEL: lê de configuracoes_sistema (fonte única, igual ao erp-core.js) ===== */
     async function aplicarWhiteLabelLocal() {
         try {
             const u = obterUsuarioAtual();
@@ -487,6 +489,15 @@
         return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
 
+    /* Pergunta ao banco se quem está logado é administrador (ou Master) */
+    async function usuarioEhAdmin() {
+        try {
+            const r = await sb.rpc('app_meu_acesso');
+            if (r.error || !r.data || !r.data.length) return false;
+            return !!r.data[0].is_admin;
+        } catch (e) { return false; }
+    }
+
     async function inicializar() {
         const u = obterUsuarioAtual();
         if (u) {
@@ -494,6 +505,25 @@
             
             if (!ehMasterGlobal() && u.cliente_id) {
                 localStorage.setItem('empresaSelecionada', String(u.cliente_id));
+            }
+
+            /* Card "Utilizadores & Acessos": só aparece para administradores */
+            if (await usuarioEhAdmin()) {
+                const containerUsuarios = document.getElementById('cardUsuariosContainer');
+                if (containerUsuarios) {
+                    containerUsuarios.innerHTML = `
+                        <a href="usuarios.html" class="portal-card" style="border: 2px solid #0ea5e9;" onclick="transicionarPagina(event, 'usuarios.html')">
+                            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80');">
+                                <span class="card-badge-cat" style="color: #0ea5e9;">Administração</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title"><h3>Utilizadores & Acessos</h3></div>
+                                <div class="card-desc">Cadastre as pessoas da sua empresa e defina a quais módulos cada uma pode ter acesso.</div>
+                                <div class="card-footer"><span>Gerir Utilizadores</span> <i class="fas fa-arrow-right"></i></div>
+                            </div>
+                        </a>
+                    `;
+                }
             }
 
             const ehMaster = ehMasterGlobal() || ((u.perfil || '').toLowerCase().includes('master'));
@@ -580,8 +610,9 @@
         location.reload();
     }
 
-    function sair() {
+    async function sair() {
         if (confirm('Deseja realmente sair do sistema?')) { 
+            try { await sb.auth.signOut(); } catch(e) {}
             localStorage.removeItem('usuarioLogado'); 
             localStorage.removeItem('empresaSelecionada'); 
             location.href = 'login.html'; 
