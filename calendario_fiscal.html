@@ -200,6 +200,25 @@
   let contextoAtual = null;
   let filtroStatus = null;
   
+  function esc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  // Abre um protocolo guardado no espaço privado (aceita caminho novo ou link público antigo)
+  async function abrirProtocolo(valor) {
+    let path = String(valor || '');
+    const marca = '/object/public/protocolos/';
+    const i = path.indexOf(marca);
+    if (i >= 0) path = decodeURIComponent(path.slice(i + marca.length).split('?')[0]);
+    if (!path) return;
+    const janela = window.open('', '_blank'); // abre já, para o navegador não bloquear
+    const { data, error } = await sb.storage.from('protocolos').createSignedUrl(path, 120);
+    if (error || !data || !data.signedUrl) {
+      if (janela) janela.close();
+      alert('Não foi possível abrir o arquivo: ' + ((error && error.message) || 'sem permissão ou arquivo não encontrado.'));
+      return;
+    }
+    if (janela) janela.location.href = data.signedUrl; else location.href = data.signedUrl;
+  }
+
   function formatarData(d) { if(!d) return '—'; const p=String(d).split('-'); return p.length===3 ? p[2]+'-'+p[1]+'-'+p[0] : d; }
   function formatarDataHora(d) { if(!d) return '—'; const dt=new Date(d); return dt.toLocaleDateString('pt-BR')+' '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
 
@@ -207,6 +226,7 @@
       if (confirm('Deseja realmente sair do sistema?')) { 
           localStorage.removeItem('usuarioLogado'); 
           localStorage.removeItem('empresaSelecionada'); 
+          localStorage.removeItem('contadorCtx');
           location.href = 'login.html'; 
       }
   }
@@ -404,8 +424,8 @@
     if (!lista || lista.length === 0) { el.innerHTML = '<div class="item">Sem transmissões</div>'; return; }
     el.innerHTML = lista.map(t =>
       '<div class="item">' + formatarDataHora(t.data_transmissao) + ' · ' + (ROTULOS_STATUS[t.status] || t.status) +
-      (t.protocolo_numero ? ' · Nº ' + t.protocolo_numero : '') +
-      (t.arquivo_url ? ' · <a href="' + t.arquivo_url + '" target="_blank">Ver</a>' : '') +
+      (t.protocolo_numero ? ' · Nº ' + esc(t.protocolo_numero) : '') +
+      (t.arquivo_url ? ' · <a href="#" onclick="abrirProtocolo(this.dataset.p); return false;" data-p="' + esc(t.arquivo_url) + '">Ver</a>' : '') +
       '</div>').join('');
   }
 
@@ -431,11 +451,13 @@
     const responsavel = (obterUsuario() && (obterUsuario().nome || obterUsuario().email)) || 'Utilizador';
     let arquivoUrl = null, arquivoNome = null;
     if (arquivo) {
-      const path = contextoAtual.clienteId + '/' + contextoAtual.competencia + '/' + Date.now() + '_' + arquivo.name;
+      if (arquivo.size > 20 * 1024 * 1024) { alert('Arquivo muito grande (máximo 20 MB).'); return; }
+      const nomeSeguro = arquivo.name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').slice(-80);
+      const path = contextoAtual.clienteId + '/' + contextoAtual.competencia + '/' + Date.now() + '_' + nomeSeguro;
       const { error: upErr } = await sb.storage.from('protocolos').upload(path, arquivo);
       if (upErr) { alert('Erro ao enviar arquivo: ' + upErr.message); return; }
-      const { data: pub } = sb.storage.from('protocolos').getPublicUrl(path);
-      arquivoUrl = pub.publicUrl; arquivoNome = arquivo.name;
+      // O espaço "protocolos" é privado: guardamos só o CAMINHO; o link é gerado na hora de abrir.
+      arquivoUrl = path; arquivoNome = arquivo.name;
     }
     const { error } = await sb.from('transmissoes_obrigacoes').insert({
       cliente_id: contextoAtual.clienteId, competencia: contextoAtual.competencia,
