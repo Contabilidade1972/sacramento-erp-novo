@@ -47,8 +47,7 @@
             font-size: 14px; background: #f8fafc; color: var(--text-main); outline: none; transition: 0.2s;
         }
         .input-box input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-        
-        /* ESTILO DO BOTÃO OLHINHO DE SENHA */
+
         .btn-toggle-password {
             position: absolute; right: 14px; background: none; border: none; cursor: pointer; color: var(--text-light); font-size: 15px; display: flex; align-items: center; justify-content: center;
         }
@@ -60,6 +59,7 @@
             box-shadow: 0 4px 12px rgba(37,99,235,0.3); display: flex; align-items: center; justify-content: center; gap: 8px;
         }
         .btn-entrar:hover { background: var(--primary-dark); }
+        .btn-entrar:disabled { opacity: 0.6; cursor: not-allowed; }
 
         .login-footer { text-align: center; font-size: 11px; color: var(--text-light); margin-top: 8px; }
         .erro-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; display: none; }
@@ -91,7 +91,6 @@
             <label>Palavra-passe</label>
             <div class="input-box">
                 <i class="fas fa-lock"></i>
-                <!-- CAMPO DE SENHA COM SUPORTE AO OLHINHO -->
                 <input type="password" id="senha" required placeholder="••••••••">
                 <button type="button" class="btn-toggle-password" onclick="alternarVisibilidadeSenha()" title="Mostrar/Ocultar Senha">
                     <i class="fas fa-eye" id="iconeOlhoSenha"></i>
@@ -99,7 +98,7 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-entrar"><i class="fas fa-sign-in-alt"></i> Entrar no Sistema</button>
+        <button type="submit" id="btnEntrar" class="btn-entrar"><i class="fas fa-sign-in-alt"></i> Entrar no Sistema</button>
     </form>
 
     <div class="login-footer">
@@ -109,9 +108,7 @@
 
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER = 'lucianojorgesacramento@gmail.com';
 
-    // FUNÇÃO PARA MOSTRAR / OCULTAR A SENHA (OLHINHO)
     function alternarVisibilidadeSenha() {
         const inputSenha = document.getElementById('senha');
         const iconeOlho = document.getElementById('iconeOlhoSenha');
@@ -124,58 +121,68 @@
         }
     }
 
-    async function realizarLogin(event) {
-        event.preventDefault();
-        const email = document.getElementById('email').value.trim().toLowerCase();
-        const senha = document.getElementById('senha').value.trim();
-        const erroBox = document.getElementById('erroBox');
-        erroBox.style.display = 'none';
-
-        if (email === EMAIL_MASTER.toLowerCase() && senha === 'master2026') {
-            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: 'Desenvolvedor Master', email: email, cliente_id: 1, perfil: 'master' }));
-            localStorage.setItem('empresaSelecionada', '1');
-            location.href = 'index.html';
-            return;
-        }
-
-        try {
-            const { data, error } = await sb.auth.signInWithPassword({
-                email: email,
-                password: senha
-            });
-
-            if (error || !data.user) {
-                mostrarErro('E-mail ou palavra-passe incorretos. Acesso negado.');
-                return;
-            }
-
-            let clienteId = 2;
-            const { data: perfilUser } = await sb.from('usuarios').select('cliente_id').eq('email', email).maybeSingle();
-            if (perfilUser && perfilUser.cliente_id) {
-                clienteId = parseInt(perfilUser.cliente_id);
-            } else if (email.includes('fecoelho')) {
-                clienteId = 2;
-            } else if (email === EMAIL_MASTER.toLowerCase()) {
-                clienteId = 1;
-            }
-
-            localStorage.setItem('usuarioLogado', JSON.stringify({ nome: data.user.email, email: data.user.email, cliente_id: clienteId }));
-            localStorage.setItem('empresaSelecionada', String(clienteId));
-
-            location.href = 'index.html';
-        } catch (err) {
-            mostrarErro('Erro de autenticação: ' + err.message);
-        }
-    }
-
     function mostrarErro(msg) {
         const erroBox = document.getElementById('erroBox');
         erroBox.innerText = msg;
         erroBox.style.display = 'block';
     }
+
+    async function realizarLogin(event) {
+        event.preventDefault();
+        const btn = document.getElementById('btnEntrar');
+        const email = document.getElementById('email').value.trim().toLowerCase();
+        const senha = document.getElementById('senha').value;
+        document.getElementById('erroBox').style.display = 'none';
+
+        btn.disabled = true;
+        try {
+            // 1) Login real no Supabase Auth (vale para TODOS, inclusive o Master)
+            const { data, error } = await sb.auth.signInWithPassword({ email: email, password: senha });
+            if (error || !data || !data.user) {
+                mostrarErro('E-mail ou palavra-passe incorretos. Acesso negado.');
+                btn.disabled = false;
+                return;
+            }
+
+            // 2) Descobre a empresa do utilizador pelo vínculo oficial
+            const { data: vinculo, error: erroVinculo } = await sb
+                .from('usuario_empresa')
+                .select('cliente_id, is_master, perfil')
+                .eq('user_id', data.user.id)
+                .maybeSingle();
+
+            if (erroVinculo || !vinculo) {
+                await sb.auth.signOut();
+                mostrarErro('Utilizador sem empresa vinculada. Contacte o administrador.');
+                btn.disabled = false;
+                return;
+            }
+
+            // 3) Master começa na empresa 1; os demais ficam na própria empresa
+            const clienteId = vinculo.is_master ? 1 : vinculo.cliente_id;
+            if (!clienteId) {
+                await sb.auth.signOut();
+                mostrarErro('Utilizador sem empresa vinculada. Contacte o administrador.');
+                btn.disabled = false;
+                return;
+            }
+
+            localStorage.setItem('usuarioLogado', JSON.stringify({
+                nome: data.user.email,
+                email: data.user.email,
+                cliente_id: clienteId,
+                perfil: vinculo.is_master ? 'master' : (vinculo.perfil || 'Administrador')
+            }));
+            localStorage.setItem('empresaSelecionada', String(clienteId));
+
+            location.href = 'index.html';
+        } catch (err) {
+            mostrarErro('Erro de autenticação: ' + err.message);
+            btn.disabled = false;
+        }
+    }
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
