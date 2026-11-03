@@ -202,7 +202,7 @@
 <div class="modal-overlay" id="modalFiscal">
     <div class="modal-card" style="max-width: 850px; max-height: 90vh;">
         <div class="modal-header">
-            <h3><i class="fas fa-file-invoice"></i> Gerar Pré-nota e Classificação Contábil</h3>
+            <h3><i class="fas fa-file-invoice"></i> Pré-nota: Visualizar Espelho ou Gerar e Lançar</h3>
             <button class="modal-close" onclick="document.getElementById('modalFiscal').style.display='none'"><i class="fas fa-times"></i></button>
         </div>
         <input type="hidden" id="fatura_id_atual">
@@ -210,7 +210,7 @@
         <div style="padding: 20px; overflow-y: auto;">
             <div class="aviso-fiscal" style="margin-bottom:16px;">
                 <i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i>
-                <div><strong>Pré-nota: documento sem valor fiscal.</strong> Esta ação organiza a fatura, lança a receita no Contas a Receber e gera um espelho para conferência. A nota fiscal oficial (NFS-e Nacional ou NF-e) deve ser emitida no emissor oficial ou por um provedor autorizado.</div>
+                <div><strong>Pré-nota em modelo de homologação: sem valor fiscal.</strong> <u>Visualizar espelho</u> só mostra o documento, sem gravar nada. <u>Gerar e lançar</u> grava a pré-nota e lança a receita no Contas a Receber. A nota oficial (NFS-e Nacional ou NF-e) é emitida no emissor oficial ou por provedor autorizado.</div>
             </div>
             <div style="background:#f0fdf4; border:1px solid #16a34a; border-radius:8px; padding:10px; margin-bottom:16px; font-size:12px; color:#166534; display:flex; justify-content:space-between; align-items:center;">
                 <strong><i class="fas fa-calculator"></i> Base de Cálculo (Valor Líquido):</strong>
@@ -250,8 +250,36 @@
                     </select>
                 </div>
             </div>
-            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-                <button class="btn btn-primary" id="btnGerarPreNota" onclick="gerarPreNota()"><i class="fas fa-file-circle-check"></i> Gerar Pré-nota e lançar no Contas a Receber</button>
+            <h4 style="font-size:12px; margin:16px 0 8px; color:var(--secondary); text-transform:uppercase;">3. Dados tributários e complementares (para o espelho)</h4>
+            <div class="form-grid">
+                <div style="grid-column: span 2;">
+                    <label>Natureza da operação / Descrição do serviço (LC 116)</label>
+                    <input type="text" id="nat_op" class="form-control" placeholder="Ex.: Prestação de serviços de pesquisa e desenvolvimento">
+                </div>
+                <div>
+                    <label>Código de tributação (nacional / municipal / item LC 116)</label>
+                    <input type="text" id="cod_trib" class="form-control" placeholder="Ex.: 17.01 / 1.01">
+                </div>
+                <div>
+                    <label>Alíquota ISS ou ICMS (%)</label>
+                    <input type="number" step="0.01" min="0" id="aliq_imp" class="form-control" placeholder="Em branco = não calcular">
+                </div>
+                <div>
+                    <label>Imposto retido pelo tomador?</label>
+                    <select id="imp_retido" class="form-control"><option value="Não">Não</option><option value="Sim">Sim</option></select>
+                </div>
+                <div>
+                    <label>Destacar IBS/CBS (ano-teste 2026)</label>
+                    <select id="ibscbs" class="form-control"><option value="Não">Não</option><option value="Sim">Sim (CBS 0,9% e IBS 0,1%, informativo)</option></select>
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Informações complementares</label>
+                    <textarea id="obs_nota" class="form-control" rows="2" placeholder="Ex.: Dados do contrato, observações ao tomador"></textarea>
+                </div>
+            </div>
+            <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                <button class="btn btn-outline" style="border:1.5px solid var(--primary); color:var(--primary);" onclick="visualizarEspelho()"><i class="fas fa-eye"></i> Visualizar espelho (não grava)</button>
+                <button class="btn btn-primary" id="btnGerarPreNota" onclick="gerarPreNota()"><i class="fas fa-file-circle-check"></i> Gerar e lançar no Contas a Receber</button>
             </div>
         </div>
     </div>
@@ -261,7 +289,7 @@
 <div class="modal-overlay" id="modalDanfe">
     <div class="modal-card">
         <div class="modal-header">
-            <h3><i class="fas fa-file-invoice" style="color:#60a5fa;"></i> Espelho da Pré-nota (sem valor fiscal)</h3>
+            <h3><i class="fas fa-file-invoice" style="color:#60a5fa;"></i> Espelho da Nota Fiscal (homologação, sem valor fiscal)</h3>
             <div style="display:flex; gap:10px;">
                 <button class="btn btn-success" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Documento</button>
                 <button class="modal-close" onclick="document.getElementById('modalDanfe').style.display='none'"><i class="fas fa-times"></i></button>
@@ -571,6 +599,10 @@ function sugerirCFOP() {
 }
 
 window.abrirComplementoFiscal = function(id, valorBase) {
+    ['nat_op','cod_trib','aliq_imp','obs_nota'].forEach(k => { const el = document.getElementById(k); if (el) el.value = ''; });
+    document.getElementById('imp_retido').value = 'Não'; document.getElementById('ibscbs').value = 'Não';
+    const fAtual = faturasCache.find(x => x.id == id);
+    if (fAtual && fAtual.descricao) document.getElementById('nat_op').value = fAtual.descricao.split('|')[0].trim();
     document.getElementById('fatura_id_atual').value = id;
     document.getElementById('base_calculo_atual').value = valorBase;
     document.getElementById('display_base_calculo').innerText = `R$ ${Number(valorBase).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
@@ -598,7 +630,7 @@ window.gerarPreNota = async function() {
         let payload = {
             status: 'Pré-nota gerada',
             tipo_operacao: tipo,
-            descricao: baseDesc + ' | Pré-nota (sem valor fiscal)',
+            descricao: baseDesc + ' | Pré-nota (sem valor fiscal)' + metaParaTexto(lerMetaForm(contaContabil)),
             updated_at: new Date().toISOString()
         };
         let upd = sb.from('faturas').update(payload).eq('id', id);
@@ -741,108 +773,151 @@ window.imprimirFaturaComercial = function(id) {
     document.getElementById('modalFaturaComercial').style.display = 'flex';
 }
 
+// ---- metadados fiscais da pré-nota: guardados como trechos "CHAVE:valor" depois do " | " na descrição
+function limpaMeta(v) { return String(v == null ? '' : v).replace(/\|/g, '/').replace(/\s+/g, ' ').trim(); }
+function lerMetaForm(contaContabil) {
+    const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+    return {
+        CFOP: g('cfop'), CLASS: g('classificacao_fiscal'), DEST: g('destino_op'), NAT: g('nat_op'), COD: g('cod_trib'),
+        ALIQ: g('aliq_imp'), RET: g('imp_retido'), IBS: g('ibscbs'), OBS: g('obs_nota'), CONTA: contaContabil || g('modal_conta_contabil')
+    };
+}
+function metaParaTexto(m) {
+    return Object.keys(m).filter(k => m[k] !== '' && m[k] != null).map(k => ' | ' + k + ':' + limpaMeta(m[k])).join('');
+}
+function lerMetaFatura(f) {
+    const m = {};
+    String(f.descricao || '').split('|').slice(1).forEach(p => {
+        const i = p.indexOf(':');
+        if (i > 0) { const k = p.slice(0, i).trim(); if (/^[A-Z]+$/.test(k)) m[k] = p.slice(i + 1).trim(); }
+    });
+    return m;
+}
+function brl(n) { return Number(n || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function cel(label, val, cols, extra) {
+    return `<td colspan="${cols || 1}" ${extra ? 'style="' + extra + '"' : ''}><span class="df-label">${label}</span><span class="df-val">${val === '' || val == null ? '—' : val}</span></td>`;
+}
+function titulo(txt) { return `<tr><td colspan="4" class="df-title">${txt}</td></tr>`; }
+
+window.visualizarEspelho = function() {
+    const id = document.getElementById('fatura_id_atual').value;
+    const f = faturasCache.find(x => x.id == id);
+    if (!f) { toast("Fatura não encontrada. Atualize a página.", "error"); return; }
+    const m = lerMetaForm('');
+    renderEspelho(f, m, document.getElementById('tipo_doc').value, true);
+};
+
 window.verPreNota = function(id) {
-    let f = faturasCache.find(x => x.id == id);
-    if(!f) return;
-    let parc = buscarDadosParceiro(f);
-    let em = dadosEmitente();
-    let descPura = f.descricao ? f.descricao.split('|')[0] : '';
-    let dataEmissao = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
-    let dataGeracao = f.updated_at ? f.updated_at.split('T')[0].split('-').reverse().join('/') : dataEmissao;
-    let valorFmt = Number(f.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-    let tipoPrev = f.tipo_operacao === 'NF-e' ? 'NF-e (produtos)' : (f.tipo_operacao === 'NFS-e' ? 'NFS-e (serviços)' : '—');
-    let logoHtmlDanfe = logoUniversalBase64 ? `<img src="${esc(logoUniversalBase64)}" style="width:36px; height:36px; object-fit:contain; border-radius:4px; background:#fff;">` : `<i class="fas fa-dna" style="font-size:20px; color:var(--secondary);"></i>`;
-    let htmlDanfe = `
+    const f = faturasCache.find(x => x.id == id);
+    if (!f) return;
+    renderEspelho(f, lerMetaFatura(f), f.tipo_operacao || 'NFS-e', false);
+};
+
+function renderEspelho(f, m, tipoDoc, previa) {
+    const parc = buscarDadosParceiro(f);
+    const em = dadosEmitente();
+    const d = empresaDados || {};
+    const ehNFe = tipoDoc === 'NF-e';
+    const valor = Number(f.valor || 0);
+    const descPura = f.descricao ? f.descricao.split('|')[0].trim() : '';
+    const dataFatura = f.created_at ? f.created_at.split('T')[0].split('-').reverse().join('/') : new Date().toLocaleDateString('pt-BR');
+    const dataGeracao = previa ? new Date().toLocaleDateString('pt-BR') : (f.updated_at ? f.updated_at.split('T')[0].split('-').reverse().join('/') : dataFatura);
+    const competencia = dataGeracao.slice(3);
+    const aliq = m.ALIQ !== undefined && m.ALIQ !== '' ? Number(String(m.ALIQ).replace(',', '.')) : null;
+    const imposto = aliq !== null && !isNaN(aliq) ? valor * aliq / 100 : null;
+    const retido = m.RET === 'Sim';
+    const ibsOn = m.IBS === 'Sim';
+    const cbs = ibsOn ? valor * 0.009 : null, ibs = ibsOn ? valor * 0.001 : null;
+    const nomeImp = ehNFe ? 'ICMS' : 'ISSQN';
+    const regime = d.regime_tributario || d.regime || d.enquadramento || '';
+    const logo = logoUniversalBase64 ? `<img src="${esc(logoUniversalBase64)}" style="width:36px; height:36px; object-fit:contain; border-radius:4px; background:#fff;">` : `<i class="fas fa-dna" style="font-size:20px; color:var(--secondary);"></i>`;
+    const marca = previa ? 'ESPELHO - HOMOLOGAÇÃO' : 'SEM VALOR FISCAL';
+    const faixa = `AMBIENTE DE HOMOLOGAÇÃO — SEM VALOR FISCAL${previa ? ' — PRÉVIA (NÃO GRAVADA)' : ''}`;
+    const numero = String(f.id).padStart(9, '0');
+    const x = v => esc(v);
+
+    const cab = `
+        <tr><td colspan="4" style="background:#fee2e2; color:#991b1b; text-align:center; font-weight:bold; font-size:9px; padding:4px;">${faixa}</td></tr>
+        <tr><td colspan="4" style="padding:0;">
+            <table style="width:100%; border-collapse:collapse;"><tr>
+                <td style="width:38%; padding:6px; text-align:center; border-right:1px solid var(--text-main);">
+                    <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:4px;">${logo}<strong style="font-size:10.5px;">${x(em.nome)}</strong></div>
+                    <span style="font-size:7.5px;">${x([em.endereco, em.cidadeUf, em.cep ? 'CEP ' + em.cep : ''].filter(Boolean).join(' — '))}<br>CNPJ: ${x(em.cnpj)}${em.im ? ' | IM: ' + x(em.im) : ''}${d.inscricao_estadual ? ' | IE: ' + x(d.inscricao_estadual) : ''}</span>
+                </td>
+                <td style="width:26%; padding:6px; text-align:center; border-right:1px solid var(--text-main); vertical-align:middle;">
+                    <strong style="font-size:12px;">${ehNFe ? 'DANFE (ESPELHO)' : 'DANFSe (ESPELHO)'}</strong><br>
+                    <span style="font-size:7px;">${ehNFe ? 'Documento Auxiliar da Nota Fiscal Eletrônica' : 'Documento Auxiliar da NFS-e (Padrão Nacional)'}</span><br><br>
+                    ${ehNFe ? '<span style="font-size:8px;"><strong>1 - SAÍDA</strong></span><br>' : ''}
+                    <span style="font-size:8px; font-weight:bold;">Nº ${numero} &nbsp; Série 1</span>
+                </td>
+                <td style="width:36%; padding:6px; vertical-align:middle;">
+                    <span class="df-label">Chave de acesso</span>
+                    <span style="font-size:8px;">Será gerada pelo emissor oficial no momento da emissão (${ehNFe ? '44' : '50'} dígitos).</span>
+                    <div style="margin-top:6px; height:22px; border:1px dashed #9ca3af; display:flex; align-items:center; justify-content:center; font-size:7px; color:#6b7280;">${ehNFe ? 'CÓDIGO DE BARRAS — gerado na emissão' : 'QR CODE — gerado na emissão'}</div>
+                    <span class="df-label" style="margin-top:4px;">Protocolo de autorização</span><span style="font-size:8px;">Não autorizado (documento de homologação)</span>
+                </td>
+            </tr></table>
+        </td></tr>`;
+
+    const emitente = titulo('EMITENTE') + `<tr>${cel('Razão social / Nome', x(em.nome), 2)}${cel('CNPJ', x(em.cnpj))}${cel('Inscrição Municipal', x(em.im))}</tr>
+        <tr>${cel('Endereço', x([em.endereco, em.cidadeUf].filter(Boolean).join(' — ')), 2)}${cel('CEP', x(em.cep))}${cel('E-mail / Telefone', x([d.email, d.telefone].filter(Boolean).join(' / ')))}</tr>
+        <tr>${cel('Regime tributário do emitente', x(regime || 'Confirmar no cadastro fiscal'), 2)}${cel('Data/hora de emissão', dataGeracao + ' (prévia)')}${cel('Competência', competencia)}</tr>`;
+
+    const tomador = titulo(ehNFe ? 'DESTINATÁRIO / REMETENTE' : 'TOMADOR DO SERVIÇO') + `<tr>${cel('Nome / Razão social', x(parc.nome), 2)}${cel('CNPJ / CPF', x(parc.cnpj_cpf))}${cel('Data da fatura', dataFatura)}</tr>
+        <tr>${cel('Endereço', x(parc.endereco), 2)}${cel('Bairro / Distrito', x(parc.bairro))}${cel('CEP', x(parc.cep))}</tr>
+        <tr>${cel('Município', x(parc.cidade))}${cel('UF', x(parc.uf))}${cel('Telefone', x(parc.telefone), 2)}</tr>`;
+
+    let corpo;
+    if (ehNFe) {
+        corpo = `<tr>${cel('Natureza da operação', x(m.NAT || descPura), 2)}${cel('CFOP', x(m.CFOP), 1)}${cel('Destino da operação', x(m.DEST || ''))}</tr>
+        ${titulo('DADOS DOS PRODUTOS / SERVIÇOS')}
+        <tr><td colspan="4" style="padding:0;"><table style="width:100%; border-collapse:collapse; font-size:8px;">
+            <thead><tr style="background:var(--bg); border-bottom:1px solid var(--text-main);">
+                <th style="padding:3px; text-align:left; border-right:1px solid var(--text-main);">CÓD.</th><th style="padding:3px; text-align:left; border-right:1px solid var(--text-main); width:34%;">DESCRIÇÃO</th>
+                <th style="padding:3px; border-right:1px solid var(--text-main);">NCM</th><th style="padding:3px; border-right:1px solid var(--text-main);">CST/CSOSN</th><th style="padding:3px; border-right:1px solid var(--text-main);">CFOP</th>
+                <th style="padding:3px; border-right:1px solid var(--text-main);">UN</th><th style="padding:3px; text-align:right; border-right:1px solid var(--text-main);">QTD</th>
+                <th style="padding:3px; text-align:right; border-right:1px solid var(--text-main);">V. UNIT.</th><th style="padding:3px; text-align:right; border-right:1px solid var(--text-main);">V. TOTAL</th>
+                <th style="padding:3px; text-align:right; border-right:1px solid var(--text-main);">BC ICMS</th><th style="padding:3px; text-align:right; border-right:1px solid var(--text-main);">V. ICMS</th><th style="padding:3px; text-align:right;">ALÍQ.</th>
+            </tr></thead>
+            <tbody><tr>
+                <td style="padding:4px; border-right:1px solid var(--text-main);">${f.id}</td><td style="padding:4px; border-right:1px solid var(--text-main);"><strong>${x(descPura)}</strong></td>
+                <td style="padding:4px; text-align:center; border-right:1px solid var(--text-main);">${x(m.CLASS || '—')}</td><td style="padding:4px; text-align:center; border-right:1px solid var(--text-main);">—</td>
+                <td style="padding:4px; text-align:center; border-right:1px solid var(--text-main);">${x((m.CFOP || '—').split(' ')[0])}</td><td style="padding:4px; text-align:center; border-right:1px solid var(--text-main);">UN</td>
+                <td style="padding:4px; text-align:right; border-right:1px solid var(--text-main);">1,00</td><td style="padding:4px; text-align:right; border-right:1px solid var(--text-main);">${brl(valor)}</td>
+                <td style="padding:4px; text-align:right; border-right:1px solid var(--text-main); font-weight:bold;">${brl(valor)}</td>
+                <td style="padding:4px; text-align:right; border-right:1px solid var(--text-main);">${imposto !== null ? brl(valor) : '—'}</td><td style="padding:4px; text-align:right; border-right:1px solid var(--text-main);">${imposto !== null ? brl(imposto) : '—'}</td>
+                <td style="padding:4px; text-align:right;">${aliq !== null ? brl(aliq) + '%' : '—'}</td>
+            </tr></tbody></table></td></tr>
+        ${titulo('CÁLCULO DO IMPOSTO')}
+        <tr>${cel('Base de cálculo do ICMS', imposto !== null ? brl(valor) : '—')}${cel('Valor do ICMS', imposto !== null ? brl(imposto) : '—')}${cel('Valor total dos produtos', brl(valor))}${cel('Valor total da nota', brl(valor), 1, 'background:var(--bg); font-weight:bold;')}</tr>
+        <tr>${cel('Frete', '0,00')}${cel('Seguro', '0,00')}${cel('Desconto', '0,00')}${cel('Outras despesas', '0,00')}</tr>
+        ${titulo('TRANSPORTADOR / VOLUMES')}
+        <tr>${cel('Modalidade do frete', '9 - Sem ocorrência de transporte', 2)}${cel('Transportador', '—')}${cel('Placa / UF', '—')}</tr>`;
+    } else {
+        corpo = `${titulo('SERVIÇO PRESTADO')}
+        <tr>${cel('Código de tributação nacional / municipal (LC 116)', x(m.COD), 2)}${cel('Classificação NBS', x(m.CLASS))}${cel('Local da prestação', x(em.cidadeUf))}</tr>
+        <tr>${cel('Descrição do serviço', `<strong>${x(m.NAT || descPura)}</strong>${m.NAT && m.NAT !== descPura ? '<br>' + x(descPura) : ''}`, 4)}</tr>
+        ${titulo('TRIBUTAÇÃO MUNICIPAL (ISSQN)')}
+        <tr>${cel('Tributação do ISSQN', x(m.CFOP ? 'Operação tributável' : '—'))}${cel('Alíquota aplicada', aliq !== null ? brl(aliq) + '%' : '—')}${cel('ISSQN retido', retido ? 'Sim (retido pelo tomador)' : 'Não')}${cel('ISSQN apurado', imposto !== null ? 'R$ ' + brl(imposto) : '—')}</tr>
+        ${titulo('VALORES TOTAIS')}
+        <tr>${cel('Valor do serviço', 'R$ ' + brl(valor))}${cel('Descontos / Deduções', 'R$ 0,00')}${cel('Base de cálculo do ISSQN', 'R$ ' + brl(valor))}${cel('Valor líquido da NFS-e', 'R$ ' + brl(valor - (retido && imposto ? imposto : 0)), 1, 'background:var(--bg); font-weight:bold;')}</tr>
+        ${titulo('TRIBUTAÇÃO FEDERAL (RETENÇÕES)')}
+        <tr>${cel('PIS', '—')}${cel('COFINS', '—')}${cel('IRRF', '—')}${cel('CSLL / INSS', '—')}</tr>`;
+    }
+
+    const reforma = titulo('REFORMA TRIBUTÁRIA — IBS / CBS (ANO-TESTE 2026)') +
+        (ibsOn
+            ? `<tr>${cel('Base de cálculo', 'R$ ' + brl(valor))}${cel('CBS (0,9%)', 'R$ ' + brl(cbs))}${cel('IBS (0,1%)', 'R$ ' + brl(ibs))}${cel('Situação', 'Informativo, sem recolhimento')}</tr>`
+            : `<tr>${cel('Destaque de IBS/CBS', 'Não informado neste espelho. Confirmar a obrigatoriedade para o regime do emitente no emissor oficial.', 4)}</tr>`);
+
+    const compl = titulo('INFORMAÇÕES COMPLEMENTARES') + `<tr><td colspan="4"><span style="font-size:7.5px; line-height:1.4;">${x(m.OBS || '')}${m.OBS ? '<br>' : ''}Espelho gerado pelo Sacramento ERP em ${dataGeracao} para conferência e classificação contábil, em modelo de homologação. <strong>Não possui valor fiscal e não substitui a nota fiscal eletrônica.</strong> Valores de tributos, chave de acesso, protocolo, QR Code/código de barras e assinatura digital são gerados apenas pelo emissor oficial. Tributos aproximados (Lei 12.741/2012): a informar no emissor. Ref. Fatura #${f.id}. Centro de custo: ${x(f.centro_custo || 'Geral')}.</span></td></tr>`;
+
+    const html = `
     <div class="danfe-container">
-        <div class="marca-dagua">SEM VALOR FISCAL</div>
-        <div class="danfe-a4" id="conteudoDanfe">
-            <table class="danfe-table">
-                <tr>
-                    <td colspan="4" style="padding: 0;">
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <tr>
-                                <td style="width: 38%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main);">
-                                    <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px;">
-                                        ${logoHtmlDanfe}
-                                        <strong style="font-size: 10.5px;">${esc(em.nome)}</strong>
-                                    </div>
-                                    <span style="font-size: 7.5px;">${esc(em.cidadeUf)}<br>CNPJ: ${esc(em.cnpj)}${em.im ? '<br>Inscrição Municipal: ' + esc(em.im) : ''}</span>
-                                </td>
-                                <td style="width: 26%; padding: 6px; text-align: center; border-right: 1px solid var(--text-main); vertical-align: middle;">
-                                    <strong style="font-size: 13px;">PRÉ-NOTA</strong><br>
-                                    <span style="font-size: 7px;">Espelho gerencial para conferência</span><br><br>
-                                    <span style="font-size: 7.5px; font-weight: bold;">Nº ${String(f.id).padStart(9,'0')}</span>
-                                </td>
-                                <td style="width: 36%; padding: 6px; text-align: center; vertical-align: middle;">
-                                    <div style="font-size: 8px; font-weight: bold; color:#b91c1c; margin-bottom:3px;">DOCUMENTO SEM VALOR FISCAL</div>
-                                    <span style="font-size: 7.5px;">Não é DANFE nem NFS-e. A nota fiscal oficial deve ser emitida no emissor oficial (SEFAZ / NFS-e Nacional) ou por provedor autorizado.</span>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3"><span class="df-label">Tipo de documento fiscal previsto</span><span class="df-val">${esc(tipoPrev)}</span></td>
-                    <td style="width: 25%;"><span class="df-label">Data da pré-nota</span><span class="df-val">${dataGeracao}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="4" class="df-title">DESTINATÁRIO / TOMADOR</td>
-                </tr>
-                <tr>
-                    <td colspan="2"><span class="df-label">Nome / Razão Social</span><span class="df-val">${esc(parc.nome)}</span></td>
-                    <td><span class="df-label">CNPJ / CPF</span><span class="df-val">${esc(parc.cnpj_cpf)}</span></td>
-                    <td><span class="df-label">Data da fatura</span><span class="df-val">${dataEmissao}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="2"><span class="df-label">Endereço</span><span class="df-val">${esc(parc.endereco)}</span></td>
-                    <td><span class="df-label">Bairro / Distrito</span><span class="df-val">${esc(parc.bairro)}</span></td>
-                    <td><span class="df-label">CEP</span><span class="df-val">${esc(parc.cep)}</span></td>
-                </tr>
-                <tr>
-                    <td><span class="df-label">Município</span><span class="df-val">${esc(parc.cidade)}</span></td>
-                    <td style="width: 10%;"><span class="df-label">UF</span><span class="df-val">${esc(parc.uf)}</span></td>
-                    <td colspan="2"><span class="df-label">Telefone</span><span class="df-val">${esc(parc.telefone)}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="4" class="df-title">SERVIÇO / ITEM</td>
-                </tr>
-                <tr>
-                    <td colspan="4" style="padding: 0;">
-                        <table style="width: 100%; border-collapse: collapse; font-size: 8.5px;">
-                            <thead>
-                                <tr style="background: var(--bg); border-bottom: 1px solid var(--text-main);">
-                                    <th style="padding: 3px; text-align: left; border-right: 1px solid var(--text-main); width: 60%;">DESCRIÇÃO</th>
-                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">QTD.</th>
-                                    <th style="padding: 3px; text-align: right; border-right: 1px solid var(--text-main);">V. UNIT. (R$)</th>
-                                    <th style="padding: 3px; text-align: right;">V. TOTAL (R$)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td style="padding: 4px; border-right: 1px solid var(--text-main);"><strong>${esc(descPura)}</strong></td>
-                                    <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">1,00</td>
-                                    <td style="padding: 4px; text-align: right; border-right: 1px solid var(--text-main);">${valorFmt}</td>
-                                    <td style="padding: 4px; text-align: right; font-weight: bold;">${valorFmt}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </td>
-                </tr>
-                <tr>
-                    <td colspan="3"></td>
-                    <td style="background:var(--bg);"><span class="df-label">VALOR TOTAL</span><span class="df-val" style="color:var(--primary);">R$ ${valorFmt}</span></td>
-                </tr>
-                <tr>
-                    <td colspan="4" class="df-title">DADOS ADICIONAIS</td>
-                </tr>
-                <tr>
-                    <td colspan="4"><span class="df-label">Informações complementares</span><span style="font-size: 7.5px;">Pré-nota gerada pelo Sacramento ERP em ${dataGeracao}, apenas para conferência e classificação contábil. Não possui valor fiscal e não substitui a nota fiscal eletrônica. Tributos (ISS/ICMS, IBS/CBS) são calculados e destacados somente no emissor oficial. Ref. Fatura #${f.id}. Centro de Custo: ${esc(f.centro_custo || 'Geral')}.</span></td>
-                </tr>
-            </table>
-        </div>
-    </div>
-    `;
-    document.getElementById('conteudoDanfe').innerHTML = htmlDanfe;
+        <div class="marca-dagua">${marca}</div>
+        <div class="danfe-a4" id="conteudoDanfe"><table class="danfe-table">${cab}${emitente}${tomador}${corpo}${reforma}${compl}</table></div>
+    </div>`;
+    document.getElementById('conteudoDanfe').innerHTML = html;
     document.getElementById('modalDanfe').style.display = 'flex';
 }
 
