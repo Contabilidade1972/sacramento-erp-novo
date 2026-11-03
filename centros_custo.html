@@ -8,444 +8,440 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        :root{--primary:#2563eb;--secondary:#1e3a8a;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;--bg:#f8fafc;--card:#ffffff;--text-main:#0f172a;--text-light:#64748b;--border:#e2e8f0}
-        body{font-family:'Inter',sans-serif;background-color:var(--bg);color:var(--text-main);min-height:100vh;display:flex;flex-direction:column;}
-
-        body:not(.usuario-master) .empresa-selector {
-            display: none !important;
-            visibility: hidden !important;
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
 
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
-        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-        /* MENU DE ABAS INTERNO DE CADASTROS & ESTRUTURA */
-        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); position: sticky; top: 67px; z-index: 999; }
-        .sub-nav-item { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); text-decoration: none; border-bottom: 3px solid transparent; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .sub-nav-item:hover { color: var(--primary); }
-        .sub-nav-item.ativo { color: var(--primary); border-bottom-color: var(--primary); }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.cinza { border-top-color: #94a3b8; } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+        .panel.recolhido { display: none; }
 
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
-        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
-        .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
-        
-        .card-body { display: flex; flex-direction: column; gap: 14px; transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
-        .card.recolhido .card-body { display: none; }
-        .card.recolhido { padding-bottom: 24px; }
-        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: transform 0.2s; }
-        .card.recolhido .btn-colapsar i { transform: rotate(-90deg); }
+        .form-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+        .form-grid.dois { grid-template-columns: 3fr 1fr; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .dica { font-size: 11px; color: var(--text-light); margin-top: 5px; }
+        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
 
-        .form-grid{display:grid;grid-template-columns:repeat(3, 1fr);gap:14px;margin-bottom:14px}
-        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
-        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
-        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+        .filtros-box { display: grid; grid-template-columns: 2fr 1fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
 
-        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
-        .btn-primary{background:var(--primary);color:#fff}
-        .btn-primary:hover{background:#1d4ed8;}
-        .btn-success{background:var(--success);color:#fff}
-        .btn-success:hover{background:#059669;}
-        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
-        .btn-outline:hover{background:var(--bg);}
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .cod { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; color: var(--secondary); background: #eff6ff; padding: 3px 8px; border-radius: 6px; font-size: 12px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .badge-ativo { background: #dcfce7; color: #166534; } .badge-inativo { background: #fee2e2; color: #991b1b; }
+        .btn-mini { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; margin-left: 4px; }
+        .btn-mini:hover { background: var(--bg); }
+        .btn-mini.perigo { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 
-        .table-container{overflow-x:auto}
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
-        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
-        tbody tr:hover{background:#f8fafc;}
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
-        .badge{padding:4px 10px;border-radius:6px;font-weight:700;font-size:10px;text-transform:uppercase;display:inline-block;}
-        .badge-ativo{background:#dcfce7;color:#166534}
-        .badge-inativo{background:#fee2e2;color:#991b1b}
-
-        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
-        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
-        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
-
-        .print-header { display: none; }
-
-        @media print {
-            @page { size: landscape; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; }
-            .site-header, .sub-nav-bar, .card:not(#cardRelatorioModo), .toast-container, button, .btn-colapsar, .filtro-container-print { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
-            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
-            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
-            th { background: #1e3a8a !important; color: #fff !important; }
-        }
-
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .form-grid, .form-grid.dois, .filtros-box { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
-<!-- SUB-MENU / ABAS DE NAVEGAÇÃO INTERNA DE CADASTROS -->
-<div class="sub-nav-bar">
-    <a href="parceiros.html" class="sub-nav-item"><i class="fas fa-address-book"></i> Parceiros & Clientes</a>
-    <a href="centros_custo.html" class="sub-nav-item ativo"><i class="fas fa-sitemap"></i> Centros de Custo</a>
-    <a href="ativos_equipamentos.html" class="sub-nav-item"><i class="fas fa-boxes"></i> Ativos & Equipamentos Gerais</a>
-</div>
-
 <div class="container">
-    <!-- FORMULÁRIO DE CADASTRO -->
-    <div class="card recolhido" id="cardFormulario">
-        <div class="card-header" onclick="alternarPainel('cardFormulario')">
-            <h3 id="formTitle"><i class="fas fa-plus-circle"></i> Novo Centro de Custo / Projeto</h3>
-            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+    <div class="page-toolbar">
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+        <button class="btn-acao" type="button" onclick="novoCentro()"><i class="fas fa-plus"></i> Novo Centro de Custo</button>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-sitemap" style="color:var(--primary);"></i> Centros de Custo</div>
+        <div class="page-subtitle">Estrutura gerencial usada para classificar contas a pagar e a receber, DRE e relatórios</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><div class="kpi-title">Centros cadastrados</div><div class="kpi-value" id="kpiTotal">0</div><div class="kpi-sub">Total da empresa</div></div>
+        <div class="kpi-card verde"><div class="kpi-title">Ativos</div><div class="kpi-value" style="color:#166534;" id="kpiAtivos">0</div><div class="kpi-sub">Disponíveis nos lançamentos</div></div>
+        <div class="kpi-card cinza"><div class="kpi-title">Inativos</div><div class="kpi-value" id="kpiInativos">0</div><div class="kpi-sub">Guardados no histórico</div></div>
+        <div class="kpi-card"><div class="kpi-title">Com lançamentos</div><div class="kpi-value" id="kpiUsados">0</div><div class="kpi-sub" id="kpiUsadosSub">Usados em títulos</div></div>
+    </div>
+
+    <div class="panel recolhido" id="painelForm">
+        <div class="panel-title"><span class="t" id="formTitle"><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Novo Centro de Custo / Projeto</span></div>
+        <input type="hidden" id="edit_id">
+        <div class="aviso" id="avisoForm"></div>
+        <div class="form-grid">
+            <div>
+                <label>Código / Sigla *</label>
+                <input type="text" id="codigo" class="form-control" placeholder="Ex: 1.01" onblur="verificarDuplicado()">
+                <div class="dica">Não pode repetir dentro da mesma empresa.</div>
+            </div>
+            <div>
+                <label>Nome do Centro de Custo *</label>
+                <input type="text" id="nome" class="form-control" placeholder="Ex: Administrativo, Comercial, Produção...">
+            </div>
+            <div>
+                <label>Status</label>
+                <select id="status" class="form-control"><option value="Ativo">Ativo</option><option value="Inativo">Inativo</option></select>
+            </div>
         </div>
-        <div class="card-body">
-            <input type="hidden" id="edit_id">
-            <div class="form-grid">
-                <div>
-                    <label>Código / Sigla *</label>
-                    <input type="text" id="codigo" class="form-control" placeholder="Ex: 1.01">
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Nome do Centro de Custo *</label>
-                    <input type="text" id="nome" class="form-control" placeholder="Ex: Administrativo, Comercial, Produção...">
-                </div>
+        <div class="form-grid dois">
+            <div>
+                <label>Descrição / Finalidade</label>
+                <input type="text" id="descricao" class="form-control" placeholder="Detalhes sobre este centro de custo...">
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 1fr;">
-                <div>
-                    <label>Descrição / Finalidade</label>
-                    <input type="text" id="descricao" class="form-control" placeholder="Detalhes sobre este centro de custo...">
-                </div>
-                <div>
-                    <label>Status</label>
-                    <select id="status" class="form-control">
-                        <option value="Ativo">Ativo</option>
-                        <option value="Inativo">Inativo</option>
-                    </select>
-                </div>
-            </div>
-            <div style="margin-top: 10px; display:flex; gap:10px;">
-                <button class="btn btn-primary" id="btnSalvar" onclick="salvarCentroCusto()"><i class="fas fa-save"></i> Salvar Centro de Custo</button>
-                <button class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
-            </div>
+            <div></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-acao" type="button" id="btnSalvar" onclick="salvarCentroCusto()"><i class="fas fa-save"></i> Salvar Centro de Custo</button>
+            <button class="btn-acao cinza" type="button" onclick="cancelarEdicao()"><i class="fas fa-times"></i> Cancelar</button>
         </div>
     </div>
 
-    <!-- DIRETÓRIO DE CENTROS DE CUSTO -->
-    <div class="card" id="cardRelatorioModo">
-        <div class="print-header">
-            <h2>Sacramento ERP — Relatório Operacional: Centros de Custo & Projetos</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span> | Emitido por: <span id="printUsuarioNome">Sistema</span></p>
-        </div>
-        <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
-            <h3><i class="fas fa-sitemap"></i> Diretório de Centros de Custo</h3>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <button class="btn btn-success" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Diretório de Centros de Custo</span></div>
+        <div class="filtros-box">
+            <div><label>Pesquisar</label><input type="text" id="filtroBusca" class="form-control" placeholder="Digite o código, o nome ou a descrição..." oninput="renderizarTabela()"></div>
+            <div><label>Status</label>
+                <select id="filtroStatus" class="form-control" onchange="renderizarTabela()">
+                    <option value="todos">Todos</option><option value="Ativo">Somente ativos</option><option value="Inativo">Somente inativos</option>
+                </select>
             </div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltro()"><i class="fas fa-eraser"></i> Limpar</button></div>
         </div>
-        <div class="card-body">
-            <div class="filtro-container-print" style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:flex; gap:10px; align-items:flex-end;">
-                <div style="flex:1;">
-                    <label>Pesquisar Centro de Custo</label>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Digite para filtrar por código ou nome..." oninput="filtrarTabela()">
-                </div>
-                <div>
-                    <button class="btn btn-outline" onclick="limparFiltro()"><i class="fas fa-eraser"></i> Limpar</button>
-                </div>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Código</th><th>Nome / Descrição</th><th>Status</th><th>Data de Registo</th><th style="text-align:right;">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyCentrosCusto">
-                        <tr><td colspan="6" style="text-align:center; padding:20px; color:var(--text-light);">A carregar centros de custo...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        <div class="table-wrap" id="listaCentros"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
     </div>
 </div>
-
-<footer>
-    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
-</footer>
 
 <script>
-const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-let cacheCentros = [];
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
-window.obterUsuario = function() {
-    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-};
+    let centros = [];      // centros_custo da empresa (com estatísticas)
+    let visiveis = [];     // após filtros
+    let usoTotal = { pagar: 0, receber: 0 };
 
-window.ehMaster = function() {
-    const u = window.obterUsuario();
-    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-};
-
-window.clienteIdAtual = function() {
-    const u = window.obterUsuario();
-    if (!u) return 1;
-    if (window.ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
-};
-
-window.trocarEmpresa = function() {
-    const select = document.getElementById('selectEmpresa');
-    if (!select) return;
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarCentrosCusto();
-};
-
-window.sair = function() {
-    if (confirm('Deseja realmente sair?')) { 
-        localStorage.removeItem('usuarioLogado'); 
-        localStorage.removeItem('empresaSelecionada'); 
-        location.href = 'login.html'; 
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function numero(v) {
+        if (typeof v === 'number') return v;
+        let s = String(v === null || v === undefined ? '' : v).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
     }
-};
+    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function dataBR(ts) { if (!ts) return '—'; const s = String(ts).substring(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : '—'; }
 
-function alternarPainel(idCard) {
-    const card = document.getElementById(idCard);
-    if(card) card.classList.toggle('recolhido');
-}
-
-function sbFiltroLeitura(tabela) {
-    let q = sb.from(tabela).select('*');
-    const cid = window.clienteIdAtual();
-    if (cid) q = q.eq('cliente_id', cid);
-    return q;
-}
-
-function toast(msg, type='success'){
-    var c = document.getElementById('toastContainer'), x = document.createElement('div');
-    if(!c) {
-        c = document.createElement('div'); c.id = 'toastContainer';
-        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px';
-        document.body.appendChild(c);
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
     }
-    x.className = 'toast '+type;
-    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
-    c.appendChild(x);
-    setTimeout(function(){ x.remove(); }, 3000);
-}
-
-document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
-
-async function carregarCentrosCusto() {
-    const { data, error } = await sbFiltroLeitura('centros_custo').order('id', { ascending: false });
-    if(error) {
-        document.getElementById('tbodyCentrosCusto').innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger); padding:20px;">Erro ao carregar dados: ${error.message}</td></tr>`;
-        return;
-    }
-    cacheCentros = data || [];
-    renderizarTabela(cacheCentros);
-}
-
-function renderizarTabela(lista) {
-    const tbody = document.getElementById('tbodyCentrosCusto');
-    tbody.innerHTML = '';
-    if(!lista.length) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-light); padding:20px;">Nenhum centro de custo registado.</td></tr>`;
-        return;
-    }
-    lista.forEach(cc => {
-        let dataReg = cc.created_at ? cc.created_at.split('T')[0].split('-').reverse().join('/') : '-';
-        let st = cc.status || 'Ativo';
-        let badgeClass = st === 'Ativo' ? 'badge-ativo' : 'badge-inativo';
-        
-        tbody.innerHTML += `
-            <tr>
-                <td><strong>#${cc.id}</strong></td>
-                <td><code>${cc.codigo || '-'}</code></td>
-                <td><strong>${cc.nome || cc.descricao || '-'}</strong><br><small style="color:var(--text-light)">${cc.descricao || ''}</small></td>
-                <td><span class="badge ${badgeClass}">${st}</span></td>
-                <td>${dataReg}</td>
-                <td style="text-align:right;">
-                    <button class="btn btn-outline" style="padding:4px 8px; font-size:11px;" onclick="editarCentroCusto(${cc.id})" title="Editar"><i class="fas fa-edit"></i></button>
-                    <button class="btn" style="padding:4px 8px; font-size:11px; background:#fee2e2; color:#b91c1c;" onclick="excluirCentroCusto(${cc.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
-    });
-}
-
-function filtrarTabela() {
-    let termo = document.getElementById('filtroBusca').value.toLowerCase().trim();
-    let filtrados = cacheCentros.filter(cc => {
-        let linha = ((cc.codigo || '') + ' ' + (cc.nome || '') + ' ' + (cc.descricao || '')).toLowerCase();
-        return linha.includes(termo);
-    });
-    renderizarTabela(filtrados);
-}
-
-function limparFiltro() {
-    document.getElementById('filtroBusca').value = '';
-    renderizarTabela(cacheCentros);
-}
-
-async function salvarCentroCusto() {
-    const id = document.getElementById('edit_id').value;
-    const codigo = document.getElementById('codigo').value.trim();
-    const nome = document.getElementById('nome').value.trim();
-    const descricao = document.getElementById('descricao').value.trim();
-    const status = document.getElementById('status').value;
-
-    if(!codigo || !nome) {
-        toast("Preencha o código e o nome do centro de custo!", "error");
-        return;
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
     }
 
-    let payload = {
-        codigo: codigo,
-        nome: nome,
-        descricao: descricao || nome,
-        status: status,
-        cliente_id: window.clienteIdAtual()
-    };
-
-    let res;
-    if(id) {
-        res = await sb.from('centros_custo').update(payload).eq('id', id);
-    } else {
-        res = await sb.from('centros_custo').insert([payload]);
-    }
-
-    if(res.error) {
-        toast("Erro ao salvar: " + res.error.message, "error");
-        return;
-    }
-
-    toast(id ? "Centro de custo atualizado com sucesso!" : "Centro de custo registado com sucesso!");
-    cancelarEdicao();
-    carregarCentrosCusto();
-}
-
-window.editarCentroCusto = function(id) {
-    let cc = cacheCentros.find(x => String(x.id) === String(id));
-    if(!cc) return;
-    document.getElementById('edit_id').value = cc.id;
-    document.getElementById('codigo').value = cc.codigo || '';
-    document.getElementById('nome').value = cc.nome || '';
-    document.getElementById('descricao').value = cc.descricao || '';
-    document.getElementById('status').value = cc.status || 'Ativo';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Centro de Custo (#${cc.id})`;
-    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Centro de Custo';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    
-    const cardForm = document.getElementById('cardFormulario');
-    if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
-    window.scrollTo({top: 0, behavior: 'smooth'});
-}
-
-function cancelarEdicao() {
-    document.getElementById('edit_id').value = '';
-    document.getElementById('codigo').value = '';
-    document.getElementById('nome').value = '';
-    document.getElementById('descricao').value = '';
-    document.getElementById('status').value = 'Ativo';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-plus-circle"></i> Novo Centro de Custo / Projeto`;
-    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Centro de Custo';
-    document.getElementById('btnCancelar').style.display = 'none';
-}
-
-window.excluirCentroCusto = async function(id) {
-    if(confirm("Deseja realmente excluir este centro de custo?")) {
-        const { error } = await sb.from('centros_custo').delete().eq('id', id);
-        if(error) { toast("Erro ao excluir: " + error.message, "error"); return; }
-        toast("Centro de custo removido com sucesso!");
-        carregarCentrosCusto();
-    }
-}
-
-async function inicializarPagina() {
-    let u = window.obterUsuario();
-    if(!u || !u.email) { location.href = 'login.html'; return; }
-    
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        let nomeUsuario = u.nome || u.email || 'Usuário';
-        if (elUserName) elUserName.innerText = nomeUsuario.split('@')[0];
-        const printUserEl = document.getElementById('printUsuarioNome');
-        if (printUserEl) printUserEl.innerText = nomeUsuario;
-    }
-
-    const master = window.ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
+    async function lerTudo(tabela, cid, colunas) {
+        const out = [], PAG = 1000;
+        for (let ini = 0; ini < 200000; ini += PAG) {
+            const r = await sb.from(tabela).select(colunas || '*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
+            if (r.error) throw r.error;
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
         }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
+        return out;
     }
 
-    await carregarCentrosCusto();
-}
+    // chaves pelas quais um título pode citar o centro de custo: "1.02 - Administrativo", "Administrativo" ou "1.02"
+    function chavesDe(cc) {
+        const k = {};
+        const cod = norm(cc.codigo), nome = norm(cc.nome || cc.descricao);
+        if (cod && nome) k[cod + ' - ' + nome] = true;
+        if (nome) k[nome] = true;
+        if (cod) k[cod] = true;
+        return k;
+    }
+    function ordemNatural(a, b) {
+        return String(a.codigo || '').localeCompare(String(b.codigo || ''), 'pt-BR', { numeric: true, sensitivity: 'base' }) ||
+            String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR');
+    }
 
-window.onload = inicializarPagina;
+    async function carregarCentros() {
+        const el = document.getElementById('listaCentros');
+        const cid = obterClienteIdAtivo();
+        try {
+            const dados = await lerTudo('centros_custo', cid, '*');
+            let pagar = [], receber = [];
+            try { pagar = await lerTudo('contas_pagar', cid, 'id,centro_custo,valor,status'); } catch (e) { console.warn('contas_pagar', e); }
+            try { receber = await lerTudo('contas_receber', cid, 'id,centro_custo,valor,status'); } catch (e) { console.warn('contas_receber', e); }
+            const ativosSt = function (t) { return norm(t.status).indexOf('cancel') < 0; };
+            pagar = pagar.filter(ativosSt); receber = receber.filter(ativosSt);
+            usoTotal = { pagar: pagar.length, receber: receber.length };
+
+            centros = dados.map(function (cc) {
+                const k = chavesDe(cc);
+                let nP = 0, nR = 0, vP = 0, vR = 0;
+                pagar.forEach(function (t) { if (k[norm(t.centro_custo)]) { nP++; vP += numero(t.valor); } });
+                receber.forEach(function (t) { if (k[norm(t.centro_custo)]) { nR++; vR += numero(t.valor); } });
+                return Object.assign({}, cc, { _nP: nP, _nR: nR, _vP: vP, _vR: vR, _uso: nP + nR });
+            }).sort(ordemNatural);
+            atualizarKpis();
+            renderizarTabela();
+        } catch (e) {
+            console.error(e);
+            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Erro ao carregar dados: ' + esc(e.message || e) + '</div>';
+        }
+    }
+
+    function atualizarKpis() {
+        const at = centros.filter(function (c) { return (c.status || 'Ativo') === 'Ativo'; }).length;
+        const usados = centros.filter(function (c) { return c._uso > 0; }).length;
+        document.getElementById('kpiTotal').textContent = centros.length;
+        document.getElementById('kpiAtivos').textContent = at;
+        document.getElementById('kpiInativos').textContent = centros.length - at;
+        document.getElementById('kpiUsados').textContent = usados;
+        document.getElementById('kpiUsadosSub').textContent = usados + ' de ' + centros.length + ' usados em títulos';
+    }
+
+    function filtrar() {
+        const termo = norm(document.getElementById('filtroBusca').value);
+        const st = document.getElementById('filtroStatus').value;
+        return centros.filter(function (c) {
+            if (st !== 'todos' && (c.status || 'Ativo') !== st) return false;
+            if (!termo) return true;
+            return norm((c.codigo || '') + ' ' + (c.nome || '') + ' ' + (c.descricao || '')).indexOf(termo) >= 0;
+        });
+    }
+
+    function renderizarTabela() {
+        const el = document.getElementById('listaCentros');
+        visiveis = filtrar();
+        if (!visiveis.length) {
+            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">' + (centros.length ? 'Nenhum centro de custo encontrado com esse filtro.' : 'Nenhum centro de custo cadastrado. Clique em "Novo Centro de Custo".') + '</div>';
+            return;
+        }
+        let tP = 0, tR = 0, nP = 0, nR = 0;
+        let h = '<table class="tabela"><thead><tr><th>Código</th><th>Nome / Descrição</th><th>Status</th><th class="num">Contas a pagar</th><th class="num">Contas a receber</th><th>Cadastro</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        visiveis.forEach(function (c) {
+            const st = c.status || 'Ativo';
+            tP += c._vP; tR += c._vR; nP += c._nP; nR += c._nR;
+            const nomeTxt = c.nome || c.descricao || '—';
+            const desc = (c.descricao && c.descricao !== c.nome) ? '<span class="sub">' + esc(c.descricao) + '</span>' : '';
+            h += '<tr><td><span class="cod">' + esc(c.codigo || '—') + '</span></td>' +
+                '<td><strong>' + esc(nomeTxt) + '</strong>' + desc + '</td>' +
+                '<td><span class="badge-st ' + (st === 'Ativo' ? 'badge-ativo' : 'badge-inativo') + '">' + esc(st) + '</span></td>' +
+                '<td class="num">' + (c._nP ? 'R$ ' + fmtBR(c._vP) + '<span class="sub">' + c._nP + ' título(s)</span>' : '<span style="color:var(--text-light);">—</span>') + '</td>' +
+                '<td class="num">' + (c._nR ? 'R$ ' + fmtBR(c._vR) + '<span class="sub">' + c._nR + ' título(s)</span>' : '<span style="color:var(--text-light);">—</span>') + '</td>' +
+                '<td>' + dataBR(c.created_at) + '</td>' +
+                '<td style="text-align:right; white-space:nowrap;">' +
+                '<button class="btn-mini" type="button" title="' + (st === 'Ativo' ? 'Inativar' : 'Reativar') + '" onclick="alternarStatus(' + Number(c.id) + ')"><i class="fas ' + (st === 'Ativo' ? 'fa-eye-slash' : 'fa-eye') + '"></i></button>' +
+                '<button class="btn-mini" type="button" title="Editar" onclick="editarCentroCusto(' + Number(c.id) + ')"><i class="fas fa-edit"></i></button>' +
+                '<button class="btn-mini perigo" type="button" title="Excluir" onclick="excluirCentroCusto(' + Number(c.id) + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        });
+        h += '</tbody><tfoot><tr><td colspan="3">TOTAL (' + visiveis.length + ' centro(s))</td><td class="num">R$ ' + fmtBR(tP) + '<span class="sub">' + nP + ' título(s)</span></td><td class="num">R$ ' + fmtBR(tR) + '<span class="sub">' + nR + ' título(s)</span></td><td colspan="2"></td></tr></tfoot></table>';
+        el.innerHTML = h;
+    }
+
+    function limparFiltro() {
+        document.getElementById('filtroBusca').value = '';
+        document.getElementById('filtroStatus').value = 'todos';
+        renderizarTabela();
+    }
+
+    /* ---------- formulário ---------- */
+    function mostrarAviso(msg) {
+        const a = document.getElementById('avisoForm');
+        if (!msg) { a.style.display = 'none'; a.textContent = ''; return; }
+        a.textContent = msg; a.style.display = 'block';
+    }
+    function limparForm() {
+        ['edit_id', 'codigo', 'nome', 'descricao'].forEach(function (i) { document.getElementById(i).value = ''; });
+        document.getElementById('status').value = 'Ativo';
+        mostrarAviso('');
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--primary);"></i> Novo Centro de Custo / Projeto';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Centro de Custo';
+    }
+    function novoCentro() {
+        limparForm();
+        document.getElementById('painelForm').classList.remove('recolhido');
+        document.getElementById('codigo').focus();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function cancelarEdicao() {
+        limparForm();
+        document.getElementById('painelForm').classList.add('recolhido');
+    }
+
+    function acharDuplicado(codigo, idAtual) {
+        const c = norm(codigo);
+        if (!c) return null;
+        return centros.find(function (x) { return norm(x.codigo) === c && String(x.id) !== String(idAtual || ''); }) || null;
+    }
+
+    function verificarDuplicado() {
+        const cod = document.getElementById('codigo').value.trim();
+        const idAtual = document.getElementById('edit_id').value;
+        const dup = acharDuplicado(cod, idAtual);
+        if (!dup) { mostrarAviso(''); return; }
+        const abrir = confirm('O código "' + cod + '" já está cadastrado como "' + (dup.nome || dup.descricao) + '".\n\nDeseja abrir esse centro de custo para EDITAR?\n\n(OK = abrir para editar · Cancelar = limpar o código)');
+        if (abrir) { editarCentroCusto(dup.id); }
+        else { document.getElementById('codigo').value = ''; mostrarAviso(''); }
+    }
+
+    async function salvarCentroCusto() {
+        const id = document.getElementById('edit_id').value;
+        const codigo = document.getElementById('codigo').value.trim();
+        const nome = document.getElementById('nome').value.trim();
+        const descricao = document.getElementById('descricao').value.trim();
+        const status = document.getElementById('status').value;
+
+        if (!codigo || !nome) { toast('Preencha o código e o nome do centro de custo!', 'error'); return; }
+
+        const dup = acharDuplicado(codigo, id);
+        if (dup) {
+            toast('O código "' + codigo + '" já existe (' + (dup.nome || dup.descricao) + '). Abra o cadastro existente para editar.', 'error');
+            return;
+        }
+        const dupNome = centros.find(function (x) { return norm(x.nome) === norm(nome) && String(x.id) !== String(id || ''); });
+        if (dupNome && !confirm('Já existe o centro "' + dupNome.codigo + ' - ' + dupNome.nome + '" com esse mesmo nome. Deseja cadastrar mesmo assim?')) return;
+
+        if (id) {
+            const atual = centros.find(function (x) { return String(x.id) === String(id); });
+            if (atual && atual._uso > 0 && (norm(atual.codigo) !== norm(codigo) || norm(atual.nome) !== norm(nome))) {
+                if (!confirm('Este centro de custo já tem ' + atual._uso + ' título(s) lançado(s) com o código/nome antigo.\n\nOs títulos já lançados NÃO serão alterados e deixarão de ser reconhecidos aqui e nos relatórios por esse nome.\n\nDeseja alterar mesmo assim?\n(Dica: para parar de usar, prefira INATIVAR em vez de renomear.)')) return;
+            }
+        }
+
+        const payload = { codigo: codigo, nome: nome, descricao: descricao || nome, status: status, cliente_id: obterClienteIdAtivo() };
+        const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+        try {
+            const res = id ? await sb.from('centros_custo').update(payload).eq('id', id).eq('cliente_id', payload.cliente_id)
+                           : await sb.from('centros_custo').insert([payload]);
+            if (res.error) { toast('Erro ao salvar: ' + res.error.message, 'error'); return; }
+            toast(id ? 'Centro de custo atualizado com sucesso!' : 'Centro de custo cadastrado com sucesso!');
+            limparForm();
+            document.getElementById('painelForm').classList.add('recolhido');
+            await carregarCentros();
+        } finally { btn.disabled = false; }
+    }
+
+    function editarCentroCusto(id) {
+        const cc = centros.find(function (x) { return String(x.id) === String(id); });
+        if (!cc) return;
+        document.getElementById('edit_id').value = cc.id;
+        document.getElementById('codigo').value = cc.codigo || '';
+        document.getElementById('nome').value = cc.nome || '';
+        document.getElementById('descricao').value = cc.descricao || '';
+        document.getElementById('status').value = cc.status || 'Ativo';
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Editando Centro de Custo (' + esc(cc.codigo || ('#' + cc.id)) + ')';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Centro de Custo';
+        mostrarAviso(cc._uso > 0 ? 'Atenção: este centro tem ' + cc._uso + ' título(s) lançado(s). Se mudar o código ou o nome, os títulos antigos continuam com o nome anterior.' : '');
+        document.getElementById('painelForm').classList.remove('recolhido');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function alternarStatus(id) {
+        const cc = centros.find(function (x) { return String(x.id) === String(id); });
+        if (!cc) return;
+        const novo = (cc.status || 'Ativo') === 'Ativo' ? 'Inativo' : 'Ativo';
+        const r = await sb.from('centros_custo').update({ status: novo }).eq('id', id).eq('cliente_id', obterClienteIdAtivo());
+        if (r.error) { toast('Erro ao alterar status: ' + r.error.message, 'error'); return; }
+        toast('Centro "' + (cc.codigo || cc.nome) + '" agora está ' + novo.toLowerCase() + '.');
+        await carregarCentros();
+    }
+
+    async function excluirCentroCusto(id) {
+        const cc = centros.find(function (x) { return String(x.id) === String(id); });
+        if (!cc) return;
+        if (cc._uso > 0) {
+            toast('Não é possível excluir: há ' + cc._uso + ' título(s) usando este centro de custo. Use o botão de inativar (olho).', 'error');
+            return;
+        }
+        if (!confirm('Deseja realmente excluir o centro de custo "' + (cc.codigo || '') + ' - ' + (cc.nome || '') + '"?')) return;
+        const r = await sb.from('centros_custo').delete().eq('id', id).eq('cliente_id', obterClienteIdAtivo());
+        if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
+        toast('Centro de custo removido com sucesso!');
+        await carregarCentros();
+    }
+
+    /* ---------- impressão padronizada ---------- */
+    function executarImpressao() {
+        if (!visiveis.length) { toast('Não há centros de custo para imprimir com o filtro atual.', 'error'); return; }
+        const st = document.getElementById('filtroStatus').value;
+        const termo = document.getElementById('filtroBusca').value.trim();
+        let tP = 0, tR = 0, nP = 0, nR = 0;
+        visiveis.forEach(function (c) { tP += c._vP; tR += c._vR; nP += c._nP; nR += c._nR; });
+        ERPPrint.imprimir({
+            titulo: 'Centros de Custo', subtitulo: 'Estrutura gerencial e lançamentos vinculados', codigo: 'CAD-CC', orientacao: 'landscape',
+            filtros: [['Status', st === 'todos' ? 'Todos' : (st === 'Ativo' ? 'Somente ativos' : 'Somente inativos')], ['Busca', termo || 'Sem filtro']],
+            resumo: [['Centros listados', String(visiveis.length)], ['Ativos', String(visiveis.filter(function (c) { return (c.status || 'Ativo') === 'Ativo'; }).length)],
+                ['Contas a pagar', 'R$ ' + fmtBR(tP)], ['Contas a receber', 'R$ ' + fmtBR(tR)]],
+            colunas: [{ t: 'Código', w: 1 }, { t: 'Nome', w: 3 }, { t: 'Descrição / finalidade', w: 3.5 }, { t: 'Status', w: 1 }, { t: 'A pagar (R$)', w: 1.6, a: 'right' }, { t: 'A receber (R$)', w: 1.6, a: 'right' }, { t: 'Títulos', w: 0.8, a: 'right' }],
+            linhas: visiveis.map(function (c) {
+                return [c.codigo || '—', { t: c.nome || c.descricao || '—', cls: 'bold' }, (c.descricao && c.descricao !== c.nome) ? c.descricao : '—',
+                    { t: c.status || 'Ativo', cls: (c.status || 'Ativo') === 'Ativo' ? 'pos' : 'muted' }, c._nP ? fmtBR(c._vP) : '—', c._nR ? fmtBR(c._vR) : '—', String(c._uso)];
+            }),
+            totais: ['TOTAL', '', '', '', fmtBR(tP), fmtBR(tR), String(nP + nR)],
+            observacao: 'Valores = soma dos títulos (exceto cancelados) lançados em cada centro de custo, de todos os períodos.'
+        });
+    }
+
+    async function inicializarPagina() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            if (u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER) document.body.classList.add('usuario-master');
+        } catch (e) {}
+        await carregarCentros();
+    }
+    window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-<script src="erp-core.js"></script>
 </body>
 </html>
