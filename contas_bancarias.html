@@ -10,6 +10,7 @@
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <script src="erp-print.js"></script>
+    <script src="erp-saldos.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -207,6 +208,18 @@
             </div>
         </div>
 
+        <div class="form-grid" id="bloco_recarga" style="display:none; grid-template-columns: 1fr 1fr 2fr;">
+            <div>
+                <label>Valor da recarga (R$) <span style="color:var(--primary);">— saldo automático</span></label>
+                <input type="number" step="0.01" id="recarga_valor" class="form-control" placeholder="Ex: 400,00">
+            </div>
+            <div>
+                <label>Dia da recarga (1 a 28)</label>
+                <input type="number" min="1" max="28" id="recarga_dia" class="form-control" placeholder="Ex: 20">
+            </div>
+            <div style="font-size:12px; color:var(--text-light); line-height:1.5; align-self:end; padding-bottom:12px;">Se o cartão é recarregado todo mês até um valor fixo, informe o valor e o dia. O sistema calcula sozinho: <strong>saldo = recarga − gastos pagos no cartão desde a última recarga</strong>.</div>
+        </div>
+
         <div style="margin-top: 16px; display:flex; gap:12px;">
             <button type="button" class="btn btn-primary" id="btnSalvar" onclick="salvarCadastro()"><i class="fas fa-save"></i> Salvar Cadastro</button>
             <button type="button" class="btn btn-outline" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar</button>
@@ -225,7 +238,7 @@
             <div class="tot-card" style="border-left-color:var(--warning);"><div class="t">Cartões pré-pagos (disponível)</div><div class="v" id="totCartoes">R$ 0,00</div></div>
             <div class="tot-card" style="border-left-color:var(--success);"><div class="t">Total disponível da empresa</div><div class="v" id="totGeral">R$ 0,00</div></div>
         </div>
-        <div class="aviso-saldo"><i class="fas fa-info-circle"></i> <strong>Estes saldos são informados por você</strong> e servem de base para o Fluxo de Caixa. Pagar uma conta em Contas a Pagar <strong>não altera</strong> o saldo aqui: depois de uma recarga do cartão ou de uma conferência com o extrato, atualize o valor da conta (botão de editar).</div>
+        <div class="aviso-saldo"><i class="fas fa-info-circle"></i> <strong>Saldos calculados automaticamente pelos lançamentos:</strong> o <strong>cartão pré-pago</strong> = valor da recarga − gastos pagos no cartão desde a última recarga, e a <strong>conta principal</strong> = saldo total dos lançamentos − cartão. O valor digitado em cada conta (botão de editar) passa a ser a <strong>conferência com o extrato</strong>: se houver diferença, ela aparece em vermelho. Contas sem regra automática continuam com o saldo informado por você.</div>
 
         <div style="background:var(--bg); padding:14px; border-radius:10px; margin-bottom:16px; display:grid; grid-template-columns: 1fr 2fr auto; gap:12px; align-items:flex-end;">
             <div>
@@ -294,6 +307,8 @@
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let registrosCache = [];
     let salvando = false;
+    let saldosCalc = null;      // resultado de ERPSaldos.calcular
+    let saldosPorId = {};
 
     function esc(s) {
         return String(s === null || s === undefined ? '' : s)
@@ -358,10 +373,12 @@
             tipoSel.innerHTML = '<option value="Cartão de Crédito">Cartão de Crédito</option><option value="Cartão de Débito">Cartão de Débito</option><option value="Cartão Pré-Pago">Cartão Pré-Pago</option>';
             blocoBanco.style.display = 'none';
             blocoCartao.style.display = 'grid';
+            document.getElementById('bloco_recarga').style.display = 'grid';
         } else {
             tipoSel.innerHTML = '<option value="Conta Corrente PJ">Conta Corrente PJ</option><option value="Conta Corrente PF">Conta Corrente PF</option><option value="Conta Poupança">Conta Poupança</option><option value="Conta Investimento">Conta Investimento</option><option value="Caixa Físico">Caixa Físico</option>';
             blocoBanco.style.display = 'grid';
             blocoCartao.style.display = 'none';
+            document.getElementById('bloco_recarga').style.display = 'none';
         }
     }
 
@@ -388,17 +405,9 @@
         return norm(r.tipo).indexOf('pf') < 0;
     }
 
-    // MESMA regra do Fluxo de Caixa: assim os totais daqui são exatamente os saldos que o Fluxo usa
-    function entraNoSaldoEmpresa(cb) {
-        const titular = norm(cb.titularidade);
-        const identificacao = norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || ''));
-        if (/\bpf\b/.test(titular) || titular.indexOf('fisica') >= 0 || titular.indexOf('pessoal') >= 0 || /\bpf\b/.test(identificacao) || identificacao.indexOf('pessoal') >= 0) return false;
-        const classe = norm(cb.classificacao_saldo || 'disponivel');
-        return classe === 'disponivel';
-    }
-    function ehCartaoFluxo(cb) {
-        return /cartao|pre-pago|prepago|pre pago/.test(norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || '')));
-    }
+    // MESMA regra do Fluxo de Caixa (vem de erp-saldos.js)
+    function entraNoSaldoEmpresa(cb) { return ERPSaldos.entraNoSaldo(cb); }
+    function ehCartaoFluxo(cb) { return ERPSaldos.ehCartao(cb); }
 
     function infoCartao(r) {
         if (ehCartaoReg(r) && r.observacoes && String(r.observacoes).startsWith('{')) {
@@ -407,7 +416,12 @@
         return {};
     }
     function detalhesTexto(r) {
-        if (ehCartaoReg(r)) { const c = infoCartao(r); return 'Nº: **** ' + (c.numero || '****') + ' | Venc: ' + (c.vencimento || '-'); }
+        if (ehCartaoReg(r)) {
+            const c = infoCartao(r);
+            let t = 'Nº: **** ' + (c.numero || '****') + ' | Venc: ' + (c.vencimento || '-');
+            if (numero(r.recarga_valor) > 0 && r.recarga_dia) t += ' | Recarga: ' + formatBRL(numero(r.recarga_valor)) + ' dia ' + r.recarga_dia;
+            return t;
+        }
         return 'Ag: ' + (r.agencia || '-') + ' | CC: ' + (r.conta || '-');
     }
 
@@ -417,8 +431,37 @@
             const { data, error } = await sb.from('contas_bancarias').select('*').eq('cliente_id', cid).order('id', { ascending: false });
             if (error) { toast('Erro ao carregar dados: ' + error.message, 'error'); return; }
             registrosCache = data || [];
+            await calcularSaldos(cid);
             renderTabelas();
         } catch(e) { console.error(e); }
+    }
+
+    async function calcularSaldos(cid) {
+        saldosCalc = null; saldosPorId = {};
+        try {
+            const mv = await ERPSaldos.carregarMovimentos(sb, cid);
+            if (mv.erro) { toast('Não foi possível calcular os saldos automáticos (' + mv.erro.message + '). Mostrando os saldos informados.', 'error'); return; }
+            saldosCalc = ERPSaldos.calcular(registrosCache, mv.movs);
+            saldosCalc.itens.forEach(i => { saldosPorId[String(i.id)] = i; });
+        } catch (e) { console.error(e); }
+    }
+
+    function saldoDe(r) {   // { valor, auto, informado, dif, nota }
+        const it = saldosPorId[String(r.id)];
+        if (it && it.calculado !== null) return { valor: it.calculado, auto: true, informado: it.informado, dif: it.diferenca, nota: it.nota };
+        return { valor: numero(r.saldo_inicial), auto: false, informado: numero(r.saldo_inicial), dif: null, nota: '' };
+    }
+    function saldoHtml(r) {
+        const s = saldoDe(r);
+        let h = '<strong>' + formatBRL(s.valor) + '</strong>';
+        if (s.auto) {
+            h += '<br><small style="color:var(--success); font-weight:700;"><i class="fas fa-bolt"></i> automático</small>';
+            if (Math.abs(s.dif) >= 0.005) h += '<br><small style="color:var(--danger); font-weight:700;">Extrato informado: ' + formatBRL(s.informado) + ' (dif. ' + formatBRL(s.dif) + ')</small>';
+            else h += ' <small style="color:var(--success);" title="O saldo informado confere com o calculado"><i class="fas fa-check-circle"></i></small>';
+        } else {
+            h += '<br><small style="color:var(--text-light);">informado</small>';
+        }
+        return h;
     }
 
     function listaFiltrada() {
@@ -435,11 +478,14 @@
 
     function renderTotais() {
         let contas = 0, cartoes = 0;
-        registrosCache.forEach(cb => {
-            if (!entraNoSaldoEmpresa(cb)) return;
-            const s = numero(cb.saldo_inicial !== undefined && cb.saldo_inicial !== null ? cb.saldo_inicial : (cb.saldo_atual !== undefined ? cb.saldo_atual : cb.saldo));
-            if (ehCartaoFluxo(cb)) cartoes += s; else contas += s;
-        });
+        if (saldosCalc) { contas = saldosCalc.contas; cartoes = saldosCalc.cartoes; }
+        else {
+            registrosCache.forEach(cb => {
+                if (!entraNoSaldoEmpresa(cb)) return;
+                const s = numero(cb.saldo_inicial);
+                if (ehCartaoFluxo(cb)) cartoes += s; else contas += s;
+            });
+        }
         document.getElementById('totContas').innerText = formatBRL(contas);
         document.getElementById('totCartoes').innerText = formatBRL(cartoes);
         document.getElementById('totGeral').innerText = formatBRL(contas + cartoes);
@@ -463,7 +509,7 @@
             const ehCartao = ehCartaoReg(r);
             const ehPF = norm(r.tipo).indexOf('pf') >= 0;
             const badgeTipo = '<span class="badge ' + (ehPF ? 'badge-pf' : (ehCartao ? 'badge-cartao' : 'badge-banco')) + '">' + esc(r.tipo) + '</span>';
-            const saldoVal = formatBRL(numero(r.saldo_inicial));
+            const saldoCel = saldoHtml(r);
             const disponivel = contaDisponivelEmpresa(r);
             const badgeClassif = disponivel ? '<span class="badge badge-disponivel"><i class="fas fa-check"></i> Disponível</span>' : '<span class="badge badge-excluido"><i class="fas fa-ban"></i> Excluído</span>';
             const ci = infoCartao(r);
@@ -475,8 +521,8 @@
             }
             const det = '<small>' + esc(detalhesTexto(r)) + '</small>';
             const nomeInst = '<strong>' + esc(r.nome || '-') + '</strong><br><small>' + esc(r.banco || '') + '</small>';
-            htmlRel += '<tr><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td><strong>' + saldoVal + '</strong></td></tr>';
-            htmlMain += '<tr><td><strong>#' + esc(r.id) + '</strong></td><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td><strong>' + saldoVal + '</strong></td><td>' + situacaoHtml + '</td>' +
+            htmlRel += '<tr><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td>' + saldoCel + '</td></tr>';
+            htmlMain += '<tr><td><strong>#' + esc(r.id) + '</strong></td><td>' + badgeTipo + '</td><td>' + nomeInst + '</td><td>' + det + '</td><td>' + badgeClassif + '</td><td>' + saldoCel + '</td><td>' + situacaoHtml + '</td>' +
                 '<td style="text-align:right;"><button type="button" class="btn-icon" data-acao="editar" data-id="' + esc(r.id) + '" title="Editar"><i class="fas fa-edit"></i></button> ' +
                 '<button type="button" class="btn-icon excluir" data-acao="excluir" data-id="' + esc(r.id) + '" title="Excluir"><i class="fas fa-trash-alt"></i></button></td></tr>';
         });
@@ -503,19 +549,24 @@
         if (busca) filtros.push(['Busca', '“' + busca + '”']);
         const linhas = lista.map(r => {
             const disp = contaDisponivelEmpresa(r);
+            const sd = saldoDe(r);
             return [r.tipo, (r.nome || '—') + (r.banco && r.banco !== 'Cartão' ? ' — ' + r.banco : ''), detalhesTexto(r),
-                { t: disp ? 'Disponível' : 'Excluído do saldo', cls: disp ? 'pos' : 'muted' }, { t: formatBRL(numero(r.saldo_inicial)), cls: 'bold' }];
+                { t: disp ? 'Disponível' : 'Excluído do saldo', cls: disp ? 'pos' : 'muted' },
+                { t: formatBRL(sd.valor), cls: 'bold' },
+                { t: sd.auto ? 'Automático' : 'Informado', cls: sd.auto ? 'pos' : 'muted' },
+                sd.auto ? { t: formatBRL(sd.informado) + (Math.abs(sd.dif) >= 0.005 ? ' (dif. ' + formatBRL(sd.dif) + ')' : ' ✓'), cls: Math.abs(sd.dif) >= 0.005 ? 'neg' : 'muted' } : '—'];
         });
         ERPPrint.imprimir({
             titulo: 'Relatório de Contas Bancárias, Caixa e Cartões',
-            subtitulo: 'Posição dos saldos informados no cadastro',
+            subtitulo: 'Posição dos saldos das contas da empresa',
             codigo: 'FIN-CB',
-            orientacao: 'portrait',
+            orientacao: 'landscape',
             filtros: filtros,
             resumo: [['Conta PJ + caixa', formatBRL(tot.contas)], ['Cartões pré-pagos', formatBRL(tot.cartoes)], ['Total disponível da empresa', formatBRL(tot.total)], ['Registros listados', String(lista.length)]],
-            colunas: [{ t: 'Modalidade', w: 1.5 }, { t: 'Nome / Instituição', w: 2.6 }, { t: 'Detalhes', w: 2.2 }, { t: 'Classificação', w: 1.4 }, { t: 'Saldo / Limite', w: 1.3, a: 'right' }],
+            colunas: [{ t: 'Modalidade', w: 1.4 }, { t: 'Nome / Instituição', w: 2.4 }, { t: 'Detalhes', w: 2.6 }, { t: 'Classificação', w: 1.3 },
+                      { t: 'Saldo (R$)', w: 1.2, a: 'right' }, { t: 'Origem do saldo', w: 1.2 }, { t: 'Conferência: informado (extrato)', w: 2, a: 'right' }],
             linhas: linhas,
-            observacao: 'Os saldos são os valores informados no cadastro de cada conta (não são calculados automaticamente) e são a base do Saldo Real do Fluxo de Caixa. Contas particulares (PF) e limites não entram no total disponível da empresa.'
+            observacao: 'Saldos "Automático" são calculados pelos lançamentos: cartão pré-pago = valor da recarga menos os gastos pagos no cartão desde a última recarga; conta principal = saldo total dos lançamentos menos o cartão. "Informado" é o valor digitado no cadastro da conta. A coluna de conferência compara o saldo digitado (extrato) com o calculado. Contas particulares (PF) e limites não entram no total disponível da empresa.'
         });
     }
 
@@ -544,6 +595,12 @@
             });
             payload.agencia = '';
             payload.conta = '';
+            const rv = document.getElementById('recarga_valor').value.trim();
+            const rd = document.getElementById('recarga_dia').value.trim();
+            if ((rv && !rd) || (!rv && rd)) { toast('Para o saldo automático do cartão, informe o valor E o dia da recarga (ou deixe os dois em branco).', 'error'); return; }
+            if (rd && (parseInt(rd, 10) < 1 || parseInt(rd, 10) > 28)) { toast('O dia da recarga deve ser de 1 a 28.', 'error'); return; }
+            const colunasRecarga = registrosCache.some(x => 'recarga_valor' in x);
+            if (rv || colunasRecarga) { payload.recarga_valor = rv ? Number(rv) : null; payload.recarga_dia = rd ? parseInt(rd, 10) : null; }
         } else {
             payload.banco = document.getElementById('banco').value.trim();
             payload.agencia = document.getElementById('agencia').value.trim();
@@ -593,6 +650,8 @@
             document.getElementById('cartao_numero').value = c.numero || '';
             document.getElementById('cartao_nome').value = c.titular || '';
             document.getElementById('cartao_vencimento').value = c.vencimento || '';
+            document.getElementById('recarga_valor').value = r.recarga_valor !== null && r.recarga_valor !== undefined ? r.recarga_valor : '';
+            document.getElementById('recarga_dia').value = r.recarga_dia !== null && r.recarga_dia !== undefined ? r.recarga_dia : '';
         } else {
             document.getElementById('banco').value = r.banco || '';
             document.getElementById('agencia').value = r.agencia || '';
@@ -608,7 +667,7 @@
         document.getElementById('edit_id').value = '';
         document.getElementById('categoria').value = 'Conta Bancaria';
         mudarCategoriaCadastro();
-        ['nome', 'banco', 'agencia', 'conta', 'cartao_numero', 'cartao_nome', 'cartao_vencimento'].forEach(i => { document.getElementById(i).value = ''; });
+        ['nome', 'banco', 'agencia', 'conta', 'cartao_numero', 'cartao_nome', 'cartao_vencimento', 'recarga_valor', 'recarga_dia'].forEach(i => { document.getElementById(i).value = ''; });
         document.getElementById('saldo_inicial').value = '0.00';
         document.getElementById('classificacao_saldo').value = 'disponivel';
         document.getElementById('titularidade').value = 'Empresarial (PJ)';
