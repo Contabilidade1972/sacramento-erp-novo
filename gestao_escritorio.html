@@ -94,6 +94,15 @@
         .atalho { display:flex; flex-direction:column; gap:6px; padding:16px; border:1.5px solid var(--border); border-radius:12px; text-decoration:none; color:var(--text-main); background:#fff; transition:.15s; }
         .atalho:hover { border-color:var(--primary); box-shadow:0 4px 14px rgba(37,99,235,.12); }
         .atalho strong { color:var(--secondary); font-size:14px; } .atalho span { font-size:12px; color:var(--text-light); }
+        .modal-cli { display:none; position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:5000; align-items:flex-start; justify-content:center; padding:40px 16px; overflow-y:auto; }
+        .modal-cli .caixa { background:#fff; border-radius:16px; width:100%; max-width:760px; box-shadow:0 20px 50px rgba(0,0,0,.3); }
+        .modal-cli .topo { display:flex; justify-content:space-between; align-items:center; padding:16px 22px; border-bottom:1px solid var(--border); font-weight:800; color:var(--secondary); }
+        .modal-cli .corpo { padding:22px; }
+        .ficha-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px 20px; }
+        .ficha-grid .item span { display:block; font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase; margin-bottom:2px; }
+        .ficha-grid .item strong { font-size:14px; word-break:break-word; }
+        .acoes-linha { display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+        @media print { body * { visibility:hidden !important; } #fichaImprimir, #fichaImprimir * { visibility:visible !important; } #fichaImprimir { position:absolute; left:0; top:0; width:100%; padding:24px; } .modal-cli { background:#fff !important; padding:0 !important; display:block !important; } .modal-cli .caixa { box-shadow:none !important; } .sem-imprimir { display:none !important; } }
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -257,6 +266,13 @@
     </div>
 </div>
 
+<div class="modal-cli" id="modalCli">
+    <div class="caixa">
+        <div class="topo sem-imprimir"><span id="modalCliTitulo">Cliente contábil</span><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="fecharModalCli()"><i class="fas fa-times"></i> Fechar</button></div>
+        <div class="corpo" id="modalCliCorpo"></div>
+    </div>
+</div>
+
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
@@ -362,6 +378,17 @@ async function carregarClientesContabeis() {
     renderTabelaClientes();
 }
 
+function chaveNome(c) {
+    if (c.razao_social && String(c.razao_social).trim()) return 'razao_social';
+    const k = Object.keys(c).find(k => /raz|nome|name|fantasia/i.test(k) && typeof c[k] === 'string' && c[k].trim());
+    return k || 'razao_social';
+}
+function nomeDoCliente(c) { return c[chaveNome(c)] || ''; }
+function fmtCnpj(v) {
+    const d = String(v || '').replace(/\D/g, '');
+    return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (v || '');
+}
+
 function renderTabelaClientes() {
     const tbody = document.getElementById('tbodyClientes');
     const contador = document.getElementById('contadorClientes');
@@ -373,17 +400,107 @@ function renderTabelaClientes() {
         return;
     }
     clientesContabeisCache.forEach(c => {
+        const nome = nomeDoCliente(c);
         tbody.innerHTML += `<tr>
-            <td><strong>${esc(c.razao_social)}</strong></td>
-            <td>${esc(c.cnpj)}</td>
+            <td><strong>${nome ? esc(nome) : '<span style="color:var(--danger);">(sem nome cadastrado)</span>'}</strong></td>
+            <td>${esc(fmtCnpj(c.cnpj))}</td>
             <td><span style="background:#e0f2fe; color:#0369a1; padding:4px 8px; border-radius:6px; font-weight:700; font-size:11px;">${esc(c.regime_tributario || 'Não informado')}</span></td>
             <td>${esc(c.cnae || '—')}</td>
             <td>${esc(c.municipio || '—')}</td>
             <td style="text-align:right;">
-                <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" type="button" onclick="excluirCliente(${c.id})"><i class="fas fa-trash"></i></button>
+                <div class="acoes-linha">
+                    <button class="btn-acao" style="padding:6px 10px; font-size:11px;" type="button" title="Visualizar" onclick="verCliente(${Number(c.id)})"><i class="fas fa-eye"></i></button>
+                    <button class="btn-acao sucesso" style="padding:6px 10px; font-size:11px;" type="button" title="Editar" onclick="editarCliente(${Number(c.id)})"><i class="fas fa-pen"></i></button>
+                    <button class="btn-acao cinza" style="padding:6px 10px; font-size:11px;" type="button" title="Imprimir ficha" onclick="verCliente(${Number(c.id)}, true)"><i class="fas fa-print"></i></button>
+                    <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" type="button" title="Excluir" onclick="excluirCliente(${Number(c.id)})"><i class="fas fa-trash"></i></button>
+                </div>
             </td>
         </tr>`;
     });
+}
+
+function fecharModalCli() { document.getElementById('modalCli').style.display = 'none'; }
+
+function verCliente(id, imprimir) {
+    const c = clientesContabeisCache.find(x => x.id == id);
+    if (!c) return;
+    const item = (rot, val) => `<div class="item"><span>${rot}</span><strong>${val ? esc(val) : '—'}</strong></div>`;
+    document.getElementById('modalCliTitulo').innerText = 'Ficha do cliente contábil';
+    document.getElementById('modalCliCorpo').innerHTML = `
+        <div id="fichaImprimir">
+            <div style="font-size:18px; font-weight:800; color:var(--secondary); margin-bottom:4px;">Ficha cadastral do cliente contábil</div>
+            <div style="font-size:11px; color:var(--text-light); margin-bottom:18px;">Emitida em ${new Date().toLocaleDateString('pt-BR')} pelo Sacramento ERP</div>
+            <div class="ficha-grid">
+                ${item('Razão social / Nome', nomeDoCliente(c))}
+                ${item('CNPJ', fmtCnpj(c.cnpj))}
+                ${item('Regime tributário', c.regime_tributario)}
+                ${item('CNAE principal', c.cnae)}
+                ${item('Inscrição estadual', c.ie || c.inscricao_estadual)}
+                ${item('Inscrição municipal', c.im || c.inscricao_municipal)}
+                ${item('Endereço', c.endereco)}
+                ${item('Município / UF', c.municipio)}
+            </div>
+        </div>
+        <div class="sem-imprimir" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn-acao sucesso" type="button" onclick="editarCliente(${Number(c.id)})"><i class="fas fa-pen"></i> Editar</button>
+            <button class="btn-acao" type="button" onclick="window.print()"><i class="fas fa-print"></i> Imprimir ficha</button>
+        </div>`;
+    document.getElementById('modalCli').style.display = 'flex';
+    if (imprimir) setTimeout(() => window.print(), 300);
+}
+
+function editarCliente(id) {
+    const c = clientesContabeisCache.find(x => x.id == id);
+    if (!c) return;
+    const campo = (rot, idc, val, extra) => `<div><label>${rot}</label><input type="text" id="${idc}" class="form-control" value="${esc(val || '')}" ${extra || ''}></div>`;
+    const regimes = ['Lucro Presumido', 'Simples Nacional', 'Lucro Real', 'MEI'];
+    const opts = regimes.map(r => `<option value="${r}" ${r === c.regime_tributario ? 'selected' : ''}>${r}</option>`).join('')
+        + (c.regime_tributario && !regimes.includes(c.regime_tributario) ? `<option value="${esc(c.regime_tributario)}" selected>${esc(c.regime_tributario)}</option>` : '');
+    document.getElementById('modalCliTitulo').innerText = 'Editar cliente contábil';
+    document.getElementById('modalCliCorpo').innerHTML = `
+        <input type="hidden" id="ed_id" value="${Number(c.id)}">
+        <div class="form-row">
+            ${campo('Razão social / Nome *', 'ed_razao', nomeDoCliente(c))}
+            ${campo('CNPJ *', 'ed_cnpj', fmtCnpj(c.cnpj))}
+            <div><label>Regime tributário *</label><select id="ed_regime" class="form-control">${opts}</select></div>
+            ${campo('CNAE principal', 'ed_cnae', c.cnae)}
+            ${campo('Inscrição estadual', 'ed_ie', c.ie || c.inscricao_estadual)}
+            ${campo('Inscrição municipal', 'ed_im', c.im || c.inscricao_municipal)}
+            ${campo('Endereço', 'ed_endereco', c.endereco)}
+            ${campo('Município / UF', 'ed_municipio', c.municipio)}
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+            <button class="btn-acao cinza" type="button" onclick="fecharModalCli()">Cancelar</button>
+            <button class="btn-acao sucesso" type="button" onclick="salvarEdicaoCliente()"><i class="fas fa-save"></i> Salvar alterações</button>
+        </div>`;
+    document.getElementById('modalCli').style.display = 'flex';
+}
+
+async function salvarEdicaoCliente() {
+    const id = document.getElementById('ed_id').value;
+    const c = clientesContabeisCache.find(x => x.id == id);
+    if (!c) return;
+    const razao = document.getElementById('ed_razao').value.trim();
+    const cnpj = document.getElementById('ed_cnpj').value.trim();
+    if (!razao || !cnpj) { toast("Preencha o CNPJ e a Razão Social obrigatórios!", "error"); return; }
+    if (!cnpjValido(cnpj)) { toast("CNPJ inválido. Confira os números digitados.", "error"); return; }
+    const g = k => document.getElementById(k).value.trim();
+    const payload = {};
+    payload[chaveNome(c)] = razao;
+    payload.cnpj = cnpj;
+    payload.regime_tributario = document.getElementById('ed_regime').value;
+    const mapa = { cnae: 'ed_cnae', endereco: 'ed_endereco', municipio: 'ed_municipio' };
+    Object.keys(mapa).forEach(k => { if (k in c) payload[k] = g(mapa[k]); });
+    if ('ie' in c) payload.ie = g('ed_ie'); else if ('inscricao_estadual' in c) payload.inscricao_estadual = g('ed_ie');
+    if ('im' in c) payload.im = g('ed_im'); else if ('inscricao_municipal' in c) payload.inscricao_municipal = g('ed_im');
+    let q = sb.from('clientes_contabeis').update(payload).eq('id', id);
+    const cid = window.clienteIdAtual();
+    if (cid) q = q.eq('cliente_id', cid);
+    const { error } = await q;
+    if (error) { toast("Erro ao salvar: " + error.message, "error"); return; }
+    toast("Cliente atualizado com sucesso!");
+    fecharModalCli();
+    carregarClientesContabeis();
 }
 
 async function salvarClienteContabil() {
