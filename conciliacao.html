@@ -501,6 +501,13 @@
         return out;
     }
 
+    // atualiza o status do extrato; se a coluna updated_at der problema, tenta só o status
+    async function atualizarStatusExtrato(id, status, cid) {
+        let res = await sb.from('extrato_ofx_importado').update({ status: status, updated_at: new Date().toISOString() }).eq('id', id).eq('cliente_id', cid);
+        if (res.error) res = await sb.from('extrato_ofx_importado').update({ status: status }).eq('id', id).eq('cliente_id', cid);
+        return res;
+    }
+
     async function baixarTitulo(tit, dataBanco, cid) {
         const campo = tit.tab === 'contas_pagar' ? { status: 'Pago', data_pagamento: dataBanco } : { status: 'Recebido', data_recebimento: dataBanco };
         campo.updated_at = new Date().toISOString();
@@ -556,7 +563,7 @@
                 if (rb.error) { toast('Não foi possível dar baixa no título: ' + rb.error.message, 'error'); return; }
             }
         }
-        const up = await sb.from('extrato_ofx_importado').update({ status: 'Conciliado', updated_at: new Date().toISOString() }).eq('id', extratoId).eq('cliente_id', cid);
+        const up = await atualizarStatusExtrato(extratoId, 'Conciliado', cid);
         if (up.error) { toast('Erro ao conciliar: ' + up.error.message, 'error'); return; }
         fecharModais();
         toast('Transação conciliada com sucesso!');
@@ -565,7 +572,7 @@
 
     async function desfazerConciliacao(id) {
         if (!confirm('Voltar esta transação para "Pendente"?\n\n(Se ela deu baixa em um título, o título continua como está.)')) return;
-        const res = await sb.from('extrato_ofx_importado').update({ status: 'Pendente', updated_at: new Date().toISOString() }).eq('id', id).eq('cliente_id', obterClienteIdAtivo());
+        const res = await atualizarStatusExtrato(id, 'Pendente', obterClienteIdAtivo());
         if (res.error) { toast('Erro: ' + res.error.message, 'error'); return; }
         toast('Conciliação desfeita.');
         await carregarHistorico();
@@ -640,15 +647,16 @@
         const baixas = sel.filter(function (s) { return s.baixa; }).length;
         if (baixas && !confirm(baixas + ' título(s) em aberto serão BAIXADOS (Pago/Recebido) com a data do extrato. Confirma?')) return;
         document.getElementById('btnAplicarSug').disabled = true;
-        let ok = 0, erros = 0;
+        let ok = 0, erros = 0, primeiroErro = '';
         for (const s of sel) {
-            if (s.baixa) { const rb = await baixarTitulo(s.tit, dataISO(s.extrato.data_transacao), cid); if (rb.error) { erros++; continue; } }
-            const up = await sb.from('extrato_ofx_importado').update({ status: 'Conciliado', updated_at: new Date().toISOString() }).eq('id', s.extrato.id).eq('cliente_id', cid);
-            if (up.error) erros++; else ok++;
+            if (s.baixa) { const rb = await baixarTitulo(s.tit, dataISO(s.extrato.data_transacao), cid); if (rb.error) { erros++; if (!primeiroErro) primeiroErro = 'baixa do título: ' + rb.error.message; continue; } }
+            const up = await atualizarStatusExtrato(s.extrato.id, 'Conciliado', cid);
+            if (up.error) { erros++; if (!primeiroErro) primeiroErro = 'extrato: ' + up.error.message; } else ok++;
         }
         document.getElementById('btnAplicarSug').disabled = false;
         fecharModais();
-        toast(ok + ' lançamento(s) conciliado(s)' + (erros ? ' — ' + erros + ' com erro' : '') + '.', erros ? 'error' : 'success');
+        toast(ok + ' lançamento(s) conciliado(s)' + (erros ? ' — ' + erros + ' com erro (' + primeiroErro + ')' : '') + '.', erros ? 'error' : 'success');
+        if (erros) console.error('Erro na conciliação:', primeiroErro);
         await carregarHistorico();
     }
 
