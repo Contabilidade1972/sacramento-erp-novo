@@ -159,4 +159,274 @@ const MODULOS = [
     { k: 'financeiro',       n: 'Financeiro (contas, fluxo de caixa, DRE, faturas, bancos)' },
     { k: 'contabil_fiscal',  n: 'Contabilidade & Fiscal' },
     { k: 'cadastros',        n: 'Cadastros (parceiros, centros de custo, sócios, ativos)' },
-    { k: 'catalogo_estoque',
+    { k: 'catalogo_estoque', n: 'Catálogo & Estoque' },
+    { k: 'escritorio_rh',    n: 'Escritório, RH & Jurídico' },
+    { k: 'tecnologia_pd',    n: 'Tecnologia & P&D' },
+    { k: 'transporte',       n: 'Transporte & Logística' },
+    { k: 'auditoria',        n: 'Trilha de Auditoria' }
+];
+
+let meuAcesso = null;
+let lista = [];
+let empresas = {};
+let editando = null; // linha em edição, ou null quando é cadastro novo
+
+function obterUsuarioAtual() {
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch (e) {}
+    return null;
+}
+
+function esc(t) {
+    return String(t === null || t === undefined ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function nomeModulo(k) {
+    for (let i = 0; i < MODULOS.length; i++) { if (MODULOS[i].k === k) return MODULOS[i].n.split(' (')[0]; }
+    return k;
+}
+
+function mostrarMsg(texto, tipo) {
+    const el = document.getElementById('msgForm');
+    el.className = 'msg ' + tipo;
+    el.innerText = texto;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function limparMsg() {
+    const el = document.getElementById('msgForm');
+    el.className = 'msg';
+    el.innerText = '';
+}
+
+function montarModulos() {
+    let html = '';
+    MODULOS.forEach(function (m) {
+        html += '<label><input type="checkbox" class="chk-modulo" value="' + m.k + '"> ' + esc(m.n) + '</label>';
+    });
+    document.getElementById('gridModulos').innerHTML = html;
+}
+
+function alternarCampos() {
+    const perfil = document.getElementById('fPerfil').value;
+    const acesso = document.getElementById('fAcesso').value;
+    const admin = perfil === 'Administrador';
+    document.getElementById('grupoAcesso').style.display = admin ? 'none' : 'block';
+    document.getElementById('grupoModulos').style.display = (!admin && acesso === 'parcial') ? 'block' : 'none';
+}
+
+function modulosMarcados() {
+    const r = [];
+    document.querySelectorAll('.chk-modulo').forEach(function (c) { if (c.checked) r.push(c.value); });
+    return r;
+}
+
+function empresaAlvoMaster() {
+    const v = parseInt(localStorage.getItem('empresaSelecionada') || '1', 10);
+    return isNaN(v) ? 1 : v;
+}
+
+function atualizarRotuloEmpresa() {
+    const el = document.getElementById('empresaDestino');
+    if (meuAcesso && meuAcesso.is_master) {
+        const id = editando ? editando.cliente_id : empresaAlvoMaster();
+        el.innerText = 'Empresa: ' + (empresas[id] || ('Empresa ' + id)) + (editando ? '' : ' (a selecionada no topo da página)');
+    } else {
+        const u = obterUsuarioAtual();
+        const id = u ? u.cliente_id : null;
+        el.innerText = 'Empresa: ' + (empresas[id] || 'a sua empresa');
+    }
+}
+
+function novo() {
+    editando = null;
+    document.getElementById('tituloForm').innerHTML = '<i class="fas fa-user-plus"></i> Cadastrar novo utilizador';
+    document.getElementById('fEmail').value = '';
+    document.getElementById('fEmail').readOnly = false;
+    document.getElementById('fSenha').value = '';
+    document.getElementById('grupoSenha').style.display = 'block';
+    document.getElementById('fPerfil').value = 'Usuário';
+    document.getElementById('fAcesso').value = 'todos';
+    document.querySelectorAll('.chk-modulo').forEach(function (c) { c.checked = false; });
+    document.getElementById('btnCancelar').style.display = 'none';
+    limparMsg();
+    alternarCampos();
+    atualizarRotuloEmpresa();
+}
+
+function editar(i) {
+    const u = lista[i];
+    if (!u) return;
+    editando = u;
+    document.getElementById('tituloForm').innerHTML = '<i class="fas fa-user-edit"></i> Editar utilizador';
+    document.getElementById('fEmail').value = u.email;
+    document.getElementById('fEmail').readOnly = true;
+    document.getElementById('grupoSenha').style.display = 'none';
+    document.getElementById('fPerfil').value = (u.perfil === 'Administrador') ? 'Administrador' : 'Usuário';
+    document.getElementById('fAcesso').value = u.acesso_total ? 'todos' : 'parcial';
+    const mods = u.modulos || [];
+    document.querySelectorAll('.chk-modulo').forEach(function (c) { c.checked = mods.indexOf(c.value) >= 0; });
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    limparMsg();
+    alternarCampos();
+    atualizarRotuloEmpresa();
+    document.getElementById('painelForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function remover(i) {
+    const u = lista[i];
+    if (!u) return;
+    if (!confirm('Remover o acesso de ' + u.email + '?\n\nA pessoa deixa de conseguir entrar no sistema. Os dados da empresa não são apagados.')) return;
+    const r = await sb.rpc('app_admin_remover_usuario', { p_email: u.email });
+    if (r.error) { mostrarMsg('Não foi possível remover: ' + r.error.message, 'erro'); return; }
+    if (r.data !== 'OK') { mostrarMsg(String(r.data).replace('ERRO: ', ''), 'erro'); return; }
+    mostrarMsg('Acesso de ' + u.email + ' removido.', 'ok');
+    if (editando && editando.email === u.email) novo();
+    carregarLista();
+}
+
+async function salvar() {
+    limparMsg();
+    const email = document.getElementById('fEmail').value.trim().toLowerCase();
+    const perfil = document.getElementById('fPerfil').value;
+    const total = (perfil === 'Administrador') || document.getElementById('fAcesso').value === 'todos';
+    const modulos = total ? [] : modulosMarcados();
+
+    if (!email || email.indexOf('@') < 1 || email.indexOf('.') < 0) { mostrarMsg('Digite um e-mail válido.', 'erro'); return; }
+    if (!total && modulos.length === 0) { mostrarMsg('Marque pelo menos um módulo, ou escolha "Todos os módulos".', 'erro'); return; }
+
+    const btn = document.getElementById('btnSalvar');
+    btn.disabled = true;
+    let avisoConfirmacao = false;
+
+    try {
+        if (!editando) {
+            const senha = document.getElementById('fSenha').value;
+            if (senha.length < 10 || !/[0-9]/.test(senha) || !/[A-Za-z]/.test(senha)) {
+                mostrarMsg('A senha provisória precisa ter pelo menos 10 caracteres, com letras e números.', 'erro');
+                btn.disabled = false; return;
+            }
+            const cr = await sbNovo.auth.signUp({ email: email, password: senha });
+            if (cr.error) {
+                const m = (cr.error.message || '').toLowerCase();
+                if (m.indexOf('already') >= 0 || m.indexOf('registered') >= 0) {
+                    mostrarMsg('Este e-mail já possui cadastro no sistema. Se for de uma pessoa nova, use outro e-mail; se for um acesso antigo, peça ao Master para vincular.', 'erro');
+                } else {
+                    mostrarMsg('Não foi possível criar o acesso: ' + cr.error.message, 'erro');
+                }
+                btn.disabled = false; return;
+            }
+            if (cr.data && cr.data.user && cr.data.user.identities && cr.data.user.identities.length === 0) {
+                mostrarMsg('Este e-mail já possui cadastro no sistema. Peça ao Master para vincular.', 'erro');
+                btn.disabled = false; return;
+            }
+            avisoConfirmacao = !(cr.data && cr.data.session);
+        }
+
+        let alvo = null;
+        if (meuAcesso.is_master) alvo = editando ? editando.cliente_id : empresaAlvoMaster();
+
+        const r = await sb.rpc('app_admin_salvar_usuario', {
+            p_email: email, p_perfil: perfil, p_acesso_total: total, p_modulos: modulos, p_cliente_id: alvo
+        });
+        if (r.error) { mostrarMsg('Erro ao salvar: ' + r.error.message + ' (se persistir, saia e entre novamente)', 'erro'); btn.disabled = false; return; }
+        if (r.data !== 'OK') { mostrarMsg(String(r.data).replace('ERRO: ', ''), 'erro'); btn.disabled = false; return; }
+
+        const eraNovo = !editando;
+        novo();
+        await carregarLista();
+        if (eraNovo && avisoConfirmacao) {
+            mostrarMsg('Utilizador criado, mas o Supabase está exigindo confirmação de e-mail. A pessoa só entra depois de confirmar. Para evitar isso, desligue "Confirm email" em Authentication > Providers > Email.', 'alerta');
+        } else if (eraNovo) {
+            mostrarMsg('Utilizador criado com sucesso! Passe o e-mail e a senha provisória para a pessoa e peça para trocar a senha pelo ícone da chave, no topo da página.', 'ok');
+        } else {
+            mostrarMsg('Permissões atualizadas com sucesso.', 'ok');
+        }
+    } catch (err) {
+        mostrarMsg('Erro inesperado: ' + err.message, 'erro');
+    }
+    btn.disabled = false;
+}
+
+async function carregarEmpresas() {
+    const r = await sb.from('clientes_contratantes').select('id, nome_fantasia, razao_social');
+    (r.data || []).forEach(function (e) { empresas[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+}
+
+async function carregarLista() {
+    const el = document.getElementById('listaUsuarios');
+    const contador = document.getElementById('contadorUsuarios');
+    const r = await sb.rpc('app_listar_usuarios');
+    if (r.error) {
+        el.innerHTML = '<div class="empty-state">Não foi possível carregar os utilizadores. Detalhe: ' + esc(r.error.message) + '</div>';
+        return;
+    }
+    lista = r.data || [];
+    contador.innerText = lista.length + (lista.length === 1 ? ' utilizador' : ' utilizadores');
+    if (!lista.length) { el.innerHTML = '<div class="empty-state">Nenhum utilizador encontrado.</div>'; return; }
+
+    const eu = (obterUsuarioAtual() || {}).email || '';
+    let html = '<table class="analitica-table"><thead><tr><th>E-mail (login)</th><th>Perfil</th><th>Acesso</th><th>Empresa</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    lista.forEach(function (u, i) {
+        let perfilHtml, acessoHtml;
+        if (u.is_master) {
+            perfilHtml = '<span class="badge-master">Master</span>';
+            acessoHtml = 'Total (todas as empresas)';
+        } else {
+            perfilHtml = '<span class="badge-perfil">' + esc(u.perfil || 'Utilizador') + '</span>';
+            if (u.perfil === 'Administrador' || u.acesso_total) {
+                acessoHtml = 'Todos os módulos';
+            } else {
+                const mods = u.modulos || [];
+                acessoHtml = mods.length ? mods.map(function (m) { return '<span class="tag-mod">' + esc(nomeModulo(m)) + '</span>'; }).join('') : '<em style="color:var(--danger);">Nenhum módulo</em>';
+            }
+        }
+        const empresa = u.is_master ? 'Todas' : (empresas[u.cliente_id] || ('Empresa ' + u.cliente_id));
+        const ehEu = (u.email || '').toLowerCase() === eu.toLowerCase();
+        let acoes = '';
+        if (!u.is_master && !ehEu) {
+            acoes = '<button class="btn-mini" onclick="editar(' + i + ')"><i class="fas fa-pen"></i> Editar</button> ' +
+                    '<button class="btn-mini perigo" onclick="remover(' + i + ')"><i class="fas fa-user-slash"></i> Remover</button>';
+        } else if (ehEu) {
+            acoes = '<span style="font-size:11px; color:var(--text-light);">(você)</span>';
+        }
+        html += '<tr><td><strong>' + esc(u.email) + '</strong></td><td>' + perfilHtml + '</td><td>' + acessoHtml + '</td><td>' + esc(empresa) + '</td><td style="text-align:right; white-space:nowrap;">' + acoes + '</td></tr>';
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+async function iniciar() {
+    const u = obterUsuarioAtual();
+    if (!u || !u.email) { location.href = 'login.html'; return; }
+
+    const r = await sb.rpc('app_meu_acesso');
+    const aviso = document.getElementById('semPermissao');
+    if (r.error || !r.data || !r.data.length) {
+        aviso.style.display = 'block';
+        aviso.innerText = 'Não foi possível confirmar o seu acesso. Clique em Sair e entre novamente.';
+        return;
+    }
+    meuAcesso = r.data[0];
+    if (!meuAcesso.is_admin) {
+        aviso.style.display = 'block';
+        aviso.innerText = 'Apenas administradores podem gerenciar utilizadores. Fale com o administrador da sua empresa.';
+        return;
+    }
+
+    document.getElementById('areaAdmin').style.display = 'flex';
+    montarModulos();
+    await carregarEmpresas();
+    novo();
+    await carregarLista();
+}
+
+window.onload = iniciar;
+</script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+<script src="erp-core.js"></script>
+</body>
+</html>
