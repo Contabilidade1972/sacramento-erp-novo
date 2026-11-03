@@ -193,6 +193,11 @@
         const c = norm(conta);
         return c.startsWith('1.2') || c.indexOf('simples') >= 0 || (ehReceita ? c.indexOf('dedu') >= 0 : /\bdas\b/.test(c));
     }
+    // Movimentações de patrimônio (saída de sócio, quotas, distribuição de lucros): não são despesa do exercício
+    function ehPatrimonio(conta) {
+        const c = norm(conta);
+        return c.indexOf('patrimonio liquido') >= 0 || c.indexOf('quotas') >= 0 || c.indexOf('distribuicao de lucro') >= 0;
+    }
     function ehCPV(conta) {
         const c = norm(conta);
         return c.startsWith('3.1') || c.indexOf('cpv') >= 0 || c.indexOf('insumos') >= 0;
@@ -200,7 +205,7 @@
 
     function calcularDRE(recebimentos, pagamentos, base) {
         const R = { bruta: 0, deducoes: 0, cpv: 0, despesas: 0, dRec: {}, dDed: {}, dCpv: {}, dDesp: {},
-                    qtd: 0, pendRec: 0, pendPag: 0, qtdPend: 0, semConta: 0, qtdSemConta: 0, cancelados: 0 };
+                    qtd: 0, pl: 0, dPl: {}, pendRec: 0, pendPag: 0, qtdPend: 0, semConta: 0, qtdSemConta: 0, cancelados: 0 };
         const SEM = 'Sem conta contábil informada (classificar)';
         function estado(st) { const s = norm(st); return { cancel: s.indexOf('cancel') >= 0 || s.indexOf('estorn') >= 0, liq: s.indexOf('pago') >= 0 || s.indexOf('recebido') >= 0 || s.indexOf('quitado') >= 0 }; }
 
@@ -222,10 +227,11 @@
             if (e.cancel) { R.cancelados++; return; }
             if (base === 'liquidados' && !e.liq) return;
             const val = numero(p.valor);
-            R.qtd++;
-            if (!e.liq) { R.pendPag += val; R.qtdPend++; }
             let conta = String(p.conta_contabil || '').trim();
             if (!conta) { conta = SEM; R.semConta += val; R.qtdSemConta++; }
+            if (ehPatrimonio(conta)) { R.pl += val; R.dPl[conta] = (R.dPl[conta] || 0) + val; return; }
+            R.qtd++;
+            if (!e.liq) { R.pendPag += val; R.qtdPend++; }
             if (ehDeducao(conta, false)) { R.deducoes += val; R.dDed[conta] = (R.dDed[conta] || 0) + val; }
             else if (ehCPV(conta)) { R.cpv += val; R.dCpv[conta] = (R.dCpv[conta] || 0) + val; }
             else { R.despesas += val; R.dDesp[conta] = (R.dDesp[conta] || 0) + val; }
@@ -247,6 +253,9 @@
         L.push({ t: 'grupo', r: '(-) DESPESAS OPERACIONAIS (Adm, P&D, Aluguel, Salários)', v: R.despesas, neg: true }); sub(R.dDesp);
         L.push({ t: 'total', r: '(=) RESULTADO OPERACIONAL', v: R.resultadoOperacional });
         L.push({ t: 'lucro', r: R.lucroLiquido < 0 ? '(=) PREJUÍZO DO EXERCÍCIO' : '(=) LUCRO LÍQUIDO DO EXERCÍCIO (LLE)', v: R.lucroLiquido });
+        if (R.pl > 0) {
+            L.push({ t: 'grupo', r: 'MOVIMENTAÇÕES DE PATRIMÔNIO (não afetam o resultado do exercício)', v: R.pl }); sub(R.dPl);
+        }
         R.linhas = L;
         return R;
     }
@@ -255,6 +264,7 @@
         const n = [];
         n.push('<b>Base de apuração:</b> data de vencimento dos títulos de Contas a Pagar e a Receber (' + (base === 'liquidados' ? 'somente os já pagos / recebidos' : 'todos os títulos do período, pagos ou não') + '). Títulos cancelados ou estornados não entram.');
         if (base !== 'liquidados' && R.qtdPend > 0) n.push('Inclui <b>' + R.qtdPend + '</b> título(s) ainda não liquidado(s): receitas a receber ' + formatarMoeda(R.pendRec) + ' e despesas a pagar ' + formatarMoeda(R.pendPag) + '.');
+        if (R.pl > 0) n.push('<b>Movimentações de patrimônio</b> (ex.: saída de sócio / aquisição de quotas) somam ' + formatarMoeda(R.pl) + ' e ficam fora do resultado do exercício; continuam no Fluxo de Caixa, pois o dinheiro saiu da conta.');
         if (R.qtdSemConta > 0) n.push('<b>' + R.qtdSemConta + '</b> título(s) sem conta contábil (' + formatarMoeda(R.semConta) + ') foram agrupados em "Sem conta contábil informada". Classifique-os em Contas a Pagar/Receber para o DRE ficar completo.');
         n.push('Este é um demonstrativo gerencial; não substitui a escrituração contábil oficial.');
         return n;
