@@ -268,6 +268,43 @@
         el.innerHTML = h + '</tbody></table>';
     }
 
+    /* ---------- consulta com fontes de reserva (se uma limitar ou cair, tenta a próxima) ---------- */
+    function normalizarCnpjWs(j) {
+        const e = j.estabelecimento || {}, ap = e.atividade_principal || {};
+        return {
+            cnpj: e.cnpj, razao_social: j.razao_social, nome_fantasia: e.nome_fantasia || '',
+            descricao_situacao_cadastral: e.situacao_cadastral, data_inicio_atividade: e.data_inicio_atividade,
+            cnae_fiscal: ap.id, cnae_fiscal_descricao: ap.descricao,
+            cnaes_secundarios: (e.atividades_secundarias || []).map(function (a) { return { codigo: a.id, descricao: a.descricao }; }),
+            email: e.email, ddd_telefone_1: (e.ddd1 || '') + (e.telefone1 || ''),
+            qsa: (j.socios || []).map(function (s) { return { nome_socio: s.nome, qualificacao_socio: s.qualificacao_socio && s.qualificacao_socio.descricao, data_entrada_sociedade: s.data_entrada, pais: s.pais && s.pais.nome }; })
+        };
+    }
+    async function buscarCnpjComReserva(d) {
+        const provedores = [
+            { url: 'https://brasilapi.com.br/api/cnpj/v1/' + d, norm: function (x) { return x; } },
+            { url: 'https://minhareceita.org/' + d, norm: function (x) { return x; } },
+            { url: 'https://publica.cnpj.ws/cnpj/' + d, norm: normalizarCnpjWs }
+        ];
+        for (let i = 0; i < provedores.length; i++) {
+            const ctrl = new AbortController(), t = setTimeout(function () { ctrl.abort(); }, 10000);
+            try {
+                const resp = await fetch(provedores[i].url, { signal: ctrl.signal });
+                clearTimeout(t);
+                if (resp.status === 404) throw new Error('CNPJ não encontrado na base da Receita.');
+                if (!resp.ok) continue;
+                const json = await resp.json();
+                const r = provedores[i].norm(json);
+                if (r && r.razao_social) return r;
+            } catch (e) {
+                clearTimeout(t);
+                if (/não encontrado/i.test(e.message || '')) throw e;
+                /* falha de rede, limite de consultas (429) ou bloqueio: tenta a próxima fonte */
+            }
+        }
+        throw new Error('Os serviços de consulta da Receita estão limitando consultas ou indisponíveis agora. Aguarde alguns minutos e tente de novo. Os dados já salvos continuam intactos.');
+    }
+
     /* ---------- consulta na Receita ---------- */
     async function consultarCnpjReceita() {
         const cnpjInput = somenteDigitos(document.getElementById('inputCnpjBusca').value);
@@ -276,9 +313,7 @@
         dica.className = 'dica'; dica.textContent = 'Consultando a Receita Federal...';
         const btn = document.getElementById('btnConsultar'); btn.disabled = true;
         try {
-            const resp = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpjInput);
-            if (!resp.ok) throw new Error(resp.status === 404 ? 'CNPJ não encontrado na base da Receita.' : 'Serviço da Receita indisponível no momento. Tente novamente.');
-            const r = await resp.json();
+            const r = await buscarCnpjComReserva(cnpjInput);
 
             document.getElementById('razao_social').value = r.razao_social || '';
             document.getElementById('nome_fantasia').value = r.nome_fantasia || '';
