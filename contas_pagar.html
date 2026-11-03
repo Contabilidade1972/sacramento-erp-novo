@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -37,6 +38,7 @@
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); text-decoration: none; }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao:disabled { opacity: .6; cursor: not-allowed; }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
         .btn-acao.perigo { background: var(--danger); box-shadow: 0 2px 6px rgba(239,68,68,0.2); }
@@ -44,12 +46,13 @@
 
         .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
         .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 16px; }
-        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; flex-shrink: 0; }
         .dash-card h4 { font-size: 11px; color: var(--text-light); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
         .dash-card .value { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .dash-card .sub { font-size: 11px; color: var(--text-light); margin-top: 2px; font-weight: 600; }
 
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
         .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
 
         .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -59,10 +62,10 @@
 
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
         tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         tbody tr:hover { background: #f8fafc; }
-        
+
         .badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; display: inline-block; }
         .badge-pendente { background: #fee2e2; color: #991b1b; }
         .badge-pago { background: #d1fae5; color: #065f46; }
@@ -81,30 +84,14 @@
         .btn-mais:hover { background: #059669; transform: scale(1.05); }
 
         .aviso-nao-cadastrado { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .dica { font-size: 11px; color: var(--text-light); margin-top: 6px; line-height: 1.45; }
+        .dica.cartao { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; border-radius: 6px; padding: 7px 10px; font-weight: 600; }
+        .caixa-serie { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; margin-bottom: 14px; display: none; }
+        .caixa-serie label { display: flex; gap: 8px; align-items: center; text-transform: none; font-size: 12px; color: #92400e; margin: 0; cursor: pointer; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
-        .modal-card { background: var(--card); width: 100%; max-width: 550px; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
+        .modal-card { background: var(--card); width: 100%; max-width: 550px; max-height: 92vh; overflow-y: auto; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-
-        .print-corporative-header { display: none !important; }
-
-        /* REGRA DE IMPRESSÃO A4 COM MARGENS RIGOROSAS (15mm) */
-        @media print {
-            @page { size: A4 portrait; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, footer { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            .card#cardRelatorioModo .card-header { display: none !important; }
-            .card#cardRelatorioModo .collapsible-content { max-height: none !important; opacity: 1 !important; overflow: visible !important; }
-            .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
-            .table-container { width: 100% !important; overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 5px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 5px 5px !important; border-bottom: 1px solid #cbd5e1 !important; }
-        }
     </style>
 </head>
 <body>
@@ -167,6 +154,40 @@
     </div>
 </div>
 
+<!-- MODAL: BAIXA DE PAGAMENTO -->
+<div class="modal-overlay" id="modalPagamento">
+    <div class="modal-card" style="max-width:520px;">
+        <div class="modal-header">
+            <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-check-circle" style="color:var(--success)"></i> Registrar Pagamento (Baixa)</h3>
+            <button onclick="fecharModalPagamento()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+        </div>
+        <input type="hidden" id="pagamento_id_baixa">
+        <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.6;">
+            <div><strong>Fornecedor:</strong> <span id="modal_forn_nome">-</span></div>
+            <div><strong>Descrição:</strong> <span id="modal_forn_desc">-</span></div>
+            <div><strong>Vencimento:</strong> <span id="modal_forn_venc">-</span></div>
+            <div><strong>Valor:</strong> <span id="modal_forn_valor" style="font-weight:800; color: var(--primary);">R$ 0,00</span></div>
+        </div>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+                <label>Data do Pagamento *</label>
+                <input type="date" id="data_pagamento_baixa" class="form-control">
+            </div>
+            <div>
+                <label>Conta de Origem (de onde saiu) *</label>
+                <select id="conta_origem_baixa" class="form-control" onchange="atualizarInfoCartaoBaixa()">
+                    <option value="">Selecione...</option>
+                </select>
+            </div>
+        </div>
+        <div id="info_cartao_baixa" class="dica cartao" style="display:none;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:18px;">
+            <button class="btn-acao" style="background:#64748b;" onclick="fecharModalPagamento()">Cancelar</button>
+            <button class="btn-acao sucesso" id="btnConfirmarPagamento" onclick="confirmarPagamento()"><i class="fas fa-check"></i> Confirmar Pagamento</button>
+        </div>
+    </div>
+</div>
+
 <main class="container">
     <div class="page-toolbar">
         <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Hub Financeiro</a>
@@ -176,8 +197,9 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-file-invoice-dollar"></i></div>
             <div>
-                <h4>A Pagar (Pendente)</h4>
+                <h4>A Pagar (a vencer)</h4>
                 <div class="value" id="tot_pendente">R$ 0,00</div>
+                <div class="sub" id="qtd_pendente">0 títulos</div>
             </div>
         </div>
         <div class="dash-card">
@@ -185,6 +207,7 @@
             <div>
                 <h4>Total Pago</h4>
                 <div class="value" id="tot_pago">R$ 0,00</div>
+                <div class="sub" id="qtd_pago">0 títulos</div>
             </div>
         </div>
         <div class="dash-card">
@@ -192,6 +215,7 @@
             <div>
                 <h4>Contas Vencidas</h4>
                 <div class="value" id="tot_atrasado" style="color:var(--danger)">R$ 0,00</div>
+                <div class="sub" id="qtd_atrasado">0 títulos</div>
             </div>
         </div>
     </div>
@@ -203,13 +227,14 @@
         </div>
         <div class="collapsible-content">
             <input type="hidden" id="edit_id">
+            <input type="hidden" id="edit_sufixo">
             <div class="form-grid">
                 <div>
-                    <label>Código (Virtual)</label>
+                    <label>Código</label>
                     <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
                 </div>
                 <div>
-                    <label>CNPJ / CPF do Fornecedor * <span id="status_fornecedor" style="font-weight:normal;font-size:10px;"></span></label>
+                    <label>CNPJ / CPF do Fornecedor <span id="status_fornecedor" style="font-weight:normal;font-size:10px;"></span></label>
                     <div class="campo-com-mais">
                         <input type="text" id="cpf_cnpj_fornecedor" class="form-control" placeholder="Apenas números..." oninput="buscarOuConsultarFornecedor()">
                         <button class="btn-mais" onclick="abrirModalFornecedor()" title="Cadastrar novo fornecedor"><i class="fas fa-plus"></i></button>
@@ -224,22 +249,22 @@
             <div class="form-grid">
                 <div>
                     <label>Valor do Título (R$) *</label>
-                    <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
+                    <input type="number" step="0.01" min="0" id="valor" class="form-control" placeholder="0.00" oninput="atualizarDicaRecorrencia()">
                 </div>
                 <div>
                     <label>Vencimento *</label>
-                    <input type="date" id="vencimento" class="form-control">
-                </div>
-                <div>
-                    <label>Data de Pagamento (Opcional)</label>
-                    <input type="date" id="data_pagamento_edicao" class="form-control">
+                    <input type="date" id="vencimento" class="form-control" onchange="atualizarDicaRecorrencia()">
                 </div>
                 <div>
                     <label>Status do Título</label>
-                    <select id="status_edicao" class="form-control">
+                    <select id="status_edicao" class="form-control" onchange="aoMudarStatus()">
                         <option value="Pendente">Pendente / Em Aberto</option>
                         <option value="Pago">Pago / Quitada</option>
                     </select>
+                </div>
+                <div>
+                    <label>Data de Pagamento <span id="obrig_data_pag" style="display:none;color:var(--danger);">*</span></label>
+                    <input type="date" id="data_pagamento_edicao" class="form-control">
                 </div>
             </div>
             <div class="form-grid" style="grid-template-columns: 2fr 1.5fr 1fr 1fr;">
@@ -248,10 +273,11 @@
                     <input type="text" id="descricao" class="form-control" placeholder="Ex: Serviços Contábeis, Insumos P&D...">
                 </div>
                 <div>
-                    <label><i class="fas fa-university"></i> Conta de Origem</label>
-                    <select id="conta_origem_cadastro" class="form-control">
+                    <label><i class="fas fa-university"></i> Conta de Origem <span id="obrig_conta_orig" style="display:none;color:var(--danger);">*</span></label>
+                    <select id="conta_origem_cadastro" class="form-control" onchange="atualizarDicaCartaoCadastro()">
                         <option value="">Selecione a conta...</option>
                     </select>
+                    <div id="dica_cartao_cadastro" class="dica cartao" style="display:none;"></div>
                 </div>
                 <div>
                     <label>Custo Recorrente?</label>
@@ -261,12 +287,13 @@
                     </select>
                 </div>
                 <div>
-                    <div id="blocoParcelas" style="display:block;">
+                    <div id="blocoParcelas" style="display:none;">
                         <label>Nº de Meses / Parcelas</label>
-                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12" oninput="atualizarDicaRecorrencia()">
                     </div>
                 </div>
             </div>
+            <div id="dica_recorrencia" class="dica" style="display:none; margin: -6px 0 14px 0;"></div>
             <div class="form-grid" style="grid-template-columns: 1fr 1fr;">
                 <div>
                     <label><i class="fas fa-tags"></i> Centro de Custo / P&D (Opcional)</label>
@@ -287,6 +314,10 @@
                     </div>
                 </div>
             </div>
+            <div class="caixa-serie" id="caixaSerie">
+                <label><input type="checkbox" id="aplicarSerie"> <span id="textoSerie">Aplicar também às parcelas futuras ainda não pagas desta série (fornecedor, valor, centro de custo, conta contábil e conta de origem).</span></label>
+                <div style="font-weight:500; margin-top:4px;">Sem marcar, a edição altera somente esta parcela.</div>
+            </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
                 <button class="btn-acao" id="btnSalvar" onclick="salvarContaPagar()"><i class="fas fa-save"></i> Adicionar Conta a Pagar</button>
                 <button class="btn-acao" id="btnCancelar" onclick="cancelarEdicao()" style="background:#64748b; display:none;">Cancelar Edição</button>
@@ -299,32 +330,32 @@
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Pagar</h3>
             <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                <button class="btn-acao sucesso" onclick="imprimirRelatorio('rel')"><i class="fas fa-print"></i> Imprimir Relatório</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
         <div class="collapsible-content">
-            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;">
                 <div>
-                    <label>Data Início</label>
+                    <label>Vencimento — Início</label>
                     <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
-                    <label>Data Fim</label>
+                    <label>Vencimento — Fim</label>
                     <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
                     <label>Status</label>
                     <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
                         <option value="todos">Todos os Status</option>
-                        <option value="pendente">Pendente</option>
+                        <option value="pendente">Pendente (a vencer)</option>
                         <option value="atrasado">Vencido</option>
                         <option value="pago">Pago</option>
                     </select>
                 </div>
                 <div>
-                    <label>Buscar por Nome / Descrição</label>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor ou ref..." oninput="aplicarFiltrosRelatorio()">
+                    <label>Buscar por Nome / Descrição / Código</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Fornecedor, ref ou CP-123..." oninput="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
                     <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
@@ -333,14 +364,6 @@
             <div class="table-container">
                 <table>
                     <thead>
-                        <tr>
-                            <th style="background: #fff !important; padding: 0 !important; border: none !important;" colspan="9">
-                                <div class="print-corporative-header">
-                                    <h2 id="printEmpresaTitulo" style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Relatório de Contas a Pagar</h2>
-                                    <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                </div>
-                            </th>
-                        </tr>
                         <tr>
                             <th>Código</th>
                             <th>Fornecedor</th>
@@ -365,17 +388,18 @@
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Pagar e Despesas</h3>
-            <div style="display:flex; gap:10px; align-items:center;" class="ocultar-print">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:38px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
-                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar fornecedor ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 200px; height: 38px;">
-                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 120px; height: 38px;">
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar fornecedor, descrição ou código..." oninput="aplicarFiltrosHistorico()" style="width: 230px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;">
                     <option value="todos">Todos Status</option>
                     <option value="pendente">Pendente</option>
                     <option value="atrasado">Vencido</option>
                     <option value="pago">Pago</option>
                 </select>
-                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Início">
-                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Fim">
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Vencimento — início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Vencimento — fim">
+                <button class="btn-acao sucesso" style="height:38px; font-size:12px;" onclick="imprimirRelatorio('hist')" title="Imprime exatamente o que está filtrado aqui"><i class="fas fa-print"></i> Imprimir</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
@@ -394,8 +418,8 @@
                             <th>Vencimento</th>
                             <th>Valor Total</th>
                             <th>Status</th>
-                            <th>Data Criação</th>
-                            <th style="text-align:right;" class="ocultar-print">Ações</th>
+                            <th>Pago em / Conta</th>
+                            <th style="text-align:right;">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
@@ -414,12 +438,91 @@
 <script>
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+let contasBancCache = [];
 let fornecedorCadastradoNaBase = false;
+let salvando = false;
 
 const sbGlobal = window.supabase.createClient(
-    'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
+    'https://vcuhkvqrbkyulnnyqnbf.supabase.co',
     'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
 );
+
+/* ---------- utilitários ---------- */
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function norm(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+function hojeLocal() { // data de HOJE no fuso do usuário (o toISOString() usa UTC e erra à noite)
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function iso10(v) { return v ? String(v).substring(0, 10) : ''; }
+function fmtData(v) {
+    const s = iso10(v);
+    return s ? s.split('-').reverse().join('/') : '—';
+}
+function numero(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (v === null || v === undefined) return 0;
+    let s = String(v).replace(/[^\d,.\-]/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+}
+function formatBRL(v) {
+    const n = parseFloat(v) || 0;
+    return (n < 0 ? '-' : '') + 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function limpo(v) { // esconde os textos-padrão "Não informado/Não informada" nas telas e impressões
+    const x = String(v || '').trim();
+    return (!x || /^n[aã]o informad[oa]$/i.test(x)) ? '—' : x;
+}
+function arred(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
+function codigoDe(t) { return 'CP-' + String(t.id).padStart(3, '0'); }
+function sufixoParcela(desc) {
+    const m = String(desc || '').match(/\s*\((\d+\/\d+)\)\s*$/);
+    return m ? m[0].trim() : '';
+}
+function semSufixo(desc) { return String(desc || '').replace(/\s*\(\d+\/\d+\)\s*$/, ''); }
+
+/* ---------- validação de CPF / CNPJ ---------- */
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11; if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11; if (resto === 10 || resto === 11) resto = 0;
+    return resto === parseInt(cpf.substring(10, 11));
+}
+function validarCNPJ(cnpj) {
+    cnpj = cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+    let tamanho = cnpj.length - 2, numeros = cnpj.substring(0, tamanho), digitos = cnpj.substring(tamanho);
+    let soma = 0, pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) { soma += numeros.charAt(tamanho - i) * pos--; if (pos < 2) pos = 9; }
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado != digitos.charAt(0)) return false;
+    tamanho = tamanho + 1; numeros = cnpj.substring(0, tamanho); soma = 0; pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) { soma += numeros.charAt(tamanho - i) * pos--; if (pos < 2) pos = 9; }
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return resultado == digitos.charAt(1);
+}
+function documentoValido(doc) {
+    const d = String(doc || '').replace(/\D/g, '');
+    if (!d) return true; // vazio é permitido
+    if (d.length === 11) return validarCPF(d);
+    if (d.length === 14) return validarCNPJ(d);
+    return false;
+}
 
 function obterClienteIdSeguro() {
     try {
@@ -430,7 +533,7 @@ function obterClienteIdSeguro() {
             if (sel) return parseInt(sel);
         }
         return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
-    } catch(e) {
+    } catch (e) {
         return 1;
     }
 }
@@ -443,14 +546,73 @@ function toggleCardBody(btn) {
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
+/* ---------- formulário: recorrência, status, cartão ---------- */
 function toggleParcelas(val) {
     const bloco = document.getElementById('blocoParcelas');
-    if (val === 'Sim') {
-        bloco.style.display = 'block';
-    } else {
-        bloco.style.display = 'block';
-        document.getElementById('num_parcelas').value = '12';
+    bloco.style.display = (val === 'Sim') ? 'block' : 'none';
+    if (val !== 'Sim') document.getElementById('num_parcelas').value = '12';
+    atualizarDicaRecorrencia();
+}
+
+function atualizarDicaRecorrencia() {
+    const el = document.getElementById('dica_recorrencia');
+    const rec = document.getElementById('recorrente').value;
+    const editando = !!document.getElementById('edit_id').value;
+    const venc = document.getElementById('vencimento').value;
+    const n = parseInt(document.getElementById('num_parcelas').value) || 0;
+    const valor = parseFloat(document.getElementById('valor').value) || 0;
+    if (rec !== 'Sim' || editando || !venc || n < 1) { el.style.display = 'none'; return; }
+    const [a, m, d] = venc.split('-').map(Number);
+    const alvo = (m - 1) + (n - 1);
+    const anoF = a + Math.floor(alvo / 12), mesF = (alvo % 12) + 1;
+    const ult = Math.min(d, new Date(anoF, mesF, 0).getDate());
+    const dataF = String(ult).padStart(2, '0') + '/' + String(mesF).padStart(2, '0') + '/' + anoF;
+    el.innerHTML = '<i class="fas fa-info-circle"></i> Serão gerados <strong>' + n + '</strong> títulos mensais de <strong>' + formatBRL(valor) +
+        '</strong> (total ' + formatBRL(valor * n) + '), do vencimento ' + fmtData(venc) + ' até ' + dataF +
+        '. Somente o 1º título pode nascer como Pago; os demais nascem Pendentes.';
+    el.style.display = 'block';
+}
+
+function aoMudarStatus() {
+    const pago = document.getElementById('status_edicao').value === 'Pago';
+    document.getElementById('obrig_data_pag').style.display = pago ? 'inline' : 'none';
+    document.getElementById('obrig_conta_orig').style.display = pago ? 'inline' : 'none';
+    const campoData = document.getElementById('data_pagamento_edicao');
+    if (pago && !campoData.value) campoData.value = hojeLocal();
+    if (!pago) campoData.value = '';
+}
+
+// Acha a conta pelo valor gravado. Reconhece também formatos antigos
+// (ex.: "Caixa Fisico (Caixa Físico)", "077 - BANCO INTER S.A. (Conta Corrente)").
+function buscarContaBanc(valor) {
+    if (!valor) return null;
+    const exata = contasBancCache.find(c => c.valor === valor);
+    if (exata) return exata;
+    const n = norm(valor);
+    let melhor = null, tam = 0;
+    contasBancCache.forEach(c => c.chaves.forEach(k => {
+        if (k.length >= 4 && n.indexOf(k) >= 0 && k.length > tam) { melhor = c; tam = k.length; }
+    }));
+    return melhor;
+}
+
+function textoInfoCartao(conta, valorTitulo) {
+    let txt = '<i class="fas fa-credit-card"></i> <strong>Cartão pré-pago:</strong> a baixa registra a DESPESA no dia, mas o dinheiro só sai da conta bancária no dia da recarga (registre a recarga em Transferências).';
+    if (conta && conta.saldo !== null) {
+        txt += '<br>Saldo atual do cartão: <strong>' + formatBRL(conta.saldo) + '</strong>';
+        if (valorTitulo > 0) txt += ' → após esta baixa: <strong>' + formatBRL(arred(conta.saldo - valorTitulo)) + '</strong>';
+        txt += '. Atualize o saldo do cartão em Contas Bancárias.';
     }
+    return txt;
+}
+
+function atualizarDicaCartaoCadastro() {
+    const el = document.getElementById('dica_cartao_cadastro');
+    const conta = buscarContaBanc(document.getElementById('conta_origem_cadastro').value);
+    if (conta && conta.ehCartao) {
+        el.innerHTML = '<i class="fas fa-credit-card"></i> Cartão pré-pago: a despesa é baixada na data do pagamento, mas o dinheiro só sai da conta no dia da recarga.';
+        el.style.display = 'block';
+    } else { el.style.display = 'none'; }
 }
 
 async function inicializarPagina() {
@@ -460,7 +622,7 @@ async function inicializarPagina() {
         if (emailU === EMAIL_MASTER.toLowerCase().trim()) {
             document.body.classList.add('usuario-master');
         }
-    } catch(e) {}
+    } catch (e) {}
 
     await carregarCentrosCustoSelect();
     await carregarPlanoContasSelect();
@@ -468,57 +630,52 @@ async function inicializarPagina() {
     await carregarContas();
 }
 
-function formatBRL(v) {
-    return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatarCodigoVirtual(index) {
-    return "CP-" + String(index + 1).padStart(3, '0');
-}
-
-function atualizarCodigoVirtual() {
-    const elCod = document.getElementById('codigo_virtual');
-    if (elCod) elCod.value = "CP-" + String(contasCache.length + 1).padStart(3, '0');
-}
-
+/* ---------- fornecedores ---------- */
 async function buscarOuConsultarFornecedor() {
     let docDigitado = document.getElementById('cpf_cnpj_fornecedor').value.replace(/\D/g, '');
     let statusEl = document.getElementById('status_fornecedor');
     let avisoEl = document.getElementById('aviso_fornecedor_nao_cadastrado');
-    if(avisoEl) avisoEl.style.display = 'none';
-    if(!docDigitado) { if(statusEl) statusEl.innerHTML = ''; return; }
-    
+    if (avisoEl) avisoEl.style.display = 'none';
+    if (!docDigitado) { if (statusEl) statusEl.innerHTML = ''; return; }
+
     const cid = obterClienteIdSeguro();
     try {
         const { data, error } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid);
-        if(!error && data) {
+        if (!error && data) {
             let forn = data.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === docDigitado);
-            if(forn) {
+            if (forn) {
                 document.getElementById('fornecedor_nome').value = forn.nome || forn.razao_social || '';
-                if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Fornecedor Encontrado</span>';
+                if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Fornecedor Encontrado</span>';
                 fornecedorCadastradoNaBase = true;
                 return;
             }
         }
-    } catch(e) {}
+    } catch (e) {}
 
+    fornecedorCadastradoNaBase = false;
     if (docDigitado.length === 14) {
-        if(statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando Receita...</span>';
+        if (!validarCNPJ(docDigitado)) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:var(--danger)">CNPJ inválido!</span>';
+            return;
+        }
+        if (statusEl) statusEl.innerHTML = '<span style="color:var(--primary)"><i class="fas fa-spinner fa-spin"></i> Consultando Receita...</span>';
         try {
             let resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${docDigitado}`);
             if (!resposta.ok) throw new Error("CNPJ não encontrado");
             let dados = await resposta.json();
             document.getElementById('fornecedor_nome').value = dados.razao_social || '';
-            if(statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
-            if(avisoEl) {
+            if (statusEl) statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
+            if (avisoEl) {
                 avisoEl.innerHTML = '<div class="aviso-nao-cadastrado"><i class="fas fa-info-circle"></i> Novo fornecedor. Clique no <strong style="margin:0 3px;">+</strong> para salvar.</div>';
                 avisoEl.style.display = 'block';
             }
-            fornecedorCadastradoNaBase = false;
         } catch (err) {
-            if(statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Preencha o Nome</span>';
-            fornecedorCadastradoNaBase = false;
+            if (statusEl) statusEl.innerHTML = '<span style="color:var(--warning)">Preencha o Nome</span>';
         }
+    } else if (docDigitado.length === 11) {
+        if (statusEl) statusEl.innerHTML = validarCPF(docDigitado)
+            ? '<span style="color:var(--warning)">CPF válido — preencha o nome</span>'
+            : '<span style="color:var(--danger)">CPF inválido!</span>';
     }
 }
 
@@ -531,7 +688,7 @@ async function carregarCentrosCustoSelect() {
     if (data) {
         data.forEach(cc => {
             let nome = cc.nome || cc.descricao || '';
-            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+            sel.innerHTML += `<option value="${esc(nome)}">${esc(nome)}</option>`;
         });
     }
 }
@@ -547,7 +704,7 @@ async function carregarPlanoContasSelect() {
             let desc = pc.descricao || pc.nome || '';
             let cod = pc.codigo_reduzido || '';
             let rotulo = cod ? `${cod} - ${desc}` : desc;
-            sel.innerHTML += `<option value="${rotulo}">${rotulo}</option>`;
+            sel.innerHTML += `<option value="${esc(rotulo)}">${esc(rotulo)}</option>`;
         });
     }
 }
@@ -555,26 +712,56 @@ async function carregarPlanoContasSelect() {
 async function carregarContasBancariasModal() {
     const cid = obterClienteIdSeguro();
     const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
-    const sel = document.getElementById('conta_origem_cadastro');
-    if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione a conta...</option>';
-    if (data) {
-        data.forEach(cb => {
-            let nome = cb.banco || cb.nome || 'Banco';
-            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+    contasBancCache = (data || []).map(cb => {
+        const valor = cb.nome || cb.banco || 'Banco';
+        const ident = norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || ''));
+        const bruto = (cb.saldo_inicial !== undefined && cb.saldo_inicial !== null) ? cb.saldo_inicial
+                    : (cb.saldo_atual !== undefined && cb.saldo_atual !== null ? cb.saldo_atual : cb.saldo);
+        const rotulo = (cb.nome && cb.banco && norm(cb.nome) !== norm(cb.banco)) ? (cb.nome + ' — ' + cb.banco) : valor;
+        return {
+            valor: valor,
+            chaves: [norm(cb.nome), norm(cb.banco)].filter(Boolean),
+            rotulo: rotulo,
+            ehCartao: /cartao|pre-pago|prepago|pre pago/.test(ident),
+            saldo: (bruto === undefined || bruto === null) ? null : numero(bruto)
+        };
+    });
+    ['conta_origem_cadastro', 'conta_origem_baixa'].forEach(idSel => {
+        const sel = document.getElementById(idSel);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Selecione a conta...</option>';
+        contasBancCache.forEach(c => {
+            sel.innerHTML += `<option value="${esc(c.valor)}">${esc(c.rotulo)}${c.ehCartao ? ' (cartão)' : ''}</option>`;
         });
+    });
+}
+
+// garante que um valor antigo (que não está mais na lista) continue selecionável na edição
+function selecionarComFallback(idSel, valor) {
+    const sel = document.getElementById(idSel);
+    if (!sel) return;
+    const conhecida = buscarContaBanc(valor);
+    if (conhecida) { sel.value = conhecida.valor; return; }
+    if (valor && !Array.from(sel.options).some(o => o.value === valor)) {
+        const o = document.createElement('option');
+        o.value = valor; o.textContent = valor + ' (conta anterior)';
+        sel.appendChild(o);
     }
+    sel.value = valor || '';
 }
 
 function abrirModalCentroCusto() {
     document.getElementById('cc_nome').value = '';
     document.getElementById('modalNovoCentroCusto').style.display = 'flex';
 }
-
+function abrirModalContaContabil() {
+    document.getElementById('pc_descricao').value = '';
+    document.getElementById('modalNovaContaContabil').style.display = 'flex';
+}
 function abrirModalFornecedor() {
-    ['forn_nome','forn_doc'].forEach(id => {
+    ['forn_nome', 'forn_doc'].forEach(id => {
         let el = document.getElementById(id);
-        if(el) el.value = '';
+        if (el) el.value = '';
     });
     document.getElementById('modalNovoFornecedor').style.display = 'flex';
 }
@@ -583,25 +770,48 @@ async function salvarNovoCentroCusto() {
     const nome = document.getElementById('cc_nome').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
+    const res = await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, descricao: nome, status: 'Ativo' }]);
+    if (res.error) { alert("Erro ao cadastrar centro de custo: " + res.error.message); return; }
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
     await carregarCentrosCustoSelect();
     document.getElementById('centro_custo').value = nome;
     alert("Centro de custo cadastrado e selecionado!");
 }
 
+async function salvarNovoPlanoContas() {
+    const descricao = document.getElementById('pc_descricao').value.trim();
+    if (!descricao) { alert("Informe a descrição da conta."); return; }
+    const cid = obterClienteIdSeguro();
+    const res = await sbGlobal.from('plano_contas').insert([{ cliente_id: cid, descricao, nome: descricao }]);
+    if (res.error) { alert("Erro ao cadastrar conta contábil: " + res.error.message); return; }
+    document.getElementById('modalNovaContaContabil').style.display = 'none';
+    await carregarPlanoContasSelect();
+    document.getElementById('conta_contabil').value = descricao;
+    alert("Conta contábil cadastrada e selecionada!");
+}
+
 async function salvarNovoFornecedor() {
     const nome = document.getElementById('forn_nome').value.trim();
     const doc = document.getElementById('forn_doc').value.replace(/\D/g, '');
     if (!nome) { alert("Informe o nome."); return; }
+    if (doc && !documentoValido(doc)) { alert("CPF/CNPJ inválido. Confira os números."); return; }
     const cid = obterClienteIdSeguro();
-    await sbGlobal.from('parceiros').insert([{
-        cliente_id: cid,
-        nome,
-        razao_social: nome,
-        cnpj_cpf: doc,
-        tipo_cadastro: 'Fornecedor'
+    if (doc) {
+        const { data } = await sbGlobal.from('parceiros').select('id, nome, cnpj_cpf').eq('cliente_id', cid);
+        const jaExiste = (data || []).find(p => String(p.cnpj_cpf || '').replace(/\D/g, '') === doc);
+        if (jaExiste) {
+            document.getElementById('modalNovoFornecedor').style.display = 'none';
+            document.getElementById('fornecedor_nome').value = jaExiste.nome || nome;
+            document.getElementById('cpf_cnpj_fornecedor').value = doc;
+            fornecedorCadastradoNaBase = true;
+            alert("Este CNPJ/CPF já estava cadastrado. Usei o cadastro existente.");
+            return;
+        }
+    }
+    const res = await sbGlobal.from('parceiros').insert([{
+        cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Fornecedor'
     }]);
+    if (res.error) { alert("Erro ao cadastrar fornecedor: " + res.error.message); return; }
     document.getElementById('modalNovoFornecedor').style.display = 'none';
     document.getElementById('fornecedor_nome').value = nome;
     document.getElementById('cpf_cnpj_fornecedor').value = doc;
@@ -609,108 +819,129 @@ async function salvarNovoFornecedor() {
     alert("Fornecedor cadastrado com sucesso!");
 }
 
+/* ---------- carga de dados (sem limite de 1000 linhas) ---------- */
+async function buscarTudo(tabela, cid) {
+    let todos = [], de = 0;
+    const passo = 1000;
+    while (true) {
+        const { data, error } = await sbGlobal.from(tabela).select('*').eq('cliente_id', cid)
+            .order('vencimento', { ascending: true }).order('id', { ascending: true }).range(de, de + passo - 1);
+        if (error) return { error };
+        todos = todos.concat(data || []);
+        if (!data || data.length < passo) break;
+        de += passo;
+    }
+    return { data: todos };
+}
+
+function calcStatus(t) {
+    const st = norm(t.status);
+    if (st.includes('pago') || st.includes('quitado')) return 'pago';
+    const v = iso10(t.vencimento);
+    if (v && v < hojeLocal()) return 'atrasado';
+    return 'pendente';
+}
+
 async function carregarContas() {
     const cid = obterClienteIdSeguro();
-    const { data, error } = await sbGlobal.from('contas_pagar').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-    
-    if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+    const { data, error } = await buscarTudo('contas_pagar', cid);
+
+    if (error) {
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${esc(error.message)}</td></tr>`;
         return;
     }
 
-    let hoje = new Date().toISOString().split('T')[0];
     contasCache = (data || []).map(t => {
-        let v = parseFloat(t.valor) || 0;
-        let st = (t.status || 'Pendente').toLowerCase();
-        let stFinal = 'pendente';
-        
-        if (st.includes('pago') || st.includes('quitado')) {
-            stFinal = 'pago';
-        } else if (t.vencimento && t.vencimento < hoje) {
-            stFinal = 'atrasado';
-        } else {
-            stFinal = 'pendente';
-        }
-
-        t.valorNumerico = v;
-        t.statusSeguro = stFinal;
+        t.valorNumerico = numero(t.valor);
+        t.statusSeguro = calcStatus(t);
         return t;
     });
 
-    renderTabela();
     aplicarFiltrosRelatorio();
     aplicarFiltrosHistorico();
     atualizarDashboard();
     atualizarCodigoVirtual();
 }
 
-function atualizarDashboard() {
-    let pend = 0, pago = 0, atr = 0;
-    let hoje = new Date().toISOString().split('T')[0];
-
-    contasCache.forEach(t => {
-        let val = t.valorNumerico;
-        if (t.statusSeguro === 'pago') {
-            pago += val;
-        } else if (t.vencimento && t.vencimento < hoje) {
-            atr += val;
-        } else {
-            pend += val;
-        }
-    });
-
-    document.getElementById('tot_pendente').innerText = formatBRL(pend);
-    document.getElementById('tot_pago').innerText = formatBRL(pago);
-    document.getElementById('tot_atrasado').innerText = formatBRL(atr);
+function atualizarCodigoVirtual() {
+    const elCod = document.getElementById('codigo_virtual');
+    if (elCod && !document.getElementById('edit_id').value) elCod.value = '(automático ao salvar)';
 }
 
-function aplicarFiltrosRelatorio() {
-    let dtIni = document.getElementById('filtroDataInicio').value;
-    let dtFim = document.getElementById('filtroDataFim').value;
-    let stFiltro = document.getElementById('filtroStatus').value;
-    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+function atualizarDashboard() {
+    let pend = 0, pago = 0, atr = 0, qp = 0, qg = 0, qa = 0;
+    contasCache.forEach(t => {
+        if (t.statusSeguro === 'pago') { pago += t.valorNumerico; qg++; }
+        else if (t.statusSeguro === 'atrasado') { atr += t.valorNumerico; qa++; }
+        else { pend += t.valorNumerico; qp++; }
+    });
+    const rot = n => n + (n === 1 ? ' título' : ' títulos');
+    document.getElementById('tot_pendente').innerText = formatBRL(arred(pend));
+    document.getElementById('tot_pago').innerText = formatBRL(arred(pago));
+    document.getElementById('tot_atrasado').innerText = formatBRL(arred(atr));
+    document.getElementById('qtd_pendente').innerText = rot(qp);
+    document.getElementById('qtd_pago').innerText = rot(qg);
+    document.getElementById('qtd_atrasado').innerText = rot(qa);
+}
 
-    let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = t.vencimento || t.data_vencimento || '';
-        if (dtIni && dataRef && dataRef < dtIni) return false;
-        if (dtFim && dataRef && dataRef > dtFim) return false;
-        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
-        if (txtBusca) {
-            let fornNome = t.fornecedor_nome || '';
-            let linha = (fornNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
-            if (!linha.includes(txtBusca)) return false;
+/* ---------- filtros ---------- */
+const IDS_FILTRO = {
+    rel:  { ini: 'filtroDataInicio', fim: 'filtroDataFim', st: 'filtroStatus', q: 'filtroBusca' },
+    hist: { ini: 'histDataInicio',   fim: 'histDataFim',   st: 'histStatus',   q: 'histBusca' }
+};
+
+function lerFiltros(modo) {
+    const ids = IDS_FILTRO[modo];
+    return {
+        ini: document.getElementById(ids.ini).value,
+        fim: document.getElementById(ids.fim).value,
+        st: document.getElementById(ids.st).value,
+        q: document.getElementById(ids.q).value.trim()
+    };
+}
+
+function listaFiltrada(f) {
+    const txt = norm(f.q);
+    return contasCache.filter(t => {
+        const dataRef = iso10(t.vencimento || t.data_vencimento);
+        if (f.ini && dataRef && dataRef < f.ini) return false;
+        if (f.fim && dataRef && dataRef > f.fim) return false;
+        if (f.st !== 'todos' && t.statusSeguro !== f.st) return false;
+        if (txt) {
+            const linha = norm((t.fornecedor_nome || '') + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' +
+                (t.conta_contabil || '') + ' ' + codigoDe(t) + ' ' + (t.conta_origem || ''));
+            if (!linha.includes(txt)) return false;
         }
         return true;
     });
+}
 
+function rotuloStatus(st) {
+    return { pendente: 'Pendente (a vencer)', atrasado: 'Vencido', pago: 'Pago' }[st] || 'Todos';
+}
+
+function aplicarFiltrosRelatorio() {
+    const dados = listaFiltrada(lerFiltros('rel'));
     const tbody = document.getElementById('tbodyRelatorioModo');
-    tbody.innerHTML = '';
-    if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
+    if (dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
         return;
     }
-
-    dadosFiltrados.forEach((t, index) => {
-        let codVirtual = formatarCodigoVirtual(index);
-        let fornNome = t.fornecedor_nome || '—';
-        let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
-        let descPura = (t.descricao || '—').replace(/\s*\(\d+\/\d+\)$/, '');
-        let matchP = (t.descricao || '').match(/\((\d+\/\d+)\)$/);
-        let parcelaTxt = matchP ? matchP[1] : '—';
-        let badgeText = t.statusSeguro === 'pago' ? 'PAGO' : t.statusSeguro.toUpperCase();
-
-        tbody.innerHTML += `<tr>
-            <td><strong>${codVirtual}</strong></td>
-            <td><strong>${fornNome}</strong></td>
-            <td>${t.centro_custo || '—'}</td>
-            <td>${t.conta_contabil || '—'}</td>
-            <td>${descPura}</td>
-            <td>${parcelaTxt}</td>
-            <td>${dataVencFmt}</td>
+    tbody.innerHTML = dados.map(t => {
+        const parcela = sufixoParcela(t.descricao).replace(/[()]/g, '') || '—';
+        const label = { pago: 'PAGO', atrasado: 'VENCIDO', pendente: 'PENDENTE' }[t.statusSeguro];
+        return `<tr>
+            <td><strong>${codigoDe(t)}</strong></td>
+            <td><strong>${esc(t.fornecedor_nome || '—')}</strong></td>
+            <td>${esc(limpo(t.centro_custo))}</td>
+            <td>${esc(limpo(t.conta_contabil))}</td>
+            <td>${esc(semSufixo(t.descricao) || '—')}</td>
+            <td>${esc(parcela)}</td>
+            <td>${fmtData(t.vencimento)}</td>
             <td style="text-align: right;"><strong>${formatBRL(t.valorNumerico)}</strong></td>
-            <td>${badgeText}</td>
+            <td>${label}</td>
         </tr>`;
-    });
+    }).join('');
 }
 
 function limparFiltrosRelatorio() {
@@ -721,104 +952,118 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-async function executarImpressao() {
-    const agora = new Date();
-    const elData = document.getElementById('printDataEmissao');
-    if(elData) elData.innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
-
-    const elEmpresaHeader = document.querySelector('.site-brand .brand-info h1') || document.querySelector('header h1');
-    const nomeEmpresa = elEmpresaHeader ? elEmpresaHeader.innerText : "Sacramento ERP";
-    const elTituloPrint = document.getElementById('printEmpresaTitulo');
-    if(elTituloPrint) {
-        elTituloPrint.innerText = nomeEmpresa + " — Relatório de Contas a Pagar";
-    }
-
-    window.print();
-}
-
 function aplicarFiltrosHistorico() {
-    let dtIni = document.getElementById('histDataInicio').value;
-    let dtFim = document.getElementById('histDataFim').value;
-    let stFiltro = document.getElementById('histStatus').value;
-    let txtBusca = document.getElementById('histBusca').value.trim().toLowerCase();
-
-    let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = t.vencimento || t.data_vencimento || '';
-        if (dtIni && dataRef && dataRef < dtIni) return false;
-        if (dtFim && dataRef && dataRef > dtFim) return false;
-        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
-        if (txtBusca) {
-            let fornNome = t.fornecedor_nome || '';
-            let linha = (fornNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + t.id).toLowerCase();
-            if (!linha.includes(txtBusca)) return false;
-        }
-        return true;
-    });
-
-    renderTabelaFiltrada(dadosFiltrados);
+    renderTabelaFiltrada(listaFiltrada(lerFiltros('hist')));
 }
 
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
         tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a pagar encontrada com os filtros aplicados.</td></tr>`;
+        atualizarContadorSelecao();
         return;
     }
 
-    tbody.innerHTML = '';
-    lista.forEach((t, index) => {
-        let badgeClass = 'badge-pendente';
-        let badgeLabel = 'Pendente';
-        if (t.statusSeguro === 'pago') {
-            badgeClass = 'badge-pago';
-            badgeLabel = 'Pago';
-        } else if (t.statusSeguro === 'atrasado') {
-            badgeClass = 'badge-atrasado';
-            badgeLabel = 'Vencido';
-        }
+    tbody.innerHTML = lista.map(t => {
+        let badgeClass = 'badge-pendente', badgeLabel = 'Pendente';
+        if (t.statusSeguro === 'pago') { badgeClass = 'badge-pago'; badgeLabel = 'Pago'; }
+        else if (t.statusSeguro === 'atrasado') { badgeClass = 'badge-atrasado'; badgeLabel = 'Vencido'; }
 
-        let codVirtual = formatarCodigoVirtual(index);
-        let dataVencFmt = t.vencimento ? t.vencimento.split('-').reverse().join('/') : '-';
-        let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        const parcela = sufixoParcela(t.descricao).replace(/[()]/g, '') || '—';
+        const pagoEm = (t.statusSeguro === 'pago')
+            ? `<span style="font-weight:600;">${fmtData(t.data_pagamento || t.vencimento)}</span><br><span style="font-size:11px;color:var(--text-light);">${esc(t.conta_origem || 'conta não informada')}</span>`
+            : '<span style="color:var(--text-light);">—</span>';
 
-        let descPura = t.descricao || '—';
-        let parcelaTexto = '—';
-        let matchParcela = descPura.match(/\((\d+\/\d+)\)$/);
-        if (matchParcela) {
-            parcelaTexto = matchParcela[1];
-            descPura = descPura.replace(/\s*\(\d+\/\d+\)$/, '');
-        }
+        const btnBaixa = (t.statusSeguro === 'pago')
+            ? `<button class="btn-icon" onclick="desfazerPagamento(${t.id})" title="Desfazer pagamento (volta para Pendente)"><i class="fas fa-undo"></i></button>`
+            : `<button class="btn-acao sucesso" style="padding:4px 10px; font-size:11px;" onclick="abrirModalPagamento(${t.id})"><i class="fas fa-check"></i> Pagar</button>`;
 
-        tbody.innerHTML += `
+        return `
             <tr>
                 <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
-                <td><strong>${codVirtual}</strong></td>
-                <td><strong>${t.fornecedor_nome || '—'}</strong></td>
-                <td>${t.centro_custo || '—'}</td>
-                <td>${t.conta_contabil || '—'}</td>
-                <td>${descPura}</td>
-                <td><span style="font-weight:600; color:var(--primary);">${parcelaTexto}</span></td>
-                <td>${dataVencFmt}</td>
+                <td><strong>${codigoDe(t)}</strong></td>
+                <td><strong>${esc(t.fornecedor_nome || '—')}</strong></td>
+                <td>${esc(limpo(t.centro_custo))}</td>
+                <td>${esc(limpo(t.conta_contabil))}</td>
+                <td>${esc(semSufixo(t.descricao) || '—')}</td>
+                <td><span style="font-weight:600; color:var(--primary);">${esc(parcela)}</span></td>
+                <td>${fmtData(t.vencimento)}</td>
                 <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-                <td>${dataReg}</td>
-                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;" class="ocultar-print">
+                <td>${pagoEm}</td>
+                <td style="text-align:right; white-space:nowrap;">
+                    ${btnBaixa}
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>
-        `;
-    });
+            </tr>`;
+    }).join('');
     atualizarContadorSelecao();
 }
 
-function renderTabela() {
-    renderTabelaFiltrada(contasCache);
+/* ---------- impressão padronizada ---------- */
+function imprimirRelatorio(modo) {
+    if (!window.ERPPrint) { alert("Módulo de impressão (erp-print.js) não carregado. Atualize a página (Ctrl+F5)."); return; }
+    const f = lerFiltros(modo);
+    const lista = listaFiltrada(f);
+
+    const filtros = [];
+    if (f.ini || f.fim) filtros.push(['Vencimento', (f.ini ? fmtData(f.ini) : 'início') + ' a ' + (f.fim ? fmtData(f.fim) : 'sem limite')]);
+    if (f.st !== 'todos') filtros.push(['Status', rotuloStatus(f.st)]);
+    if (f.q) filtros.push(['Busca', '“' + f.q + '”']);
+
+    let tot = 0, pago = 0, pend = 0, atr = 0;
+    lista.forEach(t => {
+        tot += t.valorNumerico;
+        if (t.statusSeguro === 'pago') pago += t.valorNumerico;
+        else if (t.statusSeguro === 'atrasado') atr += t.valorNumerico;
+        else pend += t.valorNumerico;
+    });
+
+    const linhas = lista.map(t => {
+        const cor = { pago: 'pos', atrasado: 'neg', pendente: 'warn' }[t.statusSeguro];
+        const label = { pago: 'PAGO', atrasado: 'VENCIDO', pendente: 'PENDENTE' }[t.statusSeguro];
+        return [
+            codigoDe(t),
+            fmtData(t.vencimento),
+            t.fornecedor_nome || '—',
+            semSufixo(t.descricao) || '—',
+            sufixoParcela(t.descricao).replace(/[()]/g, '') || '—',
+            limpo(t.centro_custo),
+            limpo(t.conta_contabil),
+            t.statusSeguro === 'pago' ? (fmtData(t.data_pagamento || t.vencimento) + (t.conta_origem ? ' · ' + t.conta_origem : '')) : '—',
+            { t: formatBRL(t.valorNumerico), cls: 'bold' },
+            { t: label, cls: cor }
+        ];
+    });
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Contas a Pagar',
+        subtitulo: 'Títulos ordenados por data de vencimento',
+        codigo: 'FIN-CP',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [
+            ['Títulos listados', String(lista.length)],
+            ['Valor total', formatBRL(arred(tot))],
+            ['Pago', formatBRL(arred(pago))],
+            ['A vencer', formatBRL(arred(pend))],
+            ['Vencido', formatBRL(arred(atr))]
+        ],
+        colunas: [
+            { t: 'Código', w: 1 }, { t: 'Vencim.', w: 1.15 }, { t: 'Fornecedor', w: 2.4 }, { t: 'Descrição / NF', w: 2.5 },
+            { t: 'Parc.', w: .75 }, { t: 'Centro de custo', w: 1.5 }, { t: 'Conta DRE', w: 1.7 }, { t: 'Pago em / Conta', w: 2 },
+            { t: 'Valor (R$)', w: 1.3, a: 'right' }, { t: 'Status', w: 1.1 }
+        ],
+        linhas: linhas,
+        totais: ['TOTAL', '', lista.length + (lista.length === 1 ? ' título' : ' títulos'), '', '', '', '', '', formatBRL(arred(tot)), ''],
+        observacao: 'Status "Vencido" = não pago com vencimento anterior à data de emissão. Pagamentos feitos com cartão pré-pago são despesas do dia; a saída do dinheiro da conta ocorre na recarga do cartão.'
+    });
 }
 
+/* ---------- seleção e exclusão ---------- */
 function selecionarTodos(master) {
-    const checkboxes = document.querySelectorAll('.check-linha');
-    checkboxes.forEach(cb => cb.checked = master.checked);
+    document.querySelectorAll('.check-linha').forEach(cb => cb.checked = master.checked);
     atualizarContadorSelecao();
 }
 
@@ -839,111 +1084,236 @@ function atualizarContadorSelecao() {
 async function excluirSelecionados() {
     const selecionados = document.querySelectorAll('.check-linha:checked');
     if (selecionados.length === 0) return;
+    const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+    const pagos = contasCache.filter(t => ids.includes(t.id) && t.statusSeguro === 'pago').length;
 
-    if (confirm(`Deseja realmente excluir os ${selecionados.length} registos selecionados?`)) {
-        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+    let msg = `Deseja realmente excluir os ${ids.length} registros selecionados?\n\nEsta ação não pode ser desfeita.`;
+    if (pagos > 0) msg += `\n\nATENÇÃO: ${pagos} deles já estão PAGOS. Excluir um título pago remove a saída do Fluxo de Caixa e muda o saldo calculado.`;
+    if (!confirm(msg)) return;
+
+    const cid = obterClienteIdSeguro();
+    let res = await sbGlobal.from('contas_pagar').delete().in('id', ids).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao excluir selecionados: " + res.error.message); return; }
+    alert(`${ids.length} registros removidos com sucesso!`);
+    carregarContas();
+}
+
+window.excluirConta = async function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    let msg = "Deseja realmente excluir este registro?\n\nEsta ação não pode ser desfeita.";
+    if (t && t.statusSeguro === 'pago') msg += "\n\nATENÇÃO: este título está PAGO. Excluir remove a saída do Fluxo de Caixa e muda o saldo calculado.";
+    if (!confirm(msg)) return;
+    const cid = obterClienteIdSeguro();
+    let res = await sbGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao excluir: " + res.error.message); return; }
+    alert("Registro removido com sucesso!");
+    carregarContas();
+};
+
+/* ---------- baixa de pagamento ---------- */
+window.abrirModalPagamento = function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
+    document.getElementById('pagamento_id_baixa').value = t.id;
+    document.getElementById('modal_forn_nome').innerText = t.fornecedor_nome || '—';
+    document.getElementById('modal_forn_desc').innerText = t.descricao || '—';
+    document.getElementById('modal_forn_venc').innerText = fmtData(t.vencimento);
+    document.getElementById('modal_forn_valor').innerText = formatBRL(t.valorNumerico);
+    document.getElementById('data_pagamento_baixa').value = hojeLocal();
+    selecionarComFallback('conta_origem_baixa', t.conta_origem || '');
+    atualizarInfoCartaoBaixa();
+    document.getElementById('modalPagamento').style.display = 'flex';
+};
+
+function fecharModalPagamento() { document.getElementById('modalPagamento').style.display = 'none'; }
+
+function atualizarInfoCartaoBaixa() {
+    const el = document.getElementById('info_cartao_baixa');
+    const conta = buscarContaBanc(document.getElementById('conta_origem_baixa').value);
+    const t = contasCache.find(x => String(x.id) === String(document.getElementById('pagamento_id_baixa').value));
+    if (conta && conta.ehCartao) {
+        el.innerHTML = textoInfoCartao(conta, t ? t.valorNumerico : 0);
+        el.style.display = 'block';
+    } else { el.style.display = 'none'; }
+}
+
+async function confirmarPagamento() {
+    if (salvando) return;
+    const id = document.getElementById('pagamento_id_baixa').value;
+    const dataPg = document.getElementById('data_pagamento_baixa').value;
+    const conta = document.getElementById('conta_origem_baixa').value;
+    if (!dataPg) { alert("Informe a data do pagamento."); return; }
+    if (!conta) { alert("Selecione a conta de origem (de onde saiu o dinheiro)."); return; }
+    if (dataPg > hojeLocal() && !confirm("A data de pagamento é FUTURA (" + fmtData(dataPg) + "). Registrar como pago mesmo assim?")) return;
+
+    salvando = true;
+    const btn = document.getElementById('btnConfirmarPagamento');
+    btn.disabled = true;
+    try {
         const cid = obterClienteIdSeguro();
-
-        let res = await sbGlobal.from('contas_pagar').delete().in('id', ids).eq('cliente_id', cid);
-        if (res.error) {
-            alert("Erro ao excluir selecionados: " + res.error.message);
-            return;
-        }
-        alert(`${selecionados.length} registos removidos com sucesso!`);
-        carregarContas();
+        const res = await sbGlobal.from('contas_pagar')
+            .update({ status: 'Pago', data_pagamento: dataPg, conta_origem: conta, updated_at: new Date().toISOString() })
+            .eq('id', id).eq('cliente_id', cid);
+        if (res.error) { alert("Erro ao registrar pagamento: " + res.error.message); return; }
+        const cb = buscarContaBanc(conta);
+        fecharModalPagamento();
+        alert(cb && cb.ehCartao
+            ? "Pagamento registrado!\n\nLembrete: o pagamento foi no cartão pré-pago. Atualize o saldo do cartão em Contas Bancárias."
+            : "Pagamento registrado com sucesso!");
+        await carregarContas();
+    } finally {
+        salvando = false;
+        btn.disabled = false;
     }
 }
 
+window.desfazerPagamento = async function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (!confirm("Desfazer o pagamento de " + (t.fornecedor_nome || '') + " (" + formatBRL(t.valorNumerico) + ")?\n\nO título volta para Pendente e a saída some do Fluxo de Caixa.")) return;
+    const cid = obterClienteIdSeguro();
+    const res = await sbGlobal.from('contas_pagar')
+        .update({ status: 'Pendente', data_pagamento: null, updated_at: new Date().toISOString() })
+        .eq('id', id).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao desfazer pagamento: " + res.error.message); return; }
+    const cb = buscarContaBanc(t.conta_origem);
+    alert(cb && cb.ehCartao ? "Pagamento desfeito.\n\nLembrete: o pagamento era do cartão pré-pago. Ajuste o saldo do cartão em Contas Bancárias." : "Pagamento desfeito. O título voltou para Pendente.");
+    carregarContas();
+};
+
+/* ---------- salvar (novo / edição) ---------- */
 async function salvarContaPagar() {
+    if (salvando) return;
     const id = document.getElementById('edit_id').value;
+    const sufixo = document.getElementById('edit_sufixo').value;
     const fornecedor_nome = document.getElementById('fornecedor_nome').value.trim();
     const cpf_cnpj_fornecedor = document.getElementById('cpf_cnpj_fornecedor').value.trim();
     const valor = parseFloat(document.getElementById('valor').value);
     const vencimento = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
-    
-    const statusSelect = document.getElementById('status_edicao').value;
-    const status = (statusSelect.toLowerCase().includes('pago')) ? 'Pago' : 'Pendente';
-
+    const status = (document.getElementById('status_edicao').value.toLowerCase().includes('pago')) ? 'Pago' : 'Pendente';
     const centro_custo = document.getElementById('centro_custo').value || 'Não informado';
     const conta_contabil = document.getElementById('conta_contabil').value || 'Não informada';
     const conta_origem = document.getElementById('conta_origem_cadastro').value;
     const data_pagamento = document.getElementById('data_pagamento_edicao').value;
     const recorrente = document.getElementById('recorrente').value;
-    const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
+    const numParcelas = Math.min(120, Math.max(1, parseInt(document.getElementById('num_parcelas').value) || 12));
     const cliente_id = obterClienteIdSeguro();
 
-    if(!fornecedor_nome || isNaN(valor) || !vencimento || !descricao) {
+    if (!fornecedor_nome || isNaN(valor) || !vencimento || !descricao) {
         alert("Preencha todos os campos obrigatórios (Fornecedor, Valor, Vencimento e Descrição).");
         return;
     }
-
-    if(cpf_cnpj_fornecedor && !fornecedorCadastradoNaBase && !id) {
-        await sbGlobal.from('parceiros').insert([{ cliente_id, nome: fornecedor_nome, razao_social: fornecedor_nome, cnpj_cpf: cpf_cnpj_fornecedor, tipo_cadastro: 'Fornecedor' }]);
+    if (valor <= 0) { alert("O valor do título deve ser maior que zero."); return; }
+    if (status === 'Pago') {
+        if (!data_pagamento) { alert("Para um título PAGO, informe a Data de Pagamento."); return; }
+        if (!conta_origem) { alert("Para um título PAGO, informe a Conta de Origem (de onde saiu o dinheiro)."); return; }
+    }
+    if (cpf_cnpj_fornecedor && !documentoValido(cpf_cnpj_fornecedor)) {
+        if (!confirm("O CPF/CNPJ informado parece inválido. Deseja continuar mesmo assim?")) return;
+    }
+    if (!id) {
+        const igual = contasCache.find(t => norm(t.fornecedor_nome) === norm(fornecedor_nome) && iso10(t.vencimento) === vencimento &&
+            Math.abs(t.valorNumerico - valor) < 0.005 && norm(semSufixo(t.descricao)) === norm(descricao));
+        if (igual && !confirm("Já existe um título igual (" + codigoDe(igual) + ": mesmo fornecedor, valor, vencimento e descrição).\n\nLançar mesmo assim?")) return;
     }
 
-    if(id) {
-        let payload = {
-            fornecedor_nome,
-            cpf_cnpj_fornecedor,
-            valor,
-            vencimento,
-            descricao,
-            status: status,
-            centro_custo,
-            conta_contabil,
-            conta_origem,
-            data_pagamento: data_pagamento || null,
-            recorrente,
-            updated_at: new Date().toISOString()
-        };
+    salvando = true;
+    const btn = document.getElementById('btnSalvar');
+    btn.disabled = true;
+    try {
+        if (cpf_cnpj_fornecedor && !fornecedorCadastradoNaBase && !id) {
+            await sbGlobal.from('parceiros').insert([{ cliente_id, nome: fornecedor_nome, razao_social: fornecedor_nome, cnpj_cpf: cpf_cnpj_fornecedor, tipo_cadastro: 'Fornecedor' }]);
+        }
 
-        let res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
-        if(res.error) { alert("Erro ao atualizar conta: " + res.error.message); return; }
-        alert("Conta a pagar atualizada com sucesso!");
-    } else {
-        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
-        let [ano, mes, dia] = vencimento.split('-').map(Number);
-        
-        let batch = [];
-        for(let i = 0; i < qtdGerar; i++) {
-            let targetMes = (mes - 1) + i;
-            let targetAno = ano + Math.floor(targetMes / 12);
-            let realMes = (targetMes % 12 + 1);
-            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-            let realDia = Math.min(dia, ultimoDiaMes);
-            let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
-            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
-
-            batch.push({
-                cliente_id,
+        if (id) {
+            const original = contasCache.find(x => String(x.id) === String(id));
+            const payload = {
                 fornecedor_nome,
                 cpf_cnpj_fornecedor,
                 valor,
-                vencimento: dataIso,
-                descricao: descParcela,
-                status: (i === 0 ? status : 'Pendente'),
+                vencimento,
+                descricao: sufixo ? (descricao + ' ' + sufixo) : descricao,
+                status,
                 centro_custo,
                 conta_contabil,
                 conta_origem,
-                data_pagamento: data_pagamento || null,
+                data_pagamento: status === 'Pago' ? data_pagamento : null,
                 recorrente,
                 updated_at: new Date().toISOString()
-            });
+            };
+
+            let idsSerie = [];
+            if (document.getElementById('aplicarSerie').checked && original) {
+                const baseOrig = norm(semSufixo(original.descricao));
+                idsSerie = contasCache.filter(t => t.id !== original.id &&
+                    norm(t.fornecedor_nome) === norm(original.fornecedor_nome) &&
+                    norm(semSufixo(t.descricao)) === baseOrig &&
+                    t.statusSeguro !== 'pago' &&
+                    iso10(t.vencimento) > iso10(original.vencimento)).map(t => t.id);
+                if (idsSerie.length > 0 && !confirm("Além desta parcela, serão alteradas " + idsSerie.length + " parcelas futuras ainda não pagas desta série.\n\nContinuar?")) return;
+            }
+
+            const res = await sbGlobal.from('contas_pagar').update(payload).eq('id', id).eq('cliente_id', cliente_id);
+            if (res.error) { alert("Erro ao atualizar conta: " + res.error.message); return; }
+
+            if (idsSerie.length > 0) {
+                const res2 = await sbGlobal.from('contas_pagar').update({
+                    fornecedor_nome, cpf_cnpj_fornecedor, valor, centro_custo, conta_contabil, conta_origem, updated_at: new Date().toISOString()
+                }).in('id', idsSerie).eq('cliente_id', cliente_id);
+                if (res2.error) { alert("Esta parcela foi atualizada, mas houve erro nas parcelas futuras: " + res2.error.message); }
+                else alert("Conta atualizada e " + idsSerie.length + " parcelas futuras ajustadas!");
+            } else {
+                alert("Conta a pagar atualizada com sucesso!");
+            }
+        } else {
+            const qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+            const [ano, mes, dia] = vencimento.split('-').map(Number);
+
+            const batch = [];
+            for (let i = 0; i < qtdGerar; i++) {
+                const targetMes = (mes - 1) + i;
+                const targetAno = ano + Math.floor(targetMes / 12);
+                const realMes = (targetMes % 12 + 1);
+                const ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+                const realDia = Math.min(dia, ultimoDiaMes);
+                const dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+                const descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
+                const primeiroPago = (i === 0 && status === 'Pago');
+
+                batch.push({
+                    cliente_id,
+                    fornecedor_nome,
+                    cpf_cnpj_fornecedor,
+                    valor,
+                    vencimento: dataIso,
+                    descricao: descParcela,
+                    status: primeiroPago ? 'Pago' : 'Pendente',
+                    centro_custo,
+                    conta_contabil,
+                    conta_origem,
+                    data_pagamento: primeiroPago ? data_pagamento : null,
+                    recorrente,
+                    updated_at: new Date().toISOString()
+                });
+            }
+
+            const res = await sbGlobal.from('contas_pagar').insert(batch);
+            if (res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
+            alert(qtdGerar > 1 ? `${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a pagar registrada com sucesso!");
         }
 
-        let res = await sbGlobal.from('contas_pagar').insert(batch);
-        if(res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
-        alert(qtdGerar > 1 ? `${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a pagar registrada com sucesso!");
+        cancelarEdicao();
+        await carregarContas();
+    } finally {
+        salvando = false;
+        btn.disabled = false;
     }
-
-    cancelarEdicao();
-    carregarContas();
 }
 
-window.editarConta = function(id) {
-    let t = contasCache.find(x => String(x.id) === String(id));
-    if(!t) return;
+window.editarConta = function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
 
     const cardForm = document.getElementById('formTitle').closest('.card');
     const contentForm = cardForm.querySelector('.collapsible-content');
@@ -953,60 +1323,61 @@ window.editarConta = function(id) {
         if (iconForm) iconForm.className = 'fas fa-chevron-up';
     }
 
+    const sufixo = sufixoParcela(t.descricao);
     document.getElementById('edit_id').value = t.id;
-    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(contasCache.indexOf(t));
+    document.getElementById('edit_sufixo').value = sufixo;
+    document.getElementById('codigo_virtual').value = codigoDe(t);
     document.getElementById('cpf_cnpj_fornecedor').value = t.cpf_cnpj_fornecedor || '';
     document.getElementById('fornecedor_nome').value = t.fornecedor_nome || '';
     document.getElementById('valor').value = t.valorNumerico || '';
-    document.getElementById('vencimento').value = t.vencimento || '';
-    document.getElementById('data_pagamento_edicao').value = t.data_pagamento || '';
-    document.getElementById('conta_origem_cadastro').value = t.conta_origem || '';
-
-    let descLimpa = (t.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '');
-    document.getElementById('descricao').value = descLimpa;
-
-    document.getElementById('centro_custo').value = t.centro_custo || '';
-    document.getElementById('conta_contabil').value = t.conta_contabil || '';
+    document.getElementById('vencimento').value = iso10(t.vencimento);
+    document.getElementById('descricao').value = semSufixo(t.descricao);
+    document.getElementById('centro_custo').value = (t.centro_custo && t.centro_custo !== 'Não informado') ? t.centro_custo : '';
+    document.getElementById('conta_contabil').value = (t.conta_contabil && t.conta_contabil !== 'Não informada') ? t.conta_contabil : '';
+    selecionarComFallback('conta_origem_cadastro', t.conta_origem || '');
+    atualizarDicaCartaoCadastro();
     document.getElementById('recorrente').value = t.recorrente || 'Não';
     toggleParcelas(t.recorrente || 'Não');
-    document.getElementById('status_edicao').value = t.status || 'Pendente';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${formatarCodigoVirtual(contasCache.indexOf(t))})`;
+    // em edição o nº de parcelas não é usado (a edição altera só esta parcela)
+    document.getElementById('blocoParcelas').style.display = 'none';
+    document.getElementById('status_edicao').value = (t.statusSeguro === 'pago') ? 'Pago' : 'Pendente';
+    aoMudarStatus();
+    document.getElementById('data_pagamento_edicao').value = (t.statusSeguro === 'pago') ? iso10(t.data_pagamento || t.vencimento) : '';
+
+    const caixa = document.getElementById('caixaSerie');
+    caixa.style.display = (sufixo || t.recorrente === 'Sim') ? 'block' : 'none';
+    document.getElementById('aplicarSerie').checked = false;
+
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Pagar (${codigoDe(t)}${sufixo ? ' · parcela ' + esc(sufixo.replace(/[()]/g, '')) : ''})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Pagar';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    window.scrollTo({top: 0, behavior: 'smooth'});
-}
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    atualizarDicaRecorrencia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
 function cancelarEdicao() {
-    document.getElementById('edit_id').value = '';
-    document.getElementById('cpf_cnpj_fornecedor').value = '';
-    document.getElementById('fornecedor_nome').value = '';
-    document.getElementById('valor').value = '';
-    document.getElementById('vencimento').value = '';
-    document.getElementById('data_pagamento_edicao').value = '';
+    ['edit_id', 'edit_sufixo', 'cpf_cnpj_fornecedor', 'fornecedor_nome', 'valor', 'vencimento', 'data_pagamento_edicao', 'descricao'].forEach(i => {
+        document.getElementById(i).value = '';
+    });
     document.getElementById('conta_origem_cadastro').value = '';
-    document.getElementById('descricao').value = '';
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
     document.getElementById('recorrente').value = 'Não';
     toggleParcelas('Não');
     document.getElementById('status_edicao').value = 'Pendente';
+    aoMudarStatus();
+    document.getElementById('status_fornecedor').innerHTML = '';
+    document.getElementById('dica_cartao_cadastro').style.display = 'none';
+    document.getElementById('caixaSerie').style.display = 'none';
+    document.getElementById('aplicarSerie').checked = false;
     let avisoF = document.getElementById('aviso_fornecedor_nao_cadastrado');
-    if(avisoF) avisoF.style.display = 'none';
+    if (avisoF) avisoF.style.display = 'none';
     fornecedorCadastradoNaBase = false;
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Pagar';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Pagar';
     document.getElementById('btnCancelar').style.display = 'none';
     atualizarCodigoVirtual();
-}
-
-window.excluirConta = async function(id) {
-    if(confirm("Deseja realmente excluir este registo?")) {
-        const cid = obterClienteIdSeguro();
-        let res = await sbGlobal.from('contas_pagar').delete().eq('id', id).eq('cliente_id', cid);
-        if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
-        alert("Registo removido com sucesso!");
-        carregarContas();
-    }
+    atualizarDicaRecorrencia();
 }
 
 window.onload = inicializarPagina;
