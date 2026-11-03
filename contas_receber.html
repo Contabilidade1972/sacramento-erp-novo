@@ -9,6 +9,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -37,19 +38,21 @@
         .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-top: 15px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); text-decoration: none; }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao:disabled { opacity: .6; cursor: not-allowed; }
         .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
         .btn-acao.sucesso:hover { background: #059669; }
         .btn-acao.perigo { background: var(--danger); box-shadow: 0 2px 6px rgba(239,68,68,0.2); }
         .btn-acao.perigo:hover { background: #dc2626; }
 
-        .dash-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .dash-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
         .dash-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); display: flex; align-items: center; gap: 16px; }
-        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; }
+        .dash-icon { width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; flex-shrink: 0; }
         .dash-card h4 { font-size: 11px; color: var(--text-light); font-weight: 700; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .dash-card .value { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .dash-card .value { font-size: 21px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .dash-card .sub { font-size: 11px; color: var(--text-light); margin-top: 2px; font-weight: 600; }
 
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); gap: 12px; flex-wrap: wrap; }
         .card-header h3 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
 
         .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
@@ -59,10 +62,10 @@
 
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
         tbody td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         tbody tr:hover { background: #f8fafc; }
-        
+
         .badge { padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; text-transform: uppercase; display: inline-block; }
         .badge-pendente { background: #fee2e2; color: #991b1b; }
         .badge-recebido { background: #d1fae5; color: #065f46; }
@@ -81,27 +84,13 @@
         .btn-mais:hover { background: #059669; transform: scale(1.05); }
 
         .aviso-nao-cadastrado { background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; border-radius: 6px; padding: 6px 10px; font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+        .dica { font-size: 11px; color: var(--text-light); margin-top: 6px; line-height: 1.45; }
+        .caixa-serie { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; border-radius: 8px; padding: 10px 14px; font-size: 12px; font-weight: 600; margin-bottom: 14px; display: none; }
+        .caixa-serie label { display: flex; gap: 8px; align-items: center; text-transform: none; font-size: 12px; color: #92400e; margin: 0; cursor: pointer; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-card { background: var(--card); width: 100%; max-width: 680px; max-height: 90vh; border-radius: 14px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); padding: 24px; overflow-y: auto; }
         .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-
-        .print-corporative-header { display: none !important; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 5mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8pt; margin: 0 !important; padding: 0 !important; }
-            .site-header, .page-toolbar, .card:not(#cardRelatorioModo), .dash-cards, button, .ocultar-print, footer { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; display: block !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            .print-corporative-header { display: block !important; background: #fff !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important; }
-            .table-container { width: 100% !important; overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; table-layout: fixed !important; margin: 0 !important; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 4px 5px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 3px 5px !important; border-bottom: 1px solid #cbd5e1 !important; }
-        }
     </style>
 </head>
 <body>
@@ -158,36 +147,45 @@
     <div class="modal-card" style="max-width:500px;">
         <div class="modal-header">
             <h3 style="font-size:15px;font-weight:700;color:var(--secondary);"><i class="fas fa-hand-holding-usd" style="color:var(--success)"></i> Registrar Recebimento (Baixa)</h3>
-            <button onclick="document.getElementById('modalRecebimento').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
+            <button onclick="fecharModalRecebimento()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--text-light);"><i class="fas fa-times"></i></button>
         </div>
         <input type="hidden" id="recebimento_id_baixa">
-        <div style="background: var(--bg); padding: 10px; border-radius: 6px; margin-bottom: 12px; font-size: 13px;">
+        <div style="background: var(--bg); padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.6;">
             <div><strong>Cliente:</strong> <span id="modal_cliente_nome">-</span></div>
-            <div><strong>Valor Original:</strong> <span id="modal_valor_original" style="font-weight: bold; color: var(--primary);">R$ 0,00</span></div>
+            <div><strong>Descrição:</strong> <span id="modal_cliente_desc">-</span></div>
+            <div><strong>Vencimento:</strong> <span id="modal_cliente_venc">-</span></div>
+            <div><strong>Valor:</strong> <span id="modal_valor_original" style="font-weight: 800; color: var(--primary);">R$ 0,00</span></div>
         </div>
         <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
             <div>
-                <label>Data do Recebimento</label>
+                <label>Data do Recebimento *</label>
                 <input type="date" id="data_recebimento" class="form-control">
             </div>
             <div>
-                <label>Forma de Entrada</label>
-                <select id="forma_recebimento_baixa" class="form-control">
-                    <option value="Pix">PIX / Transferência</option>
-                    <option value="Boleto">Boleto Bancário</option>
-                    <option value="Dinheiro">Dinheiro</option>
+                <label>Conta Bancária de Destino *</label>
+                <select id="conta_destino_baixa" class="form-control">
+                    <option value="">Carregando contas...</option>
                 </select>
             </div>
         </div>
-        <div style="margin-bottom: 10px;">
-            <label>Conta Bancária de Destino *</label>
-            <select id="conta_destino_baixa" class="form-control">
-                <option value="">Carregando contas...</option>
-            </select>
+        <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+                <label>Juros / multa recebidos (R$)</label>
+                <input type="number" step="0.01" min="0" id="juros_baixa" class="form-control" placeholder="0,00" oninput="recalcularValorRecebido()">
+            </div>
+            <div>
+                <label>Desconto concedido (R$)</label>
+                <input type="number" step="0.01" min="0" id="desconto_baixa" class="form-control" placeholder="0,00" oninput="recalcularValorRecebido()">
+            </div>
+            <div>
+                <label>Valor efetivamente recebido</label>
+                <div id="valor_receb_baixa" style="height:42px; display:flex; align-items:center; font-size:15px; font-weight:800; color:var(--success);">R$ 0,00</div>
+            </div>
         </div>
+        <div class="dica" style="margin:-2px 0 8px 0;">Valor recebido = valor do título + juros − desconto. É o valor recebido que entra no Fluxo de Caixa; o valor original fica guardado no título.</div>
         <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-            <button class="btn-acao" style="background:#64748b;" onclick="document.getElementById('modalRecebimento').style.display='none'">Cancelar</button>
-            <button class="btn-acao sucesso" onclick="confirmarRecebimento()"><i class="fas fa-check"></i> Confirmar Entrada</button>
+            <button class="btn-acao" style="background:#64748b;" onclick="fecharModalRecebimento()">Cancelar</button>
+            <button class="btn-acao sucesso" id="btnConfirmarRecebimento" onclick="confirmarRecebimento()"><i class="fas fa-check"></i> Confirmar Entrada</button>
         </div>
     </div>
 </div>
@@ -208,8 +206,17 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-hourglass-half"></i></div>
             <div>
-                <h4>Projeção em Aberto</h4>
+                <h4>A Receber (a vencer)</h4>
                 <div class="value" id="kpiValorAberto" style="color: var(--warning);">R$ 0,00</div>
+                <div class="sub" id="kpiQtdAberto">0 títulos</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:var(--danger)"><i class="fas fa-exclamation-triangle"></i></div>
+            <div>
+                <h4>Vencidos (em atraso)</h4>
+                <div class="value" id="kpiValorAtrasado" style="color: var(--danger);">R$ 0,00</div>
+                <div class="sub" id="kpiQtdAtrasado">0 títulos</div>
             </div>
         </div>
         <div class="dash-card">
@@ -217,6 +224,7 @@
             <div>
                 <h4>Total Recebido</h4>
                 <div class="value" id="kpiValorRecebido" style="color: var(--success)">R$ 0,00</div>
+                <div class="sub" id="kpiQtdRecebido">0 títulos</div>
             </div>
         </div>
     </div>
@@ -228,13 +236,14 @@
         </div>
         <div class="collapsible-content">
             <input type="hidden" id="edit_id">
+            <input type="hidden" id="edit_sufixo">
             <div class="form-grid">
                 <div>
-                    <label>Código (Banco ID)</label>
+                    <label>Código</label>
                     <input type="text" id="codigo_virtual" class="form-control" readonly style="background:var(--bg); font-weight:bold;">
                 </div>
                 <div>
-                    <label>CNPJ / CPF do Cliente * <span id="status_cliente" style="font-weight:normal;font-size:10px;"></span></label>
+                    <label>CNPJ / CPF do Cliente <span id="status_cliente" style="font-weight:normal;font-size:10px;"></span></label>
                     <div class="campo-com-mais">
                         <input type="text" id="cpf_cnpj_cliente" class="form-control" placeholder="Apenas números..." oninput="buscarOuConsultarCliente()">
                         <button class="btn-mais" onclick="abrirModalCliente()" title="Cadastrar novo cliente"><i class="fas fa-plus"></i></button>
@@ -249,15 +258,15 @@
             <div class="form-grid">
                 <div>
                     <label>Valor do Título (R$) *</label>
-                    <input type="number" step="0.01" id="valor" class="form-control" placeholder="0.00">
+                    <input type="number" step="0.01" min="0" id="valor" class="form-control" placeholder="0.00" oninput="atualizarDicaRecorrencia()">
                 </div>
                 <div>
                     <label>Vencimento *</label>
-                    <input type="date" id="vencimento" class="form-control">
+                    <input type="date" id="vencimento" class="form-control" onchange="atualizarDicaRecorrencia()">
                 </div>
                 <div>
                     <label>Status do Título</label>
-                    <select id="status_edicao" class="form-control">
+                    <select id="status_edicao" class="form-control" onchange="aoMudarStatus()">
                         <option value="Pendente">Pendente / Em Aberto</option>
                         <option value="Recebido">Recebido / Quitada</option>
                     </select>
@@ -270,6 +279,18 @@
                         </select>
                         <button class="btn-mais" onclick="abrirModalCentroCusto()" title="Cadastrar novo centro de custo"><i class="fas fa-plus"></i></button>
                     </div>
+                </div>
+            </div>
+            <div class="form-grid" id="blocoRecebido" style="grid-template-columns: 1fr 1fr; display:none;">
+                <div>
+                    <label>Data do Recebimento <span style="color:var(--danger);">*</span></label>
+                    <input type="date" id="data_recebimento_edicao" class="form-control">
+                </div>
+                <div>
+                    <label>Conta Bancária de Destino <span style="color:var(--danger);">*</span></label>
+                    <select id="conta_destino_cadastro" class="form-control">
+                        <option value="">Selecione a conta...</option>
+                    </select>
                 </div>
             </div>
             <div class="form-grid" style="grid-template-columns: 2fr 1.5fr 1fr 1fr;">
@@ -291,11 +312,16 @@
                     </select>
                 </div>
                 <div>
-                    <div id="blocoParcelas" style="display:block;">
+                    <div id="blocoParcelas" style="display:none;">
                         <label>Nº de Meses / Parcelas</label>
-                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12">
+                        <input type="number" id="num_parcelas" class="form-control" value="12" min="1" max="120" placeholder="Ex: 12" oninput="atualizarDicaRecorrencia()">
                     </div>
                 </div>
+            </div>
+            <div id="dica_recorrencia" class="dica" style="display:none; margin: -6px 0 14px 0;"></div>
+            <div class="caixa-serie" id="caixaSerie">
+                <label><input type="checkbox" id="aplicarSerie"> <span>Aplicar também às parcelas futuras ainda não recebidas desta série (cliente, valor, centro de custo e conta contábil).</span></label>
+                <div style="font-weight:500; margin-top:4px;">Sem marcar, a edição altera somente esta parcela. Nenhuma parcela é apagada ou recriada.</div>
             </div>
             <div style="margin-top: 10px; display:flex; gap:10px;">
                 <button class="btn-acao" id="btnSalvar" onclick="salvarContaReceber()"><i class="fas fa-save"></i> Adicionar Conta a Receber</button>
@@ -309,32 +335,32 @@
         <div class="card-header">
             <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Contas a Receber</h3>
             <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-acao sucesso ocultar-print" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+                <button class="btn-acao sucesso" onclick="imprimirRelatorio('rel')"><i class="fas fa-print"></i> Imprimir Relatório</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
         <div class="collapsible-content">
-            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
+            <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(4, 1fr) auto; gap:12px; align-items:flex-end;">
                 <div>
-                    <label>Data Início</label>
+                    <label>Vencimento — Início</label>
                     <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
-                    <label>Data Fim</label>
+                    <label>Vencimento — Fim</label>
                     <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
                     <label>Status</label>
                     <select id="filtroStatus" class="form-control" onchange="aplicarFiltrosRelatorio()">
                         <option value="todos">Todos os Status</option>
-                        <option value="pendente">Pendente</option>
+                        <option value="pendente">Pendente (a vencer)</option>
                         <option value="recebido">Recebido</option>
                         <option value="atrasado">Vencido</option>
                     </select>
                 </div>
                 <div>
-                    <label>Buscar por Nome / Descrição</label>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Cliente ou ref..." oninput="aplicarFiltrosRelatorio()">
+                    <label>Buscar por Nome / Descrição / Código</label>
+                    <input type="text" id="filtroBusca" class="form-control" placeholder="Cliente, ref ou CR-123..." oninput="aplicarFiltrosRelatorio()">
                 </div>
                 <div>
                     <button class="btn-acao" style="background:#64748b; height:42px; width:100%; justify-content:center;" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
@@ -367,17 +393,18 @@
     <div class="card">
         <div class="card-header">
             <h3><i class="fas fa-list"></i> Histórico de Contas a Receber e Faturamento</h3>
-            <div style="display:flex; gap:10px; align-items:center;" class="ocultar-print">
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="btn-acao perigo" id="btnExcluirSelecionados" style="display:none; height:38px; font-size:12px;" onclick="excluirSelecionados()"><i class="fas fa-trash-alt"></i> Excluir Selecionados (<span id="qtdSelecionados">0</span>)</button>
-                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente ou descrição..." oninput="aplicarFiltrosHistorico()" style="width: 200px; height: 38px;">
-                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 120px; height: 38px;">
+                <input type="text" id="histBusca" class="form-control" placeholder="Pesquisar cliente, descrição ou código..." oninput="aplicarFiltrosHistorico()" style="width: 230px; height: 38px;">
+                <select id="histStatus" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;">
                     <option value="todos">Todos Status</option>
                     <option value="pendente">Pendente</option>
                     <option value="recebido">Recebido</option>
                     <option value="atrasado">Vencido</option>
                 </select>
-                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Início">
-                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Data Fim">
+                <input type="date" id="histDataInicio" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Vencimento — início">
+                <input type="date" id="histDataFim" class="form-control" onchange="aplicarFiltrosHistorico()" style="width: 130px; height: 38px;" title="Vencimento — fim">
+                <button class="btn-acao sucesso" style="height:38px; font-size:12px;" onclick="imprimirRelatorio('hist')" title="Imprime exatamente o que está filtrado aqui"><i class="fas fa-print"></i> Imprimir</button>
                 <button class="collapse-btn" onclick="toggleCardBody(this)" title="Recolher / Expandir"><i class="fas fa-chevron-up"></i></button>
             </div>
         </div>
@@ -396,8 +423,8 @@
                             <th>Vencimento</th>
                             <th>Valor Total</th>
                             <th>Status</th>
-                            <th>Data Criação</th>
-                            <th style="text-align:right;" class="ocultar-print">Ações</th>
+                            <th>Recebido em / Conta</th>
+                            <th style="text-align:right;">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tbodyContas">
@@ -413,18 +440,106 @@
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
 
-<script src="auth-guard.js"></script>
-<script src="erp-core.js"></script>
 <script>
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let contasCache = [];
+let contasBancCache = [];
 let clienteCadastradoNaBase = false;
-let valorOriginalBaixa = 0;
+let salvando = false;
 
 const sbGlobal = window.supabase.createClient(
-    'https://vcuhkvqrbkyulnnyqnbf.supabase.co', 
+    'https://vcuhkvqrbkyulnnyqnbf.supabase.co',
     'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
 );
+
+/* ---------- utilitários ---------- */
+function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function norm(s) {
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+}
+function hojeLocal() { // data de HOJE no fuso do usuário (o toISOString() usa UTC e erra à noite)
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function iso10(v) { return v ? String(v).substring(0, 10) : ''; }
+function fmtData(v) {
+    const s = iso10(v);
+    return s ? s.split('-').reverse().join('/') : '—';
+}
+function numero(v) {
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    if (v === null || v === undefined) return 0;
+    let s = String(v).replace(/[^\d,.\-]/g, '');
+    if (!s) return 0;
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+}
+function formatBRL(v) {
+    const n = parseFloat(v) || 0;
+    return (n < 0 ? '-' : '') + 'R$ ' + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function limpo(v) {
+    const x = String(v || '').trim();
+    return (!x || /^n[aã]o informad[oa]$/i.test(x)) ? '—' : x;
+}
+function arred(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
+function textoAjuste(t) { // "orig. R$ 81,80 · juros +R$ 2,00 · desc. -R$ 0,50"
+    if (t.valor_original === undefined || t.valor_original === null) return '';
+    const o = numero(t.valor_original);
+    if (Math.abs(o - t.valorNumerico) < 0.005) return '';
+    let x = 'orig. ' + formatBRL(o);
+    if (numero(t.juros) > 0) x += ' · juros +' + formatBRL(numero(t.juros));
+    if (numero(t.desconto) > 0) x += ' · desc. -' + formatBRL(numero(t.desconto));
+    return x;
+}
+function erroColunaAjuste(msg) {
+    return /valor_original|juros|desconto/i.test(String(msg || '')) && /column|coluna/i.test(String(msg || ''));
+}
+function codigoDe(t) { return 'CR-' + String(t.id).padStart(3, '0'); }
+function sufixoParcela(desc) {
+    const m = String(desc || '').match(/\s*\((\d+\/\d+)\)\s*$/);
+    return m ? m[0].trim() : '';
+}
+function semSufixo(desc) { return String(desc || '').replace(/\s*\(\d+\/\d+\)\s*$/, ''); }
+
+/* ---------- validação de CPF / CNPJ ---------- */
+function validarCPF(cpf) {
+    cpf = cpf.replace(/\D/g, '');
+    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+    let soma = 0, resto;
+    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+    resto = (soma * 10) % 11; if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
+    soma = 0;
+    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+    resto = (soma * 10) % 11; if (resto === 10 || resto === 11) resto = 0;
+    return resto === parseInt(cpf.substring(10, 11));
+}
+function validarCNPJ(cnpj) {
+    cnpj = cnpj.replace(/\D/g, '');
+    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
+    let tamanho = cnpj.length - 2, numeros = cnpj.substring(0, tamanho), digitos = cnpj.substring(tamanho);
+    let soma = 0, pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) { soma += numeros.charAt(tamanho - i) * pos--; if (pos < 2) pos = 9; }
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado != digitos.charAt(0)) return false;
+    tamanho = tamanho + 1; numeros = cnpj.substring(0, tamanho); soma = 0; pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) { soma += numeros.charAt(tamanho - i) * pos--; if (pos < 2) pos = 9; }
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    return resultado == digitos.charAt(1);
+}
+function documentoValido(doc) {
+    const d = String(doc || '').replace(/\D/g, '');
+    if (!d) return true;
+    if (d.length === 11) return validarCPF(d);
+    if (d.length === 14) return validarCNPJ(d);
+    return false;
+}
 
 function obterClienteIdSeguro() {
     try {
@@ -435,7 +550,7 @@ function obterClienteIdSeguro() {
             if (sel) return parseInt(sel);
         }
         return u && u.cliente_id ? parseInt(u.cliente_id) : 1;
-    } catch(e) {
+    } catch (e) {
         return 1;
     }
 }
@@ -448,14 +563,38 @@ function toggleCardBody(btn) {
     icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
 }
 
+/* ---------- formulário: recorrência e status ---------- */
 function toggleParcelas(val) {
-    const bloco = document.getElementById('blocoParcelas');
-    if (val === 'Sim') {
-        bloco.style.display = 'block';
-    } else {
-        bloco.style.display = 'block';
-        document.getElementById('num_parcelas').value = '12';
-    }
+    document.getElementById('blocoParcelas').style.display = (val === 'Sim') ? 'block' : 'none';
+    if (val !== 'Sim') document.getElementById('num_parcelas').value = '12';
+    atualizarDicaRecorrencia();
+}
+
+function atualizarDicaRecorrencia() {
+    const el = document.getElementById('dica_recorrencia');
+    const rec = document.getElementById('recorrente').value;
+    const editando = !!document.getElementById('edit_id').value;
+    const venc = document.getElementById('vencimento').value;
+    const n = parseInt(document.getElementById('num_parcelas').value) || 0;
+    const valor = parseFloat(document.getElementById('valor').value) || 0;
+    if (rec !== 'Sim' || editando || !venc || n < 1) { el.style.display = 'none'; return; }
+    const [a, m, d] = venc.split('-').map(Number);
+    const alvo = (m - 1) + (n - 1);
+    const anoF = a + Math.floor(alvo / 12), mesF = (alvo % 12) + 1;
+    const ult = Math.min(d, new Date(anoF, mesF, 0).getDate());
+    const dataF = String(ult).padStart(2, '0') + '/' + String(mesF).padStart(2, '0') + '/' + anoF;
+    el.innerHTML = '<i class="fas fa-info-circle"></i> Serão gerados <strong>' + n + '</strong> títulos mensais de <strong>' + formatBRL(valor) +
+        '</strong> (total ' + formatBRL(valor * n) + '), do vencimento ' + fmtData(venc) + ' até ' + dataF +
+        '. Somente o 1º título pode nascer como Recebido; os demais nascem Pendentes.';
+    el.style.display = 'block';
+}
+
+function aoMudarStatus() {
+    const rec = document.getElementById('status_edicao').value === 'Recebido';
+    document.getElementById('blocoRecebido').style.display = rec ? 'grid' : 'none';
+    const campo = document.getElementById('data_recebimento_edicao');
+    if (rec && !campo.value) campo.value = hojeLocal();
+    if (!rec) { campo.value = ''; document.getElementById('conta_destino_cadastro').value = ''; }
 }
 
 async function inicializarPagina() {
@@ -465,7 +604,7 @@ async function inicializarPagina() {
         if (emailU === EMAIL_MASTER.toLowerCase().trim()) {
             document.body.classList.add('usuario-master');
         }
-    } catch(e) {}
+    } catch (e) {}
 
     await carregarCentrosCustoSelect();
     await carregarPlanoContasSelect();
@@ -473,84 +612,29 @@ async function inicializarPagina() {
     await carregarContas();
 }
 
-function formatBRL(v) {
-    return 'R$ ' + (parseFloat(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function formatarCodigoVirtual(id) {
-    return "CR-" + String(id || 1).padStart(3, '0');
-}
-
-function atualizarCodigoVirtual() {
-    let proximoId = 1;
-    if (contasCache.length > 0) {
-        let maxId = Math.max(...contasCache.map(c => parseInt(c.id) || 0));
-        proximoId = maxId + 1;
-    }
-    const elCod = document.getElementById('codigo_virtual');
-    if (elCod) elCod.value = formatarCodigoVirtual(proximoId);
-}
-
-// VALIDAÇÃO DE CPF E CNPJ
-function validarCPF(cpf) {
-    cpf = cpf.replace(/\D/g, '');
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-    let soma = 0, resto;
-    for (let i = 1; i <= 9; i++) soma += parseInt(cpf.substring(i-1, i)) * (11 - i);
-    resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    if (resto !== parseInt(cpf.substring(9, 10))) return false;
-    soma = 0;
-    for (let i = 1; i <= 10; i++) soma += parseInt(cpf.substring(i-1, i)) * (12 - i);
-    resto = (soma * 10) % 11;
-    if (resto === 10 || resto === 11) resto = 0;
-    return resto === parseInt(cpf.substring(10, 11));
-}
-
-function validarCNPJ(cnpj) {
-    cnpj = cnpj.replace(/\D/g, '');
-    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-    let tamanho = cnpj.length - 2;
-    let numeros = cnpj.substring(0, tamanho);
-    let digitos = cnpj.substring(tamanho);
-    let soma = 0, pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    if (resultado != digitos.charAt(0)) return false;
-    tamanho = tamanho + 1;
-    numeros = cnpj.substring(0, tamanho);
-    soma = 0;
-    pos = tamanho - 7;
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
-    return resultado == digitos.charAt(1);
-}
-
+/* ---------- clientes ---------- */
 async function buscarOuConsultarCliente() {
     let docDigitado = document.getElementById('cpf_cnpj_cliente').value.replace(/\D/g, '');
     let statusEl = document.getElementById('status_cliente');
     let avisoEl = document.getElementById('aviso_cliente_nao_cadastrado');
-    if(avisoEl) avisoEl.style.display = 'none';
-    if(!docDigitado) { statusEl.innerHTML = ''; return; }
-    
-    const cid = obterClienteIdSeguro();
-    const { data, error } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid);
-    if(!error && data) {
-        let cli = data.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === docDigitado);
-        if(cli) {
-            document.getElementById('cliente_nome').value = cli.nome || cli.razao_social || '';
-            statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Cliente Encontrado na Base</span>';
-            clienteCadastradoNaBase = true;
-            return;
-        }
-    }
+    if (avisoEl) avisoEl.style.display = 'none';
+    if (!docDigitado) { statusEl.innerHTML = ''; return; }
 
+    const cid = obterClienteIdSeguro();
+    try {
+        const { data, error } = await sbGlobal.from('parceiros').select('*').eq('cliente_id', cid);
+        if (!error && data) {
+            let cli = data.find(p => (p.cnpj_cpf || '').toString().replace(/\D/g, '') === docDigitado);
+            if (cli) {
+                document.getElementById('cliente_nome').value = cli.nome || cli.razao_social || '';
+                statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Cliente Encontrado na Base</span>';
+                clienteCadastradoNaBase = true;
+                return;
+            }
+        }
+    } catch (e) {}
+
+    clienteCadastradoNaBase = false;
     if (docDigitado.length === 14) {
         if (!validarCNPJ(docDigitado)) {
             statusEl.innerHTML = '<span style="color:var(--danger)">CNPJ Inválido!</span>';
@@ -563,15 +647,17 @@ async function buscarOuConsultarCliente() {
             let dados = await resposta.json();
             document.getElementById('cliente_nome').value = dados.razao_social || '';
             statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> CNPJ Encontrado</span>';
-            if(avisoEl) {
+            if (avisoEl) {
                 avisoEl.innerHTML = '<div class="aviso-nao-cadastrado"><i class="fas fa-info-circle"></i> Novo cliente. Clique no <strong style="margin:0 3px;">+</strong> para salvar na base.</div>';
                 avisoEl.style.display = 'block';
             }
-            clienteCadastradoNaBase = false;
         } catch (err) {
             statusEl.innerHTML = '<span style="color:var(--warning)">Preencha o Nome</span>';
-            clienteCadastradoNaBase = false;
         }
+    } else if (docDigitado.length === 11) {
+        statusEl.innerHTML = validarCPF(docDigitado)
+            ? '<span style="color:var(--warning)">CPF válido — preencha o nome</span>'
+            : '<span style="color:var(--danger)">CPF inválido!</span>';
     }
 }
 
@@ -588,7 +674,9 @@ async function buscarDadosDocumentoCliente() {
                 statusEl.innerHTML = '<span style="color:var(--success)"><i class="fas fa-check-circle"></i> Encontrado</span>';
             })
             .catch(() => { statusEl.innerHTML = '<span style="color:var(--warning)">Preencha manualmente</span>'; });
-    }
+    } else if (doc.length === 11) {
+        statusEl.innerHTML = validarCPF(doc) ? '<span style="color:var(--success)">CPF válido</span>' : '<span style="color:var(--danger)">CPF inválido</span>';
+    } else { statusEl.innerHTML = ''; }
 }
 
 async function carregarCentrosCustoSelect() {
@@ -600,7 +688,7 @@ async function carregarCentrosCustoSelect() {
     if (data) {
         data.forEach(cc => {
             let nome = cc.nome || cc.descricao || '';
-            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
+            sel.innerHTML += `<option value="${esc(nome)}">${esc(nome)}</option>`;
         });
     }
 }
@@ -616,7 +704,7 @@ async function carregarPlanoContasSelect() {
             let desc = pc.descricao || pc.nome || '';
             let cod = pc.codigo_reduzido || '';
             let rotulo = cod ? `${cod} - ${desc}` : desc;
-            sel.innerHTML += `<option value="${rotulo}">${rotulo}</option>`;
+            sel.innerHTML += `<option value="${esc(rotulo)}">${esc(rotulo)}</option>`;
         });
     }
 }
@@ -624,15 +712,43 @@ async function carregarPlanoContasSelect() {
 async function carregarContasBancariasModal() {
     const cid = obterClienteIdSeguro();
     const { data } = await sbGlobal.from('contas_bancarias').select('*').eq('cliente_id', cid);
-    const sel = document.getElementById('conta_destino_baixa');
+    contasBancCache = (data || []).map(cb => {
+        const valor = cb.nome || cb.banco || 'Banco';
+        const rotulo = (cb.nome && cb.banco && norm(cb.nome) !== norm(cb.banco)) ? (cb.nome + ' — ' + cb.banco) : valor;
+        return { valor, rotulo, chaves: [norm(cb.nome), norm(cb.banco)].filter(Boolean) };
+    });
+    ['conta_destino_baixa', 'conta_destino_cadastro'].forEach(idSel => {
+        const sel = document.getElementById(idSel);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Selecione a conta de destino...</option>';
+        contasBancCache.forEach(c => { sel.innerHTML += `<option value="${esc(c.valor)}">${esc(c.rotulo)}</option>`; });
+    });
+}
+
+// Acha a conta pelo valor gravado, reconhecendo também formatos antigos de nome.
+function buscarContaBanc(valor) {
+    if (!valor) return null;
+    const exata = contasBancCache.find(c => c.valor === valor);
+    if (exata) return exata;
+    const n = norm(valor);
+    let melhor = null, tam = 0;
+    contasBancCache.forEach(c => c.chaves.forEach(k => {
+        if (k.length >= 4 && n.indexOf(k) >= 0 && k.length > tam) { melhor = c; tam = k.length; }
+    }));
+    return melhor;
+}
+
+function selecionarComFallback(idSel, valor) {
+    const sel = document.getElementById(idSel);
     if (!sel) return;
-    sel.innerHTML = '<option value="">Selecione a conta de destino...</option>';
-    if (data) {
-        data.forEach(cb => {
-            let nome = cb.banco || cb.nome || 'Banco';
-            sel.innerHTML += `<option value="${nome}">${nome}</option>`;
-        });
+    const conhecida = buscarContaBanc(valor);
+    if (conhecida) { sel.value = conhecida.valor; return; }
+    if (valor && !Array.from(sel.options).some(o => o.value === valor)) {
+        const o = document.createElement('option');
+        o.value = valor; o.textContent = valor + ' (conta anterior)';
+        sel.appendChild(o);
     }
+    sel.value = valor || '';
 }
 
 function abrirModalCentroCusto() {
@@ -642,9 +758,9 @@ function abrirModalCentroCusto() {
 }
 
 function abrirModalCliente() {
-    ['cli_nome','cli_doc'].forEach(id => {
+    ['cli_nome', 'cli_doc'].forEach(id => {
         let el = document.getElementById(id);
-        if(el) el.value = '';
+        if (el) el.value = '';
     });
     document.getElementById('cli_status_doc').innerHTML = '';
     document.getElementById('modalNovoCliente').style.display = 'flex';
@@ -655,7 +771,8 @@ async function salvarNovoCentroCusto() {
     const codigo = document.getElementById('cc_codigo').value.trim();
     if (!nome) { alert("Informe o nome."); return; }
     const cid = obterClienteIdSeguro();
-    await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, codigo, descricao: nome, status: 'Ativo' }]);
+    const res = await sbGlobal.from('centros_custo').insert([{ cliente_id: cid, nome, codigo, descricao: nome, status: 'Ativo' }]);
+    if (res.error) { alert("Erro ao cadastrar centro de custo: " + res.error.message); return; }
     document.getElementById('modalNovoCentroCusto').style.display = 'none';
     await carregarCentrosCustoSelect();
     document.getElementById('centro_custo').value = nome;
@@ -666,14 +783,25 @@ async function salvarNovoClienteModal() {
     const nome = document.getElementById('cli_nome').value.trim();
     const doc = document.getElementById('cli_doc').value.replace(/\D/g, '');
     if (!nome) { alert("Informe o nome."); return; }
+    if (doc && !documentoValido(doc)) { alert("CPF/CNPJ inválido. Confira os números."); return; }
     const cid = obterClienteIdSeguro();
-    await sbGlobal.from('parceiros').insert([{
-        cliente_id: cid,
-        nome,
-        razao_social: nome,
-        cnpj_cpf: doc,
-        tipo_cadastro: 'Cliente'
+    if (doc) {
+        const { data } = await sbGlobal.from('parceiros').select('id, nome, cnpj_cpf').eq('cliente_id', cid);
+        const jaExiste = (data || []).find(p => String(p.cnpj_cpf || '').replace(/\D/g, '') === doc);
+        if (jaExiste) {
+            document.getElementById('modalNovoCliente').style.display = 'none';
+            document.getElementById('cliente_nome').value = jaExiste.nome || nome;
+            document.getElementById('cpf_cnpj_cliente').value = doc;
+            clienteCadastradoNaBase = true;
+            document.getElementById('status_cliente').innerHTML = '<span style="color:var(--success)"><i class="fas fa-check"></i> Cliente Encontrado na Base</span>';
+            alert("Este CNPJ/CPF já estava cadastrado. Usei o cadastro existente.");
+            return;
+        }
+    }
+    const res = await sbGlobal.from('parceiros').insert([{
+        cliente_id: cid, nome, razao_social: nome, cnpj_cpf: doc, tipo_cadastro: 'Cliente'
     }]);
+    if (res.error) { alert("Erro ao cadastrar cliente: " + res.error.message); return; }
     document.getElementById('modalNovoCliente').style.display = 'none';
     document.getElementById('cliente_nome').value = nome;
     document.getElementById('cpf_cnpj_cliente').value = doc;
@@ -682,107 +810,132 @@ async function salvarNovoClienteModal() {
     alert("Cliente cadastrado com sucesso!");
 }
 
+/* ---------- carga de dados (sem limite de 1000 linhas) ---------- */
+async function buscarTudo(tabela, cid) {
+    let todos = [], de = 0;
+    const passo = 1000;
+    while (true) {
+        const { data, error } = await sbGlobal.from(tabela).select('*').eq('cliente_id', cid)
+            .order('vencimento', { ascending: true }).order('id', { ascending: true }).range(de, de + passo - 1);
+        if (error) return { error };
+        todos = todos.concat(data || []);
+        if (!data || data.length < passo) break;
+        de += passo;
+    }
+    return { data: todos };
+}
+
+function calcStatus(t) {
+    const st = norm(t.status);
+    if (st.includes('recebido') || st.includes('pago') || st.includes('quitado')) return 'recebido';
+    const v = iso10(t.vencimento || t.data_vencimento);
+    if (v && v < hojeLocal()) return 'atrasado';
+    return 'pendente';
+}
+
 async function carregarContas() {
     const cid = obterClienteIdSeguro();
-    const { data, error } = await sbGlobal.from('contas_receber').select('*').eq('cliente_id', cid).order('vencimento', { ascending: true });
-    
-    if(error) {
-        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${error.message}</td></tr>`;
+    const { data, error } = await buscarTudo('contas_receber', cid);
+
+    if (error) {
+        document.getElementById('tbodyContas').innerHTML = `<tr><td colspan="12" style="text-align:center; color:var(--danger);">Erro ao carregar: ${esc(error.message)}</td></tr>`;
         return;
     }
 
-    let hoje = new Date().toISOString().split('T')[0];
     contasCache = (data || []).map(t => {
-        let v = parseFloat(t.valor) || 0;
-        let st = (t.status || 'Pendente').toLowerCase();
-        let stFinal = 'pendente';
-        
-        if (st.includes('recebido') || st.includes('pago')) {
-            stFinal = 'recebido';
-        } else if (t.vencimento && t.vencimento < hoje) {
-            stFinal = 'atrasado';
-        } else {
-            stFinal = 'pendente';
-        }
-
-        t.valorNumerico = v;
-        t.statusSeguro = stFinal;
+        t.valorNumerico = numero(t.valor);
+        t.statusSeguro = calcStatus(t);
         return t;
     });
 
-    renderTabela();
     aplicarFiltrosRelatorio();
     aplicarFiltrosHistorico();
     atualizarDashboard();
     atualizarCodigoVirtual();
 }
 
-function atualizarDashboard() {
-    let totalTitulos = contasCache.length;
-    let pendAberto = 0;
-    let recebido = 0;
-
-    contasCache.forEach(t => {
-        let val = t.valorNumerico;
-        if (t.statusSeguro === 'recebido') {
-            recebido += val;
-        } else {
-            pendAberto += val;
-        }
-    });
-
-    document.getElementById('kpiTotalTitulos').innerText = totalTitulos;
-    document.getElementById('kpiValorAberto').innerText = formatBRL(pendAberto);
-    document.getElementById('kpiValorRecebido').innerText = formatBRL(recebido);
+function atualizarCodigoVirtual() {
+    const elCod = document.getElementById('codigo_virtual');
+    if (elCod && !document.getElementById('edit_id').value) elCod.value = '(automático ao salvar)';
 }
 
-function aplicarFiltrosRelatorio() {
-    let dtIni = document.getElementById('filtroDataInicio').value;
-    let dtFim = document.getElementById('filtroDataFim').value;
-    let stFiltro = document.getElementById('filtroStatus').value;
-    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
+function atualizarDashboard() {
+    let aberto = 0, atrasado = 0, recebido = 0, qa = 0, qt = 0, qr = 0;
+    contasCache.forEach(t => {
+        if (t.statusSeguro === 'recebido') { recebido += t.valorNumerico; qr++; }
+        else if (t.statusSeguro === 'atrasado') { atrasado += t.valorNumerico; qt++; }
+        else { aberto += t.valorNumerico; qa++; }
+    });
+    const rot = n => n + (n === 1 ? ' título' : ' títulos');
+    document.getElementById('kpiTotalTitulos').innerText = contasCache.length;
+    document.getElementById('kpiValorAberto').innerText = formatBRL(arred(aberto));
+    document.getElementById('kpiValorAtrasado').innerText = formatBRL(arred(atrasado));
+    document.getElementById('kpiValorRecebido').innerText = formatBRL(arred(recebido));
+    document.getElementById('kpiQtdAberto').innerText = rot(qa);
+    document.getElementById('kpiQtdAtrasado').innerText = rot(qt);
+    document.getElementById('kpiQtdRecebido').innerText = rot(qr);
+}
 
-    let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = t.vencimento || t.data_vencimento || '';
-        if (dtIni && dataRef && dataRef < dtIni) return false;
-        if (dtFim && dataRef && dataRef > dtFim) return false;
-        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
-        if (txtBusca) {
-            let clienteNome = t.cliente_nome || t.cliente || '';
-            let linha = (clienteNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
-            if (!linha.includes(txtBusca)) return false;
+/* ---------- filtros ---------- */
+const IDS_FILTRO = {
+    rel:  { ini: 'filtroDataInicio', fim: 'filtroDataFim', st: 'filtroStatus', q: 'filtroBusca' },
+    hist: { ini: 'histDataInicio',   fim: 'histDataFim',   st: 'histStatus',   q: 'histBusca' }
+};
+
+function lerFiltros(modo) {
+    const ids = IDS_FILTRO[modo];
+    return {
+        ini: document.getElementById(ids.ini).value,
+        fim: document.getElementById(ids.fim).value,
+        st: document.getElementById(ids.st).value,
+        q: document.getElementById(ids.q).value.trim()
+    };
+}
+
+function nomeCliente(t) { return t.cliente_nome || t.cliente || ''; }
+
+function listaFiltrada(f) {
+    const txt = norm(f.q);
+    return contasCache.filter(t => {
+        const dataRef = iso10(t.vencimento || t.data_vencimento);
+        if (f.ini && dataRef && dataRef < f.ini) return false;
+        if (f.fim && dataRef && dataRef > f.fim) return false;
+        if (f.st !== 'todos' && t.statusSeguro !== f.st) return false;
+        if (txt) {
+            const linha = norm(nomeCliente(t) + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' +
+                (t.conta_contabil || '') + ' ' + codigoDe(t) + ' ' + (t.conta_destino || ''));
+            if (!linha.includes(txt)) return false;
         }
         return true;
     });
+}
 
+function rotuloStatus(st) {
+    return { pendente: 'Pendente (a vencer)', atrasado: 'Vencido', recebido: 'Recebido' }[st] || 'Todos';
+}
+
+function aplicarFiltrosRelatorio() {
+    const dados = listaFiltrada(lerFiltros('rel'));
     const tbody = document.getElementById('tbodyRelatorioModo');
-    tbody.innerHTML = '';
-    if(dadosFiltrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registo encontrado.</td></tr>`;
+    if (dados.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
         return;
     }
-
-    dadosFiltrados.forEach(t => {
-        let codVirtual = formatarCodigoVirtual(t.id);
-        let clienteNome = t.cliente_nome || t.cliente || '—';
-        let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
-        let descPura = (t.descricao || '—').replace(/\s*\(\d+\/\d+\)$/, '');
-        let matchP = (t.descricao || '').match(/\((\d+\/\d+)\)$/);
-        let parcelaTxt = matchP ? matchP[1] : '—';
-        let badgeText = t.statusSeguro === 'recebido' ? 'RECEBIDO' : t.statusSeguro.toUpperCase();
-
-        tbody.innerHTML += `<tr>
-            <td><strong>${codVirtual}</strong></td>
-            <td><strong>${clienteNome}</strong></td>
-            <td>${t.centro_custo || '—'}</td>
-            <td>${t.conta_contabil || '—'}</td>
-            <td>${descPura}</td>
-            <td>${parcelaTxt}</td>
-            <td>${dataVencFmt}</td>
+    tbody.innerHTML = dados.map(t => {
+        const parcela = sufixoParcela(t.descricao).replace(/[()]/g, '') || '—';
+        const label = { recebido: 'RECEBIDO', atrasado: 'VENCIDO', pendente: 'PENDENTE' }[t.statusSeguro];
+        return `<tr>
+            <td><strong>${codigoDe(t)}</strong></td>
+            <td><strong>${esc(nomeCliente(t) || '—')}</strong></td>
+            <td>${esc(limpo(t.centro_custo))}</td>
+            <td>${esc(limpo(t.conta_contabil))}</td>
+            <td>${esc(semSufixo(t.descricao) || '—')}</td>
+            <td>${esc(parcela)}</td>
+            <td>${fmtData(t.vencimento || t.data_vencimento)}</td>
             <td style="text-align: right;"><strong>${formatBRL(t.valorNumerico)}</strong></td>
-            <td>${badgeText}</td>
+            <td>${label}</td>
         </tr>`;
-    });
+    }).join('');
 }
 
 function limparFiltrosRelatorio() {
@@ -793,97 +946,118 @@ function limparFiltrosRelatorio() {
     aplicarFiltrosRelatorio();
 }
 
-// FILTROS DO HISTÓRICO PRINCIPAL
 function aplicarFiltrosHistorico() {
-    let dtIni = document.getElementById('histDataInicio').value;
-    let dtFim = document.getElementById('histDataFim').value;
-    let stFiltro = document.getElementById('histStatus').value;
-    let txtBusca = document.getElementById('histBusca').value.trim().toLowerCase();
-
-    let dadosFiltrados = contasCache.filter(t => {
-        let dataRef = t.vencimento || t.data_vencimento || '';
-        if (dtIni && dataRef && dataRef < dtIni) return false;
-        if (dtFim && dataRef && dataRef > dtFim) return false;
-        if (stFiltro !== 'todos' && t.statusSeguro !== stFiltro) return false;
-        if (txtBusca) {
-            let clienteNome = t.cliente_nome || t.cliente || '';
-            let linha = (clienteNome + ' ' + (t.descricao || '') + ' ' + (t.centro_custo || '') + ' ' + (t.conta_contabil || '') + ' ' + formatarCodigoVirtual(t.id)).toLowerCase();
-            if (!linha.includes(txtBusca)) return false;
-        }
-        return true;
-    });
-
-    renderTabelaFiltrada(dadosFiltrados);
+    renderTabelaFiltrada(listaFiltrada(lerFiltros('hist')));
 }
 
 function renderTabelaFiltrada(lista) {
     const tbody = document.getElementById('tbodyContas');
     if (!lista.length) {
         tbody.innerHTML = `<tr><td colspan="12" style="text-align:center; padding:24px; color:var(--text-light);">Nenhuma conta a receber encontrada com os filtros aplicados.</td></tr>`;
+        atualizarContadorSelecao();
         return;
     }
 
-    tbody.innerHTML = '';
-    lista.forEach(t => {
-        let badgeClass = 'badge-pendente';
-        let badgeLabel = 'Pendente';
-        if (t.statusSeguro === 'recebido') {
-            badgeClass = 'badge-recebido';
-            badgeLabel = 'Recebido';
-        } else if (t.statusSeguro === 'atrasado') {
-            badgeClass = 'badge-atrasado';
-            badgeLabel = 'Vencido';
-        }
+    tbody.innerHTML = lista.map(t => {
+        let badgeClass = 'badge-pendente', badgeLabel = 'Pendente';
+        if (t.statusSeguro === 'recebido') { badgeClass = 'badge-recebido'; badgeLabel = 'Recebido'; }
+        else if (t.statusSeguro === 'atrasado') { badgeClass = 'badge-atrasado'; badgeLabel = 'Vencido'; }
 
-        let codVirtual = formatarCodigoVirtual(t.id);
-        let clienteNome = t.cliente_nome || t.cliente || '—';
-        let dataVencFmt = (t.vencimento || t.data_vencimento) ? (t.vencimento || t.data_vencimento).split('-').reverse().join('/') : '-';
-        let dataReg = t.created_at ? t.created_at.split('T')[0].split('-').reverse().join('/') : '-';
+        const parcela = sufixoParcela(t.descricao).replace(/[()]/g, '') || '—';
+        const recebidoEm = (t.statusSeguro === 'recebido')
+            ? `<span style="font-weight:600;">${fmtData(t.data_recebimento || t.vencimento)}</span><br><span style="font-size:11px;color:var(--text-light);">${esc(t.conta_destino || 'conta não informada')}</span>`
+            : '<span style="color:var(--text-light);">—</span>';
 
-        let descPura = t.descricao || '—';
-        let parcelaTexto = '—';
-        let matchParcela = descPura.match(/\((\d+\/\d+)\)$/);
-        if (matchParcela) {
-            parcelaTexto = matchParcela[1];
-            descPura = descPura.replace(/\s*\(\d+\/\d+\)$/, '');
-        }
-        
-        let btnBaixa = (t.statusSeguro === 'recebido') 
-            ? `<span style="font-size:11px; color:var(--success);"><i class="fas fa-check-circle"></i> Quitada</span>` 
+        const btnBaixa = (t.statusSeguro === 'recebido')
+            ? `<button class="btn-icon" onclick="desfazerRecebimento(${t.id})" title="Desfazer recebimento (volta para Pendente)"><i class="fas fa-undo"></i></button>`
             : `<button class="btn-acao sucesso" style="padding:4px 10px; font-size:11px;" onclick="abrirModalRecebimento(${t.id})"><i class="fas fa-check"></i> Receber</button>`;
 
-        tbody.innerHTML += `
+        return `
             <tr>
                 <td style="text-align: center;"><input type="checkbox" class="check-linha" value="${t.id}" onclick="atualizarContadorSelecao()"></td>
-                <td><strong>${codVirtual}</strong></td>
-                <td><strong>${clienteNome}</strong></td>
-                <td>${t.centro_custo || '—'}</td>
-                <td>${t.conta_contabil || '—'}</td>
-                <td>${descPura}</td>
-                <td><span style="font-weight:600; color:var(--primary);">${parcelaTexto}</span></td>
-                <td>${dataVencFmt}</td>
-                <td><strong>${formatBRL(t.valorNumerico)}</strong></td>
+                <td><strong>${codigoDe(t)}</strong></td>
+                <td><strong>${esc(nomeCliente(t) || '—')}</strong></td>
+                <td>${esc(limpo(t.centro_custo))}</td>
+                <td>${esc(limpo(t.conta_contabil))}</td>
+                <td>${esc(semSufixo(t.descricao) || '—')}</td>
+                <td><span style="font-weight:600; color:var(--primary);">${esc(parcela)}</span></td>
+                <td>${fmtData(t.vencimento || t.data_vencimento)}</td>
+                <td><strong>${formatBRL(t.valorNumerico)}</strong>${textoAjuste(t) ? '<br><span style="font-size:11px;color:var(--text-light);">' + esc(textoAjuste(t)) + '</span>' : ''}</td>
                 <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
-                <td>${dataReg}</td>
-                <td style="text-align:right; display:flex; gap:4px; justify-content:flex-end; align-items:center;" class="ocultar-print">
+                <td>${recebidoEm}</td>
+                <td style="text-align:right; white-space:nowrap;">
                     ${btnBaixa}
                     <button class="btn-icon" onclick="editarConta(${t.id})" title="Editar"><i class="fas fa-edit"></i></button>
                     <button class="btn-icon" onclick="excluirConta(${t.id})" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>
-        `;
-    });
+            </tr>`;
+    }).join('');
     atualizarContadorSelecao();
 }
 
-function renderTabela() {
-    renderTabelaFiltrada(contasCache);
+/* ---------- impressão padronizada ---------- */
+function imprimirRelatorio(modo) {
+    if (!window.ERPPrint) { alert("Módulo de impressão (erp-print.js) não carregado. Atualize a página (Ctrl+F5)."); return; }
+    const f = lerFiltros(modo);
+    const lista = listaFiltrada(f);
+
+    const filtros = [];
+    if (f.ini || f.fim) filtros.push(['Vencimento', (f.ini ? fmtData(f.ini) : 'início') + ' a ' + (f.fim ? fmtData(f.fim) : 'sem limite')]);
+    if (f.st !== 'todos') filtros.push(['Status', rotuloStatus(f.st)]);
+    if (f.q) filtros.push(['Busca', '“' + f.q + '”']);
+
+    let tot = 0, rec = 0, aberto = 0, atr = 0;
+    lista.forEach(t => {
+        tot += t.valorNumerico;
+        if (t.statusSeguro === 'recebido') rec += t.valorNumerico;
+        else if (t.statusSeguro === 'atrasado') atr += t.valorNumerico;
+        else aberto += t.valorNumerico;
+    });
+
+    const linhas = lista.map(t => {
+        const cor = { recebido: 'pos', atrasado: 'neg', pendente: 'warn' }[t.statusSeguro];
+        const label = { recebido: 'RECEBIDO', atrasado: 'VENCIDO', pendente: 'PENDENTE' }[t.statusSeguro];
+        return [
+            codigoDe(t),
+            fmtData(t.vencimento || t.data_vencimento),
+            nomeCliente(t) || '—',
+            semSufixo(t.descricao) || '—',
+            sufixoParcela(t.descricao).replace(/[()]/g, '') || '—',
+            limpo(t.centro_custo),
+            limpo(t.conta_contabil),
+            t.statusSeguro === 'recebido' ? (fmtData(t.data_recebimento || t.vencimento) + (t.conta_destino ? ' · ' + t.conta_destino : '') + (textoAjuste(t) ? ' (' + textoAjuste(t) + ')' : '')) : '—',
+            { t: formatBRL(t.valorNumerico), cls: 'bold' },
+            { t: label, cls: cor }
+        ];
+    });
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Contas a Receber',
+        subtitulo: 'Títulos ordenados por data de vencimento',
+        codigo: 'FIN-CR',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [
+            ['Títulos listados', String(lista.length)],
+            ['Valor total', formatBRL(arred(tot))],
+            ['Recebido', formatBRL(arred(rec))],
+            ['A vencer', formatBRL(arred(aberto))],
+            ['Vencido', formatBRL(arred(atr))]
+        ],
+        colunas: [
+            { t: 'Código', w: 1 }, { t: 'Vencim.', w: 1.15 }, { t: 'Cliente', w: 2.4 }, { t: 'Descrição / NF', w: 2.5 },
+            { t: 'Parc.', w: .75 }, { t: 'Centro de custo', w: 1.5 }, { t: 'Conta DRE', w: 1.7 }, { t: 'Recebido em / Conta', w: 2 },
+            { t: 'Valor (R$)', w: 1.3, a: 'right' }, { t: 'Status', w: 1.1 }
+        ],
+        linhas: linhas,
+        totais: ['TOTAL', '', lista.length + (lista.length === 1 ? ' título' : ' títulos'), '', '', '', '', '', formatBRL(arred(tot)), ''],
+        observacao: 'Status "Vencido" = não recebido com vencimento anterior à data de emissão. "Recebido em / Conta" mostra a data da baixa e a conta bancária de destino.'
+    });
 }
 
-// SELEÇÃO MÚLTIPLA E EXCLUSÃO EM MASSA
+/* ---------- seleção e exclusão ---------- */
 function selecionarTodos(master) {
-    const checkboxes = document.querySelectorAll('.check-linha');
-    checkboxes.forEach(cb => cb.checked = master.checked);
+    document.querySelectorAll('.check-linha').forEach(cb => cb.checked = master.checked);
     atualizarContadorSelecao();
 }
 
@@ -904,162 +1078,253 @@ function atualizarContadorSelecao() {
 async function excluirSelecionados() {
     const selecionados = document.querySelectorAll('.check-linha:checked');
     if (selecionados.length === 0) return;
+    const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
+    const recebidos = contasCache.filter(t => ids.includes(t.id) && t.statusSeguro === 'recebido').length;
 
-    if (confirm(`Deseja realmente excluir os ${selecionados.length} registos selecionados?`)) {
-        const ids = Array.from(selecionados).map(cb => parseInt(cb.value));
-        const cid = obterClienteIdSeguro();
-
-        let res = await sbGlobal.from('contas_receber').delete().in('id', ids).eq('cliente_id', cid);
-        if (res.error) {
-            alert("Erro ao excluir selecionados: " + res.error.message);
-            return;
-        }
-        alert(`${selecionados.length} registos removidos com sucesso!`);
-        carregarContas();
-    }
-}
-
-window.abrirModalRecebimento = function(id) {
-    let t = contasCache.find(x => String(x.id) === String(id));
-    if(!t) return;
-    document.getElementById('recebimento_id_baixa').value = t.id;
-    document.getElementById('modal_cliente_nome').innerText = t.cliente_nome || t.cliente || 'Não Informado';
-    valorOriginalBaixa = t.valorNumerico || 0;
-    document.getElementById('modal_valor_original').innerText = formatBRL(valorOriginalBaixa);
-    document.getElementById('data_recebimento').valueAsDate = new Date();
-    document.getElementById('modalRecebimento').style.display = 'flex';
-}
-
-async function confirmarRecebimento() {
-    let id = document.getElementById('recebimento_id_baixa').value;
-    let dataRc = document.getElementById('data_recebimento').value;
-    let contaDestino = document.getElementById('conta_destino_baixa').value;
-    if(!dataRc) { alert("Informe a data."); return; }
-    if(!contaDestino) { alert("Selecione a conta de destino."); return; }
+    let msg = `Deseja realmente excluir os ${ids.length} registros selecionados?\n\nEsta ação não pode ser desfeita.`;
+    if (recebidos > 0) msg += `\n\nATENÇÃO: ${recebidos} deles já estão RECEBIDOS. Excluir um título recebido remove a entrada do Fluxo de Caixa e muda o saldo calculado.`;
+    if (!confirm(msg)) return;
 
     const cid = obterClienteIdSeguro();
-    let payload = { status: 'Recebido', data_recebimento: dataRc, conta_destino: contaDestino, updated_at: new Date().toISOString() };
-    let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
-    if(res.error) { alert("Erro ao registrar baixa: " + res.error.message); return; }
-
-    document.getElementById('modalRecebimento').style.display = 'none';
-    alert("Recebimento registrado com sucesso!");
+    let res = await sbGlobal.from('contas_receber').delete().in('id', ids).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao excluir selecionados: " + res.error.message); return; }
+    alert(`${ids.length} registros removidos com sucesso!`);
     carregarContas();
 }
 
-// SALVAR COM RECONSTRUÇÃO INTELIGENTE DE SÉRIE NA EDIÇÃO (EVITA DUPLICIDADE DE REGISTROS)
+window.excluirConta = async function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    let msg = "Deseja realmente excluir este registro?\n\nEsta ação não pode ser desfeita.";
+    if (t && t.statusSeguro === 'recebido') msg += "\n\nATENÇÃO: este título está RECEBIDO. Excluir remove a entrada do Fluxo de Caixa e muda o saldo calculado.";
+    if (!confirm(msg)) return;
+    const cid = obterClienteIdSeguro();
+    let res = await sbGlobal.from('contas_receber').delete().eq('id', id).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao excluir: " + res.error.message); return; }
+    alert("Registro removido com sucesso!");
+    carregarContas();
+};
+
+/* ---------- baixa de recebimento ---------- */
+window.abrirModalRecebimento = function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
+    document.getElementById('recebimento_id_baixa').value = t.id;
+    document.getElementById('modal_cliente_nome').innerText = nomeCliente(t) || 'Não informado';
+    document.getElementById('modal_cliente_desc').innerText = t.descricao || '—';
+    document.getElementById('modal_cliente_venc').innerText = fmtData(t.vencimento || t.data_vencimento);
+    document.getElementById('modal_valor_original').innerText = formatBRL(t.valorNumerico);
+    document.getElementById('data_recebimento').value = hojeLocal();
+    document.getElementById('juros_baixa').value = '';
+    document.getElementById('desconto_baixa').value = '';
+    let contaSug = t.conta_destino || '';
+    if (!contaSug) {
+        const ult = contasCache.filter(x => x.statusSeguro === 'recebido' && x.conta_destino && norm(nomeCliente(x)) === norm(nomeCliente(t)))
+            .sort((a, b) => iso10(b.data_recebimento || b.vencimento).localeCompare(iso10(a.data_recebimento || a.vencimento)))[0];
+        if (ult) contaSug = ult.conta_destino;
+    }
+    selecionarComFallback('conta_destino_baixa', contaSug);
+    recalcularValorRecebido();
+    document.getElementById('modalRecebimento').style.display = 'flex';
+};
+
+function valorRecebidoAtual() {
+    const t = contasCache.find(x => String(x.id) === String(document.getElementById('recebimento_id_baixa').value));
+    const orig = t ? t.valorNumerico : 0;
+    const j = Math.max(0, parseFloat(document.getElementById('juros_baixa').value) || 0);
+    const d = Math.max(0, parseFloat(document.getElementById('desconto_baixa').value) || 0);
+    return { orig, j, d, pago: arred(orig + j - d) };
+}
+
+function recalcularValorRecebido() {
+    document.getElementById('valor_receb_baixa').innerText = formatBRL(valorRecebidoAtual().pago);
+}
+
+function fecharModalRecebimento() { document.getElementById('modalRecebimento').style.display = 'none'; }
+
+async function confirmarRecebimento() {
+    if (salvando) return;
+    const id = document.getElementById('recebimento_id_baixa').value;
+    const dataRc = document.getElementById('data_recebimento').value;
+    const contaDestino = document.getElementById('conta_destino_baixa').value;
+    if (!dataRc) { alert("Informe a data do recebimento."); return; }
+    if (!contaDestino) { alert("Selecione a conta de destino."); return; }
+    if (dataRc > hojeLocal() && !confirm("A data de recebimento é FUTURA (" + fmtData(dataRc) + "). Registrar como recebido mesmo assim?")) return;
+    const v = valorRecebidoAtual();
+    if (v.pago <= 0) { alert("O valor efetivamente recebido precisa ser maior que zero. Confira o desconto."); return; }
+    const temAjuste = (v.j > 0 || v.d > 0);
+    if (temAjuste && !confirm("O título é de " + formatBRL(v.orig) + " e será quitado por " + formatBRL(v.pago) + " (juros " + formatBRL(v.j) + ", desconto " + formatBRL(v.d) + ").\n\nConfirmar?")) return;
+
+    salvando = true;
+    const btn = document.getElementById('btnConfirmarRecebimento');
+    btn.disabled = true;
+    try {
+        const cid = obterClienteIdSeguro();
+        const payload = { status: 'Recebido', data_recebimento: dataRc, conta_destino: contaDestino, updated_at: new Date().toISOString() };
+        if (temAjuste) { payload.valor_original = v.orig; payload.juros = v.j; payload.desconto = v.d; payload.valor = v.pago; }
+        const res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
+        if (res.error) {
+            alert(erroColunaAjuste(res.error.message)
+                ? "Faltou preparar o banco para juros/desconto (rodar o SQL do passo combinado). Nada foi alterado."
+                : "Erro ao registrar baixa: " + res.error.message);
+            return;
+        }
+        fecharModalRecebimento();
+        alert("Recebimento registrado com sucesso!" + (temAjuste ? "\n\nValor recebido: " + formatBRL(v.pago) + " (original " + formatBRL(v.orig) + ")." : ""));
+        await carregarContas();
+    } finally {
+        salvando = false;
+        btn.disabled = false;
+    }
+}
+
+window.desfazerRecebimento = async function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
+    if (!confirm("Desfazer o recebimento de " + nomeCliente(t) + " (" + formatBRL(t.valorNumerico) + ")?\n\nO título volta para Pendente e a entrada some do Fluxo de Caixa.")) return;
+    const cid = obterClienteIdSeguro();
+    const payload = { status: 'Pendente', data_recebimento: null, conta_destino: null, updated_at: new Date().toISOString() };
+    if (t.valor_original !== undefined && t.valor_original !== null) {
+        payload.valor = numero(t.valor_original); payload.valor_original = null; payload.juros = null; payload.desconto = null;
+    }
+    const res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
+    if (res.error) { alert("Erro ao desfazer recebimento: " + res.error.message); return; }
+    alert("Recebimento desfeito. O título voltou para Pendente.");
+    carregarContas();
+};
+
+/* ---------- salvar (novo / edição) ---------- */
 async function salvarContaReceber() {
+    if (salvando) return;
     const id = document.getElementById('edit_id').value;
+    const sufixo = document.getElementById('edit_sufixo').value;
     const cliente_nome = document.getElementById('cliente_nome').value.trim();
     const cpf_cnpj_cliente = document.getElementById('cpf_cnpj_cliente').value.trim();
     const valor = parseFloat(document.getElementById('valor').value);
     const vencimentoBase = document.getElementById('vencimento').value;
     const descricao = document.getElementById('descricao').value.trim();
-    const status = document.getElementById('status_edicao').value;
+    const status = document.getElementById('status_edicao').value === 'Recebido' ? 'Recebido' : 'Pendente';
     const centro_custo = document.getElementById('centro_custo').value;
     const conta_contabil = document.getElementById('conta_contabil').value;
+    const data_recebimento = document.getElementById('data_recebimento_edicao').value;
+    const conta_destino = document.getElementById('conta_destino_cadastro').value;
     const recorrente = document.getElementById('recorrente').value;
-    const numParcelas = parseInt(document.getElementById('num_parcelas').value) || 12;
+    const numParcelas = Math.min(120, Math.max(1, parseInt(document.getElementById('num_parcelas').value) || 12));
     const cid = obterClienteIdSeguro();
 
-    if(!cliente_nome || isNaN(valor) || !vencimentoBase || !centro_custo || !conta_contabil) {
-        alert("Preencha todos os campos obrigatórios.");
+    if (!cliente_nome || isNaN(valor) || !vencimentoBase || !centro_custo || !conta_contabil || !descricao) {
+        alert("Preencha todos os campos obrigatórios (Cliente, Valor, Vencimento, Centro de Custo, Conta Contábil e Descrição).");
         return;
     }
-
-    if(cpf_cnpj_cliente && !clienteCadastradoNaBase && !id) {
-        await sbGlobal.from('parceiros').insert([{ cliente_id: cid, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
+    if (valor <= 0) { alert("O valor do título deve ser maior que zero."); return; }
+    if (status === 'Recebido') {
+        if (!data_recebimento) { alert("Para um título RECEBIDO, informe a Data do Recebimento."); return; }
+        if (!conta_destino) { alert("Para um título RECEBIDO, informe a Conta Bancária de Destino."); return; }
+    }
+    if (cpf_cnpj_cliente && !documentoValido(cpf_cnpj_cliente)) {
+        if (!confirm("O CPF/CNPJ informado parece inválido. Deseja continuar mesmo assim?")) return;
+    }
+    if (!id) {
+        const igual = contasCache.find(t => norm(nomeCliente(t)) === norm(cliente_nome) && iso10(t.vencimento) === vencimentoBase &&
+            Math.abs(t.valorNumerico - valor) < 0.005 && norm(semSufixo(t.descricao)) === norm(descricao));
+        if (igual && !confirm("Já existe um título igual (" + codigoDe(igual) + ": mesmo cliente, valor, vencimento e descrição).\n\nLançar mesmo assim?")) return;
     }
 
-    if(id) {
-        // GESTÃO INTELIGENTE DE EDIÇÃO DE SÉRIE RECORRENTE:
-        // Se o título editado possui descrição base similar, removemos os títulos pendentes futuros da mesma série para regerar limpo com a nova quantidade (numParcelas)
-        let tOriginal = contasCache.find(x => String(x.id) === String(id));
-        let descBaseAntiga = tOriginal ? (tOriginal.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '').trim() : descricao;
+    salvando = true;
+    const btn = document.getElementById('btnSalvar');
+    btn.disabled = true;
+    try {
+        if (cpf_cnpj_cliente && !clienteCadastradoNaBase && !id) {
+            await sbGlobal.from('parceiros').insert([{ cliente_id: cid, nome: cliente_nome, razao_social: cliente_nome, cnpj_cpf: cpf_cnpj_cliente, tipo_cadastro: 'Cliente' }]);
+        }
 
-        // Atualiza o registro atual selecionado
-        let payload = { cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor, vencimento: vencimentoBase, descricao: `${descricao} (1/${numParcelas})`, status, centro_custo, conta_contabil, recorrente, updated_at: new Date().toISOString() };
-        let res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
-        if(res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
+        if (id) {
+            const original = contasCache.find(x => String(x.id) === String(id));
+            const payload = {
+                cliente_id: cid, cliente_nome, cpf_cnpj_cliente, valor,
+                vencimento: vencimentoBase,
+                descricao: sufixo ? (descricao + ' ' + sufixo) : descricao,
+                status, centro_custo, conta_contabil, recorrente,
+                data_recebimento: status === 'Recebido' ? data_recebimento : null,
+                conta_destino: status === 'Recebido' ? conta_destino : null,
+                updated_at: new Date().toISOString()
+            };
 
-        if (recorrente === 'Sim' && numParcelas > 1) {
-            // Remove títulos futuros pendentes antigos da mesma série para evitar duplicidade ou resquícios de quantidade anterior
-            await sbGlobal.from('contas_receber').delete().eq('cliente_id', cid).eq('cliente_nome', cliente_nome).eq('status', 'Pendente').gt('vencimento', vencimentoBase).ilike('descricao', `${descBaseAntiga}%`);
+            if (original && original.valor_original !== undefined && original.valor_original !== null && status === 'Pendente') {
+                if (Math.abs(valor - original.valorNumerico) < 0.005) payload.valor = numero(original.valor_original);
+                payload.valor_original = null; payload.juros = null; payload.desconto = null;
+            }
 
-            let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
-            let batch = [];
-            for(let i = 1; i < numParcelas; i++) {
-                let targetMes = (mes - 1) + i;
-                let targetAno = ano + Math.floor(targetMes / 12);
-                let realMes = (targetMes % 12 + 1);
-                let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-                let realDia = Math.min(dia, ultimoDiaMes);
-                let dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
-                
+            let idsSerie = [];
+            if (document.getElementById('aplicarSerie').checked && original) {
+                const baseOrig = norm(semSufixo(original.descricao));
+                idsSerie = contasCache.filter(t => t.id !== original.id &&
+                    norm(nomeCliente(t)) === norm(nomeCliente(original)) &&
+                    norm(semSufixo(t.descricao)) === baseOrig &&
+                    t.statusSeguro !== 'recebido' &&
+                    iso10(t.vencimento) > iso10(original.vencimento)).map(t => t.id);
+                if (idsSerie.length > 0 && !confirm("Além desta parcela, serão alteradas " + idsSerie.length + " parcelas futuras ainda não recebidas desta série.\n\nContinuar?")) return;
+            }
+
+            const res = await sbGlobal.from('contas_receber').update(payload).eq('id', id).eq('cliente_id', cid);
+            if (res.error) { alert("Erro ao atualizar: " + res.error.message); return; }
+
+            if (idsSerie.length > 0) {
+                const res2 = await sbGlobal.from('contas_receber').update({
+                    cliente_nome, cpf_cnpj_cliente, valor, centro_custo, conta_contabil, updated_at: new Date().toISOString()
+                }).in('id', idsSerie).eq('cliente_id', cid);
+                if (res2.error) alert("Esta parcela foi atualizada, mas houve erro nas parcelas futuras: " + res2.error.message);
+                else alert("Conta atualizada e " + idsSerie.length + " parcelas futuras ajustadas!");
+            } else {
+                alert("Conta a receber atualizada com sucesso!");
+            }
+        } else {
+            const qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
+            const [ano, mes, dia] = vencimentoBase.split('-').map(Number);
+
+            const batch = [];
+            for (let i = 0; i < qtdGerar; i++) {
+                const targetMes = (mes - 1) + i;
+                const targetAno = ano + Math.floor(targetMes / 12);
+                const realMes = (targetMes % 12 + 1);
+                const ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
+                const realDia = Math.min(dia, ultimoDiaMes);
+                const dataIso = `${targetAno}-${String(realMes).padStart(2, '0')}-${String(realDia).padStart(2, '0')}`;
+                const descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
+                const primeiroRecebido = (i === 0 && status === 'Recebido');
+
                 batch.push({
                     cliente_id: cid,
                     cliente_nome,
                     cpf_cnpj_cliente,
                     valor,
                     vencimento: dataIso,
-                    descricao: `${descricao} (${i + 1}/${numParcelas})`,
-                    status: 'Pendente',
+                    descricao: descParcela,
+                    status: primeiroRecebido ? 'Recebido' : 'Pendente',
                     centro_custo,
                     conta_contabil,
                     recorrente,
+                    data_recebimento: primeiroRecebido ? data_recebimento : null,
+                    conta_destino: primeiroRecebido ? conta_destino : null,
                     updated_at: new Date().toISOString()
                 });
             }
-            if(batch.length > 0) await sbGlobal.from('contas_receber').insert(batch);
+
+            const res = await sbGlobal.from('contas_receber').insert(batch);
+            if (res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
+            alert(qtdGerar > 1 ? `${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a receber registrada com sucesso!");
         }
 
-        alert("Conta a receber e série recorrente atualizadas com sucesso!");
-    } else {
-        let qtdGerar = (recorrente === 'Sim') ? numParcelas : 1;
-        let [ano, mes, dia] = vencimentoBase.split('-').map(Number);
-        
-        let batch = [];
-        for(let i = 0; i < qtdGerar; i++) {
-            let targetMes = (mes - 1) + i;
-            let targetAno = ano + Math.floor(targetMes / 12);
-            let realMes = (targetMes % 12 + 1);
-            
-            let ultimoDiaMes = new Date(targetAno, realMes, 0).getDate();
-            let realDia = Math.min(dia, ultimoDiaMes);
-
-            let mesFormatado = String(realMes).padStart(2, '0');
-            let diaFormatado = String(realDia).padStart(2, '0');
-            let dataIso = `${targetAno}-${mesFormatado}-${diaFormatado}`;
-            let descParcela = (qtdGerar > 1) ? `${descricao} (${i + 1}/${qtdGerar})` : descricao;
-
-            batch.push({
-                cliente_id: cid,
-                cliente_nome,
-                cpf_cnpj_cliente,
-                valor,
-                vencimento: dataIso,
-                descricao: descParcela,
-                status,
-                centro_custo,
-                conta_contabil,
-                recorrente,
-                updated_at: new Date().toISOString()
-            });
-        }
-
-        let res = await sbGlobal.from('contas_receber').insert(batch);
-        if(res.error) { alert("Erro ao salvar parcelas: " + res.error.message); return; }
-        alert(qtdGerar > 1 ? `${qtdGerar} parcelas recorrentes geradas com sucesso!` : "Conta a receber registrada com sucesso!");
+        cancelarEdicao();
+        await carregarContas();
+    } finally {
+        salvando = false;
+        btn.disabled = false;
     }
-
-    cancelarEdicao();
-    carregarContas();
 }
 
-// BOTÃO DE EDITAR (1 SÓ CLIQUE)
-window.editarConta = function(id) {
-    let t = contasCache.find(x => String(x.id) === String(id));
-    if(!t) return;
+window.editarConta = function (id) {
+    const t = contasCache.find(x => String(x.id) === String(id));
+    if (!t) return;
 
     const cardForm = document.getElementById('formTitle').closest('.card');
     const contentForm = cardForm.querySelector('.collapsible-content');
@@ -1069,56 +1334,59 @@ window.editarConta = function(id) {
         if (iconForm) iconForm.className = 'fas fa-chevron-up';
     }
 
+    const sufixo = sufixoParcela(t.descricao);
     document.getElementById('edit_id').value = t.id;
-    document.getElementById('codigo_virtual').value = formatarCodigoVirtual(t.id);
+    document.getElementById('edit_sufixo').value = sufixo;
+    document.getElementById('codigo_virtual').value = codigoDe(t);
     document.getElementById('cpf_cnpj_cliente').value = t.cpf_cnpj_cliente || '';
-    document.getElementById('cliente_nome').value = t.cliente_nome || t.cliente || '';
+    document.getElementById('cliente_nome').value = nomeCliente(t);
     document.getElementById('valor').value = t.valorNumerico || '';
-    document.getElementById('vencimento').value = t.vencimento || t.data_vencimento || '';
-    
-    let descLimpa = (t.descricao || '').replace(/\s*\(\d+\/\d+\)$/, '');
-    document.getElementById('descricao').value = descLimpa;
-
+    document.getElementById('vencimento').value = iso10(t.vencimento || t.data_vencimento);
+    document.getElementById('descricao').value = semSufixo(t.descricao);
     document.getElementById('centro_custo').value = t.centro_custo || '';
     document.getElementById('conta_contabil').value = t.conta_contabil || '';
     document.getElementById('recorrente').value = t.recorrente || 'Não';
     toggleParcelas(t.recorrente || 'Não');
-    document.getElementById('status_edicao').value = t.status || 'Pendente';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Receber (${formatarCodigoVirtual(t.id)})`;
+    document.getElementById('blocoParcelas').style.display = 'none';
+    document.getElementById('status_edicao').value = (t.statusSeguro === 'recebido') ? 'Recebido' : 'Pendente';
+    aoMudarStatus();
+    if (t.statusSeguro === 'recebido') {
+        document.getElementById('data_recebimento_edicao').value = iso10(t.data_recebimento || t.vencimento);
+        selecionarComFallback('conta_destino_cadastro', t.conta_destino || '');
+    }
+
+    document.getElementById('caixaSerie').style.display = (sufixo || t.recorrente === 'Sim') ? 'block' : 'none';
+    document.getElementById('aplicarSerie').checked = false;
+
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Conta a Receber (${codigoDe(t)}${sufixo ? ' · parcela ' + esc(sufixo.replace(/[()]/g, '')) : ''})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Conta a Receber';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    window.scrollTo({top: 0, behavior: 'smooth'});
-}
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
+    atualizarDicaRecorrencia();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
 function cancelarEdicao() {
-    document.getElementById('edit_id').value = '';
-    document.getElementById('cpf_cnpj_cliente').value = '';
-    document.getElementById('cliente_nome').value = '';
-    document.getElementById('valor').value = '';
-    document.getElementById('vencimento').value = '';
-    document.getElementById('descricao').value = '';
+    ['edit_id', 'edit_sufixo', 'cpf_cnpj_cliente', 'cliente_nome', 'valor', 'vencimento', 'descricao', 'data_recebimento_edicao'].forEach(i => {
+        document.getElementById(i).value = '';
+    });
     document.getElementById('centro_custo').value = '';
     document.getElementById('conta_contabil').value = '';
+    document.getElementById('conta_destino_cadastro').value = '';
     document.getElementById('recorrente').value = 'Não';
     toggleParcelas('Não');
     document.getElementById('status_edicao').value = 'Pendente';
+    aoMudarStatus();
+    document.getElementById('status_cliente').innerHTML = '';
+    document.getElementById('caixaSerie').style.display = 'none';
+    document.getElementById('aplicarSerie').checked = false;
     let avisoC = document.getElementById('aviso_cliente_nao_cadastrado');
-    if(avisoC) avisoC.style.display = 'none';
+    if (avisoC) avisoC.style.display = 'none';
     clienteCadastradoNaBase = false;
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Novo Lançamento de Conta a Receber';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Adicionar Conta a Receber';
     document.getElementById('btnCancelar').style.display = 'none';
     atualizarCodigoVirtual();
-}
-
-window.excluirConta = async function(id) {
-    if(confirm("Deseja realmente excluir este registo?")) {
-        const cid = obterClienteIdSeguro();
-        let res = await sbGlobal.from('contas_receber').delete().eq('id', id).eq('cliente_id', cid);
-        if(res.error) { alert("Erro ao excluir: " + res.error.message); return; }
-        alert("Registo removido com sucesso!");
-        carregarContas();
-    }
+    atualizarDicaRecorrencia();
 }
 
 window.onload = inicializarPagina;
