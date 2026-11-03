@@ -1,5 +1,6 @@
 /**
  * Sacramento ERP — Auth Guard, Blindagem Multi-Tenant (LGPD)
+ * v6.4: respeita o seletor da Contabilidade (controlado pelo erp-core)
  */
 
 (async function () {
@@ -47,6 +48,8 @@
         if (!ehMaster) {
             const seletores = document.querySelectorAll('#selectEmpresa, #selectEmpresaHeader, .empresa-selector, #boxSeletorEmpresa');
             seletores.forEach(sel => {
+                // v6.4: o seletor do erp-core (Contabilidade) é controlado pelo próprio erp-core
+                if (sel && (sel.id === 'seletorEmpresaCoreContainer' || sel.id === 'selectEmpresaCore' || (sel.closest && sel.closest('#seletorEmpresaCoreContainer')))) return;
                 if (sel) {
                     sel.style.setProperty('display', 'none', 'important');
                     let parent = sel.closest('.empresa-selector') || sel.parentElement;
