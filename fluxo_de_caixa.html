@@ -135,14 +135,14 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
-                <h4>Saldo Conta PJ</h4>
+                <h4>Saldo Conta PJ (real)</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-credit-card"></i></div>
             <div>
-                <h4>Cartão Pré-Pago</h4>
+                <h4>Cartão Pré-Pago (real)</h4>
                 <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">R$ 0,00</div>
             </div>
         </div>
@@ -163,7 +163,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Patrimônio Disponível</h4>
+                <h4>Patrimônio Disponível (real)</h4>
                 <div class="value" id="resumoPatrimonioTotal">R$ 0,00</div>
             </div>
         </div>
@@ -179,11 +179,11 @@
         <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(5, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
             <div>
                 <label>Data Início</label>
-                <input type="date" id="filtroDataInicio" class="form-control" value="2025-07-24" onchange="aplicarFiltros()">
+                <input type="date" id="filtroDataInicio" class="form-control" onchange="aplicarFiltros()">
             </div>
             <div>
                 <label>Data Fim</label>
-                <input type="date" id="filtroDataFim" class="form-control" value="2026-10-21" onchange="aplicarFiltros()">
+                <input type="date" id="filtroDataFim" class="form-control" onchange="aplicarFiltros()">
             </div>
             <div>
                 <label>Tipo de Lançamento</label>
@@ -216,7 +216,7 @@
                             <div class="print-corporative-header">
                                 <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Relatório de Fluxo de Caixa Histórico</h2>
                                 <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldo Oficial Contábil (Contas PJ)</p>
+                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldos reais das contas PJ cadastradas (sem contas PF)</p>
                             </div>
                         </th>
                     </tr>
@@ -238,6 +238,17 @@
                 </tfoot>
             </table>
         </div>
+
+        <div id="quadroConciliacao" style="margin-top:18px; border:1.5px solid var(--border); border-radius:12px; padding:16px; background:var(--bg);">
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--secondary); margin-bottom:10px;"><i class="fas fa-balance-scale"></i> Conciliação: lançamentos x saldo real das contas</div>
+            <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+                <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Saldo pelos lançamentos</div><div id="concSaldoLanc" style="font-size:16px; font-weight:800; color:var(--secondary);">R$ 0,00</div></div>
+                <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Saldo real (conta PJ + cartão)</div><div id="concSaldoReal" style="font-size:16px; font-weight:800; color:var(--secondary);">R$ 0,00</div></div>
+                <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Diferença a conciliar</div><div id="concDiferenca" style="font-size:16px; font-weight:800;">R$ 0,00</div></div>
+            </div>
+            <p id="concTexto" style="font-size:12px; color:var(--text-light); margin-top:10px; line-height:1.5;"></p>
+            <p id="concIgnorados" style="font-size:11px; color:var(--text-light); margin-top:4px;"></p>
+        </div>
     </div>
 </div>
 
@@ -245,329 +256,268 @@
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
 
+
 <script>
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoAbertura2025 = 0.00;
-let saldoCartaoPrePago = 0.00;
-let saldoAtualPJ = 0.00;
+let saldoContaPJ = 0;        // soma real das contas PJ (exceto cartão), vinda do cadastro
+let saldoCartao = 0;         // saldo real do cartão pré-pago, vindo do cadastro
+let ignoradosPorRegra = 0;
+let primeiraData = '';
 
 function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
 }
-
 function ehMaster() {
     const u = obterUsuario();
     if (!u || !u.email) return false;
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 }
-
-// ISOLAMENTO MULTI-TENANT ESTRITO POR ID DE EMPRESA
 function clienteIdAtual() {
     const u = obterUsuario();
     if (!u) return 1;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
     return u.cliente_id ? parseInt(u.cliente_id) : 1;
 }
-
 function sbFiltroLeitura(tabela) {
-    let q = sb.from(tabela).select('*');
-    const cid = clienteIdAtual();
-    if (cid) q = q.eq('cliente_id', cid);
-    return q;
+    return sb.from(tabela).select('*').eq('cliente_id', clienteIdAtual());
 }
-
+function esc(t) {
+    return String(t === null || t === undefined ? '' : t)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function norm(t) {
+    return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 function formatarMoeda(valor) {
-    let num = parseFloat(valor) || 0;
+    const num = parseFloat(valor) || 0;
     return 'R$ ' + num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+function dataISO(d) {
+    if (!d) return '';
+    const s = String(d).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+    const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (m) return m[3] + '-' + m[2] + '-' + m[1];
+    return '';
+}
+function hojeISO() {
+    const d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+function numero(v) {
+    if (typeof v === 'number') return v;
+    let s = String(v === null || v === undefined ? '' : v).trim();
+    if (!s) return 0;
+    if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+}
 
-// CARREGAMENTO DINÂMICO UNIVERSAL: SOMA CONTAS PJ DO SUPABASE (EXCLUINDO PF) E APLICA VALOR BASE OFICIAL POR TENANT SE NECESSÁRIO
-async function carregarSaldosBancariosDinamicos() {
-    const cid = clienteIdAtual();
-    saldoAtualPJ = 0;
-    saldoCartaoPrePago = 0;
-    saldoAbertura2025 = 0;
-
-    try {
-        const { data, error } = await sbFiltroLeitura('contas_bancarias');
-        if (!error && data && data.length > 0) {
-            data.forEach(cb => {
-                let nomeConta = (cb.nome || cb.banco || '').toLowerCase();
-                let tipoConta = (cb.tipo || '').toLowerCase();
-                let titularidade = (cb.titularidade || '').toLowerCase();
-                
-                // EXCLUSÃO RIGOROSA DE CONTAS PF (PESSOA FÍSICA)
-                if (nomeConta.includes('pf') || nomeConta.includes('pessoal') || tipoConta.includes('pf') || titularidade.includes('pf')) {
-                    return; 
-                }
-
-                let saldoVal = parseFloat(cb.saldo_atual || cb.saldo || cb.saldo_inicial || 0) || 0;
-                
-                if (nomeConta.includes('cartão') || nomeConta.includes('pre-pago') || nomeConta.includes('cartao') || tipoConta.includes('cartão')) {
-                    saldoCartaoPrePago += saldoVal;
-                } else {
-                    saldoAtualPJ += saldoVal;
-                }
-            });
-            saldoAbertura2025 = saldoAtualPJ;
-        }
-        
-        // SE O SALDO CALCULADO CONTINUAR ZERO, UTILIZA OS SALDOS OFICIAIS CADASTRADOS PARA CADA EMPRESA
-        if (saldoAtualPJ === 0 && saldoCartaoPrePago === 0) {
-            if (cid === 1) { // NanoSignals
-                saldoAtualPJ = 491.84;
-                saldoCartaoPrePago = 400.00;
-                saldoAbertura2025 = 4000.00;
-            } else if (cid === 2) { // SCEII Consultoria Ltda
-                saldoAtualPJ = 58.82;
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = 58.82;
-            } else if (cid === 3) { // Agenciar & Representar / Francal (Soma exata das PJ: C6 + Inter + Nubank PJ)
-                saldoAtualPJ = 0.00 + 0.33 + 0.11; // R$ 0,44 conforme validado nos cadastros PJ
-                saldoCartaoPrePago = 0.00;
-                saldoAbertura2025 = saldoAtualPJ;
-            }
-        }
-    } catch(e) {
-        if (cid === 1) {
-            saldoAtualPJ = 491.84;
-            saldoCartaoPrePago = 400.00;
-            saldoAbertura2025 = 4000.00;
-        } else if (cid === 2) {
-            saldoAtualPJ = 58.82;
-            saldoCartaoPrePago = 0.00;
-            saldoAbertura2025 = 58.82;
-        } else if (cid === 3) {
-            saldoAtualPJ = 0.44;
-            saldoCartaoPrePago = 0.00;
-            saldoAbertura2025 = 0.44;
-        }
-    }
+// SALDOS REAIS: soma das contas cadastradas desta empresa. Só PJ e só saldo disponível.
+async function carregarSaldosBancarios() {
+    saldoContaPJ = 0;
+    saldoCartao = 0;
+    const { data, error } = await sbFiltroLeitura('contas_bancarias');
+    if (error || !data) return;
+    data.forEach(cb => {
+        const titular = norm(cb.titularidade);
+        const identificacao = norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || ''));
+        // Contas de pessoa física ficam fora dos relatórios da empresa
+        if (/\bpf\b/.test(titular) || titular.indexOf('fisica') >= 0 || titular.indexOf('pessoal') >= 0 || /\bpf\b/.test(identificacao) || identificacao.indexOf('pessoal') >= 0) return;
+        const classe = norm(cb.classificacao_saldo || 'disponivel');
+        if (classe !== 'disponivel') return;
+        const saldo = numero(cb.saldo_inicial !== undefined && cb.saldo_inicial !== null ? cb.saldo_inicial : (cb.saldo_atual !== undefined ? cb.saldo_atual : cb.saldo));
+        const ehCartao = /cartao|pre-pago|prepago|pre pago/.test(identificacao);
+        if (ehCartao) saldoCartao += saldo; else saldoContaPJ += saldo;
+    });
 }
 
 async function carregarCentrosCustoFiltro() {
     try {
         const { data } = await sbFiltroLeitura('centros_custo');
-        let sel = document.getElementById('filtroCentro');
-        if(data && sel) {
+        const sel = document.getElementById('filtroCentro');
+        if (data && sel) {
             sel.innerHTML = '<option value="todos">Todos os Centros</option>';
             data.forEach(cc => {
-                let codigoCC = cc.codigo || cc.id || '';
-                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
-                let valOpt = `${codigoCC} - ${nomeCC}`;
-                sel.innerHTML += `<option value="${valOpt}">${valOpt}</option>`;
+                const valOpt = (cc.codigo || cc.id || '') + ' - ' + (cc.nome || cc.descricao || 'Centro de Custo');
+                const o = document.createElement('option');
+                o.value = valOpt; o.textContent = valOpt;
+                sel.appendChild(o);
             });
         }
     } catch(e) {}
 }
 
 async function carregarFluxo() {
-    await carregarSaldosBancariosDinamicos();
+    await carregarSaldosBancarios();
 
     const [resReceber, resPagar, resTransfer] = await Promise.all([
         sbFiltroLeitura('contas_receber'),
         sbFiltroLeitura('contas_pagar'),
         sbFiltroLeitura('transferencias')
     ]);
-    let receber = resReceber.data || [];
-    let pagar = resPagar.data || [];
-    let transferencias = resTransfer.data || [];
-    let movs = [];
-    let chavesUnicas = new Set();
+    const receber = resReceber.data || [];
+    const pagar = resPagar.data || [];
+    const transferencias = resTransfer.data || [];
+    const movs = [];
+    ignoradosPorRegra = 0;
 
+    // ENTRADAS: contas a receber já recebidas
     receber.forEach(r => {
-        let st = (r.status || '').toLowerCase();
-        if(st.includes('recebido') || st.includes('pago') || st.includes('quitado')) {
-            let dataMov = r.data_recebimento || r.vencimento || r.created_at;
-            if (!dataMov) return;
-            let chave = `${dataMov}_${r.valor}_${r.descricao}`;
-            if (!chavesUnicas.has(chave)) {
-                chavesUnicas.add(chave);
-                movs.push({
-                    data: dataMov,
-                    tipo: 'entrada',
-                    descricao: r.descricao || 'Recebimento',
-                    referencia: r.cliente_nome || '',
-                    centro: r.centro_custo || '1.02 - Administrativo',
-                    valor: parseFloat(r.valor) || 0
-                });
-            }
-        }
+        const st = norm(r.status);
+        if (!(st.indexOf('recebido') >= 0 || st.indexOf('pago') >= 0 || st.indexOf('quitado') >= 0)) return;
+        const d = dataISO(r.data_recebimento || r.vencimento || r.created_at);
+        if (!d) return;
+        movs.push({ id: 'r' + r.id, data: d, tipo: 'entrada', descricao: r.descricao || 'Recebimento',
+            referencia: r.cliente_nome || r.cliente || '', centro: r.centro_custo || '', valor: numero(r.valor) });
     });
 
+    // ENTRADAS: aportes de sócios, capital inicial e empréstimos (transferências).
+    // Cada registro conta uma vez, pelo próprio id. Valores iguais no mesmo dia NÃO são mais descartados.
     transferencias.forEach(t => {
-        let dataMov = t.data || t.created_at;
-        if (!dataMov) return;
-
-        let obs = (t.observacao || '').toLowerCase();
-        let origem = (t.conta_origem || '').toLowerCase();
-        if (obs.includes('cartão') || obs.includes('google') || origem.includes('cartão')) return;
-
-        let valorT = parseFloat(t.valor) || 0;
-        let ehAporteReal = obs.includes('aporte') || obs.includes('empréstimo') || obs.includes('mútuo') || obs.includes('inicial') || (obs.includes('pix recebido') && !obs.includes('fatura') && !obs.includes('pagamento'));
-        if (ehAporteReal) {
-            let chave = `${dataMov}_${valorT}_${t.observacao}`;
-            if (!chavesUnicas.has(chave)) {
-                chavesUnicas.add(chave);
-                movs.push({
-                    data: dataMov,
-                    tipo: 'entrada',
-                    descricao: t.observacao || 'Aporte / Capital Social',
-                    referencia: t.conta_destino || t.conta_origem || '',
-                    centro: t.centro_custo || '1.02 - Administrativo',
-                    valor: valorT
-                });
-            }
-        }
+        const d = dataISO(t.data || t.created_at);
+        if (!d) return;
+        const obs = norm(t.observacao);
+        const origem = norm(t.conta_origem);
+        if (obs.indexOf('cartao') >= 0 || obs.indexOf('google') >= 0 || origem.indexOf('cartao') >= 0) return;
+        const ehAporte = obs.indexOf('aporte') >= 0 || obs.indexOf('emprestimo') >= 0 || obs.indexOf('mutuo') >= 0 || obs.indexOf('inicial') >= 0 ||
+            (obs.indexOf('pix recebido') >= 0 && obs.indexOf('fatura') < 0 && obs.indexOf('pagamento') < 0);
+        if (!ehAporte) return;
+        movs.push({ id: 't' + t.id, data: d, tipo: 'entrada', descricao: t.observacao || 'Aporte / Capital Social',
+            referencia: t.conta_destino || t.conta_origem || '', centro: t.centro_custo || '', valor: numero(t.valor) });
     });
 
+    // SAÍDAS: contas a pagar já pagas.
+    // O Google do cartão pré-pago entra aqui, no dia do débito no cartão. A reposição do cartão (dia 20) é
+    // transferência entre contas da própria empresa e não é despesa, por isso nunca entra como saída.
     pagar.forEach(p => {
-        let dataMov = p.data_pagamento || p.vencimento || p.created_at;
-        if (!dataMov) return;
-
-        let st = (p.status || '').toLowerCase();
-        let desc = (p.descricao || '').toLowerCase();
-        let fornecedor = (p.fornecedor_nome || p.fornecedor || '').toLowerCase();
-        
-        if (desc.includes('favorecido') || fornecedor.includes('favorecido')) return;
-
-        if(st.includes('pago') || st.includes('quitado')) {
-            let chave = `${dataMov}_${p.valor}_${fornecedor}`;
-            if (!chavesUnicas.has(chave)) {
-                chavesUnicas.add(chave);
-                movs.push({
-                    data: dataMov,
-                    tipo: 'saida',
-                    descricao: p.descricao || 'Pagamento',
-                    referencia: p.fornecedor_nome || p.fornecedor || '',
-                    centro: p.centro_custo || '1.02 - Administrativo',
-                    valor: parseFloat(p.valor) || 0
-                });
-            }
-        }
+        const st = norm(p.status);
+        if (!(st.indexOf('pago') >= 0 || st.indexOf('quitado') >= 0)) return;
+        const d = dataISO(p.data_pagamento || p.vencimento || p.created_at);
+        if (!d) return;
+        const desc = norm(p.descricao);
+        const forn = norm(p.fornecedor_nome || p.fornecedor);
+        if (desc.indexOf('favorecido') >= 0 || forn.indexOf('favorecido') >= 0) { ignoradosPorRegra++; return; }
+        if (desc.indexOf('pagamento fatura cartao') >= 0 || desc.indexOf('reposicao do cartao') >= 0) { ignoradosPorRegra++; return; }
+        movs.push({ id: 'p' + p.id, data: d, tipo: 'saida', descricao: p.descricao || 'Pagamento',
+            referencia: p.fornecedor_nome || p.fornecedor || '', centro: p.centro_custo || '', valor: numero(p.valor) });
     });
 
-    movs.sort((a,b) => new Date(a.data) - new Date(b.data));
+    movs.sort((a, b) => a.data < b.data ? -1 : (a.data > b.data ? 1 : (a.tipo === b.tipo ? 0 : (a.tipo === 'entrada' ? -1 : 1))));
     movimentacoesCache = movs;
-    
-    const elDataInicio = document.getElementById('filtroDataInicio');
-    const elDataFim = document.getElementById('filtroDataFim');
-    if(elDataInicio && !elDataInicio.value) elDataInicio.value = '2025-07-24';
-    if(elDataFim && !elDataFim.value) elDataFim.value = '2026-10-21';
+    primeiraData = movs.length ? movs[0].data : '';
 
+    definirFiltrosPadrao();
     aplicarFiltros();
 }
 
-function aplicarFiltros() {
-    let dIni = document.getElementById('filtroDataInicio').value;
-    let dFim = document.getElementById('filtroDataFim').value;
-    let tipoFiltro = document.getElementById('filtroTipo').value;
-    let centroFiltro = document.getElementById('filtroCentro').value;
-    let textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
+function definirFiltrosPadrao() {
+    document.getElementById('filtroDataInicio').value = primeiraData || hojeISO();
+    document.getElementById('filtroDataFim').value = hojeISO();
+}
 
-    let saldoInicialAjustado = saldoAbertura2025;
+function aplicarFiltros() {
+    const dIni = document.getElementById('filtroDataInicio').value;
+    const dFim = document.getElementById('filtroDataFim').value;
+    const tipoFiltro = document.getElementById('filtroTipo').value;
+    const centroFiltro = document.getElementById('filtroCentro').value;
+    const textoFiltro = norm(document.getElementById('filtroTexto').value).trim();
+
+    // Saldo pelos lançamentos, desde o primeiro lançamento da empresa até a data fim
+    let saldoLancamentosTotal = 0;
+    movimentacoesCache.forEach(m => { saldoLancamentosTotal += (m.tipo === 'entrada' ? m.valor : -m.valor); });
+
+    // Saldo no começo do período escolhido (tudo que veio antes da data início)
+    let saldoInicialPeriodo = 0;
     if (dIni) {
-        movimentacoesCache.forEach(m => {
-            let dataStr = (m.data || '').split('T')[0];
-            if (dataStr < dIni) {
-                if (m.tipo === 'entrada') saldoInicialAjustado += m.valor;
-                else saldoInicialAjustado -= m.valor;
-            }
-        });
+        movimentacoesCache.forEach(m => { if (m.data < dIni) saldoInicialPeriodo += (m.tipo === 'entrada' ? m.valor : -m.valor); });
     }
 
-    let filtrados = movimentacoesCache.filter(m => {
-        if (!m.data) return false;
-        let dataStr = (m.data || '').split('T')[0];
-        if (dIni && dataStr < dIni) return false;
-        if (dFim && dataStr > dFim) return false;
+    const filtrados = movimentacoesCache.filter(m => {
+        if (dIni && m.data < dIni) return false;
+        if (dFim && m.data > dFim) return false;
         if (tipoFiltro !== 'todos' && m.tipo !== tipoFiltro) return false;
         if (centroFiltro !== 'todos' && m.centro !== centroFiltro) return false;
-        if (textoFiltro) {
-            let linha = (m.descricao + ' ' + m.referencia + ' ' + m.centro).toLowerCase();
-            if (!linha.includes(textoFiltro)) return false;
-        }
+        if (textoFiltro && norm(m.descricao + ' ' + m.referencia + ' ' + m.centro).indexOf(textoFiltro) < 0) return false;
         return true;
     });
 
     let totalEntradas = 0, totalSaidas = 0;
-    filtrados.forEach(m => {
-        if(m.tipo === 'entrada') totalEntradas += m.valor;
-        else totalSaidas += m.valor;
-    });
+    filtrados.forEach(m => { if (m.tipo === 'entrada') totalEntradas += m.valor; else totalSaidas += m.valor; });
 
-    let saldoFinalPJ = saldoInicialAjustado + totalEntradas - totalSaidas;
-    let patrimonioTotal = saldoFinalPJ + saldoCartaoPrePago;
-    
-    let elSaldoIni = document.getElementById('resumoSaldoInicial');
-    let elCartao = document.getElementById('resumoCartaoPrePago');
-    let elEntradas = document.getElementById('resumoEntradas');
-    let elSaidas = document.getElementById('resumoSaidas');
-    let elPatrimonio = document.getElementById('resumoPatrimonioTotal');
+    const saldoRealTotal = saldoContaPJ + saldoCartao;
+    const diferenca = saldoRealTotal - saldoLancamentosTotal;
 
-    if(elSaldoIni) elSaldoIni.innerText = formatarMoeda(saldoAtualPJ);
-    if(elCartao) elCartao.innerText = formatarMoeda(saldoCartaoPrePago);
-    if(elEntradas) elEntradas.innerText = formatarMoeda(totalEntradas);
-    if(elSaidas) elSaidas.innerText = formatarMoeda(totalSaidas);
-    if(elPatrimonio) {
-        let liquidoReal = saldoAtualPJ + saldoCartaoPrePago;
-        elPatrimonio.innerText = formatarMoeda(liquidoReal);
-        elPatrimonio.style.color = liquidoReal >= 0 ? 'var(--primary)' : 'var(--danger)';
-    }
+    document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoContaPJ);
+    document.getElementById('resumoCartaoPrePago').innerText = formatarMoeda(saldoCartao);
+    document.getElementById('resumoEntradas').innerText = formatarMoeda(totalEntradas);
+    document.getElementById('resumoSaidas').innerText = formatarMoeda(totalSaidas);
+    const elPat = document.getElementById('resumoPatrimonioTotal');
+    elPat.innerText = formatarMoeda(saldoRealTotal);
+    elPat.style.color = saldoRealTotal >= 0 ? 'var(--primary)' : 'var(--danger)';
 
-    let infoFiltros = [];
-    if(dIni) infoFiltros.push(`Início: ${dIni.split('-').reverse().join('/')}`);
-    if(dFim) infoFiltros.push(`Fim: ${dFim.split('-').reverse().join('/')}`);
-    if(tipoFiltro !== 'todos') infoFiltros.push(`Tipo: ${tipoFiltro.toUpperCase()}`);
-    if(centroFiltro !== 'todos') infoFiltros.push(`Centro: ${centroFiltro}`);
-    if(textoFiltro) infoFiltros.push(`Busca: "${textoFiltro}"`);
-    
-    let elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if(elPrintFiltros) elPrintFiltros.innerText = infoFiltros.length > 0 ? infoFiltros.join(' | ') : 'Histórico Consolidado';
+    // Quadro de conciliação: mostra, sem esconder, se os lançamentos explicam o saldo real
+    document.getElementById('concSaldoLanc').innerText = formatarMoeda(saldoLancamentosTotal);
+    document.getElementById('concSaldoReal').innerText = formatarMoeda(saldoRealTotal);
+    const elDif = document.getElementById('concDiferenca');
+    elDif.innerText = formatarMoeda(diferenca);
+    const fechou = Math.abs(diferenca) < 0.005;
+    elDif.style.color = fechou ? 'var(--success)' : 'var(--danger)';
+    document.getElementById('concTexto').innerText = fechou
+        ? 'Os lançamentos explicam exatamente o saldo real das contas.'
+        : 'Há movimentações no banco ou no cartão que ainda não estão lançadas (ou lançadas em duplicidade). Compare com o extrato e lance a diferença para este quadro zerar. Nenhum valor foi ajustado automaticamente.';
+    document.getElementById('concIgnorados').innerText = ignoradosPorRegra > 0
+        ? ignoradosPorRegra + ' lançamento(s) pago(s) foram desconsiderados por regra (favorecido / reposição de cartão).'
+        : '';
+
+    const info = [];
+    if (dIni) info.push('Início: ' + dIni.split('-').reverse().join('/'));
+    if (dFim) info.push('Fim: ' + dFim.split('-').reverse().join('/'));
+    if (tipoFiltro !== 'todos') info.push('Tipo: ' + tipoFiltro.toUpperCase());
+    if (centroFiltro !== 'todos') info.push('Centro: ' + centroFiltro);
+    if (textoFiltro) info.push('Busca: "' + textoFiltro + '"');
+    const elPrintFiltros = document.getElementById('printFiltrosInfo');
+    if (elPrintFiltros) elPrintFiltros.innerText = info.length ? info.join(' | ') : 'Histórico Consolidado';
 
     const tbody = document.getElementById('tbodyFluxo');
     const tfoot = document.getElementById('tfootFluxo');
-    if(!tbody) return;
     tbody.innerHTML = '';
     tfoot.innerHTML = '';
-    
-    if(filtrados.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período selecionado.</td></tr>`;
+
+    if (!filtrados.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período selecionado.</td></tr>';
         return;
     }
 
-    let saldoAcumulado = saldoInicialAjustado;
+    let acumulado = saldoInicialPeriodo;
+    let linhas = '';
+    if (dIni && Math.abs(saldoInicialPeriodo) > 0.004) {
+        linhas += '<tr style="background:#f8fafc;"><td><strong>' + esc(dIni.split('-').reverse().join('/')) + '</strong></td><td><span class="badge" style="background:#e2e8f0;color:#334155;">Anterior</span></td>' +
+            '<td colspan="3"><em>Saldo pelos lançamentos anteriores ao período</em></td><td></td><td style="text-align:right;"><strong>' + formatarMoeda(saldoInicialPeriodo) + '</strong></td></tr>';
+    }
     filtrados.forEach(m => {
-        let dataFmt = m.data ? m.data.split('T')[0].split('-').reverse().join('/') : '-';
-        let ehEntrada = m.tipo === 'entrada';
-        let badge = ehEntrada ? '<span class="badge badge-entrada">Entrada</span>' : '<span class="badge badge-saida">Saída</span>';
-        let valorEntrada = ehEntrada ? formatarMoeda(m.valor) : '-';
-        let valorSaida = ehEntrada ? '-' : formatarMoeda(m.valor);
-        saldoAcumulado += ehEntrada ? m.valor : -m.valor;
-        let descCompleta = `${m.descricao}${m.referencia ? ' - ' + m.referencia : ''}`;
-
-        tbody.innerHTML += `<tr>
-            <td><strong>${dataFmt}</strong></td>
-            <td>${badge}</td>
-            <td>${descCompleta}</td>
-            <td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ${m.centro}</span></td>
-            <td style="text-align: right;" class="valor-entrada">${valorEntrada}</td>
-            <td style="text-align: right;" class="valor-saida">${valorSaida}</td>
-            <td style="text-align: right;"><strong>${formatarMoeda(saldoAcumulado)}</strong></td>
-        </tr>`;
+        const ent = m.tipo === 'entrada';
+        acumulado += ent ? m.valor : -m.valor;
+        const dataFmt = m.data.split('-').reverse().join('/');
+        const badge = ent ? '<span class="badge badge-entrada">Entrada</span>' : '<span class="badge badge-saida">Saída</span>';
+        const desc = esc(m.descricao) + (m.referencia ? ' - ' + esc(m.referencia) : '');
+        linhas += '<tr><td><strong>' + dataFmt + '</strong></td><td>' + badge + '</td><td>' + desc + '</td>' +
+            '<td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ' + esc(m.centro || '-') + '</span></td>' +
+            '<td style="text-align:right;" class="valor-entrada">' + (ent ? formatarMoeda(m.valor) : '-') + '</td>' +
+            '<td style="text-align:right;" class="valor-saida">' + (ent ? '-' : formatarMoeda(m.valor)) + '</td>' +
+            '<td style="text-align:right;"><strong style="color:' + (acumulado < 0 ? 'var(--danger)' : 'inherit') + ';">' + formatarMoeda(acumulado) + '</strong></td></tr>';
     });
+    tbody.innerHTML = linhas;
 
-    tfoot.innerHTML = `<tr>
-        <td colspan="4" style="text-align: right; text-transform: uppercase;">Total do Período Filtrado:</td>
-        <td style="text-align: right;" class="valor-entrada">${formatarMoeda(totalEntradas)}</td>
-        <td style="text-align: right;" class="valor-saida">${formatarMoeda(totalSaidas)}</td>
-        <td style="text-align: right;"><strong>Saldo Acum. Final: ${formatarMoeda(saldoAcumulado)}</strong></td>
-    </tr>`;
+    tfoot.innerHTML = '<tr><td colspan="4" style="text-align:right; text-transform:uppercase;">Total do Período Filtrado:</td>' +
+        '<td style="text-align:right;" class="valor-entrada">' + formatarMoeda(totalEntradas) + '</td>' +
+        '<td style="text-align:right;" class="valor-saida">' + formatarMoeda(totalSaidas) + '</td>' +
+        '<td style="text-align:right;"><strong>Saldo pelos lançamentos: ' + formatarMoeda(acumulado) + '</strong></td></tr>';
 }
 
 async function executarImpressao() {
@@ -575,41 +525,28 @@ async function executarImpressao() {
     if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
         document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
     } else {
-        const cid = clienteIdAtual();
         try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) {
-                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-            } else {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-            }
-        } catch(e) {
-            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-        }
+            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteIdAtual()).maybeSingle();
+            document.getElementById('printEmpresaNome').innerText = data ? (data.nome_fantasia || data.razao_social) : ('Empresa ' + clienteIdAtual());
+        } catch(e) { document.getElementById('printEmpresaNome').innerText = 'Empresa'; }
     }
-
     const u = obterUsuario();
-    if (u) {
-        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-    } else {
-        document.getElementById('printUsuarioNome').innerText = 'Operador';
-    }
-
+    document.getElementById('printUsuarioNome').innerText = u ? (u.nome || u.email || 'Usuário') : 'Operador';
     document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
     window.print();
 }
 
 function limparFiltros() {
-    document.getElementById('filtroDataInicio').value = '2025-07-24';
-    document.getElementById('filtroDataFim').value = '2026-10-21';
+    definirFiltrosPadrao();
     document.getElementById('filtroTipo').value = 'todos';
     document.getElementById('filtroCentro').value = 'todos';
     document.getElementById('filtroTexto').value = '';
     aplicarFiltros();
 }
 
-function sair() {
+async function sair() {
     if (confirm('Deseja realmente sair?')) {
+        try { await sb.auth.signOut(); } catch(e) {}
         localStorage.removeItem('usuarioLogado');
         localStorage.removeItem('empresaSelecionada');
         location.href = 'login.html';
@@ -617,40 +554,28 @@ function sair() {
 }
 
 async function inicializarPagina() {
-    let u = obterUsuario();
-    if(!u || !u.email) { location.href = 'login.html'; return; }
+    const u = obterUsuario();
+    if (!u || !u.email) { location.href = 'login.html'; return; }
+    const elUserName = document.getElementById('userName');
+    if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = ehMaster();
-
-    if (master) {
+    if (ehMaster()) {
         document.body.classList.add('usuario-master');
         const select = document.getElementById('selectEmpresa');
         const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
         select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
+        (data || []).forEach(emp => {
+            const o = document.createElement('option');
+            o.value = emp.id; o.textContent = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+            select.appendChild(o);
+        });
+        select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
         select.disabled = false;
     } else {
         document.body.classList.remove('usuario-master');
     }
 
     await carregarCentrosCustoFiltro();
-    document.getElementById('filtroDataInicio').value = '2025-07-24';
-    document.getElementById('filtroDataFim').value = '2026-10-21';
-
     await carregarFluxo();
 }
 
