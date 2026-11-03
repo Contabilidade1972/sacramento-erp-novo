@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -30,23 +32,6 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -84,46 +69,10 @@
         .badge-saida { background: #fee2e2; color: #b91c1c; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .print-corporative-header { display: none !important; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8pt !important; }
-            body * { visibility: hidden !important; }
-            #cardRelatorioModo, #cardRelatorioModo * { visibility: visible !important; }
-            #cardRelatorioModo { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; margin: 0 !important; }
-            .ocultar-print { display: none !important; }
-            .print-corporative-header { display: block !important; margin-bottom: 6mm !important; border-bottom: 2px solid #1e3a8a !important; padding-bottom: 4mm !important; width: 100% !important; }
-            .table-container { width: 100% !important; overflow: visible !important; }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td, tfoot td { padding: 5px 6px !important; border-bottom: 1px solid #cbd5e1 !important; }
-        }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
-
-<header class="site-header ocultar-print">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
 
 <div class="container">
     <div class="page-toolbar ocultar-print">
@@ -173,7 +122,7 @@
     <div class="card" id="cardRelatorioModo">
         <div class="card-header">
             <h3><i class="fas fa-chart-line"></i> Relatório de Fluxo de Caixa (Consolidado Histórico)</h3>
-            <button class="btn-acao sucesso ocultar-print" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-acao sucesso" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
         
         <div style="background:var(--bg); padding:16px; border-radius:12px; margin-bottom:16px; display:grid; grid-template-columns: repeat(5, 1fr) auto; gap:12px; align-items:flex-end;" class="ocultar-print">
@@ -211,15 +160,6 @@
         <div class="table-container">
             <table>
                 <thead>
-                    <tr>
-                        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                            <div class="print-corporative-header">
-                                <h2 style="font-size: 11pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Relatório de Fluxo de Caixa Histórico</h2>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                                <p style="font-size: 7pt; color: #475569; margin: 2px 0 0 0;"><strong>Filtros:</strong> <span id="printFiltrosInfo">Histórico Consolidado</span> &nbsp;|&nbsp; <strong>Nota:</strong> Saldos reais das contas PJ cadastradas (sem contas PF)</p>
-                            </div>
-                        </th>
-                    </tr>
                     <tr>
                         <th style="width: 12%;">Data</th>
                         <th style="width: 12%;">Tipo</th>
@@ -265,6 +205,7 @@ let saldoContaPJ = 0;        // soma real das contas PJ (exceto cartão), vinda 
 let saldoCartao = 0;         // saldo real do cartão pré-pago, vindo do cadastro
 let ignoradosPorRegra = 0;
 let primeiraData = '';
+let ultimoRelatorio = null;
 
 function obterUsuario() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
@@ -284,6 +225,17 @@ function clienteIdAtual() {
 }
 function sbFiltroLeitura(tabela) {
     return sb.from(tabela).select('*').eq('cliente_id', clienteIdAtual());
+}
+// Lê TODAS as linhas (o Supabase entrega no máximo 1000 por consulta): pagina de 1000 em 1000
+async function lerTudo(tabela) {
+    const out = []; const PAG = 1000;
+    for (let ini = 0; ini < 200000; ini += PAG) {
+        const r = await sbFiltroLeitura(tabela).order('id', { ascending: true }).range(ini, ini + PAG - 1);
+        if (r.error) return { data: null, error: r.error };
+        out.push.apply(out, r.data || []);
+        if (!r.data || r.data.length < PAG) break;
+    }
+    return { data: out, error: null };
 }
 function esc(t) {
     return String(t === null || t === undefined ? '' : t)
@@ -357,10 +309,16 @@ async function carregarFluxo() {
     await carregarSaldosBancarios();
 
     const [resReceber, resPagar, resTransfer] = await Promise.all([
-        sbFiltroLeitura('contas_receber'),
-        sbFiltroLeitura('contas_pagar'),
-        sbFiltroLeitura('transferencias')
+        lerTudo('contas_receber'),
+        lerTudo('contas_pagar'),
+        lerTudo('transferencias')
     ]);
+    const erroLeitura = resReceber.error || resPagar.error || resTransfer.error;
+    if (erroLeitura) {
+        movimentacoesCache = [];
+        document.getElementById('tbodyFluxo').innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Não foi possível carregar os lançamentos (' + esc(erroLeitura.message) + '). Atualize a página (Ctrl+F5). Os valores abaixo NÃO são confiáveis até o carregamento funcionar.</td></tr>';
+        return;
+    }
     const receber = resReceber.data || [];
     const pagar = resPagar.data || [];
     const transferencias = resTransfer.data || [];
@@ -487,19 +445,18 @@ function aplicarFiltros() {
     if (ignoradosPorRegra > 0) partesNota.push(ignoradosPorRegra + ' lançamento(s) pago(s) foram desconsiderados por regra (favorecido / reposição de cartão).');
     document.getElementById('concIgnorados').innerText = partesNota.join(' ');
 
-    const info = [];
-    if (dIni) info.push('Início: ' + dIni.split('-').reverse().join('/'));
-    if (dFim) info.push('Fim: ' + dFim.split('-').reverse().join('/'));
-    if (tipoFiltro !== 'todos') info.push('Tipo: ' + tipoFiltro.toUpperCase());
-    if (centroFiltro !== 'todos') info.push('Centro: ' + centroFiltro);
-    if (textoFiltro) info.push('Busca: "' + textoFiltro + '"');
-    const elPrintFiltros = document.getElementById('printFiltrosInfo');
-    if (elPrintFiltros) elPrintFiltros.innerText = info.length ? info.join(' | ') : 'Histórico Consolidado';
-
     const tbody = document.getElementById('tbodyFluxo');
     const tfoot = document.getElementById('tfootFluxo');
     tbody.innerHTML = '';
     tfoot.innerHTML = '';
+
+    ultimoRelatorio = {
+        dIni: dIni, dFim: dFim, tipo: tipoFiltro, centro: centroFiltro, texto: document.getElementById('filtroTexto').value.trim(),
+        filtrados: filtrados, saldoInicialPeriodo: saldoInicialPeriodo, totalEntradas: totalEntradas, totalSaidas: totalSaidas,
+        saldoFinalPeriodo: saldoInicialPeriodo + totalEntradas - totalSaidas,
+        saldoLanc: saldoLancamentosTotal, saldoReal: saldoRealTotal, saldoPJ: saldoContaPJ, saldoCartao: saldoCartao, diferenca: diferenca,
+        notas: partesNota.join(' ')
+    };
 
     if (!filtrados.length) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:20px;">Nenhuma movimentação encontrada para o período selecionado.</td></tr>';
@@ -532,20 +489,54 @@ function aplicarFiltros() {
         '<td style="text-align:right;"><strong>Saldo pelos lançamentos: ' + formatarMoeda(acumulado) + '</strong></td></tr>';
 }
 
-async function executarImpressao() {
-    const selectEmp = document.getElementById('selectEmpresa');
-    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-    } else {
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', clienteIdAtual()).maybeSingle();
-            document.getElementById('printEmpresaNome').innerText = data ? (data.nome_fantasia || data.razao_social) : ('Empresa ' + clienteIdAtual());
-        } catch(e) { document.getElementById('printEmpresaNome').innerText = 'Empresa'; }
+function executarImpressao() {
+    if (!window.ERPPrint) { alert('Módulo de impressão não carregado. Atualize a página (Ctrl+F5).'); return; }
+    const R = ultimoRelatorio;
+    if (!R) { alert('Aguarde o carregamento dos dados.'); return; }
+    const fmtD = d => d.split('-').reverse().join('/');
+    const B = ERPPrint.fmtBRL;
+    const filtros = [['Período', (R.dIni ? fmtD(R.dIni) : 'início') + ' a ' + (R.dFim ? fmtD(R.dFim) : 'hoje')]];
+    filtros.push(['Tipo', R.tipo === 'entrada' ? 'Apenas entradas' : (R.tipo === 'saida' ? 'Apenas saídas' : 'Entradas e saídas')]);
+    filtros.push(['Centro de custo', R.centro === 'todos' ? 'Todos' : R.centro]);
+    if (R.texto) filtros.push(['Busca', '“' + R.texto + '”']);
+
+    const linhas = [];
+    if (R.dIni && Math.abs(R.saldoInicialPeriodo) > 0.004) {
+        linhas.push({ c: [fmtD(R.dIni), { t: 'ANTERIOR', cls: 'muted' }, 'Saldo pelos lançamentos anteriores ao período', '', '', '', { t: B(R.saldoInicialPeriodo), cls: 'bold' }], cls: 'destaque' });
     }
-    const u = obterUsuario();
-    document.getElementById('printUsuarioNome').innerText = u ? (u.nome || u.email || 'Usuário') : 'Operador';
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    window.print();
+    let acum = R.saldoInicialPeriodo;
+    R.filtrados.forEach(m => {
+        const ent = m.tipo === 'entrada';
+        acum += ent ? m.valor : -m.valor;
+        const rotulo = m.ajuste ? { t: 'AJUSTE', cls: 'warn' } : (ent ? { t: 'ENTRADA', cls: 'pos' } : { t: 'SAÍDA', cls: 'neg' });
+        linhas.push({
+            c: [fmtD(m.data), rotulo, m.descricao + (m.referencia ? ' - ' + m.referencia : ''), m.centro,
+                ent ? { t: B(m.valor), cls: 'pos' } : '', ent ? '' : { t: B(m.valor), cls: 'neg' },
+                { t: B(acum), cls: acum < 0 ? 'neg' : 'bold' }],
+            cls: m.ajuste ? 'destaque' : ''
+        });
+    });
+    const conc = Math.abs(R.diferenca) < 0.005
+        ? 'Os lançamentos explicam exatamente o saldo real das contas.'
+        : 'Diferença a conciliar de ' + B(R.diferenca) + ' (há movimentações no banco/cartão ainda não lançadas).';
+    const obs = 'CONCILIAÇÃO (posição até hoje, independente do período filtrado): saldo pelos lançamentos ' + B(R.saldoLanc) +
+        ' | saldo real conta PJ ' + B(R.saldoPJ) + ' + cartão pré-pago ' + B(R.saldoCartao) + ' = ' + B(R.saldoReal) + '. ' + conc +
+        (R.notas ? ' ' + R.notas : '') + ' Contas de pessoa física não fazem parte deste relatório.';
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Fluxo de Caixa',
+        subtitulo: 'Entradas e saídas realizadas, com saldo acumulado pelos lançamentos',
+        codigo: 'FIN-FC',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [['Saldo inicial do período', B(R.saldoInicialPeriodo)], ['Total de entradas', B(R.totalEntradas)], ['Total de saídas', B(R.totalSaidas)],
+                 ['Saldo final pelos lançamentos', B(R.saldoFinalPeriodo)], ['Saldo real (PJ + cartão)', B(R.saldoReal)]],
+        colunas: [{ t: 'Data', w: 1 }, { t: 'Tipo', w: 1 }, { t: 'Descrição / Referência', w: 4 }, { t: 'Centro de custo', w: 1.8 },
+                  { t: 'Entrada (R$)', w: 1.3, a: 'right' }, { t: 'Saída (R$)', w: 1.3, a: 'right' }, { t: 'Saldo acum. (R$)', w: 1.4, a: 'right' }],
+        linhas: linhas,
+        totais: R.filtrados.length ? ['TOTAL DO PERÍODO', '', '', '', B(R.totalEntradas), B(R.totalSaidas), B(R.saldoFinalPeriodo)] : null,
+        observacao: obs
+    });
 }
 
 function limparFiltros() {
@@ -556,37 +547,10 @@ function limparFiltros() {
     aplicarFiltros();
 }
 
-async function sair() {
-    if (confirm('Deseja realmente sair?')) {
-        try { await sb.auth.signOut(); } catch(e) {}
-        localStorage.removeItem('usuarioLogado');
-        localStorage.removeItem('empresaSelecionada');
-        location.href = 'login.html';
-    }
-}
-
 async function inicializarPagina() {
     const u = obterUsuario();
     if (!u || !u.email) { location.href = 'login.html'; return; }
-    const elUserName = document.getElementById('userName');
-    if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-
-    if (ehMaster()) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        (data || []).forEach(emp => {
-            const o = document.createElement('option');
-            o.value = emp.id; o.textContent = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-            select.appendChild(o);
-        });
-        select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
-
+    if (ehMaster()) document.body.classList.add('usuario-master');
     await carregarCentrosCustoFiltro();
     await carregarFluxo();
 }
