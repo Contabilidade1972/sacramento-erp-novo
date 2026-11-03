@@ -7,462 +7,329 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
-    <style>
+    <script src="erp-print.js"></script>
+        <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
             --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
             --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
-
-        body:not(.usuario-master) .empresa-selector {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
-
-        .container { max-width: 1350px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
-        .btn-voltar { background: #64748b; color: #fff; border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: 0.2s; }
-        .btn-voltar:hover { background: #475569; }
-
-        .toolbar { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.02); }
-        .filtro-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; width: 100%; }
-        .filtro-group { display: flex; flex-direction: column; gap: 6px; }
-        .filtro-group label { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.5px; }
-        .filtro-group select, .filtro-group input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; }
-        .filtro-group select:focus, .filtro-group input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
-
-        .toolbar-actions { display: flex; gap: 10px; width: 100%; justify-content: flex-end; align-items: center; border-top: 1px solid var(--border); padding-top: 14px; }
-
-        .card-table { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        thead th { background: var(--bg); text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
-        tbody td { padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--text-main); }
-        tbody tr:hover { background: #f8fafc; }
-        .num { text-align: right; }
-        .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
-
-        .badge-canal { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #e0f2fe; color: #0369a1; }
-        
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
         .btn-acao:hover { background: var(--primary-dark); }
-        .btn-secundario { background: #e2e8f0; color: var(--text-main); border: none; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
-        .btn-secundario:hover { background: #cbd5e1; }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
 
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-        .print-corporative-header { display: none !important; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.cinza { border-top-color: #94a3b8; } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
 
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 15mm;
-                @bottom-right {
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    font-family: 'Inter', sans-serif;
-                    color: #475569;
-                }
-            }
-            
-            body * { visibility: hidden !important; }
-            .card-table, .card-table * { visibility: visible !important; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
 
-            .card-table {
-                position: relative !important; left: auto !important; top: auto !important; width: 100% !important; padding: 0 5mm !important; border: none !important; box-shadow: none !important; margin: 0 !important;
-            }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1fr 1.3fr 1.3fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
 
-            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
-            .ocultar-print { display: none !important; }
+        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
 
-            .print-corporative-header {
-                display: block !important; background: #fff !important; padding-bottom: 6mm !important; margin-bottom: 8mm !important; border-bottom: 2px solid #1e3a8a !important; width: 100% !important;
-            }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
+        .pos { color: #047857; font-weight: 700; } .neg { color: #b91c1c; font-weight: 700; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .badge-ent { background: #dcfce7; color: #166534; } .badge-sai { background: #fee2e2; color: #991b1b; }
 
-            table { font-size: 9pt !important; width: 100% !important; border-collapse: collapse !important; margin: 0 auto !important; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
-            thead th {
-                background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact;
-            }
-            
-            tbody td { padding: 5px 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
-        }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box { grid-template-columns: 1fr; } }
+    .badge-canal { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; background: #e0f2fe; color: #0369a1; white-space: nowrap; }
+        .badge-ab { background: #fef3c7; color: #92400e; }
     </style>
 </head>
 <body>
-
-<header class="site-header">
-    <a href="index.html" class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </a>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
+<div class="toast-container" id="toastContainer"></div>
 
 <div class="container">
-    
     <div class="page-toolbar">
-        <a href="modulo_financeiro.html" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
+        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
         <a href="parametros_taxas.html" class="btn-acao" style="background: var(--secondary);"><i class="fas fa-percentage"></i> Configurar Taxas (MDR)</a>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
     </div>
 
-    <!-- BARRA DE FILTROS -->
-    <div class="toolbar">
-        <div class="filtro-grid">
-            <div class="filtro-group">
-                <label>Canal / Gateway</label>
-                <select id="filtroCanal" onchange="carregarRecebiveisCartoes()">
-                    <option value="todos">Todos os Canais</option>
+    <div>
+        <div class="page-title"><i class="fas fa-credit-card" style="color:var(--primary);"></i> Conciliação de Cartões, PIX & Gateways</div>
+        <div class="page-subtitle">Recebíveis por canal, com taxa MDR parametrizada, valor líquido previsto e situação (recebido ou em aberto)</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><span class="kpi-title">Total bruto</span><span class="kpi-value" id="kpiBruto">R$ 0,00</span><span class="kpi-sub" id="kpiBrutoSub">&nbsp;</span></div>
+        <div class="kpi-card vermelho"><span class="kpi-title">Taxas (MDR)</span><span class="kpi-value" id="kpiMdr" style="color:var(--danger);">R$ 0,00</span><span class="kpi-sub" id="kpiMdrSub">&nbsp;</span></div>
+        <div class="kpi-card verde"><span class="kpi-title">Líquido previsto</span><span class="kpi-value" id="kpiLiq" style="color:var(--success);">R$ 0,00</span><span class="kpi-sub">Bruto − taxas</span></div>
+        <div class="kpi-card cinza"><span class="kpi-title">Já recebido / Em aberto</span><span class="kpi-value" id="kpiRec" style="font-size:19px;">R$ 0,00</span><span class="kpi-sub" id="kpiAbSub">&nbsp;</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-filter" style="color:var(--primary);"></i> Filtros</span></div>
+        <div class="atalhos">
+            <button class="chip ativo" type="button" data-p="tudo" onclick="atalho('tudo')">Todo o período</button>
+            <button class="chip" type="button" data-p="mes" onclick="atalho('mes')">Mês atual</button>
+            <button class="chip" type="button" data-p="mesant" onclick="atalho('mesant')">Mês anterior</button>
+            <button class="chip" type="button" data-p="prox30" onclick="atalho('prox30')">Próximos 30 dias</button>
+            <button class="chip" type="button" data-p="ano" onclick="atalho('ano')">Ano atual</button>
+        </div>
+        <div class="filtros-box">
+            <div><label for="filtroDataInicio">Vencimento — de</label><input type="date" id="filtroDataInicio" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="filtroDataFim">Vencimento — até</label><input type="date" id="filtroDataFim" class="form-control" onchange="filtroManual()"></div>
+            <div><label for="filtroCanal">Canal / Gateway</label>
+                <select id="filtroCanal" class="form-control" onchange="aplicar()">
+                    <option value="todos">Todos os canais</option>
                     <option value="PIX">PIX</option>
                     <option value="Cartão de Crédito">Cartão de Crédito</option>
                     <option value="Cartão de Débito">Cartão de Débito</option>
                     <option value="Boleto Bancário">Boleto Bancário</option>
                     <option value="Outros / Gateway">Outros / Gateway</option>
-                </select>
-            </div>
-            <div class="filtro-group">
-                <label>Data Inicial</label>
-                <input type="date" id="filtroDataInicio">
-            </div>
-            <div class="filtro-group">
-                <label>Data Final</label>
-                <input type="date" id="filtroDataFim">
-            </div>
+                </select></div>
+            <div><label for="filtroSit">Situação</label>
+                <select id="filtroSit" class="form-control" onchange="aplicar()">
+                    <option value="todos">Recebidos e em aberto</option>
+                    <option value="recebido">Apenas recebidos</option>
+                    <option value="aberto">Apenas em aberto</option>
+                </select></div>
+            <div><label for="filtroTexto">Buscar</label><input type="text" id="filtroTexto" class="form-control" placeholder="Cliente ou descrição..." oninput="aplicar()"></div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
         </div>
-        <div class="toolbar-actions">
-            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
-            <button class="btn-acao" onclick="carregarRecebiveisCartoes()"><i class="fas fa-filter"></i> Consultar Recebíveis</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-        </div>
-    </div>
+        <div class="aviso" id="avisoTaxas"></div>
 
-    <!-- TABELA DE RESULTADOS -->
-    <div class="card-table">
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;" class="ocultar-print">
-            <div>
-                <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Conciliação de Recebíveis Digitais</h3>
-                <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Monitoramento de liquidação de vendas via gateways, taxas MDR parametrizadas e repasses.</p>
-            </div>
-            <div id="resumoCartoes" style="font-size: 13px; font-weight: 700; color: var(--secondary);">
-                --
-            </div>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                        <div class="print-corporative-header">
-                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Conciliação de Recebíveis & Gateways</h2>
-                            <p style="font-size: 8pt; color: #475569; margin: 3mm 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
-                    <th>Data Venc.</th>
-                    <th>Canal / Meio</th>
-                    <th>Cliente / Pagador</th>
-                    <th>Descrição do Título</th>
-                    <th class="num">Valor Bruto (R$)</th>
-                    <th class="num">Taxa (MDR) Aplicada</th>
-                    <th class="num">Líquido Previsto (R$)</th>
-                </tr>
-            </thead>
-            <tbody id="tbodyCartoes">
-                <tr><td colspan="7" class="vazio">A carregar recebíveis do Supabase...</td></tr>
-            </tbody>
-        </table>
+        <div class="panel-title" style="margin-top:6px;"><span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Recebíveis digitais</span><span id="contaReg" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
+        <div class="table-wrap" id="listaRec"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
     </div>
-
 </div>
 
-<footer>
-    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
-</footer>
-
 <script>
-    const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 
-    function obterUsuario() {
-        try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
+    let todos = [];          // recebíveis classificados por canal, com MDR calculado
+    let taxasOk = 0;         // quantas regras de taxa existem para a empresa
+    let taxasErro = '';
+    let limites = { min: '', max: '' };
+    let R = null;
+
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-
-    function ehMaster() {
-        const u = obterUsuario();
-        if (!u || !u.email) return false;
-        return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').trim(); }
+    function numero(v) {
+        if (typeof v === 'number') return v;
+        let s = String(v === null || v === undefined ? '' : v).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
     }
+    function arred(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function B(n) { return 'R$ ' + fmtBR(n); }
+    function dataBR(ts) { if (!ts) return '—'; const s = String(ts).substring(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : '—'; }
+    function iso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
 
-    // BLINDAGEM ESTRITA LGPD (MULTI-TENANCY)
-    function clienteIdAtual() {
-        const u = obterUsuario();
-        if (!u) return 1;
-        if (ehMaster()) {
-            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-            return u.cliente_id ? parseInt(u.cliente_id) : 2;
-        }
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
-    }
-
-    function formatarMoeda(valor) {
-        let num = parseFloat(valor) || 0;
-        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    }
-
-    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
-    }
-
-    function limparFiltros() {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
-        document.getElementById('filtroCanal').value = 'todos';
-        carregarRecebiveisCartoes();
-    }
-
-    async function executarImpressao() {
-        const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
-        const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
-        document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
-        
-        const agora = new Date();
-        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
-
-        const selectEmp = document.getElementById('selectEmpresa');
-        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-        } else {
-            const cid = clienteIdAtual();
-            try {
-                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-                if (data) {
-                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-                } else {
-                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-                }
-            } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-            }
-        }
-
-        const u = obterUsuario();
-        if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-        } else {
-            document.getElementById('printUsuarioNome').innerText = 'Operador';
-        }
-
-        const resumoTexto = document.getElementById('resumoCartoes').innerText;
-        document.getElementById('printResumoTotais').innerText = resumoTexto;
-
-        window.print();
-    }
-
-    function sair() {
-        if (confirm('Deseja realmente sair?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
-        }
-    }
-
-    async function carregarRecebiveisCartoes() {
-        const cid = clienteIdAtual();
-        const dataInicio = document.getElementById('filtroDataInicio').value;
-        const dataFim = document.getElementById('filtroDataFim').value;
-        const canalFiltro = document.getElementById('filtroCanal').value;
-
-        const tbody = document.getElementById('tbodyCartoes');
-        tbody.innerHTML = `<tr><td colspan="7" class="vazio">A consultar recebíveis e parâmetros de taxas...</td></tr>`;
-
+    function obterClienteIdAtivo() {
         try {
-            // 1. Busca as taxas parametrizadas da empresa no Supabase
-            const { data: taxasConfig, error: errTaxas } = await sb.from('taxas_gateway_config').select('*').eq('cliente_id', cid);
-            let mapaTaxas = {};
-            if (!errTaxas && taxasConfig) {
-                taxasConfig.forEach(t => {
-                    mapaTaxas[t.canal_gateway] = {
-                        percentual: parseFloat(t.taxa_percentual_mdr) || 0,
-                        fixa: parseFloat(t.tarifa_fixa_reais) || 0
-                    };
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+    async function lerTudo(tabela, cid) {
+        const out = [], PAG = 1000;
+        for (let ini = 0; ini < 200000; ini += PAG) {
+            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
+            if (r.error) throw r.error;
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
+        }
+        return out;
+    }
+
+    // ---------- período ----------
+    function definirPeriodo(de, ate) { document.getElementById('filtroDataInicio').value = de; document.getElementById('filtroDataFim').value = ate; }
+    function marcarChip(p) { document.querySelectorAll('.chip').forEach(function (c) { c.classList.toggle('ativo', c.getAttribute('data-p') === p); }); }
+    function atalho(p) {
+        const h = new Date(), a = h.getFullYear(), m = h.getMonth();
+        if (p === 'tudo') definirPeriodo(limites.min || iso(h), limites.max || iso(h));
+        else if (p === 'mes') definirPeriodo(iso(new Date(a, m, 1)), iso(new Date(a, m + 1, 0)));
+        else if (p === 'mesant') definirPeriodo(iso(new Date(a, m - 1, 1)), iso(new Date(a, m, 0)));
+        else if (p === 'prox30') { const f = new Date(h); f.setDate(f.getDate() + 30); definirPeriodo(iso(h), iso(f)); }
+        else if (p === 'ano') definirPeriodo(a + '-01-01', a + '-12-31');
+        marcarChip(p);
+        aplicar();
+    }
+    function filtroManual() { marcarChip(''); aplicar(); }
+    function limparFiltros() {
+        document.getElementById('filtroCanal').value = 'todos';
+        document.getElementById('filtroSit').value = 'todos';
+        document.getElementById('filtroTexto').value = '';
+        atalho('tudo');
+    }
+
+    // ---------- classificação ----------
+    function canalDe(desc) {
+        const d = norm(desc);
+        if (d.indexOf('pix') >= 0) return 'PIX';
+        if (d.indexOf('credito') >= 0) return 'Cartão de Crédito';
+        if (d.indexOf('debito') >= 0) return 'Cartão de Débito';
+        if (d.indexOf('boleto') >= 0) return 'Boleto Bancário';
+        return 'Outros / Gateway';
+    }
+    function recebido(st) { const s = norm(st); return s.indexOf('recebido') >= 0 || s.indexOf('pago') >= 0 || s.indexOf('quitado') >= 0; }
+
+    async function carregar() {
+        const cid = obterClienteIdAtivo();
+        try {
+            const mapa = {};
+            try {
+                const rt = await sb.from('taxas_gateway_config').select('*').eq('cliente_id', cid);
+                if (rt.error) throw rt.error;
+                (rt.data || []).forEach(function (t) {
+                    mapa[t.canal_gateway] = { pct: numero(t.taxa_percentual_mdr), fixa: numero(t.tarifa_fixa_reais) };
+                    taxasOk++;
                 });
-            }
+            } catch (e) { taxasErro = (e && e.message) ? e.message : 'tabela de taxas indisponível'; }
 
-            // 2. Busca os recebíveis no período
-            let query = sb.from('contas_receber').select('*').eq('cliente_id', cid);
-            if (dataInicio) query = query.gte('vencimento', dataInicio);
-            if (dataFim) query = query.lte('vencimento', dataFim);
-
-            const { data, error } = await query;
-
-            if (error) {
-                tbody.innerHTML = `<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro ao consultar base: ${error.message}</td></tr>`;
-                return;
-            }
-
-            if (!data || data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="vazio">Nenhum recebível encontrado no período.</td></tr>`;
-                document.getElementById('resumoCartoes').innerText = `Total Bruto: R$ 0,00`;
-                return;
-            }
-
-            let lista = [];
-            data.forEach(item => {
-                let desc = (item.descricao || '').toLowerCase();
-                let canal = 'Outros / Gateway';
-
-                if (desc.includes('pix')) canal = 'PIX';
-                else if (desc.includes('credito') || desc.includes('crédito')) canal = 'Cartão de Crédito';
-                else if (desc.includes('debito') || desc.includes('débito')) canal = 'Cartão de Débito';
-                else if (desc.includes('boleto')) canal = 'Boleto Bancário';
-
-                if (canalFiltro === 'todos' || canal === canalFiltro) {
-                    let bruto = parseFloat(item.valor) || 0;
-                    
-                    // Aplica estritamente a taxa parametrizada. Se não houver regra, fica ZERO (0.00).
-                    let configCanal = mapaTaxas[canal] || { percentual: 0, fixa: 0 };
-                    let mdr = (bruto * (configCanal.percentual / 100)) + configCanal.fixa;
-                    if (mdr > bruto) mdr = bruto; // Proteção matemática para não negativar
-                    let liquido = bruto - mdr;
-
-                    lista.push({
-                        data: item.vencimento || '',
-                        canal: canal,
-                        cliente: item.cliente || 'Cliente Diversos',
-                        descricao: item.descricao || 'Recebimento',
-                        bruto: bruto,
-                        mdr: mdr,
-                        liquido: liquido
-                    });
-                }
-            });
-
-            lista.sort((a, b) => new Date(a.data) - new Date(b.data));
-
-            if (lista.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" class="vazio">Nenhum título corresponde ao canal selecionado.</td></tr>`;
-                document.getElementById('resumoCartoes').innerText = `Total Bruto: R$ 0,00`;
-                return;
-            }
-
-            let totalBrutoGeral = 0;
-            let totalLiquidoGeral = 0;
-            let html = '';
-
-            lista.forEach(item => {
-                totalBrutoGeral += item.bruto;
-                totalLiquidoGeral += item.liquido;
-                let dataFmt = item.data ? item.data.split('-').reverse().join('/') : '--/--/----';
-
-                html += `<tr>
-                    <td>${dataFmt}</td>
-                    <td><span class="badge-canal">${item.canal}</span></td>
-                    <td><strong>${item.cliente}</strong></td>
-                    <td>${item.descricao}</td>
-                    <td class="num">${formatarMoeda(item.bruto)}</td>
-                    <td class="num" style="color:var(--danger);">${formatarMoeda(item.mdr)}</td>
-                    <td class="num" style="font-weight:700; color:var(--success);">${formatarMoeda(item.liquido)}</td>
-                </tr>`;
-            });
-
-            tbody.innerHTML = html;
-            document.getElementById('resumoCartoes').innerHTML = `
-                <span>Total Bruto: ${formatarMoeda(totalBrutoGeral)}</span> &nbsp;|&nbsp; 
-                <span style="color:var(--success);">Líquido Previsto: ${formatarMoeda(totalLiquidoGeral)}</span>
-            `;
-
+            const dados = await lerTudo('contas_receber', cid);
+            todos = dados.map(function (r) {
+                const canal = canalDe(r.descricao);
+                const bruto = numero(r.valor);
+                const cfg = mapa[canal] || { pct: 0, fixa: 0 };
+                let mdr = bruto * (cfg.pct / 100) + cfg.fixa;
+                if (mdr > bruto) mdr = bruto;
+                const rec = recebido(r.status);
+                return { id: r.id, venc: String(r.vencimento || '').substring(0, 10), canal: canal, cliente: r.cliente_nome || r.cliente || 'Cliente diversos',
+                         descricao: r.descricao || 'Recebimento', bruto: arred(bruto), mdr: arred(mdr), liquido: arred(bruto - mdr),
+                         recebido: rec, dataRec: String(r.data_recebimento || '').substring(0, 10), status: r.status || '' };
+            }).filter(function (x) { return x.venc; });
+            const datas = todos.map(function (x) { return x.venc; }).sort();
+            limites = { min: datas[0] || '', max: datas[datas.length - 1] || '' };
+            atalho('tudo');
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro de execução: ${err.message}</td></tr>`;
+            const msg = (err && err.message) ? err.message : 'erro desconhecido';
+            document.getElementById('listaRec').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">Não foi possível carregar os recebíveis: ' + esc(msg) + '</div>';
+            toast('Erro ao carregar: ' + msg, 'error');
         }
     }
 
-    async function inicializarPagina() {
-        let u = obterUsuario();
-        if(!u || !u.email) { location.href = 'login.html'; return; }
-        if (u.email) {
-            const elUserName = document.getElementById('userName');
-            if (elUserName) elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-
-        const master = ehMaster();
-        if (master) {
-            document.body.classList.add('usuario-master');
-            const select = document.getElementById('selectEmpresa');
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            if (data && select) {
-                select.innerHTML = '';
-                data.forEach(emp => {
-                    select.innerHTML += `<option value="${emp.id}">${emp.nome_fantasia || emp.razao_social}</option>`;
-                });
-                select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-            }
-        } else {
-            document.body.classList.remove('usuario-master');
-        }
-
-        carregarRecebiveisCartoes();
+    function aplicar() {
+        const de = document.getElementById('filtroDataInicio').value, ate = document.getElementById('filtroDataFim').value;
+        const canal = document.getElementById('filtroCanal').value, sit = document.getElementById('filtroSit').value;
+        const txt = norm(document.getElementById('filtroTexto').value);
+        const lista = todos.filter(function (x) {
+            if (de && x.venc < de) return false;
+            if (ate && x.venc > ate) return false;
+            if (canal !== 'todos' && x.canal !== canal) return false;
+            if (sit === 'recebido' && !x.recebido) return false;
+            if (sit === 'aberto' && x.recebido) return false;
+            if (txt && (norm(x.cliente) + ' ' + norm(x.descricao)).indexOf(txt) < 0) return false;
+            return true;
+        }).sort(function (a, b) { return a.venc < b.venc ? -1 : (a.venc > b.venc ? 1 : a.id - b.id); });
+        let bruto = 0, mdr = 0, liq = 0, recV = 0, abV = 0, nRec = 0, nAb = 0;
+        lista.forEach(function (x) { bruto += x.bruto; mdr += x.mdr; liq += x.liquido; if (x.recebido) { recV += x.liquido; nRec++; } else { abV += x.liquido; nAb++; } });
+        R = { de: de, ate: ate, canal: canal, sit: sit, txt: txt, lista: lista, bruto: arred(bruto), mdr: arred(mdr), liq: arred(liq), rec: arred(recV), ab: arred(abV), nRec: nRec, nAb: nAb };
+        desenhar();
     }
 
-    async function trocarEmpresa() {
-        if (!ehMaster()) return;
-        const select = document.getElementById('selectEmpresa');
-        if (select) {
-            localStorage.setItem('empresaSelecionada', select.value);
-            carregarRecebiveisCartoes();
-        }
+    function desenhar() {
+        document.getElementById('kpiBruto').textContent = B(R.bruto);
+        document.getElementById('kpiBrutoSub').textContent = R.lista.length + (R.lista.length === 1 ? ' título' : ' títulos');
+        document.getElementById('kpiMdr').textContent = B(R.mdr);
+        document.getElementById('kpiMdrSub').textContent = R.bruto ? ('Média de ' + fmtBR(R.mdr / R.bruto * 100) + '% sobre o bruto') : '\u00a0';
+        document.getElementById('kpiLiq').textContent = B(R.liq);
+        document.getElementById('kpiRec').textContent = B(R.rec) + ' / ' + B(R.ab);
+        document.getElementById('kpiAbSub').textContent = R.nRec + ' recebido(s) · ' + R.nAb + ' em aberto (líquido)';
+
+        const av = document.getElementById('avisoTaxas');
+        if (taxasErro) { av.textContent = 'Não foi possível ler as taxas parametrizadas (' + taxasErro + '). Por isso o MDR aparece como zero. Verifique em "Configurar Taxas (MDR)".'; av.style.display = 'block'; }
+        else if (!taxasOk) { av.textContent = 'Nenhuma taxa MDR foi cadastrada para esta empresa: o líquido previsto é igual ao bruto. Cadastre em "Configurar Taxas (MDR)".'; av.style.display = 'block'; }
+        else av.style.display = 'none';
+
+        document.getElementById('contaReg').textContent = R.lista.length + (R.lista.length === 1 ? ' registro' : ' registros');
+        const el = document.getElementById('listaRec');
+        if (!R.lista.length) { el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum recebível encontrado para o período e filtros selecionados.</div>'; return; }
+        let h = '<table class="tabela"><thead><tr><th>Vencimento</th><th>Canal</th><th>Cliente / Pagador</th><th>Descrição</th><th>Situação</th><th class="num">Bruto (R$)</th><th class="num">Taxa MDR (R$)</th><th class="num">Líquido (R$)</th></tr></thead><tbody>';
+        R.lista.forEach(function (x) {
+            h += '<tr><td>' + dataBR(x.venc) + '</td><td><span class="badge-canal">' + esc(x.canal) + '</span></td><td><strong>' + esc(x.cliente) + '</strong></td><td>' + esc(x.descricao) + '</td>' +
+                 '<td>' + (x.recebido ? '<span class="badge-st badge-ent">Recebido</span>' + (x.dataRec ? '<span class="sub">' + dataBR(x.dataRec) + '</span>' : '') : '<span class="badge-st badge-canal badge-ab">Em aberto</span>') + '</td>' +
+                 '<td class="num">' + fmtBR(x.bruto) + '</td><td class="num neg">' + (x.mdr ? fmtBR(x.mdr) : '—') + '</td><td class="num pos">' + fmtBR(x.liquido) + '</td></tr>';
+        });
+        h += '</tbody><tfoot><tr><td colspan="5">TOTAL</td><td class="num">' + fmtBR(R.bruto) + '</td><td class="num">' + fmtBR(R.mdr) + '</td><td class="num">' + fmtBR(R.liq) + '</td></tr></tfoot></table>';
+        el.innerHTML = h;
     }
 
-    window.onload = inicializarPagina;
+    // ---------- impressão padrão ERPPrint ----------
+    function executarImpressao() {
+        if (!R) { toast('Aguarde o carregamento.', 'info'); return; }
+        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
+        const sitTxt = R.sit === 'todos' ? 'Recebidos e em aberto' : (R.sit === 'recebido' ? 'Apenas recebidos' : 'Apenas em aberto');
+        const filtros = [['Vencimento', dataBR(R.de) + ' a ' + dataBR(R.ate)], ['Canal', R.canal === 'todos' ? 'Todos' : R.canal], ['Situação', sitTxt]];
+        if (R.txt) filtros.push(['Busca', document.getElementById('filtroTexto').value]);
+        ERPPrint.imprimir({
+            titulo: 'Conciliação de Cartões, PIX & Gateways',
+            subtitulo: 'Recebíveis digitais por canal, com taxa MDR e valor líquido previsto',
+            codigo: 'FIN-CG',
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: [['Total bruto', B(R.bruto)], ['Taxas (MDR)', B(R.mdr)], ['Líquido previsto', B(R.liq)], ['Líquido já recebido', B(R.rec)], ['Líquido em aberto', B(R.ab)]],
+            colunas: [{ t: 'Vencimento', w: 1.1 }, { t: 'Canal', w: 1.5 }, { t: 'Cliente / Pagador', w: 2.4 }, { t: 'Descrição', w: 3 }, { t: 'Situação', w: 1.1 },
+                      { t: 'Bruto (R$)', w: 1.2, a: 'right' }, { t: 'MDR (R$)', w: 1.1, a: 'right' }, { t: 'Líquido (R$)', w: 1.2, a: 'right' }],
+            linhas: R.lista.map(function (x) { return [dataBR(x.venc), x.canal, x.cliente, x.descricao, x.recebido ? 'Recebido' : 'Em aberto', fmtBR(x.bruto), x.mdr ? fmtBR(x.mdr) : '—', fmtBR(x.liquido)]; }),
+            totais: R.lista.length ? ['TOTAL', '', '', '', '', fmtBR(R.bruto), fmtBR(R.mdr), fmtBR(R.liq)] : null,
+            observacao: 'Canal identificado pela descrição do título (PIX, crédito, débito, boleto). MDR calculado pelas taxas parametrizadas da empresa' +
+                (taxasOk ? '.' : ' (nenhuma taxa cadastrada: MDR igual a zero).') + ' Títulos em aberto representam valores previstos, ainda não recebidos.',
+            assinaturas: ['Responsável financeiro', 'Conferência / Contador']
+        });
+    }
+
+    window.onload = carregar;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
 </body>
