@@ -98,9 +98,10 @@
     <div class="panel">
         <div class="panel-title"><span class="t"><i class="fas fa-filter" style="color:var(--primary);"></i> Filtros do fechamento</span></div>
         <div class="atalhos">
+            <button class="chip ativo" type="button" data-p="tudo" onclick="atalho('tudo')">Todo o período</button>
             <button class="chip" type="button" data-p="hoje" onclick="atalho('hoje')">Hoje</button>
             <button class="chip" type="button" data-p="semana" onclick="atalho('semana')">Últimos 7 dias</button>
-            <button class="chip ativo" type="button" data-p="mes" onclick="atalho('mes')">Mês atual</button>
+            <button class="chip" type="button" data-p="mes" onclick="atalho('mes')">Mês atual</button>
             <button class="chip" type="button" data-p="mesant" onclick="atalho('mesant')">Mês anterior</button>
             <button class="chip" type="button" data-p="ano" onclick="atalho('ano')">Ano atual</button>
         </div>
@@ -136,6 +137,7 @@
 
     let todosMovs = [];     // todos os movimentos realizados da empresa (mesma regra do Fluxo de Caixa)
     let ignorados = 0;
+    let primeiraData = '';   // data do primeiro lançamento realizado da empresa (período padrão = igual ao Fluxo de Caixa)
     let R = null;           // resultado do último filtro
 
     function esc(s) {
@@ -177,7 +179,8 @@
     }
     function atalho(p) {
         const h = new Date(), a = h.getFullYear(), m = h.getMonth();
-        if (p === 'hoje') definirPeriodo(iso(h), iso(h));
+        if (p === 'tudo') definirPeriodo(primeiraData || iso(h), iso(h));
+        else if (p === 'hoje') definirPeriodo(iso(h), iso(h));
         else if (p === 'semana') { const i = new Date(h); i.setDate(i.getDate() - 6); definirPeriodo(iso(i), iso(h)); }
         else if (p === 'mes') definirPeriodo(iso(new Date(a, m, 1)), iso(new Date(a, m + 1, 0)));
         else if (p === 'mesant') definirPeriodo(iso(new Date(a, m - 1, 1)), iso(new Date(a, m, 0)));
@@ -190,7 +193,7 @@
         document.getElementById('filtroTipo').value = 'todos';
         document.getElementById('filtroCentro').value = 'todos';
         document.getElementById('filtroTexto').value = '';
-        atalho('mes');
+        atalho('tudo');
     }
 
     // ---------- carga (mesma regra do Fluxo de Caixa: só realizado) ----------
@@ -341,13 +344,13 @@
     async function inicializarPagina() {
         const cid = obterClienteIdAtivo();
         carregarCentros(cid);
-        atalho('mes');
         try {
             const mv = await ERPSaldos.carregarMovimentos(sb, cid);
             if (mv.erro) throw mv.erro;
             todosMovs = mv.movs || [];
             ignorados = mv.ignorados || 0;
-            aplicar();
+            primeiraData = todosMovs.length ? todosMovs[0].data : '';
+            atalho('tudo');   // define as datas DEPOIS da carga e já calcula
         } catch (err) {
             const msg = (err && err.message) ? err.message : 'erro desconhecido';
             document.getElementById('listaDias').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">Não foi possível carregar o caixa: ' + esc(msg) + '</div>';
