@@ -3,14 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central de Relatórios Oficiais & BI — Sacramento ERP</title>
+    <title>Gestão Financeira, Faturamento & Comercial — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.pluggy.ai/pluggy-connect/v2.2.0/pluggy-connect.js"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
-    <script src="erp-print.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -20,495 +18,513 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
-        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 18px 40px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000; width: 100%;
+        }
+        .site-brand { display: flex; align-items: center; gap: 14px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 42px; height: 42px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,0.3); }
+        .brand-info h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; margin: 0; }
+        .brand-info span { font-size: 10px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .search-global-box { position: relative; flex: 1; max-width: 350px; margin: 0 20px; }
+        .search-global-box input { width: 100%; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px; padding: 8px 14px 8px 36px; color: #fff; font-size: 13px; outline: none; transition: 0.2s; }
+        .search-global-box input::placeholder { color: #cbd5e1; }
+        .search-global-box input:focus { background: rgba(255,255,255,0.2); border-color: #93c5fd; }
+        .search-global-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #93c5fd; font-size: 13px; }
+        
+        .search-results-dropdown { position: absolute; top: 100%; left: 0; width: 100%; background: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); margin-top: 6px; display: none; z-index: 2000; overflow: hidden; border: 1px solid var(--border); }
+        .search-item { padding: 10px 14px; font-size: 13px; color: var(--text-main); text-decoration: none; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); transition: 0.15s; }
+        .search-item:hover { background: #eff6ff; color: var(--primary); }
+
+        .site-nav-right { display: flex; align-items: center; gap: 16px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
-        .btn-acao.sucesso:hover { background: #059669; }
-        .btn-acao.cinza { background: #64748b; box-shadow: none; }
-        .btn-acao.cinza:hover { background: #475569; }
-
-        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
-
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
-        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.cinza { border-top-color: #94a3b8; } .kpi-card.azul { border-top-color: var(--primary); }
-        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
-        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
-        .kpi-sub { font-size: 11px; color: var(--text-light); }
-
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .panel-title .t { display: flex; align-items: center; gap: 8px; }
-
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
-        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
-        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .filtros-box { display: grid; grid-template-columns: 2fr 1.4fr 1.4fr 1fr 1fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
-        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
-        .chip:hover { background: var(--bg); }
-        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
-
-        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
-
-        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
-        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
-        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        .tabela tbody tr:hover { background: #f8fafc; }
-        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
-        .pos { color: #047857; font-weight: 700; } .neg { color: #b91c1c; font-weight: 700; }
-        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
-        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
-        .badge-ent { background: #dcfce7; color: #166534; } .badge-sai { background: #fee2e2; color: #991b1b; } .badge-ab { background: #fef3c7; color: #92400e; } .badge-x { background: #e2e8f0; color: #475569; }
-
-        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
-
-        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } }
-        @media (max-width: 600px) { .kpi-grid, .filtros-box { grid-template-columns: 1fr; } }
-    .charts-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
-        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; height: 290px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
-        .chart-box h4 { font-size: 13px; font-weight: 800; color: var(--secondary); margin-bottom: 8px; }
-        .chart-container { position: relative; flex: 1; min-height: 0; }
-        .rodape-lista { font-size: 12px; color: var(--text-light); margin-top: 10px; }
-        @media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr; } }
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+        
+        .hub-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-top: 10px; }
+        .hub-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: inherit; cursor: pointer; }
+        .hub-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.08); border-color: var(--primary); }
+        .hub-card-img { height: 140px; position: relative; display: flex; align-items: flex-end; padding: 12px 16px; overflow: hidden; background: #1e3a8a; }
+        .hub-card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+        .hub-card-img::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(15,23,42,0.6)); z-index: 1; }
+        .hub-badge { position: relative; z-index: 2; background: rgba(255,255,255,0.9); padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; color: var(--secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .hub-card-body { padding: 20px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+        .hub-card-title { font-size: 16px; font-weight: 700; color: var(--secondary); }
+        .hub-card-desc { font-size: 12px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .hub-card-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; font-size: 13px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 12px; }
+        
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
 <body>
-<div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+
+    <div class="search-global-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="inputBuscaGlobal" placeholder="Pesquisar módulo, financeiro..." oninput="executarBuscaGlobal(this.value)">
+        <div class="search-results-dropdown" id="dropdownResultados"></div>
+    </div>
+
+    <div class="site-nav-right">
+        <a href="central_ajuda.html" style="background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;"><i class="fas fa-question-circle"></i> Ajuda</a>
+        
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 18px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
 
 <div class="container">
     <div class="page-toolbar">
-        <a href="modulo_financeiro.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Módulo Financeiro</a>
-        <a href="index.html" class="btn-acao cinza"><i class="fas fa-home"></i> Início</a>
-        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Oficial</button>
+        <button class="btn-acao" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
     </div>
 
     <div>
-        <div class="page-title"><i class="fas fa-file-contract" style="color:var(--primary);"></i> Central de Relatórios Oficiais & BI</div>
-        <div class="page-subtitle">Relatórios consolidados dos módulos do ERP, com indicadores, gráficos e impressão no padrão oficial</div>
+        <div class="page-title"><i class="fas fa-wallet" style="color:var(--primary);"></i> Gestão Financeira, Faturamento & Comercial</div>
+        <div class="page-subtitle">Selecione abaixo o subsistema financeiro desejado para gerenciar contas, faturas, fluxo de caixa e relatórios.</div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card azul"><span class="kpi-title">Total de registros</span><span class="kpi-value" id="kpiReg">0</span><span class="kpi-sub" id="kpiRegSub">&nbsp;</span></div>
-        <div class="kpi-card cinza"><span class="kpi-title" id="kpiMontLabel">Montante financeiro</span><span class="kpi-value" id="kpiMont">—</span><span class="kpi-sub" id="kpiMontSub">&nbsp;</span></div>
-        <div class="kpi-card verde"><span class="kpi-title">Concluídos / Ativos</span><span class="kpi-value" id="kpiConc" style="color:var(--success);">0</span><span class="kpi-sub" id="kpiConcSub">&nbsp;</span></div>
-        <div class="kpi-card vermelho"><span class="kpi-title">Pendentes / Em aberto</span><span class="kpi-value" id="kpiPend" style="color:var(--danger);">0</span><span class="kpi-sub" id="kpiPendSub">&nbsp;</span></div>
-    </div>
+    <div class="hub-grid">
+        <a href="contas_pagar.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80" alt="Contas a Pagar">
+                <span class="hub-badge">Despesas</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Contas a Pagar</div>
+                <div class="hub-card-desc">Controle de despesas, faturas em aberto, fornecedores e baixa de títulos com relatórios.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
 
-    <div class="panel">
-        <div class="panel-title"><span class="t"><i class="fas fa-filter" style="color:var(--primary);"></i> Seleção do relatório e critérios</span></div>
-        <div class="filtros-box">
-            <div><label for="filtroTipo">Relatório</label>
-                <select id="filtroTipo" class="form-control" style="font-weight:700;" onchange="trocarRelatorio()">
-                    <optgroup label="Financeiro & Tesouraria">
-                        <option value="pagar">Contas a Pagar</option>
-                        <option value="receber">Contas a Receber</option>
-                        <option value="transferencias">Transferências Bancárias</option>
-                        <option value="extrato">Extrato Bancário Importado (OFX)</option>
-                    </optgroup>
-                    <optgroup label="Cadastros & Estrutura">
-                        <option value="parceiros">Parceiros & Clientes</option>
-                        <option value="socios">Quadro Societário</option>
-                        <option value="centros_custo">Centros de Custo</option>
-                        <option value="ativos">Ativos & Equipamentos</option>
-                    </optgroup>
-                    <optgroup label="Tecnologia & P&D">
-                        <option value="projetos_pd">Projetos de P&D</option>
-                        <option value="aportes_pd">Aportes & Contratos de Fomento</option>
-                        <option value="custos_pd">Custos de P&D</option>
-                        <option value="faturamento_pd">Faturamento de P&D (NFS-e)</option>
-                    </optgroup>
-                </select></div>
-            <div><label for="filtroStatus">Situação</label>
-                <select id="filtroStatus" class="form-control" onchange="aplicar()">
-                    <option value="todos">Todos os registros</option>
-                    <option value="aberto">Pendentes / em aberto</option>
-                    <option value="concluido">Concluídos / ativos</option>
-                </select></div>
-            <div><label for="filtroBusca">Buscar</label><input type="text" id="filtroBusca" class="form-control" placeholder="Nome ou descrição..." oninput="aplicar()"></div>
-            <div><label for="filtroDataInicio" id="lblDe">Data — de</label><input type="date" id="filtroDataInicio" class="form-control" onchange="aplicar()"></div>
-            <div><label for="filtroDataFim" id="lblAte">Data — até</label><input type="date" id="filtroDataFim" class="form-control" onchange="aplicar()"></div>
-            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
+        <a href="contas_receber.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=600&q=80" alt="Contas a Receber">
+                <span class="hub-badge">Receitas</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Contas a Receber</div>
+                <div class="hub-card-desc">Projeção e controlo de recebimentos, faturas de clientes e títulos pendentes.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="transferencias.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80" alt="Transferências">
+                <span class="hub-badge">Tesouraria</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Transferências</div>
+                <div class="hub-card-desc">Movimentações entre contas, pagamentos externos e aportes de capital próprio / sócios.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="extrato_bancario.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80" alt="Extrato Bancário">
+                <span class="hub-badge">Extrato</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Extrato Bancário</div>
+                <div class="hub-card-desc">Consulta detalhada de saldos, entradas, saídas e histórico consolidado por conta.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="conciliacao.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80" alt="Conciliação OFX">
+                <span class="hub-badge">Conciliação</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Conciliação OFX</div>
+                <div class="hub-card-desc">Importação de ficheiros de extrato bancário para conciliação automática de pagamentos.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <!-- OPEN FINANCE (MODO HÍBRIDO INTERNO: PORTAL INTEGRADO VIA IFRAME) -->
+        <div onclick="abrirJanelaConexaoBanco(event)" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80" alt="Open Finance">
+                <span class="hub-badge" style="background: #10b981; color: #fff;">Open Finance</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Conectar Bancos (Nubank, Inter...)</div>
+                <div class="hub-card-desc">Sincronize extratos diários de forma automática e segura via Open Finance.</div>
+                <div class="hub-card-footer"><span>Configurar Conexão</span> <i class="fas fa-plug"></i></div>
+            </div>
         </div>
-        <div class="aviso" id="avisoRel"></div>
-    </div>
 
-    <div class="charts-grid">
-        <div class="chart-box"><h4 id="tituloGraf1">Distribuição por situação</h4><div class="chart-container"><canvas id="chartStatus"></canvas></div></div>
-        <div class="chart-box"><h4 id="tituloGraf2">Volume por categoria</h4><div class="chart-container"><canvas id="chartCategoria"></canvas></div></div>
-    </div>
+        <a href="orcamentos.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80" alt="Orçamentos">
+                <span class="hub-badge">Comercial</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Orçamentos & Propostas</div>
+                <div class="hub-card-desc">Elaboração de propostas comerciais e conversão automatizada em faturas.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
 
-    <div class="panel">
-        <div class="panel-title"><span class="t"><i class="fas fa-table" style="color:var(--primary);"></i> <span id="tituloRel">Relatório</span></span><span id="contaReg" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
-        <div class="table-wrap" id="listaRel"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
-        <div class="rodape-lista" id="rodapeLista"></div>
+        <a href="faturas.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1554224154-26032ffc0d07?auto=format&fit=crop&w=600&q=80" alt="Faturas & Emissão Fiscal">
+                <span class="hub-badge">Faturamento</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Faturas & Emissão Fiscal</div>
+                <div class="hub-card-desc">Central de faturas comerciais, transmissão XML/SEFAZ e espelhos oficiais A4 (DANFE/NFS-e).</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="contas_bancarias.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1601597111158-2fceff292cdc?auto=format&fit=crop&w=600&q=80" alt="Contas Bancárias">
+                <span class="hub-badge">Bancos & Caixa</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Contas Bancárias</div>
+                <div class="hub-card-desc">Gestão de saldos, contas correntes, caixas internos e instituições financeiras.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="fluxo_de_caixa.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80" alt="Fluxo de Caixa">
+                <span class="hub-badge">Gerencial</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Fluxo de Caixa</div>
+                <div class="hub-card-desc">Consolidado dinâmico de entradas, saídas e saldo projetado por período.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="dre.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80" alt="DRE Gerencial">
+                <span class="hub-badge">Contábil</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">DRE Gerencial</div>
+                <div class="hub-card-desc">Demonstração do Resultado do Exercício com apuração contábil por centro de custo.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="extrato_analitico.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=600&q=80" alt="Extrato Analítico">
+                <span class="hub-badge">Relatório</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Extrato Analítico</div>
+                <div class="hub-card-desc">Rastreabilidade completa de todas as entradas e saídas financeiras por período.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="relatorio_parceiros_financeiro.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=600&q=80" alt="Posição por Parceiro">
+                <span class="hub-badge">Inadimplência</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Posição por Parceiro</div>
+                <div class="hub-card-desc">Relatório analítico de contas a pagar e receber por cliente/fornecedor com alertas de atraso.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="relatorios.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80" alt="Central de Relatórios">
+                <span class="hub-badge">Relatórios & BI</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Central de Relatórios</div>
+                <div class="hub-card-desc">Relatórios oficiais de todos os módulos (financeiro, cadastros e P&D) com indicadores, gráficos e impressão padronizada.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="fechamento_caixa.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=600&q=80" alt="Fechamento de Caixa">
+                <span class="hub-badge">Conciliação</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Fechamento de Caixa</div>
+                <div class="hub-card-desc">Painel de apuração diária de entradas, saídas e saldo líquido consolidado de caixa.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="conciliacao_cartoes.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=600&q=80" alt="Conciliação de Cartões">
+                <span class="hub-badge">Gateways</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Conciliação de Cartões & PIX</div>
+                <div class="hub-card-desc">Gestão e apuração de recebíveis digitais, taxas MDR e repasses de gateways de pagamento.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="contratos_recorrentes.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1450133064473-71024230f91b?auto=format&fit=crop&w=600&q=80" alt="Contratos Recorrentes">
+                <span class="hub-badge">Recorrente</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Contratos & Recorrência</div>
+                <div class="hub-card-desc">Gestão de assinaturas, mensalidades e geração automatizada de faturas a receber.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="aprovacao_pagamentos.html" class="hub-card">
+            <div class="hub-card-img">
+                <img src="https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&w=600&q=80" alt="Aprovação de Pagamentos">
+                <span class="hub-badge">Alçadas</span>
+            </div>
+            <div class="hub-card-body">
+                <div class="hub-card-title">Aprovação de Pagamentos</div>
+                <div class="hub-card-desc">Controle de alçadas, liberação financeira de contas a pagar e alertas de vencimento.</div>
+                <div class="hub-card-footer"><span>Abrir Subsistema</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
     </div>
 </div>
 
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
 <script>
-    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-    const LIMITE_TELA = 500;
-
-    /* Cada relatório diz: tabela, campos de data/valor/situação e colunas.
-       "keys" lista nomes possíveis da coluna no banco; vale o primeiro que tiver valor (tolera diferenças de cadastro). */
-    const RELATORIOS = {
-        pagar: { titulo: 'Contas a Pagar', cod: 'REL-CP', tabela: 'contas_pagar', datas: ['vencimento'], rotData: 'Vencimento', valor: ['valor'], status: ['status'], cat: ['centro_custo'], catRot: 'centro de custo',
-            cols: [{ t: 'Vencimento', k: ['vencimento'], tipo: 'data', w: 1.1 }, { t: 'Fornecedor', k: ['fornecedor_nome', 'fornecedor'], w: 2.2 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Centro de custo', k: ['centro_custo'], w: 1.8 },
-                   { t: 'Pagamento', k: ['data_pagamento'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        receber: { titulo: 'Contas a Receber', cod: 'REL-CR', tabela: 'contas_receber', datas: ['vencimento'], rotData: 'Vencimento', valor: ['valor'], status: ['status'], cat: ['centro_custo'], catRot: 'centro de custo',
-            cols: [{ t: 'Vencimento', k: ['vencimento'], tipo: 'data', w: 1.1 }, { t: 'Cliente', k: ['cliente_nome', 'cliente'], w: 2.2 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Centro de custo', k: ['centro_custo'], w: 1.8 },
-                   { t: 'Recebimento', k: ['data_recebimento'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        transferencias: { titulo: 'Transferências Bancárias', cod: 'REL-TR', tabela: 'transferencias', datas: ['data', 'created_at'], rotData: 'Data', valor: ['valor'], status: null, cat: ['conta_destino'], catRot: 'conta de destino',
-            cols: [{ t: 'Data', k: ['data', 'created_at'], tipo: 'data', w: 1.1 }, { t: 'Origem', k: ['conta_origem'], w: 2 }, { t: 'Destino', k: ['conta_destino'], w: 2 }, { t: 'Observação', k: ['observacao'], w: 3.4 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        extrato: { titulo: 'Extrato Bancário Importado (OFX)', cod: 'REL-EX', tabela: 'extrato_ofx_importado', datas: ['data_transacao'], rotData: 'Data', valor: ['valor'], status: ['status'], cat: ['tipo'], catRot: 'tipo', saldoLiquido: true,
-            cols: [{ t: 'Data', k: ['data_transacao'], tipo: 'data', w: 1.1 }, { t: 'Conta', k: ['conta_id'], tipo: 'conta', w: 1.8 }, { t: 'Histórico', k: ['historico'], w: 4 }, { t: 'Tipo', k: ['tipo'], w: 1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        parceiros: { titulo: 'Parceiros & Clientes', cod: 'REL-PA', tabela: 'parceiros', datas: ['created_at'], rotData: 'Cadastro', valor: null, status: null, cat: ['tipo_cadastro', 'tipo'], catRot: 'tipo de cadastro',
-            cols: [{ t: 'Nome / Razão social', k: ['nome', 'nome_fantasia'], w: 3 }, { t: 'Tipo', k: ['tipo_cadastro', 'tipo'], w: 1.2 }, { t: 'CPF / CNPJ', k: ['cnpj_cpf', 'cpf_cnpj'], w: 1.8 }, { t: 'Telefone', k: ['telefone'], w: 1.4 }, { t: 'Cidade / UF', k: ['cidade_uf', 'cidade'], w: 1.6 }, { t: 'E-mail', k: ['email', 'email_nfe'], w: 2.4 }] },
-        socios: { titulo: 'Quadro Societário', cod: 'REL-SO', tabela: 'socios', datas: ['data_entrada'], rotData: 'Entrada', valor: null, status: ['situacao'], cat: ['funcao'], catRot: 'função',
-            cols: [{ t: 'Nome', k: ['nome'], w: 3 }, { t: 'CPF', k: ['cpf'], w: 1.6 }, { t: 'Função', k: ['funcao'], w: 2 }, { t: 'Participação', k: ['participacao', 'percentual_rateio'], tipo: 'pct', w: 1.2, a: 'right' }, { t: 'Entrada', k: ['data_entrada'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['situacao'], tipo: 'status', w: 1.1 }] },
-        centros_custo: { titulo: 'Centros de Custo', cod: 'REL-CC', tabela: 'centros_custo', datas: ['created_at'], rotData: 'Cadastro', valor: null, status: ['ativo'], cat: ['ativo'], catRot: 'situação',
-            cols: [{ t: 'Código', k: ['codigo'], w: 1 }, { t: 'Nome', k: ['nome'], w: 3 }, { t: 'Descrição', k: ['descricao'], w: 3.5 }, { t: 'Situação', k: ['ativo'], tipo: 'status', w: 1 }] },
-        ativos: { titulo: 'Ativos & Equipamentos', cod: 'REL-AT', tabela: 'ativos_equipamentos', datas: ['data_aquisicao'], rotData: 'Aquisição', valor: ['valor_aquisicao'], status: ['status_ativo'], cat: ['centro_custo'], catRot: 'setor / centro de custo', rotMontante: 'Valor de aquisição',
-            cols: [{ t: 'Patrimônio', k: ['patrimonio'], w: 1.2 }, { t: 'Ativo / Equipamento', k: ['nome_ativo'], w: 3 }, { t: 'Setor / Centro de custo', k: ['centro_custo'], w: 2.2 }, { t: 'Aquisição', k: ['data_aquisicao'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status_ativo'], tipo: 'status', w: 1.2 }, { t: 'Valor (R$)', k: ['valor_aquisicao'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        projetos_pd: { titulo: 'Projetos de P&D', cod: 'REL-PD', tabela: 'projetos_pd', datas: ['data_inicio', 'created_at'], rotData: 'Início', valor: ['orcamento', 'valor_orcamento', 'valor_total'], status: ['status'], cat: ['status'], catRot: 'situação', rotMontante: 'Orçamento total',
-            cols: [{ t: 'Código', k: ['codigo'], w: 1.1 }, { t: 'Projeto', k: ['nome', 'nome_projeto'], w: 3.5 }, { t: 'Coordenador', k: ['coordenador', 'responsavel'], w: 2 }, { t: 'Início', k: ['data_inicio'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.2 }, { t: 'Orçamento (R$)', k: ['orcamento', 'valor_orcamento', 'valor_total'], tipo: 'moeda', w: 1.4, a: 'right' }] },
-        aportes_pd: { titulo: 'Aportes & Contratos de Fomento', cod: 'REL-AP', tabela: 'aportes_pd', datas: ['data_recebimento'], rotData: 'Recebimento', valor: ['valor'], status: null, cat: ['projeto_id'], catTipo: 'projeto', catRot: 'projeto',
-            cols: [{ t: 'Recebimento', k: ['data_recebimento'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 3 }, { t: 'Observações', k: ['observacoes'], w: 4 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.4, a: 'right' }] },
-        custos_pd: { titulo: 'Custos de P&D', cod: 'REL-CU', tabela: 'custos_pd', datas: ['data_gasto'], rotData: 'Gasto', valor: ['valor'], status: null, cat: ['categoria'], catRot: 'categoria',
-            cols: [{ t: 'Data', k: ['data_gasto'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 2.2 }, { t: 'Categoria', k: ['categoria'], w: 1.6 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Prestador', k: ['prestador_nome', 'empresa_pagadora'], w: 2 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
-        faturamento_pd: { titulo: 'Faturamento de P&D (NFS-e)', cod: 'REL-FA', tabela: 'faturamento_pd', datas: ['data_emissao'], rotData: 'Emissão', valor: ['valor_nf'], status: ['status_nf'], cat: ['projeto_id'], catTipo: 'projeto', catRot: 'projeto',
-            cols: [{ t: 'Emissão', k: ['data_emissao'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 2.2 }, { t: 'Tomador', k: ['cliente_tomador'], w: 2.4 }, { t: 'NF nº', k: ['numero_nf'], w: 1 }, { t: 'Situação', k: ['status_nf'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor_nf'], tipo: 'moeda', w: 1.3, a: 'right' }] }
-    };
-
-    let cache = {};          // dados por tabela
-    let mapaProj = {}, mapaConta = {};
-    let atual = null;        // relatório em tela
-    let R = null;            // resultado filtrado
-    let chart1 = null, chart2 = null;
-    let seq = 0;
-
-    function esc(s) {
-        return String(s === null || s === undefined ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-    function norm(s) { return String(s === null || s === undefined ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
-    function numero(v) {
-        if (typeof v === 'number') return v;
-        let s = String(v === null || v === undefined ? '' : v).trim();
-        if (!s) return 0;
-        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-    function arred(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
-    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-    function B(n) { return 'R$ ' + fmtBR(n); }
-    function dataISO(d) {
-        if (!d) return '';
-        const s = String(d).trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
-        const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-        return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
-    }
-    function dataBR(d) { const i = dataISO(d); return i ? i.split('-').reverse().join('/') : '—'; }
-
-    function obterClienteIdAtivo() {
+    function getSb() {
+        if (window.sb) return window.sb;
         try {
-            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
-            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
-            return u.cliente_id ? parseInt(u.cliente_id) : 1;
-        } catch (e) { return 1; }
-    }
-    function toast(msg, type) {
-        type = type || 'success';
-        let c = document.getElementById('toastContainer');
-        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
-        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
-        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
-    }
-    async function lerTudo(tabela, cid) {
-        const out = [], PAG = 1000;
-        for (let ini = 0; ini < 200000; ini += PAG) {
-            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
-            if (r.error) throw r.error;
-            out.push.apply(out, r.data || []);
-            if (!r.data || r.data.length < PAG) break;
-        }
-        return out;
-    }
-
-    /* ---------- acesso aos campos ---------- */
-    function pega(row, keys) {
-        if (!keys) return null;
-        for (let i = 0; i < keys.length; i++) { const v = row[keys[i]]; if (v !== null && v !== undefined && String(v) !== '') return v; }
-        return null;
-    }
-    function textoStatus(v) {
-        if (v === true) return 'Ativo';
-        if (v === false) return 'Inativo';
-        return v === null || v === undefined || v === '' ? '' : String(v);
-    }
-    function classeStatus(v) {   // 'c' concluído/ativo, 'p' pendente/em aberto, 'x' cancelado/inativo/outro
-        const s = norm(textoStatus(v));
-        if (!s) return 'p';
-        if (/inativ|cancel|baixad|encerrad/.test(s)) return 'x';
-        if (/pago|recebido|quitado|ativ|conclu|concili|emitid|aprovad/.test(s)) return 'c';
-        return 'p';
-    }
-    function celula(col, row) {
-        const v = pega(row, col.k);
-        switch (col.tipo) {
-            case 'data': return v ? dataBR(v) : '—';
-            case 'moeda': return v === null ? '—' : fmtBR(numero(v));
-            case 'pct': return v === null ? '—' : fmtBR(numero(v)) + '%';
-            case 'status': { const t = textoStatus(v); return t || '—'; }
-            case 'projeto': return v === null ? '—' : (mapaProj[String(v)] || ('Projeto ' + v));
-            case 'conta': return v === null ? '—' : (mapaConta[String(v)] || ('Conta ' + v));
-            default: return v === null ? '—' : String(v);
-        }
-    }
-    function categoriaDe(cfg, row) {
-        const v = pega(row, cfg.cat);
-        if (v === null) return 'Não informado';
-        if (cfg.catTipo === 'projeto') return mapaProj[String(v)] || ('Projeto ' + v);
-        if (typeof v === 'boolean') return v ? 'Ativo' : 'Inativo';
-        return String(v);
-    }
-
-    /* ---------- carga ---------- */
-    async function carregarTabela(tabela) {
-        const cid = obterClienteIdAtivo();
-        const chave = cid + ':' + tabela;
-        if (cache[chave]) return cache[chave];
-        const dados = await lerTudo(tabela, cid);
-        cache[chave] = dados;
-        return dados;
-    }
-    async function carregarApoios(tipo) {
-        const cid = obterClienteIdAtivo();
-        const cfg = RELATORIOS[tipo];
-        const precisaProj = cfg.cols.some(function (c) { return c.tipo === 'projeto'; });
-        const precisaConta = cfg.cols.some(function (c) { return c.tipo === 'conta'; });
-        if (precisaProj) {
-            try {
-                const ps = await carregarTabela('projetos_pd');
-                mapaProj = {}; ps.forEach(function (p) { mapaProj[String(p.id)] = (p.codigo ? p.codigo + ' · ' : '') + (p.nome || p.nome_projeto || ('Projeto ' + p.id)); });
-            } catch (e) { mapaProj = {}; }
-        }
-        if (precisaConta) {
-            try {
-                const cs = await carregarTabela('contas_bancarias');
-                mapaConta = {}; cs.forEach(function (c) { mapaConta[String(c.id)] = c.nome || c.banco || ('Conta ' + c.id); });
-            } catch (e) { mapaConta = {}; }
-        }
-    }
-
-    async function trocarRelatorio() {
-        const tipo = document.getElementById('filtroTipo').value;
-        const cfg = RELATORIOS[tipo];
-        atual = tipo;
-        document.getElementById('filtroDataInicio').value = '';
-        document.getElementById('filtroDataFim').value = '';
-        document.getElementById('filtroStatus').value = 'todos';
-        document.getElementById('filtroStatus').disabled = !cfg.status;
-        document.getElementById('lblDe').textContent = cfg.rotData + ' — de';
-        document.getElementById('lblAte').textContent = cfg.rotData + ' — até';
-        document.getElementById('tituloRel').textContent = cfg.titulo;
-        document.getElementById('listaRel').innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Consultando base de dados...</div>';
-        const meu = ++seq;
-        try {
-            await carregarTabela(cfg.tabela);
-            await carregarApoios(tipo);
-            if (meu !== seq) return;
-            aplicar();
-        } catch (e) {
-            if (meu !== seq) return;
-            const msg = (e && e.message) ? e.message : 'erro desconhecido';
-            document.getElementById('listaRel').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Não foi possível carregar este relatório: ' + esc(msg) + '</div>';
-            R = null; zerarKpis();
-        }
-    }
-
-    function zerarKpis() {
-        ['kpiReg', 'kpiConc', 'kpiPend'].forEach(function (id) { document.getElementById(id).textContent = '0'; });
-        document.getElementById('kpiMont').textContent = '—';
-        ['kpiRegSub', 'kpiMontSub', 'kpiConcSub', 'kpiPendSub'].forEach(function (id) { document.getElementById(id).textContent = ' '; });
-        desenharGraficos(null);
-    }
-
-    function limparFiltros() {
-        document.getElementById('filtroBusca').value = '';
-        document.getElementById('filtroStatus').value = 'todos';
-        document.getElementById('filtroDataInicio').value = '';
-        document.getElementById('filtroDataFim').value = '';
-        aplicar();
-    }
-
-    /* ---------- filtros e totais ---------- */
-    function aplicar() {
-        if (!atual) return;
-        const cfg = RELATORIOS[atual];
-        const dados = cache[obterClienteIdAtivo() + ':' + cfg.tabela] || [];
-        const de = document.getElementById('filtroDataInicio').value, ate = document.getElementById('filtroDataFim').value;
-        const stF = cfg.status ? document.getElementById('filtroStatus').value : 'todos';
-        const txt = norm(document.getElementById('filtroBusca').value);
-        const av = document.getElementById('avisoRel');
-        av.style.display = 'none';
-        if (de && ate && de > ate) { av.textContent = 'A data inicial é maior que a data final. Ajuste o período.'; av.style.display = 'block'; }
-
-        const linhas = dados.filter(function (r) {
-            if (de || ate) {
-                const d = dataISO(pega(r, cfg.datas));
-                if (!d) return false;
-                if (de && d < de) return false;
-                if (ate && d > ate) return false;
+            if (window.supabase) {
+                window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
             }
-            if (stF !== 'todos') {
-                const c = classeStatus(pega(r, cfg.status));
-                if (stF === 'concluido' && c !== 'c') return false;
-                if (stF === 'aberto' && c !== 'p') return false;
-            }
-            if (txt) {
-                const alvo = cfg.cols.map(function (col) { return celula(col, r); }).join(' ');
-                if (norm(alvo).indexOf(txt) < 0) return false;
-            }
-            return true;
-        });
-        const dataOrd = function (r) { return dataISO(pega(r, cfg.datas)); };
-        linhas.sort(function (a, b) { const x = dataOrd(a), y = dataOrd(b); return x < y ? -1 : (x > y ? 1 : 0); });
-
-        let mont = 0, nC = 0, nP = 0, vC = 0, vP = 0;
-        const porCat = {}, porSt = {};
-        linhas.forEach(function (r) {
-            const val = cfg.valor ? numero(pega(r, cfg.valor)) : 0;
-            mont += val;
-            const cat = categoriaDe(cfg, r);
-            const pc = porCat[cat] = porCat[cat] || { n: 0, v: 0 }; pc.n++; pc.v += val;
-            if (cfg.status) {
-                const stv = pega(r, cfg.status), cl = classeStatus(stv), rot = textoStatus(stv) || 'Sem situação';
-                porSt[rot] = (porSt[rot] || 0) + 1;
-                if (cl === 'c') { nC++; vC += val; } else if (cl === 'p') { nP++; vP += val; }
-            }
-        });
-        R = { cfg: cfg, tipo: atual, de: de, ate: ate, stF: stF, txt: txt, linhas: linhas, mont: arred(mont), nC: nC, nP: nP, vC: arred(vC), vP: arred(vP), porCat: porCat, porSt: porSt };
-        desenhar();
+        } catch(e) {}
+        return window.sb || null;
     }
 
-    function desenhar() {
-        const cfg = R.cfg;
-        document.getElementById('kpiReg').textContent = R.linhas.length;
-        document.getElementById('kpiRegSub').textContent = cfg.titulo;
-        document.getElementById('kpiMontLabel').textContent = cfg.rotMontante || (cfg.saldoLiquido ? 'Saldo líquido (créditos − débitos)' : 'Montante financeiro');
-        document.getElementById('kpiMont').textContent = cfg.valor ? B(R.mont) : '—';
-        document.getElementById('kpiMontSub').textContent = cfg.valor ? 'Soma dos registros filtrados' : 'Este relatório não possui valores';
-        document.getElementById('kpiConc').textContent = cfg.status ? R.nC : '—';
-        document.getElementById('kpiConcSub').textContent = cfg.status ? (cfg.valor ? B(R.vC) : 'registro(s)') : 'Sem controle de situação';
-        document.getElementById('kpiPend').textContent = cfg.status ? R.nP : '—';
-        document.getElementById('kpiPendSub').textContent = cfg.status ? (cfg.valor ? B(R.vP) : 'registro(s)') : 'Sem controle de situação';
+    const EMAIL_MASTER_OBRIGATORIO = "lucianojorgesacramento@gmail.com";
 
-        document.getElementById('contaReg').textContent = R.linhas.length + (R.linhas.length === 1 ? ' registro' : ' registros');
-        const el = document.getElementById('listaRel');
-        if (!R.linhas.length) {
-            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum registro encontrado para os critérios informados.</div>';
-            document.getElementById('rodapeLista').textContent = '';
-            desenharGraficos(R);
+    const rotasModulos = [
+        { nome: "Central de Ajuda & Manuais", url: "central_ajuda.html", icon: "fa-question-circle", keywords: ["ajuda", "manual", "suporte", "faq"] },
+        { nome: "Portal Principal (Início)", url: "index.html", icon: "fa-home", keywords: ["inicio", "portal", "home", "principal"] },
+        { nome: "Módulo Financeiro", url: "modulo_financeiro.html", icon: "fa-wallet", keywords: ["financeiro", "modulo"] },
+        { nome: "Contas a Pagar", url: "contas_pagar.html", icon: "fa-file-invoice-dollar", keywords: ["pagar", "despesa", "fornecedor", "boleto"] },
+        { nome: "Contas a Receber", url: "contas_receber.html", icon: "fa-hand-holding-usd", keywords: ["receber", "receita", "cliente", "fatura"] },
+        { nome: "Faturas & Emissão", url: "faturas.html", icon: "fa-file-invoice", keywords: ["fatura", "nota", "fiscal", "sefaz", "nfe"] },
+        { nome: "Orçamentos & Propostas", url: "orcamentos.html", icon: "fa-file-contract", keywords: ["orcamento", "proposta", "comercial", "venda"] },
+        { nome: "Contas Bancárias / Caixa", url: "contas_bancarias.html", icon: "fa-university", keywords: ["banco", "caixa", "saldo", "conta"] },
+        { nome: "Fluxo de Caixa", url: "fluxo_de_caixa.html", icon: "fa-chart-line", keywords: ["fluxo", "caixa", "projecao", "entrada", "saida"] },
+        { nome: "DRE Gerencial", url: "dre.html", icon: "fa-chart-pie", keywords: ["dre", "resultado", "contabil", "exercicio"] },
+        { nome: "Extrato Analítico", url: "extrato_analitico.html", icon: "fa-file-alt", keywords: ["extrato", "analitico", "movimentacao", "relatorio"] },
+        { nome: "Posição por Parceiro", url: "relatorio_parceiros_financeiro.html", icon: "fa-address-book", keywords: ["parceiro", "cliente", "fornecedor", "inadimplencia", "posicao"] },
+        { nome: "Central de Relatórios & BI", url: "relatorios.html", icon: "fa-file-contract", keywords: ["relatorio", "relatorios", "central", "bi", "indicadores", "oficial"] },
+        { nome: "Fechamento de Caixa", url: "fechamento_caixa.html", icon: "fa-cash-register", keywords: ["fechamento", "caixa", "diario", "conciliacao"] },
+        { nome: "Conciliação de Cartões & PIX", url: "conciliacao_cartoes.html", icon: "fa-credit-card", keywords: ["cartao", "pix", "gateway", "mdr", "conciliacao"] },
+        { nome: "Contratos & Recorrência", url: "contratos_recorrentes.html", icon: "fa-file-contract", keywords: ["contrato", "recorrente", "mensalidade", "assinatura"] },
+        { nome: "Aprovação de Pagamentos", url: "aprovacao_pagamentos.html", icon: "fa-check-double", keywords: ["aprovacao", "pagamento", "alcada", "liberacao", "vencimento"] }
+    ];
+
+    function executarBuscaGlobal(termo) {
+        const dropdown = document.getElementById('dropdownResultados');
+        const query = termo.toLowerCase().trim();
+        if(!query) {
+            dropdown.style.display = 'none';
             return;
         }
-        const mostra = R.linhas.slice(0, LIMITE_TELA);
-        let h = '<table class="tabela"><thead><tr>';
-        cfg.cols.forEach(function (c) { h += '<th' + (c.a === 'right' ? ' class="num"' : '') + '>' + esc(c.t) + '</th>'; });
-        h += '</tr></thead><tbody>';
-        mostra.forEach(function (r) {
-            h += '<tr>';
-            cfg.cols.forEach(function (c) {
-                const t = esc(celula(c, r));
-                if (c.tipo === 'moeda') h += '<td class="num">' + t + '</td>';
-                else if (c.tipo === 'pct') h += '<td class="num">' + t + '</td>';
-                else if (c.tipo === 'status') {
-                    const cl = classeStatus(pega(r, c.k));
-                    h += '<td><span class="badge-st ' + (cl === 'c' ? 'badge-ent' : (cl === 'x' ? 'badge-x' : 'badge-ab')) + '">' + t + '</span></td>';
-                } else h += '<td>' + t + '</td>';
-            });
-            h += '</tr>';
-        });
-        h += '</tbody>';
-        if (cfg.valor) {
-            const idx = cfg.cols.findIndex(function (c) { return c.tipo === 'moeda'; });
-            h += '<tfoot><tr>';
-            cfg.cols.forEach(function (c, i) { h += i === 0 ? '<td>TOTAL</td>' : (i === idx ? '<td class="num">' + fmtBR(R.mont) + '</td>' : '<td></td>'); });
-            h += '</tr></tfoot>';
+        let encontrados = rotasModulos.filter(m => m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query)));
+        if(encontrados.length === 0) {
+            dropdown.innerHTML = `<div class="search-item" style="color:var(--text-light);">Nenhum módulo encontrado.</div>`;
+        } else {
+            dropdown.innerHTML = encontrados.map(m => `
+                <a href="${m.url}" class="search-item">
+                    <i class="fas ${m.icon}" style="color:var(--primary);"></i> ${m.nome}
+                </a>
+            `).join('');
         }
-        h += '</table>';
-        el.innerHTML = h;
-        document.getElementById('rodapeLista').textContent = R.linhas.length > LIMITE_TELA ? ('Mostrando os ' + LIMITE_TELA + ' primeiros de ' + R.linhas.length + ' registros na tela. A impressão e os totais consideram todos.') : '';
-        desenharGraficos(R);
+        dropdown.style.display = 'block';
     }
 
-    function desenharGraficos(res) {
-        if (chart1) { chart1.destroy(); chart1 = null; }
-        if (chart2) { chart2.destroy(); chart2 = null; }
-        if (!res || typeof Chart === 'undefined') return;
-        const cfg = res.cfg;
-        const cores = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#64748b', '#ec4899'];
-        let d1 = res.porSt, t1 = 'Registros por situação';
-        if (!cfg.status) { d1 = {}; Object.keys(res.porCat).forEach(function (k) { d1[k] = res.porCat[k].n; }); t1 = 'Registros por ' + cfg.catRot; }
-        let k1 = Object.keys(d1).sort(function (a, b) { return d1[b] - d1[a]; }).slice(0, 8);
-        document.getElementById('tituloGraf1').textContent = t1;
-        if (k1.length) chart1 = new Chart(document.getElementById('chartStatus').getContext('2d'), { type: 'doughnut',
-            data: { labels: k1, datasets: [{ data: k1.map(function (k) { return d1[k]; }), backgroundColor: cores }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } } });
-
-        const usaValor = !!cfg.valor;
-        const cats = Object.keys(res.porCat).sort(function (a, b) { return usaValor ? Math.abs(res.porCat[b].v) - Math.abs(res.porCat[a].v) : res.porCat[b].n - res.porCat[a].n; }).slice(0, 8);
-        document.getElementById('tituloGraf2').textContent = (usaValor ? 'Valor (R$) por ' : 'Registros por ') + cfg.catRot;
-        if (cats.length) chart2 = new Chart(document.getElementById('chartCategoria').getContext('2d'), { type: 'bar',
-            data: { labels: cats, datasets: [{ label: usaValor ? 'R$' : 'Registros', data: cats.map(function (k) { return usaValor ? arred(res.porCat[k].v) : res.porCat[k].n; }), backgroundColor: '#3b82f6', borderRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 30 } } } } });
+    function obterUsuarioAtual() {
+        try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+        return null;
     }
 
-    /* ---------- impressão padrão ERPPrint ---------- */
-    function executarImpressao() {
-        if (!R) { toast('Aguarde o carregamento do relatório.', 'info'); return; }
-        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
-        if (!R.linhas.length) { toast('Não há registros para imprimir com os filtros atuais.', 'error'); return; }
-        const cfg = R.cfg;
-        const filtros = [['Relatório', cfg.titulo]];
-        if (R.de || R.ate) filtros.push([cfg.rotData, (R.de ? dataBR(R.de) : 'início') + ' a ' + (R.ate ? dataBR(R.ate) : 'sem limite')]);
-        if (cfg.status && R.stF !== 'todos') filtros.push(['Situação', R.stF === 'aberto' ? 'Pendentes / em aberto' : 'Concluídos / ativos']);
-        if (R.txt) filtros.push(['Busca', document.getElementById('filtroBusca').value]);
-        const resumo = [['Registros', String(R.linhas.length)]];
-        if (cfg.valor) resumo.push([cfg.rotMontante || (cfg.saldoLiquido ? 'Saldo líquido' : 'Montante'), B(R.mont)]);
-        if (cfg.status) { resumo.push(['Concluídos / ativos', String(R.nC) + (cfg.valor ? ' · ' + B(R.vC) : '')]); resumo.push(['Pendentes / em aberto', String(R.nP) + (cfg.valor ? ' · ' + B(R.vP) : '')]); }
-        const idx = cfg.cols.findIndex(function (c) { return c.tipo === 'moeda'; });
-        ERPPrint.imprimir({
-            titulo: 'Relatório de ' + cfg.titulo,
-            subtitulo: 'Relatório oficial consolidado do ERP',
-            codigo: cfg.cod,
-            orientacao: 'landscape',
-            filtros: filtros,
-            resumo: resumo,
-            colunas: cfg.cols.map(function (c) { return { t: c.t, w: c.w, a: c.a }; }),
-            linhas: R.linhas.map(function (r) { return cfg.cols.map(function (c) { return celula(c, r); }); }),
-            totais: cfg.valor && idx >= 0 ? cfg.cols.map(function (c, i) { return i === 0 ? 'TOTAL' : (i === idx ? fmtBR(R.mont) : ''); }) : null,
-            observacao: 'Dados extraídos do ERP na data de emissão deste relatório.' + (cfg.saldoLiquido ? ' O valor líquido soma créditos e débitos do extrato importado.' : ''),
-            assinaturas: ['Responsável', 'Conferência / Contador']
-        });
+    function ehMasterGlobal() {
+        const u = obterUsuarioAtual();
+        return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER_OBRIGATORIO.toLowerCase().trim());
     }
 
-    window.onload = function () { trocarRelatorio(); };
+    function clienteIdAtual() {
+        const u = obterUsuarioAtual();
+        if (!u) return 1;
+        if (ehMasterGlobal()) {
+            try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        }
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    }
+
+    async function inicializar() {
+        const u = obterUsuarioAtual();
+        if (u) {
+            const elUser = document.getElementById('userName');
+            if (elUser) elUser.innerText = (u.nome || u.email || 'Usuário').split(' ')[0];
+        }
+        const sb = getSb();
+        if (sb) {
+            try {
+                const select = document.getElementById('selectEmpresa');
+                const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+                if (data && select) {
+                    select.innerHTML = '';
+                    data.forEach(emp => {
+                        const nomeEmp = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
+                        const opt = document.createElement('option');
+                        opt.value = emp.id;
+                        opt.textContent = nomeEmp;
+                        select.appendChild(opt);
+                    });
+                    const selEmp = localStorage.getItem('empresaSelecionada');
+                    if (selEmp) select.value = selEmp;
+                }
+            } catch(e) {}
+        }
+    }
+
+    function trocarEmpresa() {
+        if (!ehMasterGlobal()) return;
+        const select = document.getElementById('selectEmpresa');
+        if (!select) return;
+        localStorage.setItem('empresaSelecionada', select.value);
+        location.reload();
+    }
+
+    function sair() {
+        if (confirm('Deseja realmente sair do sistema?')) { 
+            localStorage.removeItem('usuarioLogado'); 
+            localStorage.removeItem('empresaSelecionada'); 
+            location.href = 'login.html'; 
+        }
+    }
+
+    /* ===== OPEN FINANCE (MODO HÍBRIDO: PORTAL INTERNO VIA IFRAME + API PAGA FUTURA) ===== */
+    async function abrirJanelaConexaoBanco(event) {
+        if (event) event.preventDefault();
+
+        // CHAVE DE ATIVAÇÃO / FUTURA LICENÇA PAGA:
+        // Quando decidir contratar a licença oficial da Pluggy para o ERP, mude a constante abaixo para 'API_PAGA'
+        const MODO_OPERACAO = 'PORTAL_GRATUITO'; // Opções: 'PORTAL_GRATUITO' ou 'API_PAGA'
+
+        if (MODO_OPERACAO === 'PORTAL_GRATUITO') {
+            // Redireciona internamente para a página open_finance.html mantendo o layout do ERP
+            window.location.href = 'open_finance.html';
+            return;
+        }
+
+        // --- FLUXO DE API PAGA (DEIXADO COMO BRECHA PARA O FUTURO) ---
+        const clienteId = clienteIdAtual();
+        const sb = getSb();
+        const btnCard = event && event.currentTarget ? event.currentTarget : null;
+        if (btnCard) btnCard.style.opacity = '0.6';
+
+        try {
+            let accessToken = '';
+            if (sb) {
+                const { data: sess } = await sb.auth.getSession();
+                if (sess && sess.session) accessToken = sess.session.access_token;
+            }
+
+            const resp = await fetch('https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/gerar-token-pluggy?v=' + Date.now(), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + accessToken,
+                    'apikey': 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'
+                },
+                body: JSON.stringify({ clientUserId: String(clienteId) })
+            });
+
+            if (!resp.ok) {
+                const txt = await resp.text();
+                throw new Error('HTTP ' + resp.status + ' — ' + txt);
+            }
+
+            const data = await resp.json();
+            if (!data.accessToken) throw new Error('Token não retornado.');
+
+            if (typeof PluggyConnect !== 'undefined') {
+                const handler = new PluggyConnect({
+                    connectToken: data.accessToken,
+                    onSuccess: async (itemData) => {
+                        alert('Conta bancária conectada com sucesso!');
+                        if (sb) {
+                            try {
+                                const idConexao = itemData.item ? itemData.item.id : itemData.id;
+                                await sb.from('conexoes_bancarias_pluggy').upsert([{
+                                    cliente_id: clienteId,
+                                    item_id: idConexao,
+                                    status: 'CONNECTED'
+                                }], { onConflict: 'item_id' });
+                            } catch(e) {}
+                        }
+                    },
+                    onClose: () => {},
+                    onError: (error) => { alert('Erro no Widget: ' + (error && error.message ? error.message : 'desconhecido')); }
+                });
+                handler.init();
+            } else {
+                window.open('https://connect.pluggy.ai/?token=' + encodeURIComponent(data.accessToken), '_blank', 'width=520,height=720');
+            }
+
+        } catch (err) {
+            console.error('[Open Finance] Falha:', err);
+            alert('Falha ao iniciar conexão bancária.\n\nDetalhe: ' + (err && err.message ? err.message : 'erro desconhecido'));
+        } finally {
+            if (btnCard) btnCard.style.opacity = '1';
+        }
+    }
+
+    window.onload = inicializar;
 </script>
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
+<script src="erp-core.js"></script>    
 </body>
 </html>
