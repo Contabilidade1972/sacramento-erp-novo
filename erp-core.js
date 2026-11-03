@@ -1,5 +1,5 @@
 /* ============================================================
-    erp-core.js — Motor Central v6.4 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
     - White-Label lê de configuracoes_sistema (fonte única)
     - Reusa a conexão única window.sb (nunca cria outra)
     - Relógio próprio (fim da data estática)
@@ -8,6 +8,7 @@
     - Limpa filtro pré-preenchido com e-mail do usuário
     - Impressão v6.2: margens compactas, cabeçalho repetido
     - Blindagem Multi-Tenant: Tenant estrito por usuário (LGPD)
+    - v6.5: busca do topo corrigida (Calendário Fiscal, Contabilidade, DRE) + Documentos Contábeis e Registro de Acessos
     - v6.4: PERFIL CONTABILIDADE — seletor de clientes vinculados, modo consulta
       (somente leitura), faixa de aviso e registro de acessos (LGPD)
    ============================================================ */
@@ -66,7 +67,7 @@
         { nome:"Orçamentos & Propostas", url:"orcamentos.html", icon:"fa-file-contract", keywords:["orcamento","proposta","comercial"] },
         { nome:"Contas Bancárias / Caixa", url:"contas_bancarias.html", icon:"fa-university", keywords:["banco","caixa","saldo"] },
         { nome:"Fluxo de Caixa", url:"fluxo_de_caixa.html", icon:"fa-chart-line", keywords:["fluxo","caixa","entrada","saida"] },
-        { nome:"DRE Gerencial", url:"dre.html", icon:"fa-chart-pie", keywords:["dre","resultado","contabil"] },
+        { nome:"DRE Gerencial", url:"dre_gerencial.html", icon:"fa-chart-pie", keywords:["dre","resultado","contabil"] },
         { nome:"Parceiros & Clientes", url:"parceiros.html", icon:"fa-address-book", keywords:["parceiro","cliente","cnpj"] },
         { nome:"Centros de Custo", url:"centros_custo.html", icon:"fa-sitemap", keywords:["centro","custo","projeto"] },
         { nome:"Trilha de Auditoria", url:"auditoria_sistema.html", icon:"fa-history", keywords:["auditoria","logs","seguranca"] },
@@ -79,7 +80,7 @@
         { nome:"Ativos & Equipamentos", url:"ativos_equipamentos.html", icon:"fa-microscope", keywords:["ativo","equipamento","patrimonio"] },
         { nome:"Sócios & Acionistas", url:"socios.html", icon:"fa-users", keywords:["socio","acionista","participacao"] },
         { nome:"Documentos Recebidos", url:"documentos_recebidos.html", icon:"fa-file-invoice", keywords:["xml","nfe","cte","recebido"] },
-        { nome:"Contabilidade (ECD/ECF)", url:"contabilidade.html", icon:"fa-book", keywords:["contabilidade","ecd","ecf","balanco"] },
+        { nome:"Contabilidade (ECD/ECF)", url:"modulo_contabil.html", icon:"fa-book", keywords:["contabilidade","ecd","ecf","balanco"] },
         { nome:"Fiscal (EFD/DCTF)", url:"fiscal_contabil.html", icon:"fa-calculator", keywords:["fiscal","efd","dctf","imposto"] },
         { nome:"Folha / RH (eSocial)", url:"folha_rh.html", icon:"fa-users", keywords:["folha","rh","esocial","salario"] },
         { nome:"Gestão do Escritório", url:"gestao_escritorio.html", icon:"fa-briefcase", keywords:["escritorio","tarefas","clientes"] },
@@ -88,7 +89,9 @@
         { nome:"White-Label (Master)", url:"configuracoes_sistema.html", icon:"fa-cog", keywords:["white","label","marca","logo","configuracao"] },
         { nome:"Gestão de Clientes (Master)", url:"clientes_contratantes.html", icon:"fa-building", keywords:["cliente","licenca","plano","master"] },
         { nome:"Usuários & Permissões", url:"usuarios.html", icon:"fa-user-shield", keywords:["usuario","permissao","senha"] },
-        { nome:"Calendário Fiscal", url:"calendario.html", icon:"fa-calendar-alt", keywords:["calendario","obrigacao","prazo"] },
+        { nome:"Calendário Fiscal", url:"calendario_fiscal.html", icon:"fa-calendar-alt", keywords:["calendario","obrigacao","prazo","fiscal","vencimento"] },
+        { nome:"Documentos Contábeis", url:"documentos_contabeis.html", icon:"fa-folder-open", keywords:["documentos","contabeis","contabilidade","enviar","extrato","notas","troca"] },
+        { nome:"Registro de Acessos (Contabilidade)", url:"acessos_contabilidade.html", icon:"fa-user-shield", keywords:["acessos","lgpd","contabilidade","quem acessou","registro","auditoria"] },
         { nome:"Transferências", url:"transferencias.html", icon:"fa-exchange-alt", keywords:["transferencia","movimentacao","ted"] },
         { nome:"Extrato Bancário", url:"extrato_bancario.html", icon:"fa-file-invoice", keywords:["extrato","banco","movimento"] },
         { nome:"Conciliação OFX", url:"conciliacao.html", icon:"fa-check-double", keywords:["conciliacao","ofx","extrato"] },
