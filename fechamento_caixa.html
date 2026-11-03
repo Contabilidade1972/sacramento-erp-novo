@@ -252,8 +252,8 @@
         let ent = 0, sai = 0, nEnt = 0, nSai = 0;
         const dias = {};
         filtrados.forEach(function (m) {
-            const d = dias[m.data] = dias[m.data] || { data: m.data, ent: 0, sai: 0, n: 0 };
-            d.n++;
+            const d = dias[m.data] = dias[m.data] || { data: m.data, ent: 0, sai: 0, n: 0, itens: [] };
+            d.n++; d.itens.push(m);
             if (m.tipo === 'entrada') { ent += m.valor; d.ent += m.valor; nEnt++; } else { sai += m.valor; d.sai += m.valor; nSai++; }
         });
         ent = arred(ent); sai = arred(sai);
@@ -285,13 +285,16 @@
         if (!R.dias.length) {
             elDias.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum movimento realizado no período e filtros selecionados.</div>';
         } else {
-            let h = '<table class="tabela"><thead><tr><th>Data</th><th class="num">Lançamentos</th><th class="num">Entradas (R$)</th><th class="num">Saídas (R$)</th><th class="num">Resultado do dia (R$)</th><th class="num">Saldo acumulado (R$)</th></tr></thead><tbody>';
+            let h = '<table class="tabela"><thead><tr><th>Data</th><th>Operações do dia</th><th class="num">Entradas (R$)</th><th class="num">Saídas (R$)</th><th class="num">Resultado do dia (R$)</th><th class="num">Saldo acumulado (R$)</th></tr></thead><tbody>';
             R.dias.forEach(function (d) {
-                h += '<tr><td><strong>' + dataBR(d.data) + '</strong><span class="sub">' + diaSemana(d.data) + '</span></td><td class="num">' + d.n + '</td>' +
+                h += '<tr><td><strong>' + dataBR(d.data) + '</strong><span class="sub">' + diaSemana(d.data) + '</span></td><td>' + d.itens.map(function (m) {
+                    const ent = m.tipo === 'entrada';
+                    return '<div style="padding:2px 0;"><span class="' + (ent ? 'pos' : 'neg') + '" style="font-size:11px;">' + (ent ? '▲' : '▼') + '</span> <strong>' + esc(m.descricao) + '</strong>' + (m.referencia ? ' <span style="color:var(--text-light); font-size:12px;">— ' + esc(m.referencia) + '</span>' : '') + '</div>';
+                }).join('') + '</td>' +
                      '<td class="num pos">' + (d.ent ? fmtBR(d.ent) : '—') + '</td><td class="num neg">' + (d.sai ? fmtBR(d.sai) : '—') + '</td>' +
                      '<td class="num ' + (d.liquido >= 0 ? 'pos' : 'neg') + '">' + fmtBR(d.liquido) + '</td><td class="num"><strong>' + fmtBR(d.acum) + '</strong></td></tr>';
             });
-            h += '</tbody><tfoot><tr><td>TOTAL DO PERÍODO</td><td class="num">' + R.movs.length + '</td><td class="num">' + fmtBR(R.ent) + '</td><td class="num">' + fmtBR(R.sai) + '</td><td class="num">' + fmtBR(R.ent - R.sai) + '</td><td class="num">' + fmtBR(R.saldoFim) + '</td></tr></tfoot></table>';
+            h += '</tbody><tfoot><tr><td>TOTAL DO PERÍODO</td><td>' + R.movs.length + (R.movs.length === 1 ? ' operação' : ' operações') + '</td><td class="num">' + fmtBR(R.ent) + '</td><td class="num">' + fmtBR(R.sai) + '</td><td class="num">' + fmtBR(R.ent - R.sai) + '</td><td class="num">' + fmtBR(R.saldoFim) + '</td></tr></tfoot></table>';
             elDias.innerHTML = h;
         }
 
