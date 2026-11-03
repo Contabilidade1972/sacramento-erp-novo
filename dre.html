@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -31,23 +33,6 @@
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
 
         .container { max-width: 1280px; margin: 40px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 28px; }
 
@@ -81,125 +66,39 @@
         .vazio { text-align: center; color: var(--text-light); padding: 32px; font-weight: 500; }
         .num { text-align: right; }
 
-        .print-corporative-header { display: none !important; }
-
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 15mm;
-                @bottom-right {
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    font-family: 'Inter', sans-serif;
-                    color: #475569;
-                }
-            }
-
-            body * {
-                visibility: hidden !important;
-            }
-
-            .card-table, .card-table * {
-                visibility: visible !important;
-            }
-
-            .card-table {
-                position: relative !important;
-                left: auto !important;
-                top: auto !important;
-                width: 100% !important;
-                padding: 0 5mm !important;
-                border: none !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-            }
-
-            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
-
-            .ocultar-print { display: none !important; }
-
-            .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 6mm !important;
-                margin-bottom: 8mm !important;
-                border-bottom: 2px solid #1e3a8a !important;
-                width: 100% !important;
-            }
-
-            table {
-                font-size: 9pt !important;
-                width: 100% !important;
-                border-collapse: collapse !important;
-                margin: 0 auto !important;
-            }
-
-            thead {
-                display: table-header-group !important;
-            }
-
-            tr {
-                page-break-inside: avoid !important;
-            }
-
-            thead th {
-                background: #f1f5f9 !important;
-                color: #0f172a !important;
-                padding: 6px 8px !important;
-                border-bottom: 2px solid #0f172a !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-
-            tbody td {
-                padding: 5px 8px !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-            }
-        }
+        .base-sel { height: 38px; padding: 0 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12.5px; background: #fff; color: var(--text-main); font-weight: 600; outline: none; cursor: pointer; }
+        .nota-dre { margin-top: 16px; font-size: 12px; color: var(--text-light); line-height: 1.6; border-left: 3px solid var(--border); padding-left: 12px; }
+        .nota-dre b { color: var(--secondary); }
     </style>
 </head>
 <body>
 
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
-        </div>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
 <div class="container">
-    
+
     <!-- BARRA DE FERRAMENTAS E ABAS DE PERÍODO -->
-    <div class="dre-toolbar ocultar-print">
+    <div class="dre-toolbar">
         <div class="periodo-tabs">
-            <button class="tab-btn ativo" id="tabMensal" onclick="selecionarPeriodo('mensal')">Mensal</button>
-            <button class="tab-btn" id="tabAcumulado" onclick="selecionarPeriodo('acumulado')">Acumulado (Jan até Mês)</button>
-            <button class="tab-btn" id="tabAnual" onclick="selecionarPeriodo('anual')">Anual</button>
+            <button type="button" class="tab-btn ativo" id="tabMensal" onclick="selecionarPeriodo('mensal')">Mensal</button>
+            <button type="button" class="tab-btn" id="tabAcumulado" onclick="selecionarPeriodo('acumulado')">Acumulado (Jan até Mês)</button>
+            <button type="button" class="tab-btn" id="tabAnual" onclick="selecionarPeriodo('anual')">Anual</button>
         </div>
         <div class="filtro-mes">
             <span>Mês de Referência:</span>
             <input type="month" id="filtroMes" onchange="carregarDRE()">
         </div>
-        <button class="btn-acao" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir DRE</button>
+        <div class="filtro-mes">
+            <span>Base:</span>
+            <select id="filtroBase" class="base-sel" onchange="carregarDRE()">
+                <option value="todos">Todos os títulos (pagos e a pagar)</option>
+                <option value="liquidados">Somente pagos / recebidos</option>
+            </select>
+        </div>
+        <button type="button" class="btn-acao" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir DRE</button>
     </div>
 
     <!-- TABELA DRE PRINCIPAL -->
     <div class="card-table">
-        <div class="table-header ocultar-print">
+        <div class="table-header">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Estrutura de Resultados</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Demonstrativo analítico e sintético da apuração do exercício.</p>
@@ -208,23 +107,15 @@
         <table>
             <thead>
                 <tr>
-                    <th colspan="2" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                        <div class="print-corporative-header">
-                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Demonstrativo do Resultado do Exercício (DRE Gerencial)</h2>
-                            <p style="font-size: 8pt; color: #475569; margin: 3mm 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodo">--</span></p>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
                     <th>Conta / Descrição Contábil</th>
-                    <th class="num">Valor no Período (R\$)</th>
+                    <th class="num">Valor no Período (R$)</th>
                 </tr>
             </thead>
             <tbody id="tbodyDRE">
                 <tr><td colspan="2" class="vazio">A carregar dados contábeis do Supabase...</td></tr>
             </tbody>
         </table>
+        <div class="nota-dre" id="notaDRE"></div>
     </div>
 
 </div>
@@ -233,17 +124,22 @@
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
     let periodoAtual = 'mensal';
+    let ultimoDRE = null;
 
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
     function obterUsuario() {
         try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
     }
-
     function ehMaster() {
         const u = obterUsuario();
         if (!u || !u.email) return false;
         return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
     }
-
     function clienteIdAtual() {
         const u = obterUsuario();
         if (!u) return 1;
@@ -253,10 +149,17 @@
         }
         return u.cliente_id ? parseInt(u.cliente_id) : 2;
     }
-
+    function numero(v) {
+        if (typeof v === 'number') return v;
+        let s = String(v === null || v === undefined ? '' : v).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
     function formatarMoeda(valor) {
-        let num = parseFloat(valor) || 0;
-        return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        const n = Math.round((Number(valor) || 0) * 100) / 100;
+        return (n < 0 ? '-R$ ' : 'R$ ') + Math.abs(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function selecionarPeriodo(tipo) {
@@ -269,204 +172,168 @@
 
     if (!document.getElementById('filtroMes').value) {
         const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        document.getElementById('filtroMes').value = `${ano}-${mes}`;
+        document.getElementById('filtroMes').value = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0');
     }
 
-    function sair() {
-        if (confirm('Deseja realmente sair?')) {
-            localStorage.removeItem('usuarioLogado');
-            localStorage.removeItem('empresaSelecionada');
-            location.href = 'login.html';
+    // Lê TODAS as linhas do período (o Supabase entrega no máximo 1000 por consulta)
+    async function lerPeriodo(tabela, ini, fimExclusivo) {
+        const out = []; const PAG = 1000;
+        for (let pos = 0; pos < 200000; pos += PAG) {
+            const r = await sb.from(tabela).select('*').eq('cliente_id', clienteIdAtual())
+                .gte('vencimento', ini).lt('vencimento', fimExclusivo).order('id', { ascending: true }).range(pos, pos + PAG - 1);
+            if (r.error) throw new Error(r.error.message);
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
         }
+        return out;
     }
 
-    async function executarImpressao() {
-        const selectEmp = document.getElementById('selectEmpresa');
-        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-        } else {
-            const cid = clienteIdAtual();
-            try {
-                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-                if (data) {
-                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-                } else {
-                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-                }
-            } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-            }
-        }
+    function ehDeducao(conta, ehReceita) {
+        const c = norm(conta);
+        return c.startsWith('1.2') || c.indexOf('simples') >= 0 || (ehReceita ? c.indexOf('dedu') >= 0 : /\bdas\b/.test(c));
+    }
+    function ehCPV(conta) {
+        const c = norm(conta);
+        return c.startsWith('3.1') || c.indexOf('cpv') >= 0 || c.indexOf('insumos') >= 0;
+    }
 
-        const u = obterUsuario();
-        if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-        } else {
-            document.getElementById('printUsuarioNome').innerText = 'Operador';
-        }
+    function calcularDRE(recebimentos, pagamentos, base) {
+        const R = { bruta: 0, deducoes: 0, cpv: 0, despesas: 0, dRec: {}, dDed: {}, dCpv: {}, dDesp: {},
+                    qtd: 0, pendRec: 0, pendPag: 0, qtdPend: 0, semConta: 0, qtdSemConta: 0, cancelados: 0 };
+        const SEM = 'Sem conta contábil informada (classificar)';
+        function estado(st) { const s = norm(st); return { cancel: s.indexOf('cancel') >= 0 || s.indexOf('estorn') >= 0, liq: s.indexOf('pago') >= 0 || s.indexOf('recebido') >= 0 || s.indexOf('quitado') >= 0 }; }
 
-        const agora = new Date();
-        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+        recebimentos.forEach(r => {
+            const e = estado(r.status);
+            if (e.cancel) { R.cancelados++; return; }
+            if (base === 'liquidados' && !e.liq) return;
+            const val = numero(r.valor);
+            R.qtd++;
+            if (!e.liq) { R.pendRec += val; R.qtdPend++; }
+            let conta = String(r.conta_contabil || '').trim();
+            if (!conta) { conta = SEM; R.semConta += val; R.qtdSemConta++; }
+            if (ehDeducao(conta, true)) { R.deducoes += val; R.dDed[conta] = (R.dDed[conta] || 0) + val; }
+            else { R.bruta += val; R.dRec[conta] = (R.dRec[conta] || 0) + val; }
+        });
 
-        window.print();
+        pagamentos.forEach(p => {
+            const e = estado(p.status);
+            if (e.cancel) { R.cancelados++; return; }
+            if (base === 'liquidados' && !e.liq) return;
+            const val = numero(p.valor);
+            R.qtd++;
+            if (!e.liq) { R.pendPag += val; R.qtdPend++; }
+            let conta = String(p.conta_contabil || '').trim();
+            if (!conta) { conta = SEM; R.semConta += val; R.qtdSemConta++; }
+            if (ehDeducao(conta, false)) { R.deducoes += val; R.dDed[conta] = (R.dDed[conta] || 0) + val; }
+            else if (ehCPV(conta)) { R.cpv += val; R.dCpv[conta] = (R.dCpv[conta] || 0) + val; }
+            else { R.despesas += val; R.dDesp[conta] = (R.dDesp[conta] || 0) + val; }
+        });
+
+        R.receitaLiquida = R.bruta - R.deducoes;
+        R.lucroBruto = R.receitaLiquida - R.cpv;
+        R.resultadoOperacional = R.lucroBruto - R.despesas;
+        R.lucroLiquido = R.resultadoOperacional;
+
+        // linhas na ordem do demonstrativo: tipo = grupo | sub | total | lucro
+        const L = [];
+        function sub(det) { Object.keys(det).sort().forEach(c => L.push({ t: 'sub', r: '• ' + c, v: det[c] })); }
+        L.push({ t: 'grupo', r: '(+) RECEITA BRUTA DE VENDAS E SERVIÇOS', v: R.bruta }); sub(R.dRec);
+        L.push({ t: 'grupo', r: '(-) DEDUÇÕES E ABATIMENTOS (Simples Nacional / DAS)', v: R.deducoes, neg: true }); sub(R.dDed);
+        L.push({ t: 'total', r: '(=) RECEITA LÍQUIDA', v: R.receitaLiquida });
+        L.push({ t: 'grupo', r: '(-) CUSTOS DOS SERVIÇOS PRESTADOS OU PRODUTOS VENDIDOS (CPV)', v: R.cpv, neg: true }); sub(R.dCpv);
+        L.push({ t: 'total', r: '(=) LUCRO BRUTO', v: R.lucroBruto });
+        L.push({ t: 'grupo', r: '(-) DESPESAS OPERACIONAIS (Adm, P&D, Aluguel, Salários)', v: R.despesas, neg: true }); sub(R.dDesp);
+        L.push({ t: 'total', r: '(=) RESULTADO OPERACIONAL', v: R.resultadoOperacional });
+        L.push({ t: 'lucro', r: R.lucroLiquido < 0 ? '(=) PREJUÍZO DO EXERCÍCIO' : '(=) LUCRO LÍQUIDO DO EXERCÍCIO (LLE)', v: R.lucroLiquido });
+        R.linhas = L;
+        return R;
+    }
+
+    function notasDRE(R, base, label) {
+        const n = [];
+        n.push('<b>Base de apuração:</b> data de vencimento dos títulos de Contas a Pagar e a Receber (' + (base === 'liquidados' ? 'somente os já pagos / recebidos' : 'todos os títulos do período, pagos ou não') + '). Títulos cancelados ou estornados não entram.');
+        if (base !== 'liquidados' && R.qtdPend > 0) n.push('Inclui <b>' + R.qtdPend + '</b> título(s) ainda não liquidado(s): receitas a receber ' + formatarMoeda(R.pendRec) + ' e despesas a pagar ' + formatarMoeda(R.pendPag) + '.');
+        if (R.qtdSemConta > 0) n.push('<b>' + R.qtdSemConta + '</b> título(s) sem conta contábil (' + formatarMoeda(R.semConta) + ') foram agrupados em "Sem conta contábil informada". Classifique-os em Contas a Pagar/Receber para o DRE ficar completo.');
+        n.push('Este é um demonstrativo gerencial; não substitui a escrituração contábil oficial.');
+        return n;
     }
 
     async function carregarDRE() {
-        const cid = clienteIdAtual();
-        let mesAno = document.getElementById('filtroMes').value;
+        const mesAno = document.getElementById('filtroMes').value;
         if (!mesAno) return;
-
-        let ano = mesAno.split('-')[0];
-        let mes = mesAno.split('-')[1];
-        let prefixoVenc;
-        let labelPeriodo;
-
+        const base = document.getElementById('filtroBase').value;
+        const ano = parseInt(mesAno.split('-')[0]);
+        const mes = parseInt(mesAno.split('-')[1]);
+        const p2 = n => String(n).padStart(2, '0');
+        let ini, fimEx, label;
         if (periodoAtual === 'mensal') {
-            prefixoVenc = `${mesAno}%`;
-            labelPeriodo = `Mês de ${mes}/${ano}`;
+            ini = ano + '-' + p2(mes) + '-01';
+            fimEx = (mes === 12 ? (ano + 1) + '-01-01' : ano + '-' + p2(mes + 1) + '-01');
+            label = 'Mês de ' + p2(mes) + '/' + ano;
         } else if (periodoAtual === 'acumulado') {
-            prefixoVenc = `${ano}%`;
-            labelPeriodo = `Acumulado de Jan/${ano} até ${mes}/${ano}`;
+            ini = ano + '-01-01';
+            fimEx = (mes === 12 ? (ano + 1) + '-01-01' : ano + '-' + p2(mes + 1) + '-01');
+            label = 'Acumulado de Jan/' + ano + ' até ' + p2(mes) + '/' + ano;
         } else {
-            prefixoVenc = `${ano}%`;
-            labelPeriodo = `Exercício de ${ano} (Anual)`;
+            ini = ano + '-01-01'; fimEx = (ano + 1) + '-01-01';
+            label = 'Exercício de ' + ano + ' (Anual)';
         }
 
-        document.getElementById('printPeriodo').innerText = labelPeriodo;
-
         try {
-            const [recRes, pagRes] = await Promise.all([
-                sb.from('contas_receber').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc),
-                sb.from('contas_pagar').select('*').eq('cliente_id', cid).ilike('vencimento', prefixoVenc)
-            ]);
-
-            const recebimentos = recRes.data || [];
-            const pagamentos = pagRes.data || [];
-
-            let totalReceitaBruta = 0;
-            let totalDeducoes = 0;
-            let totalCPV = 0;
-            let totalDespesas = 0;
-            let detalheReceitas = {};
-            let detalheDeducoes = {};
-            let detalheCPV = {};
-            let detalheDespesas = {};
-
-            recebimentos.forEach(r => {
-                if (periodoAtual === 'acumulado') {
-                    let vencMes = (r.vencimento || '').split('-')[1];
-                    if (vencMes && parseInt(vencMes) > parseInt(mes)) return;
-                }
-                let val = parseFloat(r.valor) || 0;
-                let conta = r.conta_contabil || '1.1.001 - Receita Bruta de Vendas';
-                if (conta.startsWith('1.2') || conta.toLowerCase().includes('simples') || conta.toLowerCase().includes('dedu')) {
-                    totalDeducoes += val;
-                    detalheDeducoes[conta] = (detalheDeducoes[conta] || 0) + val;
-                } else {
-                    totalReceitaBruta += val;
-                    detalheReceitas[conta] = (detalheReceitas[conta] || 0) + val;
-                }
-            });
-
-            pagamentos.forEach(p => {
-                if (periodoAtual === 'acumulado') {
-                    let vencMes = (p.vencimento || '').split('-')[1];
-                    if (vencMes && parseInt(vencMes) > parseInt(mes)) return;
-                }
-                let val = parseFloat(p.valor) || 0;
-                let conta = p.conta_contabil || '4.1.001 - Despesas Operacionais';
-                if (conta.startsWith('1.2') || conta.toLowerCase().includes('simples') || conta.toLowerCase().includes('das')) {
-                    totalDeducoes += val;
-                    detalheDeducoes[conta] = (detalheDeducoes[conta] || 0) + val;
-                } else if (conta.startsWith('3.1') || conta.toLowerCase().includes('cpv') || conta.toLowerCase().includes('insumos')) {
-                    totalCPV += val;
-                    detalheCPV[conta] = (detalheCPV[conta] || 0) + val;
-                } else {
-                    totalDespesas += val;
-                    detalheDespesas[conta] = (detalheDespesas[conta] || 0) + val;
-                }
-            });
-
-            let receitaLiquida = totalReceitaBruta - totalDeducoes;
-            let lucroBruto = receitaLiquida - totalCPV;
-            let resultadoOperacional = lucroBruto - totalDespesas;
-            let lucroLiquido = resultadoOperacional;
+            const [rec, pag] = await Promise.all([lerPeriodo('contas_receber', ini, fimEx), lerPeriodo('contas_pagar', ini, fimEx)]);
+            const R = calcularDRE(rec, pag, base);
+            ultimoDRE = { R: R, base: base, label: label };
 
             let html = '';
-            html += `<tr class="row-grupo"><td>(+) RECEITA BRUTA DE VENDAS E SERVIÇOS</td><td class="num">${formatarMoeda(totalReceitaBruta)}</td></tr>`;
-            for (let c in detalheReceitas) {
-                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheReceitas[c])}</td></tr>`;
-            }
-
-            html += `<tr class="row-grupo"><td>(-) DEDUÇÕES E ABATIMENTOS (Simples Nacional / DAS)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalDeducoes)}</td></tr>`;
-            for (let c in detalheDeducoes) {
-                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheDeducoes[c])}</td></tr>`;
-            }
-
-            html += `<tr class="row-total"><td>(=) RECEITA LÍQUIDA</td><td class="num">${formatarMoeda(receitaLiquida)}</td></tr>`;
-
-            html += `<tr class="row-grupo"><td>(-) CUSTOS DOS SERVIÇOS PRESTADOS OU PRODUTOS VENDIDOS (CPV)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalCPV)}</td></tr>`;
-            for (let c in detalheCPV) {
-                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheCPV[c])}</td></tr>`;
-            }
-
-            html += `<tr class="row-total"><td>(=) LUCRO BRUTO</td><td class="num">${formatarMoeda(lucroBruto)}</td></tr>`;
-
-            html += `<tr class="row-grupo"><td>(-) DESPESAS OPERACIONAIS (Adm, P&amp;D, Aluguel, Salários)</td><td class="num" style="color:var(--danger);">${formatarMoeda(totalDespesas)}</td></tr>`;
-            for (let c in detalheDespesas) {
-                html += `<tr><td class="row-sub">• ${c}</td><td class="num">${formatarMoeda(detalheDespesas[c])}</td></tr>`;
-            }
-
-            html += `<tr class="row-total"><td>(=) RESULTADO OPERACIONAL</td><td class="num">${formatarMoeda(resultadoOperacional)}</td></tr>`;
-            html += `<tr class="row-lucro"><td>(=) LUCRO LÍQUIDO DO EXERCÍCIO (LLE)</td><td class="num">${formatarMoeda(lucroLiquido)}</td></tr>`;
-
+            R.linhas.forEach(l => {
+                const cor = l.neg ? ' style="color:var(--danger);"' : '';
+                if (l.t === 'sub') html += '<tr><td class="row-sub">' + esc(l.r) + '</td><td class="num">' + formatarMoeda(l.v) + '</td></tr>';
+                else html += '<tr class="' + (l.t === 'grupo' ? 'row-grupo' : (l.t === 'total' ? 'row-total' : 'row-lucro')) + '"><td>' + esc(l.r) + '</td><td class="num"' + cor + '>' + formatarMoeda(l.v) + '</td></tr>';
+            });
             document.getElementById('tbodyDRE').innerHTML = html;
+            document.getElementById('notaDRE').innerHTML = '<b>Período:</b> ' + esc(label) + '<br>' + notasDRE(R, base, label).join('<br>');
         } catch (err) {
-            document.getElementById('tbodyDRE').innerHTML = `<tr><td colspan="2" class="vazio">Erro ao carregar DRE: ${err.message}</td></tr>`;
+            ultimoDRE = null;
+            document.getElementById('tbodyDRE').innerHTML = '<tr><td colspan="2" class="vazio" style="color:var(--danger);">Erro ao carregar o DRE: ' + esc(err.message) + '. Atualize a página (Ctrl+F5).</td></tr>';
+            document.getElementById('notaDRE').innerHTML = '';
         }
     }
 
+    function executarImpressao() {
+        if (!window.ERPPrint) { alert('Módulo de impressão não carregado. Atualize a página (Ctrl+F5).'); return; }
+        if (!ultimoDRE) { alert('Aguarde o carregamento do DRE.'); return; }
+        const R = ultimoDRE.R, B = ERPPrint.fmtBRL;
+        const fm = v => (Number(v) < 0 ? '-' : '') + B(Math.abs(Number(v) || 0));
+        const linhas = R.linhas.map(l => {
+            if (l.t === 'sub') return [{ t: '      ' + l.r, cls: 'muted' }, { t: fm(l.v), cls: 'muted' }];
+            if (l.t === 'grupo') return { c: [{ t: l.r, cls: 'bold' }, { t: fm(l.v), cls: 'bold' }] };
+            const cls = (l.t === 'lucro') ? (l.v < 0 ? 'neg' : 'pos') : 'bold';
+            return { c: [{ t: l.r, cls: cls }, { t: fm(l.v), cls: cls }], cls: 'destaque' };
+        });
+        const notas = notasDRE(R, ultimoDRE.base, ultimoDRE.label).map(x => x.replace(/<\/?b>/g, ''));
+        ERPPrint.imprimir({
+            titulo: 'Demonstração do Resultado do Exercício (DRE Gerencial)',
+            subtitulo: ultimoDRE.label,
+            codigo: 'FIN-DRE',
+            orientacao: 'portrait',
+            filtros: [['Período', ultimoDRE.label], ['Base', ultimoDRE.base === 'liquidados' ? 'Somente pagos / recebidos' : 'Todos os títulos (por vencimento)']],
+            resumo: [['Receita líquida', fm(R.receitaLiquida)], ['Lucro bruto', fm(R.lucroBruto)], ['Resultado operacional', fm(R.resultadoOperacional)], [R.lucroLiquido < 0 ? 'Prejuízo do exercício' : 'Lucro líquido', fm(R.lucroLiquido)]],
+            colunas: [{ t: 'Conta / Descrição contábil', w: 4 }, { t: 'Valor no período (R$)', w: 1.5, a: 'right' }],
+            linhas: linhas,
+            observacao: notas.join(' '),
+            assinaturas: ['Contador responsável', 'Sócio / Administrador']
+        });
+    }
+
     async function inicializarPagina() {
-        let u = obterUsuario();
-        if(!u || !u.email) { location.href = 'login.html'; return; }
-
-        if (u.email) {
-            const elUserName = document.getElementById('userName');
-            if (elUserName) {
-                elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-            }
-        }
-
-        const master = ehMaster();
-
-        if (master) {
-            document.body.classList.add('usuario-master');
-            const select = document.getElementById('selectEmpresa');
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            select.innerHTML = '';
-            if (data) {
-                data.forEach(emp => {
-                    const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                    select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-                });
-            }
-            const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-            select.value = selAtual;
-            select.disabled = false;
-        } else {
-            document.body.classList.remove('usuario-master');
-        }
-
+        const u = obterUsuario();
+        if (!u || !u.email) { location.href = 'login.html'; return; }
+        if (ehMaster()) document.body.classList.add('usuario-master');
         carregarDRE();
     }
 
     window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-    <i class="fas fa-question"></i>
-</button>
 </body>
 </html>
