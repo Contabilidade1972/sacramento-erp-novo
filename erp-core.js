@@ -1,5 +1,5 @@
 /* ============================================================
-    erp-core.js — Motor Central v6.3 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    erp-core.js — Motor Central v6.4 (DEFINITIVO & BLINDADO MULTI-TENANT)
     - White-Label lê de configuracoes_sistema (fonte única)
     - Reusa a conexão única window.sb (nunca cria outra)
     - Relógio próprio (fim da data estática)
@@ -8,6 +8,8 @@
     - Limpa filtro pré-preenchido com e-mail do usuário
     - Impressão v6.2: margens compactas, cabeçalho repetido
     - Blindagem Multi-Tenant: Tenant estrito por usuário (LGPD)
+    - v6.4: PERFIL CONTABILIDADE — seletor de clientes vinculados, modo consulta
+      (somente leitura), faixa de aviso e registro de acessos (LGPD)
    ============================================================ */
 (function() {
     'use strict';
@@ -149,6 +151,173 @@
         return q;
     };
 
+
+    /* ===== PERFIL CONTABILIDADE (v6.4) =====
+       A contabilidade (ex.: SCEII) escolhe um cliente vinculado no seletor do topo.
+       O sistema "troca o crachá": cliente_id passa a ser o da empresa escolhida e a
+       empresa de origem fica guardada em contadorCtx. O BANCO só permite LEITURA
+       das empresas vinculadas; esta camada apenas avisa e evita tentativas de gravar. */
+    var arquivoAtualCore = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    var PAGINAS_LIVRES_CONSULTA = ['documentos_contabeis.html', 'acessos_contabilidade.html'];
+
+    function escC(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function ctxContador() {
+        var c = null;
+        try { c = JSON.parse(localStorage.getItem('contadorCtx') || 'null'); } catch (e) {}
+        var u = usuario();
+        if (c && (!u || !u.email || String(c.email || '').toLowerCase() !== String(u.email).toLowerCase())) return null; // sobra de outro usuário
+        return c;
+    }
+    function salvarCtx(c) { try { if (c) localStorage.setItem('contadorCtx', JSON.stringify(c)); else localStorage.removeItem('contadorCtx'); } catch (e) {} }
+    function emConsulta() {
+        if (ehMasterCore()) return false;
+        var c = ctxContador(), u = usuario();
+        return !!(c && u && c.origemId && parseInt(u.cliente_id) !== parseInt(c.origemId));
+    }
+    window.erpEmConsulta = emConsulta;
+    window.erpContadorCtx = ctxContador;
+
+    function definirEmpresaAtiva(id, origemId) {
+        var u = usuario(); if (!u) return;
+        u.cliente_id = id;
+        if (origemId && parseInt(id) !== parseInt(origemId)) u.cliente_id_origem = origemId; else delete u.cliente_id_origem;
+        try {
+            localStorage.setItem('usuarioLogado', JSON.stringify(u));
+            localStorage.setItem('empresaSelecionada', String(id));
+        } catch (e) {}
+    }
+
+    function avisoCore(msg) {
+        var d = document.getElementById('avisoConsultaCore');
+        if (!d) {
+            d = document.createElement('div'); d.id = 'avisoConsultaCore'; d.className = 'no-print';
+            d.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#78350f;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:2000000;box-shadow:0 8px 24px rgba(0,0,0,.3);max-width:90%;text-align:center;';
+            document.body.appendChild(d);
+        }
+        d.innerText = msg; d.style.display = 'block';
+        clearTimeout(d.__t); d.__t = setTimeout(function () { d.style.display = 'none'; }, 4200);
+    }
+
+    function registrarAcesso(empresaId, acao) {
+        var sb = getSb(), c = ctxContador();
+        if (!sb || !c || parseInt(empresaId) === parseInt(c.origemId)) return Promise.resolve();
+        var u = usuario();
+        var p = sb.auth.getUser().then(function (r) {
+            var uid = (r && r.data && r.data.user) ? r.data.user.id : null;
+            return sb.from('acessos_contabilidade').insert([{
+                contador_cliente_id: parseInt(c.origemId), empresa_cliente_id: parseInt(empresaId),
+                user_id: uid, usuario: (u && u.email) || null, acao: acao, pagina: arquivoAtualCore
+            }]);
+        }).catch(function () {});
+        return Promise.race([p, new Promise(function (ok) { setTimeout(ok, 2500); })]);
+    }
+    function registrarPaginaConsulta() {
+        if (!emConsulta()) return;
+        var u = usuario(), k = 'acc_' + u.cliente_id + '_' + arquivoAtualCore, ult = 0;
+        try { ult = parseInt(sessionStorage.getItem(k) || '0'); } catch (e) {}
+        if (Date.now() - ult < 600000) return;
+        try { sessionStorage.setItem(k, String(Date.now())); } catch (e) {}
+        registrarAcesso(parseInt(u.cliente_id), 'consulta_pagina');
+    }
+
+    function mostrarFaixaConsulta() {
+        var antiga = document.getElementById('faixaConsultaCore'); if (antiga) antiga.remove();
+        if (!emConsulta()) return;
+        if (!document.getElementById('faixaConsultaCss')) {
+            var st = document.createElement('style'); st.id = 'faixaConsultaCss';
+            st.innerHTML = '#faixaConsultaCore{background:#fef3c7;color:#78350f;border-bottom:2px solid #f59e0b;padding:9px 28px;display:flex;justify-content:space-between;align-items:center;gap:14px;font-size:12.5px;line-height:1.4;flex-wrap:wrap;}' +
+                '#faixaConsultaCore button{background:#92400e;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;}' +
+                '#faixaConsultaCore button:hover{background:#78350f;}';
+            document.head.appendChild(st);
+        }
+        var c = ctxContador(), u = usuario();
+        var nomeEmp = (c.nomes && c.nomes[u.cliente_id]) || ('Empresa ' + u.cliente_id);
+        var h = '<div id="faixaConsultaCore" class="no-print"><span><i class="fas fa-eye"></i> <b>MODO CONSULTA</b> — você está vendo <b>' + escC(nomeEmp) +
+                '</b> como <b>' + escC(c.origemNome || 'Contabilidade') + '</b>. Somente leitura: ver, salvar PDF e imprimir. Os acessos ficam registrados.</span>' +
+                '<button type="button" onclick="voltarMinhaEmpresaCore()"><i class="fas fa-undo"></i> Voltar para minha empresa</button></div>';
+        var header = document.querySelector('.site-header');
+        if (header) header.insertAdjacentHTML('afterend', h); else document.body.insertAdjacentHTML('afterbegin', h);
+    }
+
+    function montarSeletorContador(c, u) {
+        var cont = document.getElementById('seletorEmpresaCoreContainer');
+        var sel = document.getElementById('selectEmpresaCore');
+        if (!cont || !sel || !c) return;
+        sel.innerHTML = '';
+        var o0 = document.createElement('option');
+        o0.value = c.origemId; o0.textContent = (c.nomes && c.nomes[c.origemId] || 'Minha empresa') + ' (minha empresa)';
+        sel.appendChild(o0);
+        (c.vinculadas || []).forEach(function (v) {
+            var o = document.createElement('option');
+            o.value = v.id; o.textContent = (c.nomes && c.nomes[v.id]) || ('Empresa ' + v.id);
+            sel.appendChild(o);
+        });
+        sel.value = String(u.cliente_id);
+        cont.style.setProperty('display', 'flex', 'important');
+        cont.style.setProperty('visibility', 'visible', 'important');
+    }
+
+    function instalarGuardaConsulta() {
+        if (window.__guardaConsulta || !emConsulta() || PAGINAS_LIVRES_CONSULTA.indexOf(arquivoAtualCore) > -1) return;
+        window.__guardaConsulta = true;
+        var VERBOS = /(salvar|gravar|excluir|remover|apagar|deletar|cadastrar|incluir|adicionar|\bnov[oa]\b|editar|alterar|importar|lan[cç]ar|emitir|aprovar|reprovar|liquidar|quitar|estornar|conciliar|transmitir|criar|duplicar|restaurar|confirmar|registrar|registar)/i;
+        var LIVRES = /(imprimir|print|pdf|csv|excel|exportar|filtrar|buscar|pesquisar|voltar|fechar|cancelar|limpar|aplicar|visualizar|detalhe|consultar)/i;
+        var MSG = 'Modo consulta: a contabilidade só visualiza, salva PDF e imprime. Para lançar ou alterar, volte para a sua empresa.';
+        document.addEventListener('click', function (e) {
+            if (!emConsulta()) return;
+            var el = e.target && e.target.closest ? e.target.closest('button, a, input[type="submit"], input[type="button"], [onclick]') : null;
+            if (!el || el.closest('#faixaConsultaCore, .site-header, .search-global-box, #modalAlterarSenhaCore')) return;
+            var visivel = (el.innerText || el.value || '').trim();
+            if (LIVRES.test(visivel)) return;
+            var texto = visivel + ' ' + (el.getAttribute('onclick') || '') + ' ' + (el.getAttribute('title') || '');
+            if (VERBOS.test(texto)) { e.preventDefault(); e.stopImmediatePropagation(); avisoCore(MSG); }
+        }, true);
+        document.addEventListener('submit', function (e) {
+            if (!emConsulta()) return;
+            if (e.target && e.target.closest && e.target.closest('#faixaConsultaCore, #modalAlterarSenhaCore')) return;
+            e.preventDefault(); e.stopImmediatePropagation(); avisoCore(MSG);
+        }, true);
+    }
+
+    function iniciarContextoContador() {
+        var u = usuario(); if (!u || ehMasterCore()) return;
+        var c = ctxContador();
+        var origem = c && c.origemId ? parseInt(c.origemId) : parseInt(u.cliente_id);
+        if (!origem) return;
+        if (c) { montarSeletorContador(c, u); mostrarFaixaConsulta(); instalarGuardaConsulta(); registrarPaginaConsulta(); }
+        var ts = 0; try { ts = parseInt(sessionStorage.getItem('contadorCheckTs') || '0'); } catch (e) {}
+        if (!c && ts && (Date.now() - ts) < 300000) return; // verificou há pouco: não é contabilidade
+        var sb = getSb(); if (!sb) return;
+        sb.from('vinculos_contador')
+          .select('empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos, pode_emitir_nf, pode_usar_certificado')
+          .eq('contador_cliente_id', origem)
+          .then(function (res) {
+              try { sessionStorage.setItem('contadorCheckTs', String(Date.now())); } catch (e) {}
+              var lista = ((res && res.data) || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar; });
+              var atual = usuario();
+              if (!lista.length) {
+                  if (c) {
+                      salvarCtx(null);
+                      if (parseInt(atual.cliente_id) !== origem) { definirEmpresaAtiva(origem, origem); location.reload(); }
+                  }
+                  return;
+              }
+              var ids = lista.map(function (v) { return parseInt(v.empresa_cliente_id); });
+              if (parseInt(atual.cliente_id) !== origem && ids.indexOf(parseInt(atual.cliente_id)) === -1) { definirEmpresaAtiva(origem, origem); location.reload(); return; }
+              return sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', ids.concat([origem]))
+                .then(function (r2) {
+                    var nomes = {};
+                    ((r2 && r2.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+                    var novo = {
+                        email: atual.email, origemId: origem, origemNome: nomes[origem] || 'Contabilidade', nomes: nomes,
+                        vinculadas: lista.map(function (v) { return { id: parseInt(v.empresa_cliente_id), docs: !!v.pode_trocar_documentos, nf: !!v.pode_emitir_nf, cert: !!v.pode_usar_certificado }; })
+                    };
+                    salvarCtx(novo);
+                    montarSeletorContador(novo, atual); mostrarFaixaConsulta(); instalarGuardaConsulta(); registrarPaginaConsulta();
+                });
+          }).catch(function () {});
+    }
+
     function iniciarRelogio() {
         if (window.__relogioCoreAtivo) return;
         window.__relogioCoreAtivo = true;
@@ -255,7 +424,8 @@
         var ehMaster = ehMasterCore();
         if (!ehMaster) {
             var selEmp = document.getElementById('seletorEmpresaCoreContainer');
-            if (selEmp) selEmp.style.display = 'none';
+            if (selEmp) selEmp.style.setProperty('display', 'none', 'important');
+            iniciarContextoContador();
         } else {
             carregarSeletorEmpresaCore();
         }
@@ -341,14 +511,29 @@
     window.trocarEmpresaCore = function() {
         var select = document.getElementById('selectEmpresaCore');
         if (!select) return;
+        var c = ctxContador();
+        if (!ehMasterCore() && c) {
+            var novo = parseInt(select.value);
+            definirEmpresaAtiva(novo, c.origemId);
+            registrarAcesso(novo, 'troca_empresa').then(function () { location.reload(); });
+            return;
+        }
         try { localStorage.setItem('empresaSelecionada', select.value); } catch(e) {}
         location.reload();
+    };
+    window.voltarMinhaEmpresaCore = function() {
+        var c = ctxContador();
+        if (!c) return;
+        definirEmpresaAtiva(c.origemId, c.origemId);
+        location.href = 'index.html';
     };
     window.sairSistemaCore = function() {
         if (confirm('Deseja realmente encerrar a sessão?')) {
             try {
                 localStorage.removeItem('usuarioLogado');
                 localStorage.removeItem('empresaSelecionada');
+                localStorage.removeItem('contadorCtx');
+                sessionStorage.removeItem('contadorCheckTs');
             } catch(e) {}
             location.href = 'login.html';
         }
@@ -462,6 +647,13 @@
     var agora = new Date().toLocaleString('pt-BR');
     var usuario = u ? (u.nome || u.email || '') : '';
     var cid = window.clienteIdAtual();
+    var extraConsulta = '';
+    try {
+      var cc = JSON.parse(localStorage.getItem('contadorCtx') || 'null');
+      if (cc && u && String(cc.email || '').toLowerCase() === String(u.email || '').toLowerCase() && parseInt(u.cliente_id) !== parseInt(cc.origemId)) {
+        extraConsulta = ' · Consulta realizada por: ' + (cc.origemNome || 'Contabilidade');
+      }
+    } catch (e) {}
 
     var header = document.createElement('div');
     header.className = 'print-doc-header';
@@ -470,7 +662,7 @@
       '<div class="pdh-empresa">' + nomeEmpresa + '</div>' +
       '<div class="pdh-cnpj" id="pdhCnpjLinha">Documento emitido pelo Sacramento ERP</div>' +
       '<div class="pdh-titulo">' + tituloDoc + '</div>' +
-      '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + '</div>';
+      '<div class="pdh-meta">Emitido em: ' + agora + ' · Usuário: ' + usuario + extraConsulta + '</div>';
     if (document.body.firstChild) document.body.insertBefore(header, document.body.firstChild);
     else document.body.appendChild(header);
 
