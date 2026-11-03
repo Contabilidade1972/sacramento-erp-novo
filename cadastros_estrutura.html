@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastros & Estrutura — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1280px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 24px; }
+        .portal-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; text-decoration: none; color: var(--text-main); box-shadow: 0 4px 15px rgba(0,0,0,0.03); transition: all 0.25s ease; }
+        .portal-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(37,99,235,0.12); border-color: var(--primary); }
+        .card-banner { height: 140px; background-size: cover; background-position: center; position: relative; display: flex; align-items: flex-end; padding: 16px; background-color: #1e3a8a; }
+        .card-banner::after { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(180deg, rgba(15,23,42,0.1) 0%, rgba(15,23,42,0.7) 100%); }
+        .card-badge-cat { position: relative; z-index: 2; background: rgba(255,255,255,0.9); backdrop-filter: blur(4px); padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--secondary); letter-spacing: 0.5px; }
+        .card-body { padding: 22px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+        .card-title h3 { font-size: 18px; font-weight: 800; color: var(--secondary); letter-spacing: -0.3px; }
+        .card-desc { font-size: 13px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .card-count { font-size: 12px; font-weight: 700; color: var(--text-main); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; display: none; align-self: flex-start; }
+        .card-footer { display: flex; align-items: center; justify-content: space-between; font-size: 12px; font-weight: 700; color: var(--primary); border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px; }
+        @media (max-width: 600px) { .cards-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Início</a>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-address-book" style="color:var(--primary);"></i> Cadastros & Estrutura</div>
+        <div class="page-subtitle">Cadastros-base da empresa: parceiros, centros de custo, patrimônio, sócios e dados corporativos</div>
+    </div>
+
+    <div class="cards-grid">
+        <a href="parceiros.html" class="portal-card">
+            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=600&q=80');"><span class="card-badge-cat" style="color: #2563eb;">Cadastro</span></div>
+            <div class="card-body">
+                <div class="card-title"><h3>Parceiros & Clientes</h3></div>
+                <div class="card-desc">Diretório unificado de clientes e fornecedores, com validação de CPF/CNPJ e consulta à Receita.</div>
+                <div class="card-count" id="cntParceiros"></div>
+                <div class="card-footer"><span>Abrir</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="centros_custo.html" class="portal-card">
+            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80');"><span class="card-badge-cat" style="color: #8b5cf6;">Estrutura</span></div>
+            <div class="card-body">
+                <div class="card-title"><h3>Centros de Custo</h3></div>
+                <div class="card-desc">Estrutura gerencial usada para classificar contas a pagar e a receber, DRE e relatórios.</div>
+                <div class="card-count" id="cntCentros"></div>
+                <div class="card-footer"><span>Abrir</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="ativos_equipamentos.html" class="portal-card">
+            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1581092160607-ee22621dd758?auto=format&fit=crop&w=600&q=80');"><span class="card-badge-cat" style="color: #059669;">Patrimônio</span></div>
+            <div class="card-body">
+                <div class="card-title"><h3>Ativos & Equipamentos</h3></div>
+                <div class="card-desc">Controle patrimonial de equipamentos, instrumentos, móveis e infraestrutura, com status e setor.</div>
+                <div class="card-count" id="cntAtivos"></div>
+                <div class="card-footer"><span>Abrir</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="socios.html" class="portal-card">
+            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=600&q=80');"><span class="card-badge-cat" style="color: #f59e0b;">Societário</span></div>
+            <div class="card-body">
+                <div class="card-title"><h3>Sócios & Acionistas</h3></div>
+                <div class="card-desc">Cadastro de sócios e acionistas da empresa, com participação societária.</div>
+                <div class="card-count" id="cntSocios"></div>
+                <div class="card-footer"><span>Abrir</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
+        <a href="dados_empresa.html" class="portal-card">
+            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80');"><span class="card-badge-cat" style="color: #475569;">Institucional</span></div>
+            <div class="card-body">
+                <div class="card-title"><h3>Dados da Empresa</h3></div>
+                <div class="card-desc">Dados corporativos da empresa e logotipo usados nos relatórios e documentos.</div>
+                <div class="card-footer"><span>Abrir</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+
+    // contador discreto em cada card; se a tabela não existir ou der erro, o contador simplesmente não aparece
+    async function contar(tabela, idEl, singular, plural) {
+        try {
+            const r = await sb.from(tabela).select('id', { count: 'exact', head: true }).eq('cliente_id', obterClienteIdAtivo());
+            if (r.error) return;
+            const n = (typeof r.count === 'number') ? r.count : (Array.isArray(r.data) ? r.data.length : null);
+            if (n === null) return;
+            const el = document.getElementById(idEl);
+            if (!el) return;
+            el.textContent = n + ' ' + (n === 1 ? singular : plural);
+            el.style.display = 'inline-block';
+        } catch (e) { /* sem contador */ }
+    }
+
+    window.onload = function () {
+        contar('parceiros', 'cntParceiros', 'cadastro', 'cadastros');
+        contar('centros_custo', 'cntCentros', 'centro de custo', 'centros de custo');
+        contar('ativos_equipamentos', 'cntAtivos', 'ativo', 'ativos');
+        contar('socios', 'cntSocios', 'sócio', 'sócios');
+    };
+</script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+</body>
+</html>
