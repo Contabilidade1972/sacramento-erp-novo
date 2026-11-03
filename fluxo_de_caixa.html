@@ -384,6 +384,12 @@ async function carregarFluxo() {
         if (!d) return;
         const obs = norm(t.observacao);
         const origem = norm(t.conta_origem);
+        // AJUSTE DE SALDO: lançamento de regularização, sempre mostrado de forma identificada
+        if (obs.indexOf('ajuste de saldo') >= 0) {
+            movs.push({ id: 't' + t.id, data: d, tipo: 'entrada', descricao: t.observacao || 'AJUSTE DE SALDO',
+                referencia: '', centro: t.centro_custo || '', valor: numero(t.valor), ajuste: true });
+            return;
+        }
         if (obs.indexOf('cartao') >= 0 || obs.indexOf('google') >= 0 || origem.indexOf('cartao') >= 0) return;
         const ehAporte = obs.indexOf('aporte') >= 0 || obs.indexOf('emprestimo') >= 0 || obs.indexOf('mutuo') >= 0 || obs.indexOf('inicial') >= 0 ||
             (obs.indexOf('pix recebido') >= 0 && obs.indexOf('fatura') < 0 && obs.indexOf('pagamento') < 0);
@@ -451,7 +457,7 @@ function aplicarFiltros() {
     filtrados.forEach(m => { if (m.tipo === 'entrada') totalEntradas += m.valor; else totalSaidas += m.valor; });
 
     const saldoRealTotal = saldoContaPJ + saldoCartao;
-    const diferenca = saldoRealTotal - saldoLancamentosTotal;
+    const diferenca = Math.round((saldoRealTotal - saldoLancamentosTotal) * 100) / 100 + 0;
 
     document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoContaPJ);
     document.getElementById('resumoCartaoPrePago').innerText = formatarMoeda(saldoCartao);
@@ -471,9 +477,12 @@ function aplicarFiltros() {
     document.getElementById('concTexto').innerText = fechou
         ? 'Os lançamentos explicam exatamente o saldo real das contas.'
         : 'Há movimentações no banco ou no cartão que ainda não estão lançadas (ou lançadas em duplicidade). Compare com o extrato e lance a diferença para este quadro zerar. Nenhum valor foi ajustado automaticamente.';
-    document.getElementById('concIgnorados').innerText = ignoradosPorRegra > 0
-        ? ignoradosPorRegra + ' lançamento(s) pago(s) foram desconsiderados por regra (favorecido / reposição de cartão).'
-        : '';
+    let totalAjustes = 0;
+    movimentacoesCache.forEach(m => { if (m.ajuste) totalAjustes += m.valor; });
+    const partesNota = [];
+    if (totalAjustes !== 0) partesNota.push('Inclui AJUSTE DE SALDO de ' + formatarMoeda(totalAjustes) + ', lançado para regularizar o histórico anterior sem extrato disponível (validar com a contabilidade).');
+    if (ignoradosPorRegra > 0) partesNota.push(ignoradosPorRegra + ' lançamento(s) pago(s) foram desconsiderados por regra (favorecido / reposição de cartão).');
+    document.getElementById('concIgnorados').innerText = partesNota.join(' ');
 
     const info = [];
     if (dIni) info.push('Início: ' + dIni.split('-').reverse().join('/'));
@@ -504,9 +513,9 @@ function aplicarFiltros() {
         const ent = m.tipo === 'entrada';
         acumulado += ent ? m.valor : -m.valor;
         const dataFmt = m.data.split('-').reverse().join('/');
-        const badge = ent ? '<span class="badge badge-entrada">Entrada</span>' : '<span class="badge badge-saida">Saída</span>';
+        const badge = m.ajuste ? '<span class="badge" style="background:#fef3c7;color:#92400e;">Ajuste</span>' : (ent ? '<span class="badge badge-entrada">Entrada</span>' : '<span class="badge badge-saida">Saída</span>');
         const desc = esc(m.descricao) + (m.referencia ? ' - ' + esc(m.referencia) : '');
-        linhas += '<tr><td><strong>' + dataFmt + '</strong></td><td>' + badge + '</td><td>' + desc + '</td>' +
+        linhas += '<tr' + (m.ajuste ? ' style="background:#fffbeb;"' : '') + '><td><strong>' + dataFmt + '</strong></td><td>' + badge + '</td><td>' + desc + '</td>' +
             '<td><span style="font-size:11px; color:var(--text-light);"><i class="fas fa-tags"></i> ' + esc(m.centro || '-') + '</span></td>' +
             '<td style="text-align:right;" class="valor-entrada">' + (ent ? formatarMoeda(m.valor) : '-') + '</td>' +
             '<td style="text-align:right;" class="valor-saida">' + (ent ? '-' : formatarMoeda(m.valor)) + '</td>' +
