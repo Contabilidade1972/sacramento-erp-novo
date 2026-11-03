@@ -10,6 +10,7 @@
     <script src="auth-guard.js"></script>
     <script src="erp-core.js"></script>
     <script src="erp-print.js"></script>
+    <script src="erp-saldos.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -84,14 +85,14 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--secondary)"><i class="fas fa-university"></i></div>
             <div>
-                <h4>Saldo Conta PJ (real)</h4>
+                <h4>Saldo Conta PJ</h4>
                 <div class="value" id="resumoSaldoInicial">R$ 0,00</div>
             </div>
         </div>
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--warning)"><i class="fas fa-credit-card"></i></div>
             <div>
-                <h4>Cartão Pré-Pago (real)</h4>
+                <h4>Cartão Pré-Pago</h4>
                 <div class="value" id="resumoCartaoPrePago" style="color:var(--warning)">R$ 0,00</div>
             </div>
         </div>
@@ -112,7 +113,7 @@
         <div class="dash-card">
             <div class="dash-icon" style="background:var(--primary)"><i class="fas fa-balance-scale"></i></div>
             <div>
-                <h4>Patrimônio Disponível (real)</h4>
+                <h4>Patrimônio Disponível</h4>
                 <div class="value" id="resumoPatrimonioTotal">R$ 0,00</div>
             </div>
         </div>
@@ -180,10 +181,10 @@
         </div>
 
         <div id="quadroConciliacao" style="margin-top:18px; border:1.5px solid var(--border); border-radius:12px; padding:16px; background:var(--bg);">
-            <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--secondary); margin-bottom:10px;"><i class="fas fa-balance-scale"></i> Conciliação: lançamentos x saldo real das contas</div>
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--secondary); margin-bottom:10px;"><i class="fas fa-balance-scale"></i> Conciliação: lançamentos x saldo informado nas contas</div>
             <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
                 <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Saldo pelos lançamentos</div><div id="concSaldoLanc" style="font-size:16px; font-weight:800; color:var(--secondary);">R$ 0,00</div></div>
-                <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Saldo real (conta PJ + cartão)</div><div id="concSaldoReal" style="font-size:16px; font-weight:800; color:var(--secondary);">R$ 0,00</div></div>
+                <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Saldo informado nas contas (extrato)</div><div id="concSaldoReal" style="font-size:16px; font-weight:800; color:var(--secondary);">R$ 0,00</div></div>
                 <div><div style="font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase;">Diferença a conciliar</div><div id="concDiferenca" style="font-size:16px; font-weight:800;">R$ 0,00</div></div>
             </div>
             <p id="concTexto" style="font-size:12px; color:var(--text-light); margin-top:10px; line-height:1.5;"></p>
@@ -201,8 +202,10 @@
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 let movimentacoesCache = [];
-let saldoContaPJ = 0;        // soma real das contas PJ (exceto cartão), vinda do cadastro
-let saldoCartao = 0;         // saldo real do cartão pré-pago, vindo do cadastro
+let saldoContaPJ = 0;        // saldo da conta PJ: calculado pelos lançamentos (ou informado, se não houver regra automática)
+let saldoCartao = 0;         // saldo do cartão pré-pago: recarga - gastos desde a última recarga (ou informado)
+let saldoInformadoTotal = 0; // soma dos saldos digitados no cadastro das contas (conferência com o extrato)
+let saldosAutomaticos = false;
 let ignoradosPorRegra = 0;
 let primeiraData = '';
 let ultimoRelatorio = null;
@@ -225,17 +228,6 @@ function clienteIdAtual() {
 }
 function sbFiltroLeitura(tabela) {
     return sb.from(tabela).select('*').eq('cliente_id', clienteIdAtual());
-}
-// Lê TODAS as linhas (o Supabase entrega no máximo 1000 por consulta): pagina de 1000 em 1000
-async function lerTudo(tabela) {
-    const out = []; const PAG = 1000;
-    for (let ini = 0; ini < 200000; ini += PAG) {
-        const r = await sbFiltroLeitura(tabela).order('id', { ascending: true }).range(ini, ini + PAG - 1);
-        if (r.error) return { data: null, error: r.error };
-        out.push.apply(out, r.data || []);
-        if (!r.data || r.data.length < PAG) break;
-    }
-    return { data: out, error: null };
 }
 function esc(t) {
     return String(t === null || t === undefined ? '' : t)
@@ -270,25 +262,6 @@ function numero(v) {
     return isNaN(n) ? 0 : n;
 }
 
-// SALDOS REAIS: soma das contas cadastradas desta empresa. Só PJ e só saldo disponível.
-async function carregarSaldosBancarios() {
-    saldoContaPJ = 0;
-    saldoCartao = 0;
-    const { data, error } = await sbFiltroLeitura('contas_bancarias');
-    if (error || !data) return;
-    data.forEach(cb => {
-        const titular = norm(cb.titularidade);
-        const identificacao = norm((cb.nome || '') + ' ' + (cb.banco || '') + ' ' + (cb.tipo || ''));
-        // Contas de pessoa física ficam fora dos relatórios da empresa
-        if (/\bpf\b/.test(titular) || titular.indexOf('fisica') >= 0 || titular.indexOf('pessoal') >= 0 || /\bpf\b/.test(identificacao) || identificacao.indexOf('pessoal') >= 0) return;
-        const classe = norm(cb.classificacao_saldo || 'disponivel');
-        if (classe !== 'disponivel') return;
-        const saldo = numero(cb.saldo_inicial !== undefined && cb.saldo_inicial !== null ? cb.saldo_inicial : (cb.saldo_atual !== undefined ? cb.saldo_atual : cb.saldo));
-        const ehCartao = /cartao|pre-pago|prepago|pre pago/.test(identificacao);
-        if (ehCartao) saldoCartao += saldo; else saldoContaPJ += saldo;
-    });
-}
-
 async function carregarCentrosCustoFiltro() {
     try {
         const { data } = await sbFiltroLeitura('centros_custo');
@@ -305,79 +278,24 @@ async function carregarCentrosCustoFiltro() {
     } catch(e) {}
 }
 
+// Os lançamentos e os saldos vêm de erp-saldos.js (regra única, igual à de Contas Bancárias)
 async function carregarFluxo() {
-    await carregarSaldosBancarios();
-
-    const [resReceber, resPagar, resTransfer] = await Promise.all([
-        lerTudo('contas_receber'),
-        lerTudo('contas_pagar'),
-        lerTudo('transferencias')
-    ]);
-    const erroLeitura = resReceber.error || resPagar.error || resTransfer.error;
-    if (erroLeitura) {
+    const cid = clienteIdAtual();
+    const [resContas, mv] = await Promise.all([sbFiltroLeitura('contas_bancarias'), ERPSaldos.carregarMovimentos(sb, cid)]);
+    if (mv.erro) {
         movimentacoesCache = [];
-        document.getElementById('tbodyFluxo').innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Não foi possível carregar os lançamentos (' + esc(erroLeitura.message) + '). Atualize a página (Ctrl+F5). Os valores abaixo NÃO são confiáveis até o carregamento funcionar.</td></tr>';
+        document.getElementById('tbodyFluxo').innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--danger); padding:20px;">Não foi possível carregar os lançamentos (' + esc(mv.erro.message) + '). Atualize a página (Ctrl+F5). Os valores abaixo NÃO são confiáveis até o carregamento funcionar.</td></tr>';
         return;
     }
-    const receber = resReceber.data || [];
-    const pagar = resPagar.data || [];
-    const transferencias = resTransfer.data || [];
-    const movs = [];
-    ignoradosPorRegra = 0;
+    movimentacoesCache = mv.movs;
+    ignoradosPorRegra = mv.ignorados;
+    primeiraData = movimentacoesCache.length ? movimentacoesCache[0].data : '';
 
-    // ENTRADAS: contas a receber já recebidas
-    receber.forEach(r => {
-        const st = norm(r.status);
-        if (!(st.indexOf('recebido') >= 0 || st.indexOf('pago') >= 0 || st.indexOf('quitado') >= 0)) return;
-        const d = dataISO(r.data_recebimento || r.vencimento || r.created_at);
-        if (!d) return;
-        movs.push({ id: 'r' + r.id, data: d, tipo: 'entrada', descricao: r.descricao || 'Recebimento',
-            referencia: r.cliente_nome || r.cliente || '', centro: r.centro_custo || '', valor: numero(r.valor) });
-    });
-
-    // ENTRADAS: aportes de sócios, capital inicial e empréstimos (transferências).
-    // Cada registro conta uma vez, pelo próprio id. Valores iguais no mesmo dia NÃO são mais descartados.
-    transferencias.forEach(t => {
-        const d = dataISO(t.data || t.created_at);
-        if (!d) return;
-        const obs = norm(t.observacao);
-        const origem = norm(t.conta_origem);
-        // AJUSTE DE SALDO: lançamento de regularização, sempre mostrado de forma identificada
-        if (obs.indexOf('ajuste de saldo') >= 0) {
-            movs.push({ id: 't' + t.id, data: d, tipo: 'entrada', descricao: t.observacao || 'AJUSTE DE SALDO',
-                referencia: '', centro: t.centro_custo || '', valor: numero(t.valor), ajuste: true });
-            return;
-        }
-        if (obs.indexOf('cartao') >= 0 || obs.indexOf('google') >= 0 || origem.indexOf('cartao') >= 0) return;
-        const ehAporte = obs.indexOf('aporte') >= 0 || obs.indexOf('emprestimo') >= 0 || obs.indexOf('mutuo') >= 0 || obs.indexOf('inicial') >= 0 ||
-            (obs.indexOf('pix recebido') >= 0 && obs.indexOf('fatura') < 0 && obs.indexOf('pagamento') < 0);
-        if (!ehAporte) return;
-        // Mostra primeiro QUEM aportou (conta de origem = nome do sócio), depois a observação e a conta que recebeu
-        const quem = String(t.conta_origem || '').trim();
-        movs.push({ id: 't' + t.id, data: d, tipo: 'entrada',
-            descricao: (quem ? quem + ' — ' : '') + (t.observacao || 'Aporte / Capital Social'),
-            referencia: t.conta_destino || '', centro: t.centro_custo || '', valor: numero(t.valor) });
-    });
-
-    // SAÍDAS: contas a pagar já pagas.
-    // O Google do cartão pré-pago entra aqui, no dia do débito no cartão. A reposição do cartão (dia 20) é
-    // transferência entre contas da própria empresa e não é despesa, por isso nunca entra como saída.
-    pagar.forEach(p => {
-        const st = norm(p.status);
-        if (!(st.indexOf('pago') >= 0 || st.indexOf('quitado') >= 0)) return;
-        const d = dataISO(p.data_pagamento || p.vencimento || p.created_at);
-        if (!d) return;
-        const desc = norm(p.descricao);
-        const forn = norm(p.fornecedor_nome || p.fornecedor);
-        if (desc.indexOf('favorecido') >= 0 || forn.indexOf('favorecido') >= 0) { ignoradosPorRegra++; return; }
-        if (desc.indexOf('pagamento fatura cartao') >= 0 || desc.indexOf('reposicao do cartao') >= 0) { ignoradosPorRegra++; return; }
-        movs.push({ id: 'p' + p.id, data: d, tipo: 'saida', descricao: p.descricao || 'Pagamento',
-            referencia: p.fornecedor_nome || p.fornecedor || '', centro: p.centro_custo || '', valor: numero(p.valor) });
-    });
-
-    movs.sort((a, b) => a.data < b.data ? -1 : (a.data > b.data ? 1 : (a.tipo === b.tipo ? 0 : (a.tipo === 'entrada' ? -1 : 1))));
-    movimentacoesCache = movs;
-    primeiraData = movs.length ? movs[0].data : '';
+    const S = ERPSaldos.calcular((resContas && resContas.data) || [], movimentacoesCache);
+    saldoContaPJ = S.contas;
+    saldoCartao = S.cartoes;
+    saldoInformadoTotal = S.informadoTotal;
+    saldosAutomaticos = S.automatico;
 
     definirFiltrosPadrao();
     aplicarFiltros();
@@ -418,7 +336,7 @@ function aplicarFiltros() {
     filtrados.forEach(m => { if (m.tipo === 'entrada') totalEntradas += m.valor; else totalSaidas += m.valor; });
 
     const saldoRealTotal = saldoContaPJ + saldoCartao;
-    const diferenca = Math.round((saldoRealTotal - saldoLancamentosTotal) * 100) / 100 + 0;
+    const diferenca = Math.round((saldoInformadoTotal - saldoLancamentosTotal) * 100) / 100 + 0;
 
     document.getElementById('resumoSaldoInicial').innerText = formatarMoeda(saldoContaPJ);
     document.getElementById('resumoCartaoPrePago').innerText = formatarMoeda(saldoCartao);
@@ -430,14 +348,14 @@ function aplicarFiltros() {
 
     // Quadro de conciliação: mostra, sem esconder, se os lançamentos explicam o saldo real
     document.getElementById('concSaldoLanc').innerText = formatarMoeda(saldoLancamentosTotal);
-    document.getElementById('concSaldoReal').innerText = formatarMoeda(saldoRealTotal);
+    document.getElementById('concSaldoReal').innerText = formatarMoeda(saldoInformadoTotal);
     const elDif = document.getElementById('concDiferenca');
     elDif.innerText = formatarMoeda(diferenca);
     const fechou = Math.abs(diferenca) < 0.005;
     elDif.style.color = fechou ? 'var(--success)' : 'var(--danger)';
     document.getElementById('concTexto').innerText = fechou
-        ? 'Os lançamentos explicam exatamente o saldo real das contas.'
-        : 'Há movimentações no banco ou no cartão que ainda não estão lançadas (ou lançadas em duplicidade). Compare com o extrato e lance a diferença para este quadro zerar. Nenhum valor foi ajustado automaticamente.';
+        ? 'Os lançamentos explicam exatamente o saldo informado nas contas (extrato).'
+        : 'O saldo informado nas contas difere dos lançamentos: há movimentações no banco ou no cartão ainda não lançadas (ou lançadas em duplicidade), ou o saldo digitado em Contas Bancárias está desatualizado. Compare com o extrato. Nenhum valor foi ajustado automaticamente.';
     let totalAjustes = 0;
     movimentacoesCache.forEach(m => { if (m.ajuste) totalAjustes += m.valor; });
     const partesNota = [];
@@ -454,7 +372,7 @@ function aplicarFiltros() {
         dIni: dIni, dFim: dFim, tipo: tipoFiltro, centro: centroFiltro, texto: document.getElementById('filtroTexto').value.trim(),
         filtrados: filtrados, saldoInicialPeriodo: saldoInicialPeriodo, totalEntradas: totalEntradas, totalSaidas: totalSaidas,
         saldoFinalPeriodo: saldoInicialPeriodo + totalEntradas - totalSaidas,
-        saldoLanc: saldoLancamentosTotal, saldoReal: saldoRealTotal, saldoPJ: saldoContaPJ, saldoCartao: saldoCartao, diferenca: diferenca,
+        saldoLanc: saldoLancamentosTotal, saldoReal: saldoRealTotal, saldoInformado: saldoInformadoTotal, automatico: saldosAutomaticos, saldoPJ: saldoContaPJ, saldoCartao: saldoCartao, diferenca: diferenca,
         notas: partesNota.join(' ')
     };
 
@@ -517,10 +435,10 @@ function executarImpressao() {
         });
     });
     const conc = Math.abs(R.diferenca) < 0.005
-        ? 'Os lançamentos explicam exatamente o saldo real das contas.'
-        : 'Diferença a conciliar de ' + B(R.diferenca) + ' (há movimentações no banco/cartão ainda não lançadas).';
+        ? 'Os lançamentos explicam exatamente o saldo informado nas contas (extrato).'
+        : 'Diferença a conciliar de ' + B(R.diferenca) + ' entre o saldo informado nas contas e os lançamentos.';
     const obs = 'CONCILIAÇÃO (posição até hoje, independente do período filtrado): saldo pelos lançamentos ' + B(R.saldoLanc) +
-        ' | saldo real conta PJ ' + B(R.saldoPJ) + ' + cartão pré-pago ' + B(R.saldoCartao) + ' = ' + B(R.saldoReal) + '. ' + conc +
+        ' | saldo conta PJ ' + B(R.saldoPJ) + ' + cartão pré-pago ' + B(R.saldoCartao) + ' = ' + B(R.saldoReal) + (R.automatico ? ' (calculados pelos lançamentos)' : '') + ' | saldo informado nas contas (extrato) ' + B(R.saldoInformado) + '. ' + conc +
         (R.notas ? ' ' + R.notas : '') + ' Contas de pessoa física não fazem parte deste relatório.';
 
     ERPPrint.imprimir({
@@ -530,7 +448,7 @@ function executarImpressao() {
         orientacao: 'landscape',
         filtros: filtros,
         resumo: [['Saldo inicial do período', B(R.saldoInicialPeriodo)], ['Total de entradas', B(R.totalEntradas)], ['Total de saídas', B(R.totalSaidas)],
-                 ['Saldo final pelos lançamentos', B(R.saldoFinalPeriodo)], ['Saldo real (PJ + cartão)', B(R.saldoReal)]],
+                 ['Saldo final pelos lançamentos', B(R.saldoFinalPeriodo)], ['Saldo disponível (PJ + cartão)', B(R.saldoReal)]],
         colunas: [{ t: 'Data', w: 1 }, { t: 'Tipo', w: 1 }, { t: 'Descrição / Referência', w: 4 }, { t: 'Centro de custo', w: 1.8 },
                   { t: 'Entrada (R$)', w: 1.3, a: 'right' }, { t: 'Saída (R$)', w: 1.3, a: 'right' }, { t: 'Saldo acum. (R$)', w: 1.4, a: 'right' }],
         linhas: linhas,
