@@ -1,5 +1,5 @@
 /* ============================================================
-   Sacramento ERP — erp-print.js v1.0
+   Sacramento ERP — erp-print.js v1.1
    Padrão ÚNICO de impressão de relatórios.
    - Cabeçalho com empresa, CNPJ, título e identificação do relatório
    - Quadro "Filtros aplicados"
@@ -17,7 +17,8 @@
      colunas:  [{t:'Código', w:1}, {t:'Valor (R$)', w:2, a:'right'}],
      linhas:   [ ['CP-001','R$ 10,00'], {c:['CP-002',{t:'R$ 5,00',cls:'neg'}], cls:'destaque'} ],
      totais:   ['TOTAL','R$ 15,00'],           // opcional, alinhada às colunas
-     observacao: 'Texto opcional no fim'
+     observacao: 'Texto opcional no fim',
+     assinaturas: ['Responsável pelo pagamento', 'Aprovação']   // opcional: bloco de assinaturas na última página
    });
    ============================================================ */
 (function (w) {
@@ -126,6 +127,8 @@
         '.rodape { position: absolute; left: 12mm; right: 12mm; bottom: 7mm; border-top: 1px solid #94a3b8; padding-top: 1.6mm; display: flex; justify-content: space-between; gap: 6mm; font-size: 7pt; color: #64748b; }',
         '.rodape .r-meio { flex: 1; text-align: center; }',
         '.rodape .r-pag { font-weight: 800; color: #0f172a; white-space: nowrap; }',
+        '.assin { display: flex; gap: 14mm; margin-top: 16mm; padding: 0 6mm; }',
+        '.assin .a-cx { flex: 1 1 0; border-top: 1px solid #0f172a; padding-top: 1.4mm; text-align: center; font-size: 7.5pt; color: #334155; }',
         '.sonda { position: absolute; left: -99999px; top: 0; visibility: hidden; }'
     ].join('\n');
 
@@ -252,7 +255,7 @@
         }
 
         // Reserva para observação + "fim do relatório" na última página
-        var reservaFim = (cfg.observacao ? 14 * MM : 0) + 8 * MM;
+        var reservaFim = (cfg.observacao ? 14 * MM : 0) + 8 * MM + ((cfg.assinaturas && cfg.assinaturas.length) ? 24 * MM : 0);
 
         var paginas = [], atual = [], usado = 0, limite = alturaUtilPx - hCheio - hHead - 4;
         for (var j = 0; j < itens.length; j++) {
@@ -286,6 +289,7 @@
                 '<table class="rel">' + colgroupHTML(cols) + theadHTML(cols) + '<tbody>' +
                 pg.map(function (x) { return x.html; }).join('') + '</tbody></table>' +
                 (ultima && cfg.observacao ? '<div class="obs">' + esc(cfg.observacao) + '</div>' : '') +
+                (ultima && cfg.assinaturas && cfg.assinaturas.length ? '<div class="assin">' + cfg.assinaturas.map(function (a) { return '<div class="a-cx">' + esc(a) + '</div>'; }).join('') + '</div>' : '') +
                 (ultima ? '<div class="fim">— Fim do relatório —</div>' : '') +
                 '<div class="rodape">' +
                   '<span>' + esc(m.empresa) + ' · ' + esc(m.codigo) + '</span>' +
