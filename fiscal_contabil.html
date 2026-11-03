@@ -8,7 +8,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -25,7 +24,7 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: block; }
 
         .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
@@ -66,6 +65,19 @@
         .badge-pendente { background: #fef3c7; color: #d97706; }
         .badge-vencida { background: #fee2e2; color: #991b1b; }
 
+        .nav-modulo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .nav-modulo a { display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 10px; font-size: 13px; font-weight: 700; text-decoration: none; border: 1.5px solid #2563eb; color: #2563eb; background: #fff; transition: 0.15s; }
+        .nav-modulo a:hover { background: #eff6ff; }
+        .nav-modulo a.nm-voltar { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+        .nav-modulo a.nm-voltar:hover { background: #172554; }
+        .nav-modulo a.nm-ativo { background: #2563eb; border-color: #2563eb; color: #fff; box-shadow: 0 2px 6px rgba(37,99,235,0.25); pointer-events: none; }
+        .nav-modulo .nm-sep { width: 1px; height: 26px; background: #cbd5e1; margin: 0 4px; }
+        @media print { .nav-modulo { display: none !important; } }
+        .aviso { border-radius: 12px; padding: 13px 16px; font-size: 12.5px; line-height: 1.6; display: flex; gap: 10px; align-items: flex-start; }
+        .aviso.amarelo { background:#fffbeb; border:1.5px solid #fcd34d; color:#78350f; }
+        .aviso.vermelho { background:#fef2f2; border:1.5px solid #fca5a5; color:#7f1d1d; }
+        .tag-sim { background:#fee2e2; color:#991b1b; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:800; text-transform:uppercase; }
+        .crono { width:100%; border-collapse:collapse; font-size:12px; margin-top:10px; } .crono th { background:var(--bg); text-align:left; padding:8px 10px; font-size:10.5px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); } .crono td { padding:8px 10px; border-bottom:1px solid var(--border); vertical-align:top; }
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
@@ -76,19 +88,25 @@
 <div class="toast-container" id="toastContainer"></div>
 
 <div class="container">
-    <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_contabil.html'"><i class="fas fa-arrow-left"></i> Módulo Contábil & Fiscal</button>
-    </div>
+    <nav class="nav-modulo" aria-label="Contabilidade e Fiscal">
+        <a href="index.html" class="nm-voltar"><i class="fas fa-arrow-left"></i> Painel Principal</a>
+        <span class="nm-sep"></span>
+        <a href="modulo_contabil.html"><i class="fas fa-book"></i> Escrituração Contábil</a>
+        <a href="#" class="nm-ativo"><i class="fas fa-calculator"></i> Apuração Fiscal</a>
+        <a href="calendario_fiscal.html"><i class="fas fa-calendar-alt"></i> Calendário Fiscal</a>
+        <a href="documentos_contabeis.html"><i class="fas fa-folder-open"></i> Documentos Contábeis</a>
+        <a href="acessos_contabilidade.html"><i class="fas fa-user-shield"></i> Registro de Acessos</a>
+    </nav>
 
     <div>
         <div class="page-title"><i class="fas fa-calculator" style="color:var(--primary);"></i> Fiscal (EFD / DCTF / Reforma Tributária)</div>
-        <div class="page-subtitle">Apuração de impostos tradicionais e do novo IVA Dual (CBS, IBS e Imposto Seletivo)</div>
+        <div class="page-subtitle">Simulação de impostos, acompanhamento da Reforma Tributária (CBS, IBS e Imposto Seletivo) e controle de obrigações acessórias</div>
     </div>
 
     <div class="panel">
         <div class="tabs-header">
-            <button class="tab-btn active" onclick="alternarAba(event,'tab_apuracao')"><i class="fas fa-calculator"></i> Apuração Tradicional</button>
-            <button class="tab-btn" onclick="alternarAba(event,'tab_reforma')"><i class="fas fa-globe"></i> Reforma Tributária (IVA Dual)</button>
+            <button class="tab-btn active" onclick="alternarAba(event,'tab_apuracao')"><i class="fas fa-calculator"></i> Simulação de Impostos</button>
+            <button class="tab-btn" onclick="alternarAba(event,'tab_reforma')"><i class="fas fa-globe"></i> Reforma Tributária (CBS / IBS)</button>
             <button class="tab-btn" onclick="alternarAba(event,'tab_obrigacoes')"><i class="fas fa-clipboard-check"></i> Obrigações Acessórias</button>
             <button class="tab-btn" onclick="alternarAba(event,'tab_parametros')"><i class="fas fa-sliders-h"></i> Parâmetros (Alíquotas)</button>
         </div>
@@ -96,7 +114,11 @@
         <!-- ABA APURAÇÃO TRADICIONAL -->
         <div id="tab_apuracao" class="tab-content">
             <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
-                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova Apuração Tradicional (ISS, PIS, COFINS, IRPJ, CSLL)</span></div>
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova simulação (ISS, PIS, COFINS, IRPJ, CSLL)</span> <span class="tag-sim">Simulação, sem valor oficial</span></div>
+                <div class="aviso vermelho" style="margin-bottom:14px;">
+                    <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
+                    <div><strong>Esta tela multiplica a receita por alíquotas efetivas que você informa na aba Parâmetros. Ela não é a apuração oficial.</strong> No Lucro Presumido, o IRPJ e a CSLL usam base presumida (8% a 32% da receita), são trimestrais e têm adicional de IRPJ; o PIS/COFINS pode ser cumulativo ou não cumulativo. No Lucro Real, a base é o lucro contábil ajustado. No Simples Nacional, o imposto é o DAS, calculado no PGDAS-D por anexo e faixa de receita. Por isso, para o Simples a simulação fica bloqueada. Não use estes valores para recolher tributos. O motor de apuração por regime está em desenvolvimento.</div>
+                </div>
                 <div class="form-row">
                     <div>
                         <label>Competência (Mês/Ano)</label>
@@ -115,23 +137,23 @@
                         <input type="number" id="receitaBruta" class="form-control" step="0.01" min="0" placeholder="0,00">
                     </div>
                     <div style="display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;">
-                        <button class="btn-primary" onclick="calcularImpostos()"><i class="fas fa-calculator"></i> Calcular</button>
-                        <button class="btn-secondary" onclick="salvarApuracao()"><i class="fas fa-save"></i> Salvar</button>
+                        <button class="btn-primary" onclick="calcularImpostos()"><i class="fas fa-calculator"></i> Simular</button>
+                        <button class="btn-secondary" onclick="salvarApuracao()"><i class="fas fa-save"></i> Salvar simulação</button>
                     </div>
                 </div>
                 <div id="previewImpostos" style="margin-top:12px;"></div>
             </div>
 
             <div class="panel">
-                <div class="panel-header"><span><i class="fas fa-history"></i> Histórico de Apurações Tradicionais</span></div>
-                <div id="listaApuracaoes" style="overflow-x:auto;">Carregando apurações...</div>
+                <div class="panel-header"><span><i class="fas fa-history"></i> Simulações salvas (sem valor oficial)</span></div>
+                <div id="listaApuracaoes" style="overflow-x:auto;">Carregando simulações...</div>
             </div>
         </div>
 
         <!-- ABA REFORMA TRIBUTÁRIA (NOVO IVA DUAL) -->
         <div id="tab_reforma" class="tab-content" style="display:none;">
             <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
-                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-bolt" style="color:var(--warning)"></i> Apuração do IVA Dual (CBS 0,9% + IBS 0,1% Fase de Testes / Plena)</span></div>
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-bolt" style="color:var(--warning)"></i> Simulação das alíquotas de teste de 2026 (CBS 0,9% + IBS 0,1%)</span> <span class="tag-sim">Informativo</span></div>
                 <div class="form-row">
                     <div>
                         <label>Competência (Mês/Ano)</label>
@@ -142,17 +164,32 @@
                         <input type="number" id="baseReforma" class="form-control" step="0.01" min="0" placeholder="0,00">
                     </div>
                     <div style="display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;">
-                        <button class="btn-primary" onclick="calcularReforma()"><i class="fas fa-calculator"></i> Simular IVA Dual</button>
+                        <button class="btn-primary" onclick="calcularReforma()"><i class="fas fa-calculator"></i> Simular alíquotas de teste</button>
                     </div>
                 </div>
                 <div id="previewReforma" style="margin-top:12px;"></div>
             </div>
             <div class="panel">
-                <div class="panel-header"><span><i class="fas fa-info-circle"></i> Diretrizes da Reforma Tributária (EC 132/2023)</span></div>
-                <p style="font-size:13px; color:var(--text-light); line-height: 1.6;">
-                    • <strong>CBS (Federal):</strong> Unifica PIS e COFINS com alíquota de teste padrão de 0,9%.<br>
-                    • <strong>IBS (Estadual/Municipal):</strong> Unifica ICMS e ISS com alíquota de teste padrão de 0,1%.<br>
-                    • <strong>Princípio do Destino:</strong> Os tributos sobre o consumo passam a ser devidos no local de consumo do bem ou serviço.
+                <div class="panel-header"><span><i class="fas fa-info-circle"></i> Reforma Tributária do Consumo: o que vale em cada ano</span></div>
+                <div class="aviso amarelo" style="margin-bottom:12px;">
+                    <i class="fas fa-circle-info" style="margin-top:3px;"></i>
+                    <div><strong>Em 2026 os valores de CBS e IBS são de teste e informativos.</strong> Eles são destacados nos documentos fiscais e compensados com PIS/COFINS, sem recolhimento adicional para quem cumpre as obrigações acessórias. Os tributos atuais (PIS, COFINS, ICMS e ISS) continuam sendo devidos normalmente. Base legal: EC 132/2023, LC 214/2025 e LC 227/2026.</div>
+                </div>
+                <table class="crono">
+                    <thead><tr><th>Ano</th><th>CBS (federal)</th><th>IBS (estadual e municipal)</th><th>Imposto Seletivo</th><th>PIS/COFINS</th><th>ICMS / ISS</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>2026</strong></td><td>Teste: 0,9%</td><td>Teste: 0,1% (parcela estadual)</td><td>Ainda não vigora</td><td>Devidos</td><td>Integrais</td></tr>
+                        <tr><td><strong>2027</strong></td><td>Cobrança efetiva (alíquota de referência menos 0,1 ponto)</td><td>0,1% (0,05% estadual e 0,05% municipal)</td><td>Começa a valer</td><td>Extintos</td><td>Integrais</td></tr>
+                        <tr><td><strong>2028</strong></td><td>Mesmo patamar de 2027</td><td>0,1%</td><td>Vigente</td><td>Extintos</td><td>Integrais</td></tr>
+                        <tr><td><strong>2029 a 2032</strong></td><td>Alíquota de referência</td><td>10%, 20%, 30% e 40% da referência</td><td>Vigente</td><td>Extintos</td><td>Caem para 90%, 80%, 70% e 60%</td></tr>
+                        <tr><td><strong>2033</strong></td><td>Alíquota de referência</td><td>Integral</td><td>Vigente</td><td>Extintos</td><td>Extintos</td></tr>
+                    </tbody>
+                </table>
+                <p style="font-size:12.5px; color:var(--text-light); line-height:1.6; margin-top:12px;">
+                    • <strong>Simples Nacional e MEI:</strong> em 2026, a informação de CBS e IBS na nota fiscal é dispensada de agosto a dezembro, e os campos passam a ser obrigatórios em janeiro de 2027. Há também uma opção de recolher IBS e CBS pelo regime regular, fora do DAS, com prazo de adesão definido pelo Comitê Gestor e pelo CGSN. Confirme as datas e as regras vigentes nas normas oficiais.<br>
+                    • <strong>Princípio do destino:</strong> os tributos sobre o consumo passam a ser devidos no local de consumo do bem ou do serviço.<br>
+                    • <strong>Alíquota de referência:</strong> o valor final de CBS e IBS será fixado pelo Senado e por cada ente. As alíquotas desta tela valem só para 2026.<br>
+                    • <strong>Fontes consultadas</strong> (secundárias, para conferência com a contadora): cronogramas de transição publicados por <a href="https://taxradar.app/blog/reforma-tributaria/cronograma-reforma-tributaria-todas-datas-2033" target="_blank" rel="noopener">TaxRadar</a> e <a href="https://www.jettax.com.br/blog/simples-nacional-e-mei-ibs-e-cbs-na-nota-fiscal-em-2026-entenda-as-regras/" target="_blank" rel="noopener">JetTax</a>. Confirme nas normas oficiais da Receita Federal e do Comitê Gestor do IBS.
                 </p>
             </div>
         </div>
@@ -161,7 +198,7 @@
         <div id="tab_obrigacoes" class="tab-content" style="display:none;">
             <div class="panel-header">
                 <span><i class="fas fa-clipboard-check" style="color:var(--primary)"></i> Obrigações Acessórias</span>
-                <span style="font-size:12px; color:var(--text-light); font-weight:600;">Marque como entregue conforme for realizando</span>
+                <span style="font-size:12px; color:var(--text-light); font-weight:600;">Controle simples. Prazos oficiais e comprovantes ficam no <a href="calendario_fiscal.html">Calendário Fiscal</a></span>
             </div>
             <div id="listaObrigacoes" style="overflow-x:auto;">Carregando obrigações...</div>
         </div>
@@ -169,10 +206,14 @@
         <!-- ABA PARÂMETROS -->
         <div id="tab_parametros" class="tab-content" style="display:none;">
             <div class="panel-header">
-                <span><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Alíquotas por Imposto (Tradicionais + Reforma)</span>
+                <span><i class="fas fa-sliders-h" style="color:var(--primary)"></i> Alíquotas usadas na simulação (efetivas sobre a receita)</span>
                 <button class="btn-primary" onclick="salvarParametros()"><i class="fas fa-save"></i> Salvar Parâmetros</button>
             </div>
-            <div id="listaParametros" style="overflow-x:auto;">Carregando parâmetros...</div>
+            <div class="aviso amarelo" style="margin-bottom:12px;">
+            <i class="fas fa-circle-info" style="margin-top:3px;"></i>
+            <div>Informe a alíquota <strong>efetiva sobre a receita bruta</strong>, e não a alíquota nominal. Exemplo: no Lucro Presumido de serviços em geral, o IRPJ de 15% incide sobre 32% da receita, ou seja, 4,8% da receita (sem o adicional). A definição correta por regime será feita pelo motor de apuração. Alíquotas em 0 geram resultado zero.</div>
+        </div>
+        <div id="listaParametros" style="overflow-x:auto;">Carregando parâmetros...</div>
         </div>
     </div>
 </div>
@@ -217,6 +258,7 @@ function toast(msg, type='success'){
     setTimeout(function(){ x.remove(); }, 3000);
 }
 
+function esc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function formatBRL(valor){
     let num = parseFloat(valor) || 0;
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
@@ -257,7 +299,7 @@ function renderParametros(){
     const el = document.getElementById('listaParametros');
     let html = '<table class="analitica-table"><thead><tr><th>Imposto / Contribuição</th><th style="text-align:right;">Alíquota (%)</th></tr></thead><tbody>';
     IMPOSTOS.forEach(imp => {
-        html += `<tr><td><strong>${imp}</strong></td><td style="text-align:right;"><input type="number" step="0.001" min="0" max="100" id="alq_${imp}" class="form-control" style="width:160px; margin-bottom:0; text-align:right; display:inline-block;" value="${paramMap[imp]}"></td></tr>`;
+        html += `<tr><td><strong>${esc(imp)}</strong></td><td style="text-align:right;"><input type="number" step="0.001" min="0" max="100" id="alq_${imp}" class="form-control" style="width:160px; margin-bottom:0; text-align:right; display:inline-block;" value="${paramMap[imp]}"></td></tr>`;
     });
     html += '</tbody></table>';
     el.innerHTML = html;
@@ -282,6 +324,10 @@ async function salvarParametros(){
 // ===== Apuração Tradicional =====
 function calcularImpostos(){
     const receita = parseFloat(document.getElementById('receitaBruta').value);
+    if(document.getElementById('regimeApuracao').value === 'Simples Nacional') {
+        document.getElementById('previewImpostos').innerHTML = '<div class="aviso vermelho"><i class="fas fa-ban" style="margin-top:3px;"></i><div><strong>Simulação bloqueada para o Simples Nacional.</strong> O imposto é o DAS, calculado no PGDAS-D por anexo, faixa e receita bruta dos últimos 12 meses (RBT12), e não por alíquotas fixas sobre a receita.</div></div>';
+        apuracaoTemp = null; return;
+    }
     if(isNaN(receita) || receita <= 0) { toast("Informe a receita bruta do período.", "error"); return; }
     const linhas = [];
     let total = 0;
@@ -295,7 +341,9 @@ function calcularImpostos(){
     linhas.forEach(l => {
         html += `<tr><td><strong>${l.imp}</strong></td><td style="text-align:right;">${l.alq.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(l.val)}</td></tr>`;
     });
-    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total de Impostos</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
+    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total simulado</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
+    html += '<div style="margin-top:10px; font-size:12px; color:#991b1b; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> SIMULAÇÃO: não é a apuração oficial. Não usar para recolhimento.</div>';
+    if(linhas.every(l => l.alq === 0)) html += '<div style="margin-top:6px; font-size:12px; color:#b45309;">Todas as alíquotas estão em 0. Configure-as na aba Parâmetros.</div>';
     document.getElementById('previewImpostos').innerHTML = html;
     apuracaoTemp = { receita: receita, total: total, linhas: linhas };
 }
@@ -311,9 +359,10 @@ function calcularReforma(){
     const totalIva = valCbs + valIbs;
 
     let html = `<table class="analitica-table"><thead><tr><th>Tributo (Reforma)</th><th style="text-align:right;">Alíquota (%)</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>`;
-    html += `<tr><td><strong>CBS (Federal - Substitui PIS/COFINS)</strong></td><td style="text-align:right;">${alqCbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valCbs)}</td></tr>`;
-    html += `<tr><td><strong>IBS (Est./Mun. - Substitui ICMS/ISS)</strong></td><td style="text-align:right;">${alqIbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valIbs)}</td></tr>`;
-    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total IVA Dual</strong></td><td style="text-align:right; font-weight:800; color:var(--warning);">${formatBRL(totalIva)}</td></tr></tbody></table>`;
+    html += `<tr><td><strong>CBS (federal; substituirá PIS/COFINS)</strong></td><td style="text-align:right;">${alqCbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valCbs)}</td></tr>`;
+    html += `<tr><td><strong>IBS (estadual e municipal; substituirá ICMS/ISS)</strong></td><td style="text-align:right;">${alqIbs.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(valIbs)}</td></tr>`;
+    html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total CBS + IBS (teste 2026)</strong></td><td style="text-align:right; font-weight:800; color:var(--warning);">${formatBRL(totalIva)}</td></tr></tbody></table>`;
+    html += '<div style="margin-top:10px; font-size:12px; color:#78350f;"><i class="fas fa-circle-info"></i> Valores de teste e informativos de 2026: compensados com PIS/COFINS, sem recolhimento adicional. Não são o cálculo de 2027 em diante.</div>';
     document.getElementById('previewReforma').innerHTML = html;
 }
 
@@ -322,7 +371,7 @@ async function salvarApuracao(){
     const competencia = document.getElementById('compApuracao').value;
     const regime = document.getElementById('regimeApuracao').value;
     if(!competencia) { toast("Informe a competência (mês/ano).", "error"); return; }
-    if(!apuracaoTemp) { toast("Clique em Calcular antes de salvar.", "error"); return; }
+    if(!apuracaoTemp) { toast("Clique em Simular antes de salvar.", "error"); return; }
     const u = obterUsuarioAtual();
     let row = { cliente_id: cid, competencia: competencia, regime: regime, receita_bruta: apuracaoTemp.receita, criado_por: (u && u.email) ? u.email : null };
     const map = { ISS: 'iss', PIS: 'pis', COFINS: 'cofins', IRPJ: 'irpj', CSLL: 'csll' };
@@ -330,7 +379,7 @@ async function salvarApuracao(){
     row.total_impostos = apuracaoTemp.total;
     const { error } = await sb.from('apuracoes_impostos').insert([row]);
     if(error) { toast("Erro ao salvar apuração: " + error.message, "error"); return; }
-    toast("Apuração salva com sucesso!");
+    toast("Simulação salva (sem valor oficial).", "info");
     document.getElementById('previewImpostos').innerHTML = '';
     document.getElementById('receitaBruta').value = '';
     apuracaoTemp = null;
@@ -341,14 +390,14 @@ async function carregarApuracoes(){
     const el = document.getElementById('listaApuracaoes');
     try {
         const { data } = await sbFiltroLeitura('apuracoes_impostos').order('competencia', { ascending: false }).order('id', { ascending: false }).limit(60);
-        if(!data || !data.length) { el.innerHTML = '<div class="empty-state">Nenhuma apuração salva ainda.</div>'; return; }
+        if(!data || !data.length) { el.innerHTML = '<div class="empty-state">Nenhuma simulação salva ainda.</div>'; return; }
         let html = '<table class="analitica-table"><thead><tr><th>Competência</th><th>Regime</th><th style="text-align:right;">Receita (R$)</th><th style="text-align:right;">ISS</th><th style="text-align:right;">PIS</th><th style="text-align:right;">COFINS</th><th style="text-align:right;">IRPJ</th><th style="text-align:right;">CSLL</th><th style="text-align:right;">Total</th></tr></thead><tbody>';
         data.forEach(a => {
-            html += `<tr><td>${a.competencia}</td><td>${a.regime}</td><td style="text-align:right;">${formatBRL(a.receita_bruta)}</td><td style="text-align:right;">${formatBRL(a.iss)}</td><td style="text-align:right;">${formatBRL(a.pis)}</td><td style="text-align:right;">${formatBRL(a.cofins)}</td><td style="text-align:right;">${formatBRL(a.irpj)}</td><td style="text-align:right;">${formatBRL(a.csll)}</td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(a.total_impostos)}</td></tr>`;
+            html += `<tr><td>${esc(a.competencia)}</td><td>${esc(a.regime)}</td><td style="text-align:right;">${formatBRL(a.receita_bruta)}</td><td style="text-align:right;">${formatBRL(a.iss)}</td><td style="text-align:right;">${formatBRL(a.pis)}</td><td style="text-align:right;">${formatBRL(a.cofins)}</td><td style="text-align:right;">${formatBRL(a.irpj)}</td><td style="text-align:right;">${formatBRL(a.csll)}</td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(a.total_impostos)}</td></tr>`;
         });
         html += '</tbody></table>';
         el.innerHTML = html;
-    } catch(e) { el.innerHTML = '<div class="empty-state">Erro ao carregar apurações.</div>'; }
+    } catch(e) { el.innerHTML = '<div class="empty-state">Erro ao carregar simulações.</div>'; }
 }
 
 // ===== Obrigações Acessórias =====
@@ -362,7 +411,7 @@ async function carregarObrigacoes(){
             const st = (o.status || 'Pendente').toLowerCase();
             const badge = st === 'entregue' ? '<span class="badge badge-entregue">Entregue</span>' : (st === 'vencida' ? '<span class="badge badge-vencida">Vencida</span>' : '<span class="badge badge-pendente">Pendente</span>');
             const acao = st !== 'entregue' ? `<button class="btn-secondary" onclick="marcarEntregue(${o.id})"><i class="fas fa-check"></i> Entregue</button>` : '<i class="fas fa-check-circle" style="color:var(--success); font-size:16px;"></i>';
-            html += `<tr><td><strong>${o.nome}</strong></td><td>${o.periodicidade}</td><td>${o.dia_vencimento || '-'}</td><td>${badge}</td><td>${o.data_entrega ? fmtData(o.data_entrega) : '-'}</td><td style="text-align:center;">${acao}</td></tr>`;
+            html += `<tr><td><strong>${esc(o.nome)}</strong></td><td>${esc(o.periodicidade)}</td><td>${o.dia_vencimento || '-'}</td><td>${badge}</td><td>${o.data_entrega ? fmtData(o.data_entrega) : '-'}</td><td style="text-align:center;">${acao}</td></tr>`;
         });
         html += '</tbody></table>';
         el.innerHTML = html;
