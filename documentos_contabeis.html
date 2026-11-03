@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentos Contábeis — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: none; }
+        .btn-acao.perigo:hover { background: #dc2626; }
+        .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-mini { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
+
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .contexto { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+        .contexto.alerta { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        textarea.form-control { height: 74px; padding: 10px 14px; resize: vertical; }
+        input[type="file"].form-control { padding: 8px 10px; height: auto; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: flex-end; }
+        .form-grid .span2 { grid-column: span 2; } .form-grid .span4 { grid-column: span 4; }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr 1.4fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+        .dica { font-size: 11.5px; color: var(--text-light); margin-top: 6px; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
+        .st-enviado { background: #dbeafe; color: #1e40af; } .st-recebido { background: #fef3c7; color: #92400e; }
+        .st-contabilizado { background: #dcfce7; color: #166534; } .st-pendente_correcao { background: #fee2e2; color: #991b1b; }
+        .sentido { font-size: 11.5px; font-weight: 700; color: var(--secondary); white-space: nowrap; }
+        .acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px; }
+        .modal-box { background: #fff; width: 100%; max-width: 480px; border-radius: 14px; padding: 22px; box-shadow: 0 20px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 14px; }
+        .modal-box h3 { font-size: 16px; font-weight: 800; color: var(--secondary); }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr 1fr; } .form-grid .span4 { grid-column: span 2; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box, .form-grid { grid-template-columns: 1fr; } .form-grid .span2, .form-grid .span4 { grid-column: span 1; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Portal</a>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relação</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-folder-open" style="color:var(--primary);"></i> Documentos Contábeis</div>
+        <div class="page-subtitle" id="subtitulo">Troca mensal de documentos entre a empresa e a contabilidade</div>
+    </div>
+
+    <div class="contexto" id="contexto"><i class="fas fa-circle-info"></i><span>Carregando...</span></div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><span class="kpi-title">Documentos no filtro</span><span class="kpi-value" id="kpiTotal">0</span><span class="kpi-sub">Conforme os filtros abaixo</span></div>
+        <div class="kpi-card amarelo"><span class="kpi-title">Aguardando a contabilidade</span><span class="kpi-value" id="kpiAguard">0</span><span class="kpi-sub">Enviados pelo cliente, ainda não contabilizados</span></div>
+        <div class="kpi-card verde"><span class="kpi-title">Contabilizados</span><span class="kpi-value" id="kpiContab">0</span><span class="kpi-sub">Já lançados pela contabilidade</span></div>
+        <div class="kpi-card vermelho"><span class="kpi-title">Pendentes de correção</span><span class="kpi-value" id="kpiCorr">0</span><span class="kpi-sub">Precisam ser reenviados ou ajustados</span></div>
+    </div>
+
+    <div class="panel" id="painelEnvio">
+        <div class="panel-title"><span class="t"><i class="fas fa-cloud-arrow-up" style="color:var(--primary);"></i> Enviar documentos</span></div>
+        <div class="form-grid">
+            <div id="boxEmpresaDestino" style="display:none;"><label for="envEmpresa">Empresa (cliente)</label><select id="envEmpresa" class="form-control"></select></div>
+            <div><label for="envCompetencia">Competência (mês)</label><input type="month" id="envCompetencia" class="form-control"></div>
+            <div><label for="envTipo">Tipo de documento</label>
+                <select id="envTipo" class="form-control">
+                    <option>Extrato bancário</option><option>Notas fiscais de entrada (compras)</option><option>Notas fiscais de serviço / vendas</option>
+                    <option>Comprovantes de pagamento</option><option>Folha de pagamento / Pró-labore</option><option>Guias de impostos</option>
+                    <option>Contratos e documentos societários</option><option>Balancete / Demonstrativos</option><option>Parecer / Relatório contábil</option><option>Outros</option>
+                </select></div>
+            <div class="span2"><label for="envDescricao">Descrição (opcional)</label><input type="text" id="envDescricao" class="form-control" placeholder="Ex: Extrato Cora outubro, NFs de materiais..."></div>
+            <div class="span2"><label for="envArquivos">Arquivo(s)</label><input type="file" id="envArquivos" class="form-control" multiple accept=".pdf,.xml,.xls,.xlsx,.csv,.ofx,.doc,.docx,.jpg,.jpeg,.png,.zip,.txt"></div>
+            <div class="span2"><label for="envObs">Observações (opcional)</label><input type="text" id="envObs" class="form-control" placeholder="Algo que a outra parte precisa saber"></div>
+            <div class="span4" style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+                <button class="btn-acao sucesso" type="button" id="btnEnviar" onclick="enviarDocumentos()"><i class="fas fa-paper-plane"></i> Enviar</button>
+                <span class="dica">Formatos aceitos: PDF, XML, Excel, CSV, OFX, Word, imagens, ZIP e TXT — até 20 MB por arquivo. Os arquivos ficam em área privada e só a empresa e a contabilidade vinculada conseguem abrir.</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-list-check" style="color:var(--primary);"></i> Documentos</span><span id="contaDocs" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
+        <div class="atalhos">
+            <button class="chip ativo" type="button" data-c="todos" onclick="setChip('todos')">Todos</button>
+            <button class="chip" type="button" data-c="aguardando" onclick="setChip('aguardando')">Aguardando a contabilidade</button>
+            <button class="chip" type="button" data-c="correcao" onclick="setChip('correcao')">Pendentes de correção</button>
+            <button class="chip" type="button" data-c="contabilizado" onclick="setChip('contabilizado')">Contabilizados</button>
+        </div>
+        <div class="filtros-box">
+            <div><label for="fCompetencia">Competência</label><input type="month" id="fCompetencia" class="form-control" onchange="aplicar()"></div>
+            <div><label for="fStatus">Situação</label>
+                <select id="fStatus" class="form-control" onchange="aplicar()">
+                    <option value="todos">Todas</option><option value="enviado">Enviado</option><option value="recebido">Recebido</option>
+                    <option value="contabilizado">Contabilizado</option><option value="pendente_correcao">Pendente de correção</option>
+                </select></div>
+            <div><label for="fSentido">Sentido</label>
+                <select id="fSentido" class="form-control" onchange="aplicar()">
+                    <option value="todos">Todos</option><option value="cliente_para_contabilidade">Cliente → Contabilidade</option><option value="contabilidade_para_cliente">Contabilidade → Cliente</option>
+                </select></div>
+            <div id="boxFiltroEmpresa" style="display:none;"><label for="fEmpresa">Empresa</label><select id="fEmpresa" class="form-control" onchange="aplicar()"></select></div>
+            <div><label for="fTexto">Buscar</label><input type="text" id="fTexto" class="form-control" placeholder="Nome do arquivo, tipo ou descrição..." oninput="aplicar()"></div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
+        </div>
+        <div class="table-wrap" id="listaDocs"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+    </div>
+</div>
+
+<!-- Modal de situação -->
+<div class="modal-overlay" id="modalStatus">
+    <div class="modal-box">
+        <h3><i class="fas fa-arrow-right-arrow-left" style="color:var(--primary);"></i> Atualizar situação do documento</h3>
+        <div id="modalDocInfo" style="font-size:13px; color:var(--text-light);"></div>
+        <div><label for="modalNovoStatus">Nova situação</label><select id="modalNovoStatus" class="form-control"></select></div>
+        <div><label for="modalObs">Observação <span id="modalObsObrig" style="color:var(--danger);"></span></label><textarea id="modalObs" class="form-control" placeholder="Ex: falta a página 2 do extrato"></textarea></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-acao cinza" type="button" onclick="fecharModal()">Cancelar</button>
+            <button class="btn-acao sucesso" type="button" id="btnSalvarStatus" onclick="salvarStatus()"><i class="fas fa-check"></i> Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    const BUCKET = 'documentos-contabeis';
+    const MAX_BYTES = 20 * 1024 * 1024;
+    const EXT_OK = ['pdf', 'xml', 'xls', 'xlsx', 'csv', 'ofx', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'zip', 'txt'];
+    const ST_ROTULO = { enviado: 'Enviado', recebido: 'Recebido', contabilizado: 'Contabilizado', pendente_correcao: 'Pendente de correção' };
+
+    let U = {};                 // usuário logado
+    let ehMaster = false;
+    let ehContador = false;     // true: visão da contabilidade (todas as empresas vinculadas)
+    let minhaEmpresaId = 0;     // empresa de origem de quem está enviando
+    let empresaAtivaId = 0;     // empresa que está sendo vista (visão do cliente)
+    let nomes = {};             // id -> nome
+    let idsVisiveis = [];       // empresas cujos documentos aparecem
+    let podeEnviar = false;
+    let docs = [];
+    let filtrados = [];
+    let chip = 'todos';
+    let docAtual = null;
+
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function dataHoraBR(ts) {
+        if (!ts) return '—';
+        const d = new Date(ts); if (isNaN(d)) return '—';
+        return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    function compBR(c) { return /^\d{4}-\d{2}$/.test(c || '') ? c.split('-').reverse().join('/') : (c || '—'); }
+    function tamanho(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+    function nomeEmpresa(id) { return nomes[id] || ('Empresa ' + id); }
+
+    // ---------- contexto: quem está usando ----------
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        empresaAtivaId = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) empresaAtivaId = parseInt(sel); }
+        minhaEmpresaId = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : empresaAtivaId;
+
+        if (!ehMaster) {
+            // Esta empresa é uma contabilidade com clientes vinculados?
+            const rv = await sb.from('vinculos_contador')
+                .select('empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos')
+                .eq('contador_cliente_id', minhaEmpresaId);
+            const lista = ((rv && rv.data) || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; });
+            if (lista.length) {
+                ehContador = true;
+                idsVisiveis = lista.map(function (v) { return parseInt(v.empresa_cliente_id); });
+                const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', idsVisiveis.concat([minhaEmpresaId]));
+                ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+                podeEnviar = true;
+                return;
+            }
+        }
+        // Visão da empresa-cliente
+        ehContador = false;
+        minhaEmpresaId = empresaAtivaId;
+        idsVisiveis = [empresaAtivaId];
+        const re = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', empresaAtivaId);
+        ((re && re.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+        const rc = await sb.from('vinculos_contador')
+            .select('contador_cliente_id, status, pode_visualizar, pode_trocar_documentos')
+            .eq('empresa_cliente_id', empresaAtivaId);
+        const ativos = ((rc && rc.data) || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; });
+        podeEnviar = ativos.length > 0;
+    }
+
+    function montarTela() {
+        const ctx = document.getElementById('contexto');
+        if (ehContador) {
+            document.getElementById('subtitulo').textContent = 'Visão da contabilidade: documentos enviados e recebidos de todas as empresas vinculadas';
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-briefcase"></i><span>Você está na <b>visão da contabilidade</b> (' + esc(nomeEmpresa(minhaEmpresaId)) + '). Aparecem os documentos de <b>' + idsVisiveis.length +
+                ' empresa(s) vinculada(s)</b>. Documentos recebidos dos clientes podem ser marcados como recebidos, contabilizados ou devolvidos para correção.</span>';
+            document.getElementById('boxEmpresaDestino').style.display = 'block';
+            document.getElementById('envEmpresa').innerHTML = idsVisiveis.map(function (id) { return '<option value="' + id + '">' + esc(nomeEmpresa(id)) + '</option>'; }).join('');
+            document.getElementById('boxFiltroEmpresa').style.display = 'block';
+            document.getElementById('fEmpresa').innerHTML = '<option value="todos">Todas as empresas</option>' +
+                idsVisiveis.map(function (id) { return '<option value="' + id + '">' + esc(nomeEmpresa(id)) + '</option>'; }).join('');
+        } else if (podeEnviar) {
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-handshake"></i><span>A contabilidade de <b>' + esc(nomeEmpresa(empresaAtivaId)) + '</b> está vinculada ao sistema. Envie aqui os documentos do mês (extratos, notas, comprovantes). Ela acompanha e atualiza a situação de cada um.</span>';
+        } else {
+            ctx.className = 'contexto alerta';
+            ctx.innerHTML = '<i class="fas fa-triangle-exclamation"></i><span>Esta empresa ainda <b>não tem contabilidade vinculada</b> com troca de documentos habilitada. Para ativar, peça ao administrador do sistema (Master) o vínculo com a sua contabilidade. Documentos antigos continuam visíveis.</span>';
+        }
+        const hoje = new Date();
+        document.getElementById('envCompetencia').value = hoje.getFullYear() + '-' + String(hoje.getMonth() + 1).padStart(2, '0');
+        if (!podeEnviar) {
+            document.getElementById('painelEnvio').style.display = 'none';
+        }
+    }
+
+    // ---------- carga ----------
+    async function lerTudo(ids) {
+        const out = []; const passo = 1000; let ini = 0;
+        for (;;) {
+            const r = await sb.from('documentos_contabeis').select('*').in('cliente_id', ids).order('id', { ascending: false }).range(ini, ini + passo - 1);
+            if (r.error) throw r.error;
+            const parte = r.data || [];
+            out.push.apply(out, parte);
+            if (parte.length < passo) break;
+            ini += passo;
+        }
+        return out;
+    }
+    async function carregar() {
+        try {
+            docs = await lerTudo(idsVisiveis);
+            aplicar();
+        } catch (err) {
+            document.getElementById('listaDocs').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">Não foi possível carregar os documentos: ' + esc(err && err.message ? err.message : 'erro desconhecido') + '</div>';
+        }
+    }
+
+    // ---------- filtros ----------
+    function setChip(c) {
+        chip = c;
+        document.querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('ativo', b.getAttribute('data-c') === c); });
+        aplicar();
+    }
+    function limparFiltros() {
+        document.getElementById('fCompetencia').value = '';
+        document.getElementById('fStatus').value = 'todos';
+        document.getElementById('fSentido').value = 'todos';
+        document.getElementById('fEmpresa').value = 'todos';
+        document.getElementById('fTexto').value = '';
+        setChip('todos');
+    }
+    function aguardando(d) { return d.sentido === 'cliente_para_contabilidade' && (d.status === 'enviado' || d.status === 'recebido'); }
+    function aplicar() {
+        const comp = document.getElementById('fCompetencia').value;
+        const st = document.getElementById('fStatus').value;
+        const se = document.getElementById('fSentido').value;
+        const em = document.getElementById('fEmpresa').value;
+        const tx = norm(document.getElementById('fTexto').value);
+        filtrados = docs.filter(function (d) {
+            if (comp && d.competencia !== comp) return false;
+            if (st !== 'todos' && d.status !== st) return false;
+            if (se !== 'todos' && d.sentido !== se) return false;
+            if (ehContador && em !== 'todos' && String(d.cliente_id) !== em) return false;
+            if (chip === 'aguardando' && !aguardando(d)) return false;
+            if (chip === 'correcao' && d.status !== 'pendente_correcao') return false;
+            if (chip === 'contabilizado' && d.status !== 'contabilizado') return false;
+            if (tx && norm((d.arquivo_nome || '') + ' ' + (d.tipo || '') + ' ' + (d.descricao || '') + ' ' + (d.observacoes || '') + ' ' + nomeEmpresa(d.cliente_id)).indexOf(tx) === -1) return false;
+            return true;
+        });
+        document.getElementById('kpiTotal').textContent = filtrados.length;
+        document.getElementById('kpiAguard').textContent = filtrados.filter(aguardando).length;
+        document.getElementById('kpiContab').textContent = filtrados.filter(function (d) { return d.status === 'contabilizado'; }).length;
+        document.getElementById('kpiCorr').textContent = filtrados.filter(function (d) { return d.status === 'pendente_correcao'; }).length;
+        document.getElementById('contaDocs').textContent = filtrados.length + ' de ' + docs.length + ' documento(s)';
+        renderTabela();
+    }
+
+    // ---------- permissões de ação ----------
+    function souOrigem(d) { return ehMaster || parseInt(d.origem_cliente_id) === parseInt(minhaEmpresaId); }
+    function posso_mudar_status(d) {
+        if (ehMaster) return true;
+        // quem RECEBE o documento atualiza a situação
+        return ehContador ? d.sentido === 'cliente_para_contabilidade' : d.sentido === 'contabilidade_para_cliente';
+    }
+    function opcoesStatus(d) {
+        if (ehMaster || ehContador) return ['recebido', 'contabilizado', 'pendente_correcao'];
+        return ['recebido'];
+    }
+
+    function renderTabela() {
+        const el = document.getElementById('listaDocs');
+        if (!filtrados.length) {
+            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">' + (docs.length ? 'Nenhum documento com esses filtros.' : 'Nenhum documento enviado ainda.') + '</div>';
+            return;
+        }
+        let h = '<table class="tabela"><thead><tr><th>Competência</th>' + (ehContador ? '<th>Empresa</th>' : '') +
+                '<th>Documento</th><th>Sentido</th><th>Enviado por</th><th>Situação</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        filtrados.forEach(function (d) {
+            const sentido = d.sentido === 'cliente_para_contabilidade' ? 'Cliente → Contabilidade' : 'Contabilidade → Cliente';
+            h += '<tr><td><b>' + esc(compBR(d.competencia)) + '</b></td>';
+            if (ehContador) h += '<td>' + esc(nomeEmpresa(d.cliente_id)) + '</td>';
+            h += '<td>' + esc(d.tipo || 'Documento') + (d.descricao ? ' — ' + esc(d.descricao) : '') +
+                 '<span class="sub"><i class="fas fa-paperclip"></i> ' + esc(d.arquivo_nome || 'sem arquivo') + (d.arquivo_tamanho ? ' · ' + tamanho(d.arquivo_tamanho) : '') + '</span>' +
+                 (d.observacoes ? '<span class="sub" style="white-space:pre-line;">' + esc(d.observacoes) + '</span>' : '') + '</td>' +
+                 '<td class="sentido">' + sentido + '</td>' +
+                 '<td>' + esc(d.enviado_por || '—') + '<span class="sub">' + dataHoraBR(d.criado_em) + '</span></td>' +
+                 '<td><span class="badge-st st-' + esc(d.status) + '">' + esc(ST_ROTULO[d.status] || d.status) + '</span>' +
+                 (d.atualizado_em && d.status !== 'enviado' ? '<span class="sub">' + dataHoraBR(d.atualizado_em) + '</span>' : '') + '</td>' +
+                 '<td><div class="acoes">' +
+                 (d.arquivo_path ? '<button class="btn-acao btn-mini" type="button" title="Baixar arquivo" onclick="baixar(' + d.id + ')"><i class="fas fa-download"></i> Baixar</button>' : '') +
+                 (posso_mudar_status(d) ? '<button class="btn-acao btn-mini sucesso" type="button" title="Atualizar situação" onclick="abrirModal(' + d.id + ')"><i class="fas fa-check-double"></i> Situação</button>' : '') +
+                 (souOrigem(d) ? '<button class="btn-acao btn-mini perigo" type="button" title="Excluir documento enviado por você" onclick="excluir(' + d.id + ')"><i class="fas fa-trash"></i></button>' : '') +
+                 '</div></td></tr>';
+        });
+        el.innerHTML = h + '</tbody></table>';
+    }
+
+    // ---------- envio ----------
+    function nomeSeguro(n) {
+        return String(n || 'arquivo').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z0-9._-]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 90) || 'arquivo';
+    }
+    async function enviarDocumentos() {
+        if (!podeEnviar) { toast('Esta empresa não tem contabilidade vinculada para troca de documentos.', 'error'); return; }
+        const comp = document.getElementById('envCompetencia').value;
+        const tipo = document.getElementById('envTipo').value;
+        const desc = document.getElementById('envDescricao').value.trim();
+        const obs = document.getElementById('envObs').value.trim();
+        const arquivos = Array.from(document.getElementById('envArquivos').files || []);
+        const destino = ehContador ? parseInt(document.getElementById('envEmpresa').value) : empresaAtivaId;
+        if (!/^\d{4}-\d{2}$/.test(comp)) { toast('Informe a competência (mês).', 'error'); return; }
+        if (!arquivos.length) { toast('Selecione ao menos um arquivo.', 'error'); return; }
+        if (!destino) { toast('Escolha a empresa.', 'error'); return; }
+        for (const f of arquivos) {
+            const ext = (f.name.split('.').pop() || '').toLowerCase();
+            if (EXT_OK.indexOf(ext) === -1) { toast('Formato não aceito: ' + f.name, 'error'); return; }
+            if (f.size > MAX_BYTES) { toast('Arquivo acima de 20 MB: ' + f.name, 'error'); return; }
+        }
+        const btn = document.getElementById('btnEnviar'); btn.disabled = true;
+        let ok = 0; const falhas = [];
+        for (const f of arquivos) {
+            const caminho = destino + '/' + comp + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + '_' + nomeSeguro(f.name);
+            try {
+                const up = await sb.storage.from(BUCKET).upload(caminho, f, { upsert: false, contentType: f.type || undefined });
+                if (up.error) throw up.error;
+                const ins = await sb.from('documentos_contabeis').insert([{
+                    cliente_id: destino,
+                    origem_cliente_id: minhaEmpresaId,
+                    sentido: ehContador ? 'contabilidade_para_cliente' : 'cliente_para_contabilidade',
+                    competencia: comp, tipo: tipo, descricao: desc || null,
+                    arquivo_path: caminho, arquivo_nome: f.name, arquivo_tamanho: f.size,
+                    status: 'enviado', observacoes: obs || null,
+                    enviado_por: U.nome || U.email || 'Usuário'
+                }]);
+                if (ins.error) { await sb.storage.from(BUCKET).remove([caminho]); throw ins.error; }
+                ok++;
+            } catch (err) {
+                falhas.push(f.name + ' (' + ((err && err.message) || 'erro') + ')');
+            }
+        }
+        btn.disabled = false;
+        if (ok) { toast(ok + ' documento(s) enviado(s) com sucesso!'); document.getElementById('envArquivos').value = ''; document.getElementById('envDescricao').value = ''; document.getElementById('envObs').value = ''; }
+        if (falhas.length) toast('Não enviados: ' + falhas.join('; '), 'error');
+        await carregar();
+    }
+
+    // ---------- download seguro ----------
+    async function baixar(id) {
+        const d = docs.find(function (x) { return x.id === id; });
+        if (!d || !d.arquivo_path) return;
+        const r = await sb.storage.from(BUCKET).createSignedUrl(d.arquivo_path, 120, { download: d.arquivo_nome || true });
+        if (r.error || !r.data || !r.data.signedUrl) { toast('Não foi possível abrir o arquivo: ' + ((r.error && r.error.message) || 'sem permissão'), 'error'); return; }
+        const a = document.createElement('a'); a.href = r.data.signedUrl; a.target = '_blank'; a.rel = 'noopener';
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // ---------- situação ----------
+    function abrirModal(id) {
+        docAtual = docs.find(function (x) { return x.id === id; });
+        if (!docAtual) return;
+        const ops = opcoesStatus(docAtual);
+        document.getElementById('modalNovoStatus').innerHTML = ops.map(function (s) { return '<option value="' + s + '">' + ST_ROTULO[s] + '</option>'; }).join('');
+        document.getElementById('modalNovoStatus').onchange = atualizaObrig;
+        document.getElementById('modalObs').value = '';
+        document.getElementById('modalDocInfo').innerHTML = '<b>' + esc(docAtual.tipo || 'Documento') + '</b> — ' + esc(docAtual.arquivo_nome || '') + '<br>Situação atual: ' + esc(ST_ROTULO[docAtual.status] || docAtual.status);
+        atualizaObrig();
+        document.getElementById('modalStatus').style.display = 'flex';
+    }
+    function atualizaObrig() { document.getElementById('modalObsObrig').textContent = document.getElementById('modalNovoStatus').value === 'pendente_correcao' ? '(obrigatória)' : ''; }
+    function fecharModal() { document.getElementById('modalStatus').style.display = 'none'; docAtual = null; }
+    async function salvarStatus() {
+        if (!docAtual) return;
+        const novo = document.getElementById('modalNovoStatus').value;
+        const obs = document.getElementById('modalObs').value.trim();
+        if (novo === 'pendente_correcao' && !obs) { toast('Explique o que precisa ser corrigido.', 'error'); return; }
+        let observacoes = docAtual.observacoes || '';
+        if (obs) observacoes = (observacoes ? observacoes + '\n' : '') + '[' + new Date().toLocaleDateString('pt-BR') + ' ' + (U.nome || U.email || '') + '] ' + obs;
+        const btn = document.getElementById('btnSalvarStatus'); btn.disabled = true;
+        const r = await sb.from('documentos_contabeis').update({ status: novo, observacoes: observacoes || null, atualizado_em: new Date().toISOString() }).eq('id', docAtual.id).select();
+        btn.disabled = false;
+        if (r.error) { toast('Erro ao atualizar: ' + r.error.message, 'error'); return; }
+        if (!r.data || !r.data.length) { toast('Sem permissão para alterar este documento.', 'error'); return; }
+        toast('Situação atualizada para "' + ST_ROTULO[novo] + '".');
+        fecharModal();
+        await carregar();
+    }
+
+    // ---------- exclusão ----------
+    async function excluir(id) {
+        const d = docs.find(function (x) { return x.id === id; });
+        if (!d) return;
+        if (!confirm('Excluir este documento enviado por você?\n\n' + (d.arquivo_nome || '') + '\n\nO arquivo será removido também. Esta ação não pode ser desfeita.')) return;
+        const r = await sb.from('documentos_contabeis').delete().eq('id', id).select();
+        if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
+        if (!r.data || !r.data.length) { toast('Sem permissão para excluir este documento.', 'error'); return; }
+        if (d.arquivo_path) { try { await sb.storage.from(BUCKET).remove([d.arquivo_path]); } catch (e) {} }
+        toast('Documento excluído.');
+        await carregar();
+    }
+
+    // ---------- impressão padrão ERPPrint ----------
+    function executarImpressao() {
+        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
+        if (!filtrados.length) { toast('Não há documentos para imprimir com esses filtros.', 'info'); return; }
+        const comp = document.getElementById('fCompetencia').value;
+        const filtros = [['Competência', comp ? compBR(comp) : 'Todas'], ['Situação', document.getElementById('fStatus').selectedOptions[0].textContent],
+                         ['Sentido', document.getElementById('fSentido').selectedOptions[0].textContent]];
+        if (ehContador) filtros.push(['Empresa', document.getElementById('fEmpresa').selectedOptions[0].textContent]);
+        const colunas = [{ t: 'Competência', w: 1.1 }];
+        if (ehContador) colunas.push({ t: 'Empresa', w: 2.2 });
+        colunas.push({ t: 'Documento', w: 4 }, { t: 'Sentido', w: 2 }, { t: 'Enviado por / em', w: 2.4 }, { t: 'Situação', w: 1.5 });
+        const linhas = filtrados.map(function (d) {
+            const l = [compBR(d.competencia)];
+            if (ehContador) l.push(nomeEmpresa(d.cliente_id));
+            l.push((d.tipo || 'Documento') + (d.descricao ? ' — ' + d.descricao : '') + ' [' + (d.arquivo_nome || 'sem arquivo') + ']',
+                   d.sentido === 'cliente_para_contabilidade' ? 'Cliente → Contabilidade' : 'Contabilidade → Cliente',
+                   (d.enviado_por || '—') + ' · ' + dataHoraBR(d.criado_em), ST_ROTULO[d.status] || d.status);
+            return l;
+        });
+        ERPPrint.imprimir({
+            titulo: 'Relação de Documentos Contábeis',
+            subtitulo: 'Documentos trocados entre a empresa e a contabilidade',
+            codigo: 'CTB-DC',
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: [['Documentos', String(filtrados.length)], ['Aguardando a contabilidade', String(filtrados.filter(aguardando).length)],
+                     ['Contabilizados', String(filtrados.filter(function (d) { return d.status === 'contabilizado'; }).length)],
+                     ['Pendentes de correção', String(filtrados.filter(function (d) { return d.status === 'pendente_correcao'; }).length)]],
+            colunas: colunas,
+            linhas: linhas,
+            totais: null,
+            observacao: 'Relação gerada pelo sistema com base nos documentos registrados. Serve como protocolo de entrega e recebimento mensal.',
+            assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+
+    async function inicializarPagina() {
+        try {
+            await descobrirContexto();
+            montarTela();
+            await carregar();
+        } catch (err) {
+            document.getElementById('listaDocs').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger);">Erro ao iniciar: ' + esc(err && err.message ? err.message : 'desconhecido') + '</div>';
+        }
+    }
+    window.onload = inicializarPagina;
+</script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+</body>
+</html>
