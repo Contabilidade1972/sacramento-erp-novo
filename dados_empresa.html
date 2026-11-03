@@ -8,6 +8,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -16,38 +18,57 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-        
-        .container { max-width: 1300px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+
+        .container { max-width: 1300px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
         .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.cinza { background: #64748b; }
-        .btn-acao.cinza:hover { background: #475569; }
-        .btn-acao.sucesso { background: var(--success); }
-        
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
-        
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 16px; }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao:disabled { opacity: .6; cursor: not-allowed; }
 
-        .logo-preview-box { display: flex; align-items: center; gap: 16px; background: var(--bg); padding: 12px; border-radius: 8px; border: 1px solid var(--border); }
-        .logo-preview { width: 60px; height: 60px; border-radius: 8px; object-fit: contain; background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-light); }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 10px; }
-        .analitica-table th { background: var(--bg); padding: 10px 12px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .ficha-topo { display: flex; align-items: center; gap: 18px; background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border-left: 5px solid var(--secondary); }
+        .ficha-logo { width: 72px; height: 72px; border-radius: 12px; border: 1px solid var(--border); background: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--text-light); font-size: 26px; flex-shrink: 0; }
+        .ficha-logo img { width: 100%; height: 100%; object-fit: contain; }
+        .ficha-nome { font-size: 18px; font-weight: 800; color: var(--secondary); }
+        .ficha-sub { font-size: 12.5px; color: var(--text-light); margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap; }
+        .badge-st { padding: 3px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; letter-spacing: .3px; }
+        .b-ativa { background: #dcfce7; color: #166534; } .b-outra { background: #fee2e2; color: #991b1b; } .b-nd { background: #e2e8f0; color: #475569; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel.destaque { background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe; }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+        .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 14px; }
+        .form-grid.um { grid-template-columns: 1fr; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        textarea.form-control { height: auto; padding: 10px 14px; resize: vertical; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-control[readonly] { background: #eef2f7; color: #334155; }
+        .dica { font-size: 11px; color: var(--text-light); margin-top: 5px; }
+        .dica.erro { color: #b91c1c; font-weight: 700; } .dica.ok { color: #166534; font-weight: 700; }
+        .linha-cnpj { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: flex-end; }
+
+        .logo-box { display: flex; align-items: center; gap: 16px; background: var(--bg); padding: 12px; border-radius: 10px; border: 1px solid var(--border); }
+        .logo-preview { width: 60px; height: 60px; border-radius: 8px; background: #fff; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; color: var(--text-light); font-size: 20px; }
+        .logo-preview img { width: 100%; height: 100%; object-fit: contain; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); }
+        .vazio { padding: 24px; text-align: center; color: var(--text-light); font-size: 13px; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
-        
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+        @media (max-width: 800px) { .form-grid, .linha-cnpj { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -55,297 +76,328 @@
 
 <div class="container">
     <div class="page-toolbar">
+        <a href="cadastros_estrutura.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar a Cadastros & Estrutura</a>
+        <button class="btn-acao sucesso" type="button" id="btnSalvarTopo" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button>
+        <button class="btn-acao cinza" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Ficha</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-building" style="color:var(--primary);"></i> Dados da Empresa & Logotipo</div>
+        <div class="page-subtitle">Dados cadastrais e fiscais da empresa, com importação automática pela Receita Federal</div>
+    </div>
+
+    <div class="ficha-topo">
+        <div class="ficha-logo" id="fichaLogo"><i class="fas fa-building"></i></div>
         <div>
-            <div class="page-title"><i class="fas fa-building" style="color:var(--primary);"></i> Dados da Empresa & Consulta Receita Federal</div>
-            <div class="page-subtitle">Consulte o CNPJ para importar automaticamente os dados cadastrais, societários e fiscais</div>
-        </div>
-        <div>
-            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+            <div class="ficha-nome" id="fichaNome">—</div>
+            <div class="ficha-sub"><span id="fichaCnpj">CNPJ não informado</span><span id="fichaSituacao"></span><span id="fichaAbertura"></span></div>
         </div>
     </div>
 
-    <!-- PAINEL DE CONSULTA CNPJ -->
-    <div class="panel" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-search"></i> Importação Automática via Receita Federal</span></div>
-        <div class="form-row" style="align-items: flex-end;">
+    <div class="panel destaque">
+        <div class="panel-title"><i class="fas fa-search" style="color:var(--primary);"></i> Importação automática via Receita Federal</div>
+        <div class="linha-cnpj">
             <div>
-                <label>Digite o CNPJ da Empresa *</label>
-                <input type="text" id="inputCnpjBusca" class="form-control" placeholder="00.000.000/0001-00" style="background:#fff; font-weight:700;">
+                <label>CNPJ da empresa *</label>
+                <input type="text" id="inputCnpjBusca" class="form-control" placeholder="00.000.000/0001-00" maxlength="18" style="font-weight:700;" oninput="mascararCnpj(this)" onkeydown="if(event.key==='Enter'){consultarCnpjReceita();}">
+                <div class="dica" id="dicaCnpj">Informe o CNPJ e clique em consultar para preencher os dados abaixo.</div>
             </div>
-            <div>
-                <button class="btn-acao" style="height:41px;" onclick="consultarCnpjReceita()"><i class="fas fa-cloud-download-alt"></i> Consultar CNPJ na Receita</button>
-            </div>
+            <div><button class="btn-acao" type="button" id="btnConsultar" style="height:42px;" onclick="consultarCnpjReceita()"><i class="fas fa-cloud-download-alt"></i> Consultar CNPJ na Receita</button></div>
         </div>
-        <small style="color:var(--text-light); font-size:12px;">Ao informar o CNPJ e clicar em consultar, o sistema preencherá automaticamente Razão Social, Nome Fantasia, Situação, Abertura, CNAEs, Quadro Societário e Endereço.</small>
     </div>
 
-    <!-- DADOS CADASTRAIS -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-id-card"></i> Informações Cadastrais & Fiscais</span></div>
-        
-        <div class="form-row">
-            <div>
-                <label>Razão Social *</label>
-                <input type="text" id="razao_social" class="form-control" placeholder="Razão social completa">
-            </div>
-            <div>
-                <label>Nome Fantasia</label>
-                <input type="text" id="nome_fantasia" class="form-control" placeholder="Nome comercial">
-            </div>
+        <div class="panel-title"><i class="fas fa-id-card" style="color:var(--primary);"></i> Informações cadastrais & fiscais</div>
+        <div class="form-grid">
+            <div><label>Razão social *</label><input type="text" id="razao_social" class="form-control" placeholder="Razão social completa"></div>
+            <div><label>Nome fantasia</label><input type="text" id="nome_fantasia" class="form-control" placeholder="Nome comercial"></div>
         </div>
-
-        <div class="form-row">
-            <div>
-                <label>CNPJ *</label>
-                <input type="text" id="cnpj" class="form-control" placeholder="00.000.000/0001-00">
-            </div>
-            <div>
-                <label>Situação Cadastral</label>
-                <input type="text" id="situacao" class="form-control" placeholder="Ex: ATIVA" readonly style="background:#e2e8f0;">
-            </div>
+        <div class="form-grid">
+            <div><label>CNPJ *</label><input type="text" id="cnpj" class="form-control" placeholder="00.000.000/0001-00" maxlength="18" oninput="mascararCnpj(this)"></div>
+            <div><label>Situação cadastral</label><input type="text" id="situacao" class="form-control" placeholder="Ex: ATIVA" readonly></div>
         </div>
-
-        <div class="form-row">
-            <div>
-                <label>Data de Abertura</label>
-                <input type="text" id="data_abertura" class="form-control" placeholder="DD/MM/AAAA" readonly style="background:#e2e8f0;">
-            </div>
-            <div>
-                <label>CNAE Principal</label>
-                <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição do CNAE principal">
-            </div>
+        <div class="form-grid">
+            <div><label>Data de abertura</label><input type="text" id="data_abertura" class="form-control" placeholder="DD/MM/AAAA" readonly></div>
+            <div><label>CNAE principal</label><input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição do CNAE principal"></div>
         </div>
-
-        <div class="form-row" style="grid-template-columns: 1fr;">
-            <div>
-                <label>CNAEs Secundários</label>
-                <textarea id="cnaes_secundarios" class="form-control" rows="3" placeholder="Relação de CNAEs secundários" readonly style="background:#e2e8f0;"></textarea>
-            </div>
+        <div class="form-grid um">
+            <div><label>CNAEs secundários</label><textarea id="cnaes_secundarios" class="form-control" rows="3" placeholder="Relação de CNAEs secundários" readonly></textarea></div>
         </div>
-
-        <div class="form-row">
-            <div>
-                <label>E-mail Corporativo</label>
-                <input type="email" id="email" class="form-control" placeholder="contato@empresa.com.br">
-            </div>
-            <div>
-                <label>Telefone / WhatsApp</label>
-                <input type="text" id="telefone" class="form-control" placeholder="(31) 00000-0000">
-            </div>
+        <div class="form-grid">
+            <div><label>E-mail corporativo</label><input type="email" id="email" class="form-control" placeholder="contato@empresa.com.br"></div>
+            <div><label>Telefone / WhatsApp</label><input type="text" id="telefone" class="form-control" placeholder="(31) 00000-0000" maxlength="15" oninput="mascararTelefone(this)"></div>
         </div>
-
-        <!-- CAMPO DE IMPORTAÇÃO DE LOGOTIPO -->
-        <div class="form-row">
-            <div style="grid-column: span 2;">
-                <label>Importar Logotipo da Empresa (Arquivo de Imagem)</label>
-                <div class="logo-preview-box">
-                    <img id="imgLogoPreview" class="logo-preview" src="" alt="Logo" style="display:none;">
-                    <div id="noLogoIcon" class="logo-preview"><i class="fas fa-image"></i></div>
+        <div class="form-grid um">
+            <div>
+                <label>Logotipo da empresa (arquivo de imagem)</label>
+                <div class="logo-box">
+                    <div class="logo-preview" id="logoPreview"><i class="fas fa-image"></i></div>
                     <div style="flex:1; display:flex; flex-direction:column; gap:6px;">
-                        <input type="file" id="inputFileLogo" class="form-control" accept="image/*" onchange="converterLogoParaBase64(this)" style="padding:6px; background:#fff;">
-                        <small style="color:var(--text-light); font-size:11px;">Selecione um arquivo PNG ou JPG. A imagem será armazenada diretamente no cadastro da empresa.</small>
+                        <input type="file" id="inputFileLogo" class="form-control" accept="image/png,image/jpeg,image/webp" onchange="converterLogoParaBase64(this)" style="padding:6px; height:auto;">
+                        <small class="dica">PNG ou JPG, até 500 KB. A imagem é guardada no cadastro da empresa e aparece no topo do sistema.</small>
                     </div>
                 </div>
                 <input type="hidden" id="logo_url">
             </div>
         </div>
-
-        <div style="margin-top: 15px; display:flex; gap:10px;">
-            <button class="btn-acao sucesso" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button>
-        </div>
+        <div style="margin-top:6px;"><button class="btn-acao sucesso" type="button" id="btnSalvar" onclick="salvarDadosEmpresa()"><i class="fas fa-save"></i> Salvar Dados da Empresa</button></div>
     </div>
 
-    <!-- QUADRO SOCIETÁRIO IMPORTADO -->
     <div class="panel">
-        <div class="panel-header"><span><i class="fas fa-users"></i> Quadro Societário & Participação (Importado da Receita)</span></div>
-        <div id="tabelaQuadroSocietario" style="overflow-x:auto;">
-            <div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum quadro societário carregado. Faça a consulta por CNPJ acima.</div>
-        </div>
+        <div class="panel-title"><i class="fas fa-users" style="color:var(--primary);"></i> Quadro societário (importado da Receita)</div>
+        <div class="table-wrap" id="tabelaQuadroSocietario"><div class="vazio">Nenhum quadro societário carregado. Faça a consulta por CNPJ acima.</div></div>
     </div>
 </div>
 
-<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
-
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-let qsaCacheGlobal = [];
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    let qsa = [];
+    let dadosCarregados = {};
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
-
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
-    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
-}
-
-function converterLogoParaBase64(input){
-    if(input.files && input.files[0]){
-        let reader = new FileReader();
-        reader.onload = function(e){
-            let base64String = e.target.result;
-            document.getElementById('logo_url').value = base64String;
-            let imgPrev = document.getElementById('imgLogoPreview');
-            let noLogo = document.getElementById('noLogoIcon');
-            imgPrev.src = base64String;
-            imgPrev.style.display = 'block';
-            noLogo.style.display = 'none';
-            toast("Logotipo carregado com sucesso!");
-        }
-        reader.readAsDataURL(input.files[0]);
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-}
+    function somenteDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
 
-function renderizarQuadroSocietario(qsaList){
-    if(qsaList && qsaList.length > 0){
-        let html = '<table class="analitica-table"><thead><tr><th>Nome do Sócio / Acionista</th><th>Qualificação</th><th>% Participação (Ratio)</th><th>País de Origem</th></tr></thead><tbody>';
-        qsaList.forEach(s => {
-            let nomeSocio = s.nome_socio || s.nome || 'Sócio';
-            let qualif = s.qualificacao_socio || s.qualificacao || 'Sócio';
-            let pais = s.pais_origem || 'Brasil';
-            let participacao = s.percentual_capital_social ? s.percentual_capital_social + '%' : '—';
-            
-            html += `<tr><td><strong>${nomeSocio}</strong></td><td>${qualif}</td><td><strong style="color:var(--primary);">${participacao}</strong></td><td>${pais}</td></tr>`;
+    /* ---------- máscaras e validações ---------- */
+    function formatarCnpj(v) {
+        const d = somenteDigitos(v).substring(0, 14);
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return d.substring(0, 2) + '.' + d.substring(2);
+        if (d.length <= 8) return d.substring(0, 2) + '.' + d.substring(2, 5) + '.' + d.substring(5);
+        if (d.length <= 12) return d.substring(0, 2) + '.' + d.substring(2, 5) + '.' + d.substring(5, 8) + '/' + d.substring(8);
+        return d.substring(0, 2) + '.' + d.substring(2, 5) + '.' + d.substring(5, 8) + '/' + d.substring(8, 12) + '-' + d.substring(12);
+    }
+    function mascararCnpj(el) { el.value = formatarCnpj(el.value); }
+    function cnpjValido(v) {
+        const d = somenteDigitos(v);
+        if (d.length !== 14 || /^(\d)\1{13}$/.test(d)) return false;
+        const calc = function (base) {
+            let soma = 0, peso = base.length - 7;
+            for (let i = 0; i < base.length; i++) { soma += parseInt(base[i]) * peso--; if (peso < 2) peso = 9; }
+            const r = soma % 11; return r < 2 ? 0 : 11 - r;
+        };
+        return calc(d.substring(0, 12)) === parseInt(d[12]) && calc(d.substring(0, 13)) === parseInt(d[13]);
+    }
+    // telefone: limpa lixo (ex.: "(3188639913) undefined") e formata (31) 8863-9913 / (31) 98863-9913
+    function limparTelefone(v) { return String(v || '').replace(/undefined|null/gi, ''); }
+    function formatarTelefone(v) {
+        let d = somenteDigitos(limparTelefone(v));
+        if (d.length > 11 && d.startsWith('55')) d = d.substring(2);
+        d = d.substring(0, 11);
+        if (d.length <= 2) return d.length ? '(' + d : '';
+        if (d.length <= 6) return '(' + d.substring(0, 2) + ') ' + d.substring(2);
+        if (d.length <= 10) return '(' + d.substring(0, 2) + ') ' + d.substring(2, 6) + (d.length > 6 ? '-' + d.substring(6) : '');
+        return '(' + d.substring(0, 2) + ') ' + d.substring(2, 7) + '-' + d.substring(7);
+    }
+    function mascararTelefone(el) { el.value = formatarTelefone(el.value); }
+    function dataParaBR(v) {
+        const s = String(v || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10).split('-').reverse().join('/');
+        return s;
+    }
+    function dataParaISO(v) {
+        const s = String(v || '').trim();
+        const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        return m ? m[3] + '-' + m[2] + '-' + m[1] : (/^\d{4}-\d{2}-\d{2}/.test(s) ? s.substring(0, 10) : null);
+    }
+
+    /* ---------- topo (ficha) ---------- */
+    function atualizarFicha() {
+        const razao = document.getElementById('razao_social').value.trim();
+        const fant = document.getElementById('nome_fantasia').value.trim();
+        const cnpj = document.getElementById('cnpj').value.trim();
+        const sit = document.getElementById('situacao').value.trim();
+        const ab = document.getElementById('data_abertura').value.trim();
+        const logo = document.getElementById('logo_url').value.trim();
+        document.getElementById('fichaNome').textContent = fant || razao || '—';
+        document.getElementById('fichaCnpj').textContent = cnpj ? 'CNPJ ' + cnpj : 'CNPJ não informado';
+        const s = document.getElementById('fichaSituacao');
+        if (sit) { s.innerHTML = '<span class="badge-st ' + (/ativ/i.test(sit) ? 'b-ativa' : 'b-outra') + '">' + esc(sit) + '</span>'; } else s.innerHTML = '';
+        document.getElementById('fichaAbertura').textContent = ab ? 'Abertura: ' + ab : '';
+        const box = document.getElementById('fichaLogo');
+        box.innerHTML = logo ? '<img alt="Logo">' : '<i class="fas fa-building"></i>';
+        if (logo) box.querySelector('img').src = logo;
+    }
+    function mostrarLogo(src) {
+        const p = document.getElementById('logoPreview');
+        p.innerHTML = src ? '<img alt="Logo">' : '<i class="fas fa-image"></i>';
+        if (src) p.querySelector('img').src = src;
+    }
+
+    function converterLogoParaBase64(input) {
+        if (!(input.files && input.files[0])) return;
+        const f = input.files[0];
+        if (f.size > 500 * 1024) { toast('A imagem tem ' + Math.round(f.size / 1024) + ' KB. Use um arquivo de até 500 KB.', 'error'); input.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            document.getElementById('logo_url').value = e.target.result;
+            mostrarLogo(e.target.result); atualizarFicha();
+            toast('Logotipo carregado. Clique em "Salvar Dados da Empresa" para gravar.', 'info');
+        };
+        reader.readAsDataURL(f);
+    }
+
+    /* ---------- quadro societário ---------- */
+    function renderizarQuadroSocietario(lista) {
+        const el = document.getElementById('tabelaQuadroSocietario');
+        if (!lista || !lista.length) { el.innerHTML = '<div class="vazio">Nenhum registro de QSA retornado para este CNPJ.</div>'; return; }
+        let h = '<table class="tabela"><thead><tr><th>Nome do sócio / administrador</th><th>Qualificação</th><th>Entrada na sociedade</th><th>País de origem</th></tr></thead><tbody>';
+        lista.forEach(function (s) {
+            h += '<tr><td><strong>' + esc(s.nome_socio || s.nome || 'Sócio') + '</strong></td><td>' + esc(s.qualificacao_socio || s.qualificacao || 'Sócio') + '</td>' +
+                '<td>' + esc(dataParaBR(s.data_entrada_sociedade) || '—') + '</td><td>' + esc(s.pais || s.pais_origem || 'Brasil') + '</td></tr>';
         });
-        html += '</tbody></table>';
-        document.getElementById('tabelaQuadroSocietario').innerHTML = html;
-    } else {
-        document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
-    }
-}
-
-async function consultarCnpjReceita(){
-    let cnpjInput = document.getElementById('inputCnpjBusca').value.replace(/\D/g, '');
-    if(cnpjInput.length !== 14){
-        toast("Digite um CNPJ válido com 14 dígitos!", "error");
-        return;
+        el.innerHTML = h + '</tbody></table>';
     }
 
-    toast("A consultar dados na Receita Federal...", "info");
+    /* ---------- consulta na Receita ---------- */
+    async function consultarCnpjReceita() {
+        const cnpjInput = somenteDigitos(document.getElementById('inputCnpjBusca').value);
+        const dica = document.getElementById('dicaCnpj');
+        if (!cnpjValido(cnpjInput)) { dica.className = 'dica erro'; dica.textContent = 'CNPJ inválido — confira os 14 números.'; toast('Digite um CNPJ válido!', 'error'); return; }
+        dica.className = 'dica'; dica.textContent = 'Consultando a Receita Federal...';
+        const btn = document.getElementById('btnConsultar'); btn.disabled = true;
+        try {
+            const resp = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + cnpjInput);
+            if (!resp.ok) throw new Error(resp.status === 404 ? 'CNPJ não encontrado na base da Receita.' : 'Serviço da Receita indisponível no momento. Tente novamente.');
+            const r = await resp.json();
 
-    try {
-        let response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpjInput}`);
-        if(!response.ok) throw new Error("CNPJ não encontrado na base de dados.");
-        let r = await response.json();
+            document.getElementById('razao_social').value = r.razao_social || '';
+            document.getElementById('nome_fantasia').value = r.nome_fantasia || '';
+            document.getElementById('cnpj').value = formatarCnpj(r.cnpj || cnpjInput);
+            document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
+            document.getElementById('data_abertura').value = dataParaBR(r.data_inicio_atividade);
+            document.getElementById('cnae_principal').value = r.cnae_fiscal ? r.cnae_fiscal + ' - ' + (r.cnae_fiscal_descricao || '') : '';
+            document.getElementById('cnaes_secundarios').value = (r.cnaes_secundarios && r.cnaes_secundarios.length)
+                ? r.cnaes_secundarios.map(function (c) { return c.codigo + ' - ' + c.descricao; }).join('\n') : 'Nenhum CNAE secundário registrado.';
+            if (r.email) document.getElementById('email').value = r.email;
+            const tel = r.ddd_telefone_1 || '';
+            if (tel) document.getElementById('telefone').value = formatarTelefone(tel);
 
-        // Preencher campos cadastrais
-        document.getElementById('razao_social').value = r.razao_social || '';
-        document.getElementById('nome_fantasia').value = r.nome_fantasia || '';
-        document.getElementById('cnpj').value = r.cnpj || '';
-        document.getElementById('situacao').value = r.descricao_situacao_cadastral || r.situacao_cadastral || '';
-        document.getElementById('data_abertura').value = r.data_inicio_atividade ? r.data_inicio_atividade.split('-').reverse().join('/') : '';
-        
-        // CNAE Principal
-        let cnaePrinc = r.cnae_fiscal ? `${r.cnae_fiscal} - ${r.cnae_fiscal_descricao || ''}` : '';
-        document.getElementById('cnae_principal').value = cnaePrinc;
+            qsa = Array.isArray(r.qsa) ? r.qsa : [];
+            renderizarQuadroSocietario(qsa);
+            atualizarFicha();
+            dica.className = 'dica ok'; dica.textContent = '✓ Dados importados. Revise e clique em "Salvar Dados da Empresa".';
+            toast('Dados, CNAEs e quadro societário importados. Clique em Salvar para gravar.', 'success');
+        } catch (err) {
+            dica.className = 'dica erro'; dica.textContent = err.message;
+            toast('Erro ao consultar CNPJ: ' + err.message, 'error');
+        } finally { btn.disabled = false; }
+    }
 
-        // CNAEs Secundários
-        if(r.cnaes_secundarios && r.cnaes_secundarios.length > 0){
-            let listaSec = r.cnaes_secundarios.map(c => `${c.codigo} - ${c.descricao}`).join('\n');
-            document.getElementById('cnaes_secundarios').value = listaSec;
-        } else {
-            document.getElementById('cnaes_secundarios').value = 'Nenhum CNAE secundário registrado.';
+    /* ---------- carregar e salvar ---------- */
+    async function carregarDadosEmpresa() {
+        const cid = obterClienteIdAtivo();
+        const r = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+        if (r.error) { toast('Erro ao carregar dados da empresa: ' + r.error.message, 'error'); }
+        const d = r.data || {};
+        dadosCarregados = d;
+        document.getElementById('razao_social').value = d.razao_social || '';
+        document.getElementById('nome_fantasia').value = d.nome_fantasia || '';
+        const cn = d.cnpj || d.cnpj_cpf || '';
+        document.getElementById('cnpj').value = formatarCnpj(cn);
+        document.getElementById('inputCnpjBusca').value = formatarCnpj(cn);
+        document.getElementById('situacao').value = d.situacao || (cn ? 'ATIVA' : '');
+        document.getElementById('data_abertura').value = dataParaBR(d.data_abertura);
+        document.getElementById('cnae_principal').value = d.cnae_principal || '';
+        document.getElementById('email').value = d.email || '';
+        document.getElementById('telefone').value = formatarTelefone(d.telefone);
+        const logo = d.logo_url || d.logotipo_url || '';
+        document.getElementById('logo_url').value = logo;
+        mostrarLogo(logo);
+
+        // quadro societário: do banco (coluna qsa) ou, se não houver, do navegador
+        let lista = Array.isArray(d.qsa) ? d.qsa : null;
+        if (!lista) { try { const s = localStorage.getItem('qsa_empresa_' + cid); if (s) lista = JSON.parse(s); } catch (e) {} }
+        qsa = lista || [];
+        if (qsa.length) renderizarQuadroSocietario(qsa);
+        atualizarFicha();
+    }
+
+    // grava e, se alguma coluna opcional não existir na tabela, tenta de novo sem ela e avisa
+    async function gravarComFallback(payload, cid) {
+        let corpo = Object.assign({}, payload), removidas = [];
+        for (let i = 0; i < 12; i++) {
+            const r = await sb.from('clientes_contratantes').update(corpo).eq('id', cid);
+            if (!r.error) return { ok: true, removidas: removidas };
+            const m = String(r.error.message || '').match(/'([a-z_]+)' column/i) || String(r.error.message || '').match(/column "?([a-z_]+)"?/i);
+            if (m && corpo.hasOwnProperty(m[1]) && ['razao_social', 'cnpj'].indexOf(m[1]) < 0) { removidas.push(m[1]); delete corpo[m[1]]; continue; }
+            return { ok: false, erro: r.error.message, removidas: removidas };
         }
-
-        document.getElementById('email').value = r.email || '';
-        document.getElementById('telefone').value = r.ddd_telefone_1 || '';
-
-        // Guardar QSA no cache local para persistir
-        if(r.qsa && r.qsa.length > 0){
-            qsaCacheGlobal = r.qsa;
-            let cid = clienteIdAtual();
-            localStorage.setItem('qsa_empresa_' + cid, JSON.stringify(r.qsa));
-            renderizarQuadroSocietario(r.qsa);
-        } else {
-            qsaCacheGlobal = [];
-            document.getElementById('tabelaQuadroSocietario').innerHTML = '<div style="color:var(--text-light); font-size:13px; padding:10px;">Nenhum registro de QSA retornado para este CNPJ.</div>';
-        }
-
-        toast("Dados, CNAEs e Quadro Societário importados com sucesso!");
-    } catch(err) {
-        toast("Erro ao consultar CNPJ: " + err.message, "error");
-    }
-}
-
-async function carregarDadosEmpresa(){
-    var cid = clienteIdAtual();
-    if(!cid) return;
-    var { data, error } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
-    if(data){
-        document.getElementById('razao_social').value = data.razao_social || '';
-        document.getElementById('nome_fantasia').value = data.nome_fantasia || '';
-        document.getElementById('cnpj').value = data.cnpj || data.cnpj_cpf || '';
-        document.getElementById('situacao').value = data.situacao || 'ATIVA';
-        document.getElementById('data_abertura').value = data.data_abertura || '';
-        document.getElementById('cnae_principal').value = data.cnae_principal || '';
-        document.getElementById('email').value = data.email || '';
-        document.getElementById('telefone').value = data.telefone || '';
-        document.getElementById('logo_url').value = data.logo_url || '';
-        
-        if(data.logo_url){
-            let imgPrev = document.getElementById('imgLogoPreview');
-            let noLogo = document.getElementById('noLogoIcon');
-            imgPrev.src = data.logo_url;
-            imgPrev.style.display = 'block';
-            noLogo.style.display = 'none';
-        }
-
-        let cnpjAtual = data.cnpj || data.cnpj_cpf;
-        if(cnpjAtual){
-            document.getElementById('inputCnpjBusca').value = cnpjAtual;
-        }
+        return { ok: false, erro: 'Não foi possível gravar.', removidas: removidas };
     }
 
-    // Carregar QSA do armazenamento local
-    try {
-        let qsaSalvo = localStorage.getItem('qsa_empresa_' + cid);
-        if(qsaSalvo){
-            qsaCacheGlobal = JSON.parse(qsaSalvo);
-            renderizarQuadroSocietario(qsaCacheGlobal);
-        }
-    } catch(e){}
-}
+    async function salvarDadosEmpresa() {
+        const cid = obterClienteIdAtivo();
+        const razao = document.getElementById('razao_social').value.trim();
+        const cnpjTxt = document.getElementById('cnpj').value.trim();
+        if (!razao || !cnpjTxt) { toast('Preencha a razão social e o CNPJ!', 'error'); return; }
+        if (!cnpjValido(cnpjTxt)) { toast('CNPJ inválido. Confira os números.', 'error'); return; }
+        const email = document.getElementById('email').value.trim();
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { toast('E-mail inválido.', 'error'); return; }
 
-async function salvarDadosEmpresa(){
-    var cid = clienteIdAtual();
-    if(!cid) return;
-
-    var payload = {
-        razao_social: document.getElementById('razao_social').value.trim(),
-        nome_fantasia: document.getElementById('nome_fantasia').value.trim(),
-        cnpj: document.getElementById('cnpj').value.trim(),
-        situacao: document.getElementById('situacao').value.trim(),
-        data_abertura: document.getElementById('data_abertura').value.trim(),
-        cnae_principal: document.getElementById('cnae_principal').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        telefone: document.getElementById('telefone').value.trim(),
-        logo_url: document.getElementById('logo_url').value.trim()
-    };
-
-    if(!payload.razao_social || !payload.cnpj){
-        toast("Preencha a Razão Social e o CNPJ!", "error");
-        return;
+        const payload = {
+            razao_social: razao, nome_fantasia: document.getElementById('nome_fantasia').value.trim(), cnpj: cnpjTxt,
+            situacao: document.getElementById('situacao').value.trim(), data_abertura: dataParaISO(document.getElementById('data_abertura').value),
+            cnae_principal: document.getElementById('cnae_principal').value.trim(), email: email,
+            telefone: formatarTelefone(document.getElementById('telefone').value), logo_url: document.getElementById('logo_url').value.trim(),
+            qsa: qsa
+        };
+        const btns = [document.getElementById('btnSalvar'), document.getElementById('btnSalvarTopo')]; btns.forEach(function (b) { b.disabled = true; });
+        try {
+            const res = await gravarComFallback(payload, cid);
+            if (!res.ok) { toast('Erro ao atualizar dados: ' + res.erro, 'error'); return; }
+            try { localStorage.setItem('qsa_empresa_' + cid, JSON.stringify(qsa)); } catch (e) {}
+            if (res.removidas.length) toast('Salvo, mas estes campos não existem na tabela e não foram gravados: ' + res.removidas.join(', ') + '. Rode o SQL de colunas.', 'info');
+            else toast('Dados da empresa salvos com sucesso!');
+            atualizarFicha();
+        } finally { btns.forEach(function (b) { b.disabled = false; }); }
     }
 
-    var { error } = await sb.from('clientes_contratantes').update(payload).eq('id', cid);
-    if(error){
-        toast("Erro ao atualizar dados: " + error.message, "error");
-        return;
+    /* ---------- impressão padronizada ---------- */
+    function executarImpressao() {
+        const v = function (id) { return document.getElementById(id).value.trim() || '—'; };
+        if (v('razao_social') === '—') { toast('Não há dados da empresa para imprimir.', 'error'); return; }
+        const linhas = [['Razão social', v('razao_social')], ['Nome fantasia', v('nome_fantasia')], ['CNPJ', v('cnpj')], ['Situação cadastral', v('situacao')],
+            ['Data de abertura', v('data_abertura')], ['CNAE principal', v('cnae_principal')], ['E-mail corporativo', v('email')], ['Telefone / WhatsApp', v('telefone')]]
+            .map(function (p) { return [{ t: p[0], cls: 'bold' }, p[1]]; });
+        qsa.forEach(function (s, i) { linhas.push([{ t: i === 0 ? 'Quadro societário' : '', cls: 'bold' }, (s.nome_socio || s.nome || 'Sócio') + ' — ' + (s.qualificacao_socio || s.qualificacao || 'Sócio')]); });
+        ERPPrint.imprimir({
+            titulo: 'Ficha da Empresa', subtitulo: 'Dados cadastrais e fiscais', codigo: 'CAD-EM', orientacao: 'portrait',
+            colunas: [{ t: 'Campo', w: 1.4 }, { t: 'Informação', w: 4 }], linhas: linhas,
+            observacao: 'Dados conforme cadastro no sistema. Situação, abertura e CNAEs vêm da consulta à Receita Federal.'
+        });
     }
 
-    toast("Dados da empresa salvos com sucesso!");
-    setTimeout(() => { location.reload(); }, 1000);
-}
-
-window.onload = function(){
-    carregarDadosEmpresa();
-};
+    async function inicializarPagina() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            if (u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER) document.body.classList.add('usuario-master');
+        } catch (e) {}
+        await carregarDadosEmpresa();
+    }
+    window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
 </body>
 </html>
