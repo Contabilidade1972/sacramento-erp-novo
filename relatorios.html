@@ -7,8 +7,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         :root {
             --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
@@ -17,63 +19,65 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
-        
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
-        .page-toolbar { display: flex; justify-content: space-between; align-items: center; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
         .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.cinza { background: #64748b; }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
         .btn-acao.cinza:hover { background: #475569; }
-        .btn-acao.sucesso { background: var(--success); }
-        
-        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
-        
-        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); margin-bottom: 20px; }
-        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
-        
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
-        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
-        .form-control:focus { border-color: var(--primary); background: #fff; }
-        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px; }
 
-        /* KPI Cards */
-        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
-        .kpi-title { font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; }
-        .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-        /* Charts Grid */
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px; margin-bottom: 20px; }
-        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; height: 260px; display: flex; flex-direction: column; }
-        .chart-box h4 { font-size: 13px; font-weight: 700; color: var(--secondary); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .chart-container { position: relative; flex: 1; width: 100%; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.cinza { border-top-color: #94a3b8; } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
 
-        /* Tabela Otimizada e Elegante */
-        .table-responsive { width: 100%; overflow-x: auto; }
-        .analitica-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
-        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; word-break: break-word; }
-        .analitica-table tr:hover { background: #f1f5f9; }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
 
-        /* Cabeçalho de Impressão Oficial */
-        .print-header { display: none; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .filtros-box { display: grid; grid-template-columns: 2fr 1.4fr 1.4fr 1fr 1fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+
+        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
+        .pos { color: #047857; font-weight: 700; } .neg { color: #b91c1c; font-weight: 700; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .badge-ent { background: #dcfce7; color: #166534; } .badge-sai { background: #fee2e2; color: #991b1b; } .badge-ab { background: #fef3c7; color: #92400e; } .badge-x { background: #e2e8f0; color: #475569; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
-        
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        @media print {
-            body { background: #fff !important; font-size: 10px !important; }
-            .page-toolbar, footer, button, .toast-container, .panel-filtros, .charts-grid { display: none !important; }
-            .panel { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; }
-            .print-header { display: block !important; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .analitica-table { font-size: 10px !important; }
-            .analitica-table th, .analitica-table td { padding: 6px 8px !important; }
-            @page { size: landscape; margin: 10mm; }
-        }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box { grid-template-columns: 1fr; } }
+    .charts-grid { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; }
+        .chart-box { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; height: 290px; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.03); }
+        .chart-box h4 { font-size: 13px; font-weight: 800; color: var(--secondary); margin-bottom: 8px; }
+        .chart-container { position: relative; flex: 1; min-height: 0; }
+        .rodape-lista { font-size: 12px; color: var(--text-light); margin-top: 10px; }
+        @media (max-width: 1100px) { .charts-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -81,333 +85,429 @@
 
 <div class="container">
     <div class="page-toolbar">
-        <div>
-            <div class="page-title"><i class="fas fa-file-contract" style="color:var(--primary);"></i> Central de Relatórios Oficiais & BI</div>
-            <div class="page-subtitle">Emissão de relatórios gerenciais consolidados de todos os módulos do ERP com inteligência de dados</div>
-        </div>
-        <div>
-            <button class="btn-acao cinza" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
-        </div>
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Início</a>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Oficial</button>
     </div>
 
-    <!-- PAINEL DE FILTROS AVANÇADOS -->
-    <div class="panel panel-filtros" style="background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%); border-color: #bfdbfe;">
-        <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-filter"></i> Seleção do Módulo & Critérios de Relatório</span></div>
-        
-        <div class="form-row">
-            <div>
-                <label>Módulo / Relatório Oficial</label>
-                <select id="filtroTipo" class="form-control" style="background:#fff; font-weight:700;">
+    <div>
+        <div class="page-title"><i class="fas fa-file-contract" style="color:var(--primary);"></i> Central de Relatórios Oficiais & BI</div>
+        <div class="page-subtitle">Relatórios consolidados dos módulos do ERP, com indicadores, gráficos e impressão no padrão oficial</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><span class="kpi-title">Total de registros</span><span class="kpi-value" id="kpiReg">0</span><span class="kpi-sub" id="kpiRegSub">&nbsp;</span></div>
+        <div class="kpi-card cinza"><span class="kpi-title" id="kpiMontLabel">Montante financeiro</span><span class="kpi-value" id="kpiMont">—</span><span class="kpi-sub" id="kpiMontSub">&nbsp;</span></div>
+        <div class="kpi-card verde"><span class="kpi-title">Concluídos / Ativos</span><span class="kpi-value" id="kpiConc" style="color:var(--success);">0</span><span class="kpi-sub" id="kpiConcSub">&nbsp;</span></div>
+        <div class="kpi-card vermelho"><span class="kpi-title">Pendentes / Em aberto</span><span class="kpi-value" id="kpiPend" style="color:var(--danger);">0</span><span class="kpi-sub" id="kpiPendSub">&nbsp;</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-filter" style="color:var(--primary);"></i> Seleção do relatório e critérios</span></div>
+        <div class="filtros-box">
+            <div><label for="filtroTipo">Relatório</label>
+                <select id="filtroTipo" class="form-control" style="font-weight:700;" onchange="trocarRelatorio()">
                     <optgroup label="Financeiro & Tesouraria">
                         <option value="pagar">Contas a Pagar</option>
                         <option value="receber">Contas a Receber</option>
                         <option value="transferencias">Transferências Bancárias</option>
-                        <option value="extrato">Extrato Bancário / Caixa</option>
+                        <option value="extrato">Extrato Bancário Importado (OFX)</option>
                     </optgroup>
-                    <optgroup label="Cadastros & Operacional">
+                    <optgroup label="Cadastros & Estrutura">
                         <option value="parceiros">Parceiros & Clientes</option>
                         <option value="socios">Quadro Societário</option>
-                        <option value="produtos">Produtos & Serviços</option>
-                        <option value="estoque">Inventário & Estoque</option>
                         <option value="centros_custo">Centros de Custo</option>
+                        <option value="ativos">Ativos & Equipamentos</option>
                     </optgroup>
-                    <optgroup label="Tecnologia, P&D & Fiscal">
-                        <option value="projetos_pd">Projetos de P&D & Inovação</option>
+                    <optgroup label="Tecnologia & P&D">
+                        <option value="projetos_pd">Projetos de P&D</option>
                         <option value="aportes_pd">Aportes & Contratos de Fomento</option>
-                        <option value="documentos">Documentos Fiscais XML / NF-e</option>
+                        <option value="custos_pd">Custos de P&D</option>
+                        <option value="faturamento_pd">Faturamento de P&D (NFS-e)</option>
                     </optgroup>
-                </select>
-            </div>
-            <div>
-                <label>Pesquisa por Nome / Descrição</label>
-                <input type="text" id="filtroBusca" class="form-control" placeholder="Filtrar por texto..." style="background:#fff;">
-            </div>
-            <div>
-                <label>Status / Filtro Específico</label>
-                <select id="filtroStatus" class="form-control" style="background:#fff;">
-                    <option value="TODOS">Todos os Registros</option>
-                    <option value="PENDENTE">Pendentes / Em Aberto</option>
-                    <option value="PAGO">Pagos / Recebidos / Ativos</option>
-                </select>
-            </div>
-            <div>
-                <label>Data Inicial</label>
-                <input type="date" id="filtroDataInicio" class="form-control" style="background:#fff;">
-            </div>
-            <div>
-                <label>Data Final</label>
-                <input type="date" id="filtroDataFim" class="form-control" style="background:#fff;">
-            </div>
+                </select></div>
+            <div><label for="filtroStatus">Situação</label>
+                <select id="filtroStatus" class="form-control" onchange="aplicar()">
+                    <option value="todos">Todos os registros</option>
+                    <option value="aberto">Pendentes / em aberto</option>
+                    <option value="concluido">Concluídos / ativos</option>
+                </select></div>
+            <div><label for="filtroBusca">Buscar</label><input type="text" id="filtroBusca" class="form-control" placeholder="Nome ou descrição..." oninput="aplicar()"></div>
+            <div><label for="filtroDataInicio" id="lblDe">Data — de</label><input type="date" id="filtroDataInicio" class="form-control" onchange="aplicar()"></div>
+            <div><label for="filtroDataFim" id="lblAte">Data — até</label><input type="date" id="filtroDataFim" class="form-control" onchange="aplicar()"></div>
+            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
         </div>
-
-        <div style="display:flex; gap:10px; margin-top:8px; flex-wrap:wrap;">
-            <button class="btn-acao" onclick="carregarRelatorioOficial()"><i class="fas fa-sync-alt"></i> Gerar Relatório & BI</button>
-            <button class="btn-acao sucesso" onclick="window.print()"><i class="fas fa-print"></i> Imprimir Relatório Oficial (PDF)</button>
-        </div>
+        <div class="aviso" id="avisoRel"></div>
     </div>
 
-    <!-- CARDS DE KPI (RESUMO EXECUTIVO) -->
-    <div class="kpi-grid">
-        <div class="kpi-card">
-            <span class="kpi-title"><i class="fas fa-database"></i> Total de Registros</span>
-            <span class="kpi-value" id="kpiTotalRegistros">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title"><i class="fas fa-dollar-sign"></i> Montante Financeiro / Valor</span>
-            <span class="kpi-value" id="kpiMontante">R$ 0,00</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title"><i class="fas fa-check-circle"></i> Registros Concluídos / Ativos</span>
-            <span class="kpi-value" id="kpiConcluidos">0</span>
-        </div>
-        <div class="kpi-card">
-            <span class="kpi-title"><i class="fas fa-clock"></i> Pendentes / Em Aberto</span>
-            <span class="kpi-value" id="kpiPendentes">0</span>
-        </div>
-    </div>
-
-    <!-- DASHBOARD DE GRÁFICOS BI -->
     <div class="charts-grid">
-        <div class="chart-box">
-            <h4><i class="fas fa-chart-pie" style="color:var(--primary);"></i> Distribuição por Status / Tipo</h4>
-            <div class="chart-container"><canvas id="chartStatus"></canvas></div>
-        </div>
-        <div class="chart-box">
-            <h4><i class="fas fa-chart-bar" style="color:var(--success);"></i> Volume por Categoria / Centro de Custo</h4>
-            <div class="chart-container"><canvas id="chartCategoria"></canvas></div>
-        </div>
+        <div class="chart-box"><h4 id="tituloGraf1">Distribuição por situação</h4><div class="chart-container"><canvas id="chartStatus"></canvas></div></div>
+        <div class="chart-box"><h4 id="tituloGraf2">Volume por categoria</h4><div class="chart-container"><canvas id="chartCategoria"></canvas></div></div>
     </div>
 
-    <!-- TABELA ANALÍTICA DETALHADA -->
     <div class="panel">
-        <div class="print-header">
-            <h2 id="printEmpresaNome" style="font-size: 16px; font-weight: 800; color: #000;">Sacramento ERP — Relatório Executivo Oficial</h2>
-            <p id="printInfoMeta" style="font-size: 11px; color: #555; margin-top: 4px;"></p>
-        </div>
-
-        <div class="panel-header">
-            <span id="tituloRelatorioExibido"><i class="fas fa-table"></i> Relatório Consolidado</span>
-            <span id="contadorRegistros" style="font-size:12px; color:var(--text-light); font-weight:normal;">Nenhum dado carregado</span>
-        </div>
-        <div class="table-responsive" id="containerTabelaRelatorio">
-            <div style="text-align:center; padding:30px; color:var(--text-light);">Selecione o módulo desejado e clique em "Gerar Relatório & BI".</div>
-        </div>
+        <div class="panel-title"><span class="t"><i class="fas fa-table" style="color:var(--primary);"></i> <span id="tituloRel">Relatório</span></span><span id="contaReg" style="font-size:12px; color:var(--text-light); font-weight:600;"></span></div>
+        <div class="table-wrap" id="listaRel"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+        <div class="rodape-lista" id="rodapeLista"></div>
     </div>
 </div>
 
-<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
-
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-let chartStatusInstancia = null;
-let chartCatInstancia = null;
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    const LIMITE_TELA = 500;
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
-
-function toast(msg,type='success'){
-    var c=document.getElementById('toastContainer'),x=document.createElement('div');
-    if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
-    x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
-}
-
-// Mapa de colunas essenciais e amigáveis para cada tipo de relatório (evita poluição e quebras de layout)
-const colunasMap = {
-    'pagar': ['descricao', 'fornecedor_nome', 'valor', 'vencimento', 'centro_custo', 'status'],
-    'receber': ['descricao', 'cliente_nome', 'valor', 'vencimento', 'status'],
-    'transferencias': ['banco_origem', 'banco_destino', 'valor', 'data', 'observacao'],
-    'extrato': ['descricao', 'tipo', 'valor', 'data', 'banco'],
-    'parceiros': ['nome', 'tipo', 'cnpj_cpf', 'telefone', 'cidade', 'email'],
-    'socios': ['nome', 'cpf', 'funcao', 'participacao', 'situacao'],
-    'produtos': ['codigo', 'descricao', 'tipo', 'unidade', 'preco_venda', 'estoque'],
-    'estoque': ['codigo', 'descricao', 'quantidade', 'unidade', 'localizacao'],
-    'centros_custo': ['codigo', 'nome', 'departamento', 'orcamento'],
-    'projetos_pd': ['nome_projeto', 'codigo', 'coordenador', 'status', 'orcamento'],
-    'aportes_pd': ['titulo', 'fonte_fomento', 'valor_captado', 'status'],
-    'documentos': ['numero_nota', 'emitente', 'valor_total', 'data_emissao', 'status']
-};
-
-async function carregarRelatorioOficial(){
-    var cid = clienteIdAtual();
-    var tipo = document.getElementById('filtroTipo').value;
-    var busca = document.getElementById('filtroBusca').value.toLowerCase().trim();
-    var statusFiltro = document.getElementById('filtroStatus').value;
-    var dataIni = document.getElementById('filtroDataInicio').value;
-    var dataFim = document.getElementById('filtroDataFim').value;
-    
-    var container = document.getElementById('containerTabelaRelatorio');
-    var tituloEl = document.getElementById('tituloRelatorioExibido');
-    var contadorEl = document.getElementById('contadorRegistros');
-
-    container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">A processar dados e a consolidar relatórios...</div>';
-
-    let tabelasMapeadas = {
-        'pagar': { nome: 'Relatório de Contas a Pagar', tabela: 'contas_pagar' },
-        'receber': { nome: 'Relatório de Contas a Receber', tabela: 'contas_receber' },
-        'transferencias': { nome: 'Relatório de Transferências Bancárias', tabela: 'transferencias' },
-        'extrato': { nome: 'Relatório de Extrato & Caixa', tabela: 'extrato_banco' },
-        'parceiros': { nome: 'Relatório de Parceiros & Clientes', tabela: 'parceiros' },
-        'socios': { nome: 'Relatório do Quadro Societário', tabela: 'socios' },
-        'produtos': { nome: 'Relatório de Produtos & Serviços', tabela: 'produtos' },
-        'estoque': { nome: 'Relatório de Inventário & Estoque', tabela: 'estoque' },
-        'centros_custo': { nome: 'Relatório de Centros de Custo', tabela: 'centros_custo' },
-        'projetos_pd': { nome: 'Relatório de Projetos de P&D', tabela: 'projetos_pd' },
-        'aportes_pd': { nome: 'Relatório de Aportes & Fomento', tabela: 'aportes_pd' },
-        'documentos': { nome: 'Relatório de Documentos Fiscais XML', tabela: 'documentos_xml' }
+    /* Cada relatório diz: tabela, campos de data/valor/situação e colunas.
+       "keys" lista nomes possíveis da coluna no banco; vale o primeiro que tiver valor (tolera diferenças de cadastro). */
+    const RELATORIOS = {
+        pagar: { titulo: 'Contas a Pagar', cod: 'REL-CP', tabela: 'contas_pagar', datas: ['vencimento'], rotData: 'Vencimento', valor: ['valor'], status: ['status'], cat: ['centro_custo'], catRot: 'centro de custo',
+            cols: [{ t: 'Vencimento', k: ['vencimento'], tipo: 'data', w: 1.1 }, { t: 'Fornecedor', k: ['fornecedor_nome', 'fornecedor'], w: 2.2 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Centro de custo', k: ['centro_custo'], w: 1.8 },
+                   { t: 'Pagamento', k: ['data_pagamento'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        receber: { titulo: 'Contas a Receber', cod: 'REL-CR', tabela: 'contas_receber', datas: ['vencimento'], rotData: 'Vencimento', valor: ['valor'], status: ['status'], cat: ['centro_custo'], catRot: 'centro de custo',
+            cols: [{ t: 'Vencimento', k: ['vencimento'], tipo: 'data', w: 1.1 }, { t: 'Cliente', k: ['cliente_nome', 'cliente'], w: 2.2 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Centro de custo', k: ['centro_custo'], w: 1.8 },
+                   { t: 'Recebimento', k: ['data_recebimento'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        transferencias: { titulo: 'Transferências Bancárias', cod: 'REL-TR', tabela: 'transferencias', datas: ['data', 'created_at'], rotData: 'Data', valor: ['valor'], status: null, cat: ['conta_destino'], catRot: 'conta de destino',
+            cols: [{ t: 'Data', k: ['data', 'created_at'], tipo: 'data', w: 1.1 }, { t: 'Origem', k: ['conta_origem'], w: 2 }, { t: 'Destino', k: ['conta_destino'], w: 2 }, { t: 'Observação', k: ['observacao'], w: 3.4 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        extrato: { titulo: 'Extrato Bancário Importado (OFX)', cod: 'REL-EX', tabela: 'extrato_ofx_importado', datas: ['data_transacao'], rotData: 'Data', valor: ['valor'], status: ['status'], cat: ['tipo'], catRot: 'tipo', saldoLiquido: true,
+            cols: [{ t: 'Data', k: ['data_transacao'], tipo: 'data', w: 1.1 }, { t: 'Conta', k: ['conta_id'], tipo: 'conta', w: 1.8 }, { t: 'Histórico', k: ['historico'], w: 4 }, { t: 'Tipo', k: ['tipo'], w: 1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        parceiros: { titulo: 'Parceiros & Clientes', cod: 'REL-PA', tabela: 'parceiros', datas: ['created_at'], rotData: 'Cadastro', valor: null, status: null, cat: ['tipo_cadastro', 'tipo'], catRot: 'tipo de cadastro',
+            cols: [{ t: 'Nome / Razão social', k: ['nome', 'nome_fantasia'], w: 3 }, { t: 'Tipo', k: ['tipo_cadastro', 'tipo'], w: 1.2 }, { t: 'CPF / CNPJ', k: ['cnpj_cpf', 'cpf_cnpj'], w: 1.8 }, { t: 'Telefone', k: ['telefone'], w: 1.4 }, { t: 'Cidade / UF', k: ['cidade_uf', 'cidade'], w: 1.6 }, { t: 'E-mail', k: ['email', 'email_nfe'], w: 2.4 }] },
+        socios: { titulo: 'Quadro Societário', cod: 'REL-SO', tabela: 'socios', datas: ['data_entrada'], rotData: 'Entrada', valor: null, status: ['situacao'], cat: ['funcao'], catRot: 'função',
+            cols: [{ t: 'Nome', k: ['nome'], w: 3 }, { t: 'CPF', k: ['cpf'], w: 1.6 }, { t: 'Função', k: ['funcao'], w: 2 }, { t: 'Participação', k: ['participacao', 'percentual_rateio'], tipo: 'pct', w: 1.2, a: 'right' }, { t: 'Entrada', k: ['data_entrada'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['situacao'], tipo: 'status', w: 1.1 }] },
+        centros_custo: { titulo: 'Centros de Custo', cod: 'REL-CC', tabela: 'centros_custo', datas: ['created_at'], rotData: 'Cadastro', valor: null, status: ['ativo'], cat: ['ativo'], catRot: 'situação',
+            cols: [{ t: 'Código', k: ['codigo'], w: 1 }, { t: 'Nome', k: ['nome'], w: 3 }, { t: 'Descrição', k: ['descricao'], w: 3.5 }, { t: 'Situação', k: ['ativo'], tipo: 'status', w: 1 }] },
+        ativos: { titulo: 'Ativos & Equipamentos', cod: 'REL-AT', tabela: 'ativos_equipamentos', datas: ['data_aquisicao'], rotData: 'Aquisição', valor: ['valor_aquisicao'], status: ['status_ativo'], cat: ['centro_custo'], catRot: 'setor / centro de custo', rotMontante: 'Valor de aquisição',
+            cols: [{ t: 'Patrimônio', k: ['patrimonio'], w: 1.2 }, { t: 'Ativo / Equipamento', k: ['nome_ativo'], w: 3 }, { t: 'Setor / Centro de custo', k: ['centro_custo'], w: 2.2 }, { t: 'Aquisição', k: ['data_aquisicao'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status_ativo'], tipo: 'status', w: 1.2 }, { t: 'Valor (R$)', k: ['valor_aquisicao'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        projetos_pd: { titulo: 'Projetos de P&D', cod: 'REL-PD', tabela: 'projetos_pd', datas: ['data_inicio', 'created_at'], rotData: 'Início', valor: ['orcamento', 'valor_orcamento', 'valor_total'], status: ['status'], cat: ['status'], catRot: 'situação', rotMontante: 'Orçamento total',
+            cols: [{ t: 'Código', k: ['codigo'], w: 1.1 }, { t: 'Projeto', k: ['nome', 'nome_projeto'], w: 3.5 }, { t: 'Coordenador', k: ['coordenador', 'responsavel'], w: 2 }, { t: 'Início', k: ['data_inicio'], tipo: 'data', w: 1.1 }, { t: 'Situação', k: ['status'], tipo: 'status', w: 1.2 }, { t: 'Orçamento (R$)', k: ['orcamento', 'valor_orcamento', 'valor_total'], tipo: 'moeda', w: 1.4, a: 'right' }] },
+        aportes_pd: { titulo: 'Aportes & Contratos de Fomento', cod: 'REL-AP', tabela: 'aportes_pd', datas: ['data_recebimento'], rotData: 'Recebimento', valor: ['valor'], status: null, cat: ['projeto_id'], catTipo: 'projeto', catRot: 'projeto',
+            cols: [{ t: 'Recebimento', k: ['data_recebimento'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 3 }, { t: 'Observações', k: ['observacoes'], w: 4 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.4, a: 'right' }] },
+        custos_pd: { titulo: 'Custos de P&D', cod: 'REL-CU', tabela: 'custos_pd', datas: ['data_gasto'], rotData: 'Gasto', valor: ['valor'], status: null, cat: ['categoria'], catRot: 'categoria',
+            cols: [{ t: 'Data', k: ['data_gasto'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 2.2 }, { t: 'Categoria', k: ['categoria'], w: 1.6 }, { t: 'Descrição', k: ['descricao'], w: 3 }, { t: 'Prestador', k: ['prestador_nome', 'empresa_pagadora'], w: 2 }, { t: 'Valor (R$)', k: ['valor'], tipo: 'moeda', w: 1.3, a: 'right' }] },
+        faturamento_pd: { titulo: 'Faturamento de P&D (NFS-e)', cod: 'REL-FA', tabela: 'faturamento_pd', datas: ['data_emissao'], rotData: 'Emissão', valor: ['valor_nf'], status: ['status_nf'], cat: ['projeto_id'], catTipo: 'projeto', catRot: 'projeto',
+            cols: [{ t: 'Emissão', k: ['data_emissao'], tipo: 'data', w: 1.1 }, { t: 'Projeto', k: ['projeto_id'], tipo: 'projeto', w: 2.2 }, { t: 'Tomador', k: ['cliente_tomador'], w: 2.4 }, { t: 'NF nº', k: ['numero_nf'], w: 1 }, { t: 'Situação', k: ['status_nf'], tipo: 'status', w: 1.1 }, { t: 'Valor (R$)', k: ['valor_nf'], tipo: 'moeda', w: 1.3, a: 'right' }] }
     };
 
-    let config = tabelasMapeadas[tipo] || { nome: 'Relatório Geral', tabela: 'contas_pagar' };
-    tituloEl.innerHTML = `<i class="fas fa-table"></i> ${config.nome}`;
-    document.getElementById('printInfoMeta').innerText = `Emitido em: ${new Date().toLocaleString('pt-BR')} | Filtro: ${config.nome}`;
+    let cache = {};          // dados por tabela
+    let mapaProj = {}, mapaConta = {};
+    let atual = null;        // relatório em tela
+    let R = null;            // resultado filtrado
+    let chart1 = null, chart2 = null;
+    let seq = 0;
 
-    try {
-        let { data, error } = await sb.from(config.tabela).select('*').eq('cliente_id', cid);
-        if(error) throw error;
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function norm(s) { return String(s === null || s === undefined ? '' : s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function numero(v) {
+        if (typeof v === 'number') return v;
+        let s = String(v === null || v === undefined ? '' : v).trim();
+        if (!s) return 0;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(s);
+        return isNaN(n) ? 0 : n;
+    }
+    function arred(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function B(n) { return 'R$ ' + fmtBR(n); }
+    function dataISO(d) {
+        if (!d) return '';
+        const s = String(d).trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
+        const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+        return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+    }
+    function dataBR(d) { const i = dataISO(d); return i ? i.split('-').reverse().join('/') : '—'; }
 
-        let registros = data || [];
-
-        // Filtros avançados
-        if(busca){
-            registros = registros.filter(r => JSON.stringify(r).toLowerCase().includes(busca));
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+    async function lerTudo(tabela, cid) {
+        const out = [], PAG = 1000;
+        for (let ini = 0; ini < 200000; ini += PAG) {
+            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
+            if (r.error) throw r.error;
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
         }
+        return out;
+    }
 
-        if(statusFiltro !== 'TODOS'){
-            registros = registros.filter(r => {
-                let st = (r.status || r.situacao || '').toUpperCase();
-                return st.includes(statusFiltro);
-            });
+    /* ---------- acesso aos campos ---------- */
+    function pega(row, keys) {
+        if (!keys) return null;
+        for (let i = 0; i < keys.length; i++) { const v = row[keys[i]]; if (v !== null && v !== undefined && String(v) !== '') return v; }
+        return null;
+    }
+    function textoStatus(v) {
+        if (v === true) return 'Ativo';
+        if (v === false) return 'Inativo';
+        return v === null || v === undefined || v === '' ? '' : String(v);
+    }
+    function classeStatus(v) {   // 'c' concluído/ativo, 'p' pendente/em aberto, 'x' cancelado/inativo/outro
+        const s = norm(textoStatus(v));
+        if (!s) return 'p';
+        if (/inativ|cancel|baixad|encerrad/.test(s)) return 'x';
+        if (/pago|recebido|quitado|ativ|conclu|concili|emitid|aprovad/.test(s)) return 'c';
+        return 'p';
+    }
+    function celula(col, row) {
+        const v = pega(row, col.k);
+        switch (col.tipo) {
+            case 'data': return v ? dataBR(v) : '—';
+            case 'moeda': return v === null ? '—' : fmtBR(numero(v));
+            case 'pct': return v === null ? '—' : fmtBR(numero(v)) + '%';
+            case 'status': { const t = textoStatus(v); return t || '—'; }
+            case 'projeto': return v === null ? '—' : (mapaProj[String(v)] || ('Projeto ' + v));
+            case 'conta': return v === null ? '—' : (mapaConta[String(v)] || ('Conta ' + v));
+            default: return v === null ? '—' : String(v);
         }
+    }
+    function categoriaDe(cfg, row) {
+        const v = pega(row, cfg.cat);
+        if (v === null) return 'Não informado';
+        if (cfg.catTipo === 'projeto') return mapaProj[String(v)] || ('Projeto ' + v);
+        if (typeof v === 'boolean') return v ? 'Ativo' : 'Inativo';
+        return String(v);
+    }
 
-        if(dataIni){
-            registros = registros.filter(r => {
-                let dt = r.vencimento || r.data_cadastro || r.created_at || r.data || '';
-                return dt >= dataIni;
-            });
+    /* ---------- carga ---------- */
+    async function carregarTabela(tabela) {
+        const cid = obterClienteIdAtivo();
+        const chave = cid + ':' + tabela;
+        if (cache[chave]) return cache[chave];
+        const dados = await lerTudo(tabela, cid);
+        cache[chave] = dados;
+        return dados;
+    }
+    async function carregarApoios(tipo) {
+        const cid = obterClienteIdAtivo();
+        const cfg = RELATORIOS[tipo];
+        const precisaProj = cfg.cols.some(function (c) { return c.tipo === 'projeto'; });
+        const precisaConta = cfg.cols.some(function (c) { return c.tipo === 'conta'; });
+        if (precisaProj) {
+            try {
+                const ps = await carregarTabela('projetos_pd');
+                mapaProj = {}; ps.forEach(function (p) { mapaProj[String(p.id)] = (p.codigo ? p.codigo + ' · ' : '') + (p.nome || p.nome_projeto || ('Projeto ' + p.id)); });
+            } catch (e) { mapaProj = {}; }
         }
-
-        if(dataFim){
-            registros = registros.filter(r => {
-                let dt = r.vencimento || r.data_cadastro || r.created_at || r.data || '';
-                return dt <= dataFim;
-            });
+        if (precisaConta) {
+            try {
+                const cs = await carregarTabela('contas_bancarias');
+                mapaConta = {}; cs.forEach(function (c) { mapaConta[String(c.id)] = c.nome || c.banco || ('Conta ' + c.id); });
+            } catch (e) { mapaConta = {}; }
         }
+    }
 
-        contadorEl.innerHTML = `${registros.length} registros encontrados`;
+    async function trocarRelatorio() {
+        const tipo = document.getElementById('filtroTipo').value;
+        const cfg = RELATORIOS[tipo];
+        atual = tipo;
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
+        document.getElementById('filtroStatus').value = 'todos';
+        document.getElementById('filtroStatus').disabled = !cfg.status;
+        document.getElementById('lblDe').textContent = cfg.rotData + ' — de';
+        document.getElementById('lblAte').textContent = cfg.rotData + ' — até';
+        document.getElementById('tituloRel').textContent = cfg.titulo;
+        document.getElementById('listaRel').innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Consultando base de dados...</div>';
+        const meu = ++seq;
+        try {
+            await carregarTabela(cfg.tabela);
+            await carregarApoios(tipo);
+            if (meu !== seq) return;
+            aplicar();
+        } catch (e) {
+            if (meu !== seq) return;
+            const msg = (e && e.message) ? e.message : 'erro desconhecido';
+            document.getElementById('listaRel').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Não foi possível carregar este relatório: ' + esc(msg) + '</div>';
+            R = null; zerarKpis();
+        }
+    }
 
-        // Calcular KPIs
-        let totalReg = registros.length;
-        let montante = 0;
-        let concluidos = 0;
-        let pendentes = 0;
+    function zerarKpis() {
+        ['kpiReg', 'kpiConc', 'kpiPend'].forEach(function (id) { document.getElementById(id).textContent = '0'; });
+        document.getElementById('kpiMont').textContent = '—';
+        ['kpiRegSub', 'kpiMontSub', 'kpiConcSub', 'kpiPendSub'].forEach(function (id) { document.getElementById(id).textContent = ' '; });
+        desenharGraficos(null);
+    }
 
-        registros.forEach(r => {
-            let val = parseFloat(r.valor || r.preco_venda || r.participacao || r.montante || r.orcamento || 0);
-            if(!isNaN(val)) montante += val;
+    function limparFiltros() {
+        document.getElementById('filtroBusca').value = '';
+        document.getElementById('filtroStatus').value = 'todos';
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
+        aplicar();
+    }
 
-            let st = (r.status || r.situacao || '').toUpperCase();
-            if(st.includes('PAGO') || st.includes('RECEBIDO') || st.includes('ATIVO')) concluidos++;
-            else if(st.includes('PENDENTE') || st.includes('ABERTO')) pendentes++;
+    /* ---------- filtros e totais ---------- */
+    function aplicar() {
+        if (!atual) return;
+        const cfg = RELATORIOS[atual];
+        const dados = cache[obterClienteIdAtivo() + ':' + cfg.tabela] || [];
+        const de = document.getElementById('filtroDataInicio').value, ate = document.getElementById('filtroDataFim').value;
+        const stF = cfg.status ? document.getElementById('filtroStatus').value : 'todos';
+        const txt = norm(document.getElementById('filtroBusca').value);
+        const av = document.getElementById('avisoRel');
+        av.style.display = 'none';
+        if (de && ate && de > ate) { av.textContent = 'A data inicial é maior que a data final. Ajuste o período.'; av.style.display = 'block'; }
+
+        const linhas = dados.filter(function (r) {
+            if (de || ate) {
+                const d = dataISO(pega(r, cfg.datas));
+                if (!d) return false;
+                if (de && d < de) return false;
+                if (ate && d > ate) return false;
+            }
+            if (stF !== 'todos') {
+                const c = classeStatus(pega(r, cfg.status));
+                if (stF === 'concluido' && c !== 'c') return false;
+                if (stF === 'aberto' && c !== 'p') return false;
+            }
+            if (txt) {
+                const alvo = cfg.cols.map(function (col) { return celula(col, r); }).join(' ');
+                if (norm(alvo).indexOf(txt) < 0) return false;
+            }
+            return true;
         });
+        const dataOrd = function (r) { return dataISO(pega(r, cfg.datas)); };
+        linhas.sort(function (a, b) { const x = dataOrd(a), y = dataOrd(b); return x < y ? -1 : (x > y ? 1 : 0); });
 
-        document.getElementById('kpiTotalRegistros').innerText = totalReg;
-        document.getElementById('kpiMontante').innerText = 'R$ ' + montante.toLocaleString('pt-BR', {minimumFractionDigits: 2});
-        document.getElementById('kpiConcluidos').innerText = concluidos;
-        document.getElementById('kpiPendentes').innerText = pendentes;
+        let mont = 0, nC = 0, nP = 0, vC = 0, vP = 0;
+        const porCat = {}, porSt = {};
+        linhas.forEach(function (r) {
+            const val = cfg.valor ? numero(pega(r, cfg.valor)) : 0;
+            mont += val;
+            const cat = categoriaDe(cfg, r);
+            const pc = porCat[cat] = porCat[cat] || { n: 0, v: 0 }; pc.n++; pc.v += val;
+            if (cfg.status) {
+                const stv = pega(r, cfg.status), cl = classeStatus(stv), rot = textoStatus(stv) || 'Sem situação';
+                porSt[rot] = (porSt[rot] || 0) + 1;
+                if (cl === 'c') { nC++; vC += val; } else if (cl === 'p') { nP++; vP += val; }
+            }
+        });
+        R = { cfg: cfg, tipo: atual, de: de, ate: ate, stF: stF, txt: txt, linhas: linhas, mont: arred(mont), nC: nC, nP: nP, vC: arred(vC), vP: arred(vP), porCat: porCat, porSt: porSt };
+        desenhar();
+    }
 
-        atualizarGraficosBI(registros);
+    function desenhar() {
+        const cfg = R.cfg;
+        document.getElementById('kpiReg').textContent = R.linhas.length;
+        document.getElementById('kpiRegSub').textContent = cfg.titulo;
+        document.getElementById('kpiMontLabel').textContent = cfg.rotMontante || (cfg.saldoLiquido ? 'Saldo líquido (créditos − débitos)' : 'Montante financeiro');
+        document.getElementById('kpiMont').textContent = cfg.valor ? B(R.mont) : '—';
+        document.getElementById('kpiMontSub').textContent = cfg.valor ? 'Soma dos registros filtrados' : 'Este relatório não possui valores';
+        document.getElementById('kpiConc').textContent = cfg.status ? R.nC : '—';
+        document.getElementById('kpiConcSub').textContent = cfg.status ? (cfg.valor ? B(R.vC) : 'registro(s)') : 'Sem controle de situação';
+        document.getElementById('kpiPend').textContent = cfg.status ? R.nP : '—';
+        document.getElementById('kpiPendSub').textContent = cfg.status ? (cfg.valor ? B(R.vP) : 'registro(s)') : 'Sem controle de situação';
 
-        if(registros.length === 0){
-            container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-light);">Nenhum registro encontrado para os critérios informados.</div>';
+        document.getElementById('contaReg').textContent = R.linhas.length + (R.linhas.length === 1 ? ' registro' : ' registros');
+        const el = document.getElementById('listaRel');
+        if (!R.linhas.length) {
+            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum registro encontrado para os critérios informados.</div>';
+            document.getElementById('rodapeLista').textContent = '';
+            desenharGraficos(R);
             return;
         }
-
-        // Definir colunas amigáveis baseadas no mapa, ou fallback para as chaves reais caso venham vazias
-        let chavesPermitidas = colunasMap[tipo] || [];
-        let chavesDisponiveis = Object.keys(registros[0]);
-        let chaves = chavesPermitidas.filter(c => chavesDisponiveis.includes(c));
-        if(chaves.length === 0) {
-            chaves = chavesDisponiveis.filter(k => !['id', 'cliente_id', 'created_at', 'updated_at'].includes(k)).slice(0, 6);
-        }
-
-        let html = '<table class="analitica-table"><thead><tr>';
-        chaves.forEach(c => {
-            html += `<th>${c.replace(/_/g, ' ').toUpperCase()}</th>`;
-        });
-        html += '</tr></thead><tbody>';
-
-        registros.forEach(row => {
-            html += '<tr>';
-            chaves.forEach(c => {
-                let val = row[c] !== null && row[c] !== undefined ? row[c] : '—';
-                if(typeof val === 'number' && (c.includes('valor') || c.includes('preco') || c.includes('custo') || c.includes('montante') || c.includes('orcamento'))) {
-                    val = 'R$ ' + Number(val).toLocaleString('pt-BR', {minimumFractionDigits: 2});
-                }
-                html += `<td>${val}</td>`;
+        const mostra = R.linhas.slice(0, LIMITE_TELA);
+        let h = '<table class="tabela"><thead><tr>';
+        cfg.cols.forEach(function (c) { h += '<th' + (c.a === 'right' ? ' class="num"' : '') + '>' + esc(c.t) + '</th>'; });
+        h += '</tr></thead><tbody>';
+        mostra.forEach(function (r) {
+            h += '<tr>';
+            cfg.cols.forEach(function (c) {
+                const t = esc(celula(c, r));
+                if (c.tipo === 'moeda') h += '<td class="num">' + t + '</td>';
+                else if (c.tipo === 'pct') h += '<td class="num">' + t + '</td>';
+                else if (c.tipo === 'status') {
+                    const cl = classeStatus(pega(r, c.k));
+                    h += '<td><span class="badge-st ' + (cl === 'c' ? 'badge-ent' : (cl === 'x' ? 'badge-x' : 'badge-ab')) + '">' + t + '</span></td>';
+                } else h += '<td>' + t + '</td>';
             });
-            html += '</tr>';
+            h += '</tr>';
         });
-
-        html += '</tbody></table>';
-        container.innerHTML = html;
-        toast("Relatório oficial gerado com sucesso!");
-
-    } catch(err) {
-        container.innerHTML = `<div style="text-align:center; padding:30px; color:var(--danger);">Erro ao carregar dados: ${err.message}</div>`;
-        toast("Erro ao carregar relatório.", "error");
+        h += '</tbody>';
+        if (cfg.valor) {
+            const idx = cfg.cols.findIndex(function (c) { return c.tipo === 'moeda'; });
+            h += '<tfoot><tr>';
+            cfg.cols.forEach(function (c, i) { h += i === 0 ? '<td>TOTAL</td>' : (i === idx ? '<td class="num">' + fmtBR(R.mont) + '</td>' : '<td></td>'); });
+            h += '</tr></tfoot>';
+        }
+        h += '</table>';
+        el.innerHTML = h;
+        document.getElementById('rodapeLista').textContent = R.linhas.length > LIMITE_TELA ? ('Mostrando os ' + LIMITE_TELA + ' primeiros de ' + R.linhas.length + ' registros na tela. A impressão e os totais consideram todos.') : '';
+        desenharGraficos(R);
     }
-}
 
-function atualizarGraficosBI(registros){
-    let statusCounts = {};
-    let catCounts = {};
+    function desenharGraficos(res) {
+        if (chart1) { chart1.destroy(); chart1 = null; }
+        if (chart2) { chart2.destroy(); chart2 = null; }
+        if (!res || typeof Chart === 'undefined') return;
+        const cfg = res.cfg;
+        const cores = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#0ea5e9', '#64748b', '#ec4899'];
+        let d1 = res.porSt, t1 = 'Registros por situação';
+        if (!cfg.status) { d1 = {}; Object.keys(res.porCat).forEach(function (k) { d1[k] = res.porCat[k].n; }); t1 = 'Registros por ' + cfg.catRot; }
+        let k1 = Object.keys(d1).sort(function (a, b) { return d1[b] - d1[a]; }).slice(0, 8);
+        document.getElementById('tituloGraf1').textContent = t1;
+        if (k1.length) chart1 = new Chart(document.getElementById('chartStatus').getContext('2d'), { type: 'doughnut',
+            data: { labels: k1, datasets: [{ data: k1.map(function (k) { return d1[k]; }), backgroundColor: cores }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } } } });
 
-    registros.forEach(r => {
-        let st = r.status || r.situacao || 'Indefinido';
-        statusCounts[st] = (statusCounts[st] || 0) + 1;
+        const usaValor = !!cfg.valor;
+        const cats = Object.keys(res.porCat).sort(function (a, b) { return usaValor ? Math.abs(res.porCat[b].v) - Math.abs(res.porCat[a].v) : res.porCat[b].n - res.porCat[a].n; }).slice(0, 8);
+        document.getElementById('tituloGraf2').textContent = (usaValor ? 'Valor (R$) por ' : 'Registros por ') + cfg.catRot;
+        if (cats.length) chart2 = new Chart(document.getElementById('chartCategoria').getContext('2d'), { type: 'bar',
+            data: { labels: cats, datasets: [{ label: usaValor ? 'R$' : 'Registros', data: cats.map(function (k) { return usaValor ? arred(res.porCat[k].v) : res.porCat[k].n; }), backgroundColor: '#3b82f6', borderRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 10 }, maxRotation: 30 } } } } });
+    }
 
-        let cat = r.centro_custo || r.tipo || r.categoria || r.funcao || r.departamento || 'Geral';
-        catCounts[cat] = (catCounts[cat] || 0) + 1;
-    });
+    /* ---------- impressão padrão ERPPrint ---------- */
+    function executarImpressao() {
+        if (!R) { toast('Aguarde o carregamento do relatório.', 'info'); return; }
+        if (typeof ERPPrint === 'undefined') { toast('Módulo de impressão indisponível. Recarregue a página (Ctrl+F5).', 'error'); return; }
+        if (!R.linhas.length) { toast('Não há registros para imprimir com os filtros atuais.', 'error'); return; }
+        const cfg = R.cfg;
+        const filtros = [['Relatório', cfg.titulo]];
+        if (R.de || R.ate) filtros.push([cfg.rotData, (R.de ? dataBR(R.de) : 'início') + ' a ' + (R.ate ? dataBR(R.ate) : 'sem limite')]);
+        if (cfg.status && R.stF !== 'todos') filtros.push(['Situação', R.stF === 'aberto' ? 'Pendentes / em aberto' : 'Concluídos / ativos']);
+        if (R.txt) filtros.push(['Busca', document.getElementById('filtroBusca').value]);
+        const resumo = [['Registros', String(R.linhas.length)]];
+        if (cfg.valor) resumo.push([cfg.rotMontante || (cfg.saldoLiquido ? 'Saldo líquido' : 'Montante'), B(R.mont)]);
+        if (cfg.status) { resumo.push(['Concluídos / ativos', String(R.nC) + (cfg.valor ? ' · ' + B(R.vC) : '')]); resumo.push(['Pendentes / em aberto', String(R.nP) + (cfg.valor ? ' · ' + B(R.vP) : '')]); }
+        const idx = cfg.cols.findIndex(function (c) { return c.tipo === 'moeda'; });
+        ERPPrint.imprimir({
+            titulo: 'Relatório de ' + cfg.titulo,
+            subtitulo: 'Relatório oficial consolidado do ERP',
+            codigo: cfg.cod,
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: resumo,
+            colunas: cfg.cols.map(function (c) { return { t: c.t, w: c.w, a: c.a }; }),
+            linhas: R.linhas.map(function (r) { return cfg.cols.map(function (c) { return celula(c, r); }); }),
+            totais: cfg.valor && idx >= 0 ? cfg.cols.map(function (c, i) { return i === 0 ? 'TOTAL' : (i === idx ? fmtBR(R.mont) : ''); }) : null,
+            observacao: 'Dados extraídos do ERP na data de emissão deste relatório.' + (cfg.saldoLiquido ? ' O valor líquido soma créditos e débitos do extrato importado.' : ''),
+            assinaturas: ['Responsável', 'Conferência / Contador']
+        });
+    }
 
-    let ctxStatus = document.getElementById('chartStatus').getContext('2d');
-    if(chartStatusInstancia) chartStatusInstancia.destroy();
-    chartStatusInstancia = new Chart(ctxStatus, {
-        type: 'doughnut',
-        data: {
-            labels: Object.keys(statusCounts),
-            datasets: [{
-                data: Object.values(statusCounts),
-                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-    });
-
-    let ctxCat = document.getElementById('chartCategoria').getContext('2d');
-    if(chartCatInstancia) chartCatInstancia.destroy();
-    chartCatInstancia = new Chart(ctxCat, {
-        type: 'bar',
-        data: {
-            labels: Object.keys(catCounts).slice(0, 6),
-            datasets: [{
-                label: 'Volume',
-                data: Object.values(catCounts).slice(0, 6),
-                backgroundColor: '#3b82f6'
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-    });
-}
-
-window.onload = function(){
-    carregarRelatorioOficial();
-};
+    window.onload = function () { trocarRelatorio(); };
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-<script src="erp-core.js"></script>
 </body>
 </html>
