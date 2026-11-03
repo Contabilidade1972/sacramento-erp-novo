@@ -217,7 +217,26 @@
                 </div>
             </details>
 
-            <details class="sec"><summary>9. Observações</summary><div class="form-row">
+
+            <details class="sec"><summary>9. Dados opcionais e contato de emergência</summary>
+                <div class="nota-evento" style="margin-bottom:12px;"><strong>Atenção (LGPD):</strong> identidade de gênero, religião e tipo sanguíneo são <strong>dados pessoais sensíveis</strong>. Nenhuma lei trabalhista exige esses dados. Só preencha se o colaborador concordar e se houver finalidade (por exemplo, respeitar feriados religiosos ou atender emergências). Sem a marca de consentimento abaixo, esses três campos não são gravados.</div>
+                <div class="form-row">
+                    <div><label>Identidade de gênero</label><select id="c_gen" class="form-control"><option value="">Selecione...</option><option value="Mulher">Mulher</option><option value="Homem">Homem</option><option value="Mulher trans">Mulher trans</option><option value="Homem trans">Homem trans</option><option value="Não binário">Não binário</option><option value="Outra">Outra</option><option value="Prefere não informar">Prefere não informar</option></select></div>
+                    <div><label>Religião</label><input type="text" id="c_relig" class="form-control" placeholder="Opcional" ></div>
+                    <div><label>Tipo sanguíneo</label><select id="c_sangue" class="form-control"><option value="">Selecione...</option><option value="A+">A+</option><option value="A-">A-</option><option value="B+">B+</option><option value="B-">B-</option><option value="AB+">AB+</option><option value="AB-">AB-</option><option value="O+">O+</option><option value="O-">O-</option></select></div>
+                </div>
+                <div class="form-row">
+                    <div><label>Contato de emergência: nome</label><input type="text" id="c_emerg_nome" class="form-control" placeholder="" ></div>
+                    <div><label>Contato de emergência: telefone</label><input type="text" id="c_emerg_tel" class="form-control" placeholder="(31) 90000-0000" ></div>
+                    <div><label>Contato de emergência: parentesco</label><input type="text" id="c_emerg_par" class="form-control" placeholder="Ex: Cônjuge" ></div>
+                </div>
+                <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:6px;">
+                    <label style="display:inline-flex; align-items:center; gap:8px; cursor:pointer; text-transform:none; font-size:12px; color:var(--text-main);"><input type="checkbox" id="c_consent" onchange="if(this.checked && !document.getElementById('c_consent_data').value) document.getElementById('c_consent_data').value=new Date().toISOString().slice(0,10)"> O titular consentiu o registro dos dados sensíveis acima</label>
+                    <div style="max-width:180px;"><input type="date" id="c_consent_data" class="form-control" title="Data do consentimento"></div>
+                </div>
+            </details>
+
+            <details class="sec"><summary>10. Observações</summary><div class="form-row">
                 <div style="grid-column: 1 / -1;"><label>Observações</label><textarea id="c_obs" class="form-control" rows="2"></textarea></div>
             </div></details>
 
@@ -474,6 +493,28 @@
     <div class="corpo" id="fichaRH"></div>
 </div></div>
 
+<div class="modal-rh" id="modalSocio"><div class="caixa" style="max-width:760px;">
+    <div class="topo"><span>Editar cadastro do sócio</span><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="document.getElementById('modalSocio').style.display='none'"><i class="fas fa-times"></i> Fechar</button></div>
+    <div class="corpo">
+        <div class="nota-evento" style="margin-bottom:14px;">Estes dados são os da página de <strong>Sócios</strong>. Ao salvar aqui, a página de Sócios também fica atualizada.</div>
+        <input type="hidden" id="s_id">
+        <div class="form-row">
+            <div><label>Nome *</label><input type="text" id="s_nome" class="form-control"></div>
+            <div><label>CPF *</label><input type="text" id="s_cpf" class="form-control" maxlength="14" oninput="mascaraCpf(this)"></div>
+            <div><label>Função</label><input type="text" id="s_funcao" class="form-control" placeholder="Ex: Sócio-administrador"></div>
+            <div><label>Participação (%)</label><input type="number" id="s_part" class="form-control" step="0.01" min="0" max="100"></div>
+            <div><label>Situação</label><select id="s_sit" class="form-control"><option>Ativo</option><option>Inativo</option></select></div>
+            <div><label>Data de entrada</label><input type="date" id="s_entrada" class="form-control"></div>
+            <div><label>Data de saída</label><input type="date" id="s_saida" class="form-control"></div>
+        </div>
+        <div><label>Observações</label><textarea id="s_obs" class="form-control" rows="2"></textarea></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:14px;">
+            <button class="btn-acao cinza" type="button" onclick="document.getElementById('modalSocio').style.display='none'">Cancelar</button>
+            <button class="btn-acao sucesso" type="button" onclick="salvarSocioTela()"><i class="fas fa-save"></i> Salvar sócio</button>
+        </div>
+    </div>
+</div></div>
+
 <footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
 
 <script>
@@ -566,7 +607,8 @@ var CAMPOS = [
  ['c_und_sal','unidade_salario','t'],['c_jornada','jornada_horas_semana','n'],['c_jornada_desc','jornada_descricao','t'],['c_fgts','fgts_optante','b'],['c_fgts_data','fgts_data_opcao','d'],
  ['c_vt','vt','c'],['c_saude','saude','c'],['c_aso_data','aso_data','d'],['c_aso_crm','aso_medico_crm','t'],['c_matricula','matricula','t'],['c_banco','banco_codigo','t'],['c_agencia','banco_agencia','t'],
  ['c_conta','banco_conta','t'],['c_tipo_conta','banco_tipo_conta','t'],['c_pix','pix_chave','t'],['c_cpf_sit','cpf_situacao','t'],['c_cpf_sit_data','cpf_situacao_data','d'],['c_cpf_sit_fonte','cpf_situacao_fonte','t'],
- ['c_obs','observacoes','t'],['c_status','status','t'],['c_deslig','data_desligamento','d']
+ ['c_obs','observacoes','t'],['c_status','status','t'],['c_deslig','data_desligamento','d'],
+ ['c_gen','identidade_genero','t'],['c_relig','religiao','t'],['c_sangue','tipo_sanguineo','t'],['c_emerg_nome','contato_emergencia_nome','t'],['c_emerg_tel','contato_emergencia_telefone','t'],['c_emerg_par','contato_emergencia_parentesco','t'],['c_consent','consentimento_dados_opcionais','c'],['c_consent_data','consentimento_data','d']
 ];
 var CATEGORIAS = { 'CLT':'101', 'Pro-labore':'723', 'Estagio':'901' };
 var PARENTESCOS = ['Cônjuge','Companheiro(a)','Filho(a)','Filho(a) universitário/técnico (até 24 anos)','Enteado(a)','Menor sob guarda','Pai/Mãe/Avô/Avó','Irmão(ã)/Neto(a)/Bisneto(a) com guarda','Ex-cônjuge (pensão)','Agregado/outros'];
@@ -707,6 +749,7 @@ function renderTabelaFuncionarios() {
             <td style="text-align:right;"><div style="display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap;">
                 <button class="btn-acao" style="padding:6px 10px; font-size:11px;" type="button" title="Ver ficha" onclick="verFicha(${Number(c.id)})"><i class="fas fa-eye"></i></button>
                 <button class="btn-acao sucesso" style="padding:6px 10px; font-size:11px;" type="button" title="Editar" onclick="editarFuncionario(${Number(c.id)})"><i class="fas fa-pen"></i></button>
+                ${c.socio_id ? `<button class="btn-acao" style="padding:6px 10px; font-size:11px; background:#0f766e;" type="button" title="Editar dados societários (função, participação)" onclick="editarSocio(${Number(c.socio_id)})"><i class="fas fa-handshake"></i></button>` : ''}
                 <button class="btn-acao cinza" style="padding:6px 10px; font-size:11px;" type="button" title="Imprimir ficha" onclick="verFicha(${Number(c.id)}, true)"><i class="fas fa-print"></i></button>
                 <button class="btn-acao perigo" style="padding:6px 10px; font-size:11px;" type="button" title="Excluir" onclick="excluirFuncionario(${Number(c.id)})"><i class="fas fa-trash"></i></button>
             </div></td>
@@ -720,14 +763,21 @@ async function carregarSociosParaImportar(){
     var { data, error } = await sb.from('socios').select('*').eq('cliente_id', cid).order('nome');
     if(error || !data){ painel.style.display='none'; sociosParaImportar=[]; return; }
     var cpfsExistentes = funcionariosCache.map(function(c){ return digitos(c.cpf); });
-    sociosParaImportar = data.filter(function(s){ return digitos(s.cpf) && cpfsExistentes.indexOf(digitos(s.cpf))===-1; });
+    var hoje = new Date().toISOString().slice(0,10);
+    sociosParaImportar = data.filter(function(s){ return socioAtivo(s, hoje) && digitos(s.cpf) && cpfsExistentes.indexOf(digitos(s.cpf))===-1; });
     if(sociosParaImportar.length===0){ painel.style.display='none'; return; }
     painel.style.display='block';
     lista.innerHTML = sociosParaImportar.map(function(s){
         return '<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; background:#fff; border:1px solid #ccfbf1; border-radius:10px; padding:10px 14px;">'
           +'<div><strong>'+esc(s.nome)+'</strong> <span style="color:var(--text-light); font-size:12px;">CPF '+esc(fmtCpf(s.cpf))+' | '+esc(s.funcao||'Sócio')+(s.participacao?' | '+esc(s.participacao)+'%':'')+'</span></div>'
-          +'<button class="btn-acao" type="button" style="padding:6px 12px; font-size:12px;" onclick="importarSocio('+Number(s.id)+')"><i class="fas fa-download"></i> Importar</button></div>';
+          +'<div style="display:flex; gap:8px;"><button class="btn-acao cinza" type="button" style="padding:6px 12px; font-size:12px;" onclick="editarSocio('+Number(s.id)+')"><i class="fas fa-pen"></i> Editar sócio</button>'
+          +'<button class="btn-acao" type="button" style="padding:6px 12px; font-size:12px;" onclick="importarSocio('+Number(s.id)+')"><i class="fas fa-download"></i> Importar</button></div></div>';
     }).join('');
+}
+function socioAtivo(s, hoje){
+    if (/inat|sa[ií]|desl|encerr|retir/i.test(String(s.situacao||''))) return false;
+    if (s.data_saida && String(s.data_saida) <= hoje) return false;
+    return true;
 }
 function payloadDeSocio(s){
     var inativo = String(s.situacao||'').toLowerCase().indexOf('inat')>=0;
@@ -793,6 +843,11 @@ async function salvarFuncionario() {
         if(idade<14){ toast("Idade inferior a 14 anos: não é permitido.", "error"); return; }
     }
     if(vinc!=='CLT'){ ['cbo','tipo_admissao','natureza_atividade','tipo_contrato','data_termino_contrato','unidade_salario','jornada_horas_semana','jornada_descricao','fgts_data_opcao','aso_data','aso_medico_crm','ctps_numero','ctps_serie','ctps_uf'].forEach(function(k){ payload[k]=null; }); payload.fgts_optante=false; payload.vt=false; payload.saude=false; }
+    if(payload.consentimento_dados_opcionais){ if(!payload.consentimento_data) payload.consentimento_data = new Date().toISOString().slice(0,10); }
+    else {
+        if(payload.identidade_genero || payload.religiao || payload.tipo_sanguineo){ toast("Para gravar gênero, religião ou tipo sanguíneo, marque o consentimento do titular (seção 9).", "error"); return; }
+        payload.consentimento_data = null;
+    }
     var dep = lerDependentes(); if(dep.erro){ toast(dep.erro, "error"); return; }
     payload.dependentes = dep.lista.filter(function(d){ return d.dep_irrf; }).length;
 
@@ -839,6 +894,8 @@ async function verFicha(id, imprimir){
       + sec('Documentos',[it('PIS/NIS',c.pis_nis),it('RG',[c.rg_numero,c.rg_orgao,c.rg_uf].filter(Boolean).join(' / ')),it('RG emissão',fd(c.rg_data_emissao)),it('CTPS',[c.ctps_numero,c.ctps_serie,c.ctps_uf].filter(Boolean).join(' / ')),it('CNH',[c.cnh_numero,c.cnh_categoria].filter(Boolean).join(' / ')),it('CNH validade',fd(c.cnh_validade)),it('RNE',c.rne_numero),it('Situação do CPF',[c.cpf_situacao, fd(c.cpf_situacao_data)].filter(Boolean).join(' em '))])
       + sec('Endereço e contato',[it('CEP',c.cep),it('Logradouro',[c.logradouro,c.numero].filter(Boolean).join(', ')),it('Complemento',c.complemento),it('Bairro',c.bairro),it('Município / UF',[c.municipio,c.uf].filter(Boolean).join(' - ')),it('E-mail',c.email),it('Telefone',c.telefone),it('PCD',c.pcd?('Sim'+(c.pcd_tipo?' ('+c.pcd_tipo+')':'')):'Não')])
       + sec('Contrato',[it('Vínculo',c.vinculo==='Pro-labore'?'Pró-labore':c.vinculo),it('Categoria eSocial',c.categoria_esocial),it('Cargo',c.cargo),it('CBO',c.cbo),it('Setor',c.departamento),it('Local de trabalho',c.local_trabalho),it('Admissão / início',fd(c.admissao)),it('Salário / pró-labore',Number(c.salario||0)>0?'R$ '+Number(c.salario).toLocaleString('pt-BR',{minimumFractionDigits:2}):''),it('Situação',c.status),it('Desligamento',fd(c.data_desligamento)),it('Matrícula',c.matricula)].concat(clt?[it('Duração',c.tipo_contrato),it('Jornada',c.jornada_horas_semana?c.jornada_horas_semana+' h/semana':''),it('FGTS',c.fgts_optante?'Optante':'Não optante'),it('ASO',[fd(c.aso_data),c.aso_medico_crm].filter(Boolean).join(' | ')),it('Vale-transporte',c.vt?'Sim':'Não'),it('Plano de saúde',c.saude?'Sim':'Não')]:[]))
+      + ((c.consentimento_dados_opcionais && (c.identidade_genero||c.religiao||c.tipo_sanguineo)) ? sec('Dados opcionais (com consentimento em '+fd(c.consentimento_data)+')',[it('Identidade de gênero',c.identidade_genero),it('Religião',c.religiao),it('Tipo sanguíneo',c.tipo_sanguineo)]) : '')
+      + (c.contato_emergencia_nome ? sec('Contato de emergência',[it('Nome',c.contato_emergencia_nome),it('Telefone',c.contato_emergencia_telefone),it('Parentesco',c.contato_emergencia_parentesco)]) : '')
       + sec('Dados bancários',[it('Banco',c.banco_codigo),it('Agência',c.banco_agencia),it('Conta',[c.banco_conta,c.banco_tipo_conta].filter(Boolean).join(' / ')),it('PIX',c.pix_chave)])
       + '<div class="ficha-sec">Dependentes</div>'
       + ((deps&&deps.length) ? '<table class="analitica-table"><thead><tr><th>Nome</th><th>CPF</th><th>Nascimento</th><th>Parentesco</th><th>IRRF</th><th>Sal.-família</th></tr></thead><tbody>'+deps.map(function(d){ return '<tr><td>'+esc(d.nome)+'</td><td>'+esc(fmtCpf(d.cpf))+'</td><td>'+fd(d.data_nascimento)+'</td><td>'+esc(d.parentesco)+'</td><td>'+(d.dep_irrf?'Sim':'Não')+'</td><td>'+(d.dep_salario_familia?'Sim':'Não')+'</td></tr>'; }).join('')+'</tbody></table>' : '<div style="font-size:12px; color:var(--text-light);">Nenhum dependente cadastrado.</div>')
@@ -849,6 +906,34 @@ async function verFicha(id, imprimir){
     if(imprimir) setTimeout(function(){ window.print(); },300);
 }
 var empresaNomeFicha='';
+async function editarSocio(id){
+    var r = await sb.from('socios').select('*').eq('id', id).eq('cliente_id', clienteIdAtual()).maybeSingle();
+    if(r.error || !r.data){ toast('Não foi possível carregar o sócio.', 'error'); return; }
+    var s = r.data;
+    document.getElementById('s_id').value = s.id; document.getElementById('s_nome').value = s.nome||''; document.getElementById('s_cpf').value = fmtCpf(s.cpf||'');
+    document.getElementById('s_funcao').value = s.funcao||''; document.getElementById('s_part').value = (s.participacao===null||s.participacao===undefined)?'':s.participacao;
+    var sel = document.getElementById('s_sit'); if(s.situacao && ![].some.call(sel.options, function(o){ return o.value===s.situacao; })){ var o=document.createElement('option'); o.text=s.situacao; sel.add(o); }
+    sel.value = s.situacao || 'Ativo';
+    document.getElementById('s_entrada').value = s.data_entrada||''; document.getElementById('s_saida').value = s.data_saida||''; document.getElementById('s_obs').value = s.observacoes||'';
+    document.getElementById('modalSocio').style.display='flex';
+}
+async function salvarSocioTela(){
+    var id = document.getElementById('s_id').value; var nome = document.getElementById('s_nome').value.trim(); var cpf = document.getElementById('s_cpf').value.trim();
+    if(!nome || !cpf){ toast('Preencha o nome e o CPF do sócio!', 'error'); return; }
+    if(!cpfValido(cpf)){ toast('CPF inválido: os dígitos não conferem.', 'error'); return; }
+    var part = document.getElementById('s_part').value; part = part==='' ? 0 : parseFloat(part);
+    if(part<0 || part>100){ toast('A participação deve ficar entre 0 e 100%.', 'error'); return; }
+    var payload = { nome: nome, cpf: fmtCpf(cpf), funcao: document.getElementById('s_funcao').value.trim(), participacao: part, situacao: document.getElementById('s_sit').value,
+        data_entrada: document.getElementById('s_entrada').value || null, data_saida: document.getElementById('s_saida').value || null, observacoes: document.getElementById('s_obs').value.trim() };
+    var r = await sb.from('socios').update(payload).eq('id', id).eq('cliente_id', clienteIdAtual());
+    if(r.error){ toast('Erro ao salvar o sócio: '+r.error.message, 'error'); return; }
+    // mantém o colaborador vinculado com o mesmo nome e CPF
+    var v = await sb.from('colaboradores_rh').update({ nome: nome, cpf: fmtCpf(cpf) }).eq('socio_id', id).eq('cliente_id', clienteIdAtual());
+    if(v.error) toast('Sócio salvo, mas não foi possível atualizar o colaborador vinculado: '+v.error.message, 'error');
+    else toast('Cadastro do sócio atualizado.');
+    document.getElementById('modalSocio').style.display='none';
+    carregarFuncionarios();
+}
 function nomeEmpresaFicha(){ return empresaNomeFicha || 'Empresa'; }
 async function carregarNomeEmpresa(){ try{ var r=await sb.from('clientes_contratantes').select('razao_social,nome_fantasia,cnpj').eq('id', clienteIdAtual()).maybeSingle(); if(r.data) empresaNomeFicha=(r.data.nome_fantasia||r.data.razao_social||'')+(r.data.cnpj?' (CNPJ '+r.data.cnpj+')':''); }catch(e){} }
 
