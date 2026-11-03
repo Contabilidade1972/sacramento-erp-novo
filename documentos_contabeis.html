@@ -98,6 +98,7 @@
 <div class="container">
     <div class="page-toolbar">
         <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Portal</a>
+        <a href="acessos_contabilidade.html" class="btn-acao cinza"><i class="fas fa-user-shield"></i> Registro de Acessos</a>
         <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relação</button>
     </div>
 
@@ -213,6 +214,7 @@
     let nomes = {};             // id -> nome
     let idsVisiveis = [];       // empresas cujos documentos aparecem
     let podeEnviar = false;
+    let nomeContabilidade = '';   // nome da contabilidade vinculada (visão do cliente)
     let docs = [];
     let filtrados = [];
     let chip = 'todos';
@@ -269,11 +271,20 @@
         idsVisiveis = [empresaAtivaId];
         const re = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', empresaAtivaId);
         ((re && re.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
-        const rc = await sb.from('vinculos_contador')
-            .select('contador_cliente_id, status, pode_visualizar, pode_trocar_documentos')
-            .eq('empresa_cliente_id', empresaAtivaId);
-        const ativos = ((rc && rc.data) || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; });
-        podeEnviar = ativos.length > 0;
+        // função segura do banco: devolve o NOME da contabilidade e as permissões (sem expor outros dados dela)
+        const rf = await sb.rpc('app_minhas_contabilidades', { p_empresa_id: empresaAtivaId });
+        if (!rf.error) {
+            const ativos = (rf.data || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; });
+            podeEnviar = ativos.length > 0;
+            nomeContabilidade = ativos.map(function (v) { return v.contador_nome; }).filter(Boolean).join(', ');
+        } else {
+            // compatibilidade: se a função ainda não existir no banco, usa a consulta direta
+            const rc = await sb.from('vinculos_contador')
+                .select('contador_cliente_id, status, pode_visualizar, pode_trocar_documentos')
+                .eq('empresa_cliente_id', empresaAtivaId);
+            const ativos = ((rc && rc.data) || []).filter(function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; });
+            podeEnviar = ativos.length > 0;
+        }
     }
 
     function montarTela() {
@@ -290,7 +301,7 @@
                 idsVisiveis.map(function (id) { return '<option value="' + id + '">' + esc(nomeEmpresa(id)) + '</option>'; }).join('');
         } else if (podeEnviar) {
             ctx.className = 'contexto';
-            ctx.innerHTML = '<i class="fas fa-handshake"></i><span>A contabilidade de <b>' + esc(nomeEmpresa(empresaAtivaId)) + '</b> está vinculada ao sistema. Envie aqui os documentos do mês (extratos, notas, comprovantes). Ela acompanha e atualiza a situação de cada um.</span>';
+            ctx.innerHTML = '<i class="fas fa-handshake"></i><span>Sua contabilidade' + (nomeContabilidade ? ' (<b>' + esc(nomeContabilidade) + '</b>)' : '') + ' está vinculada ao sistema. Envie aqui os documentos do mês (extratos, notas, comprovantes). Ela acompanha e atualiza a situação de cada um.</span>';
         } else {
             ctx.className = 'contexto alerta';
             ctx.innerHTML = '<i class="fas fa-triangle-exclamation"></i><span>Esta empresa ainda <b>não tem contabilidade vinculada</b> com troca de documentos habilitada. Para ativar, peça ao administrador do sistema (Master) o vínculo com a sua contabilidade. Documentos antigos continuam visíveis.</span>';
