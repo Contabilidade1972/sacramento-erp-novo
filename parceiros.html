@@ -7,231 +7,148 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #1e3a8a;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #f8fafc;
-            --card: #ffffff;
-            --text-main: #0f172a;
-            --text-light: #64748b;
-            --border: #e2e8f0;
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
         }
-
-        /* BLINDAGEM DE SEGURANÇA: Oculta estritamente o seletor de empresas para quem não for Master */
-        body:not(.usuario-master) .empresa-selector {
-            display: none !important;
-            visibility: hidden !important;
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        /* CABEÇALHO PADRÃO DO NOVO SISTEMA */
-        .site-header {
-            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
-        }
-        .site-brand { display: flex; align-items: center; gap: 12px; }
-        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
-        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
-        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
-
-        .site-nav-right { display: flex; align-items: center; gap: 14px; }
-        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 12px; }
-        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
-        .empresa-selector select option { color: #000; }
-        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
-        
-        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
-        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
-        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-sair:hover { background: #b91c1c; }
-
-        /* MENU DE ABAS INTERNO DE CADASTROS & ESTRUTURA */
-        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); }
+        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); flex-wrap: wrap; }
         .sub-nav-item { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); text-decoration: none; border-bottom: 3px solid transparent; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
         .sub-nav-item:hover { color: var(--primary); }
         .sub-nav-item.ativo { color: var(--primary); border-bottom-color: var(--primary); }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .container { max-width: 1400px; margin: 28px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
 
-        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); transition: all 0.3s ease; }
-        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); border-top: 4px solid var(--secondary); }
+        .kpi-card.azul { border-top-color: var(--primary); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.roxo { border-top-color: #7e22ce; }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: .6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); margin-top: 4px; }
+
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .card-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .card-header.clicavel { cursor: pointer; user-select: none; }
         .card-header h3 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; color: var(--secondary); }
-        
-        .card-body { display: flex; flex-direction: column; gap: 14px; transition: max-height 0.3s ease, opacity 0.3s ease; overflow: hidden; }
         .card.recolhido .card-body { display: none; }
-        .card.recolhido { padding-bottom: 24px; }
-        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); transition: transform 0.2s; }
+        .card.recolhido .card-header { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+        .btn-colapsar { background: var(--bg); border: 1px solid var(--border); width: 28px; height: 28px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-light); }
         .card.recolhido .btn-colapsar i { transform: rotate(-90deg); }
 
-        .form-grid{display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:14px}
-        label{font-size:11px;font-weight:700;color:var(--text-light);margin-bottom:4px;display:block;text-transform:uppercase}
-        .form-control{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--bg);color:var(--text-main);outline:none;}
-        .form-control:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,0.15);background:#fff;}
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 5px; display: block; text-transform: uppercase; letter-spacing: .3px; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
 
-        .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s}
-        .btn-primary{background:var(--primary);color:#fff}
-        .btn-primary:hover{background:#1d4ed8;}
-        .btn-success{background:var(--success);color:#fff}
-        .btn-success:hover{background:#059669;}
-        .btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text-main);}
-        .btn-outline:hover{background:var(--bg);}
-        .btn-icon-add { background: var(--primary); color: #fff; border: none; width: 38px; height: 38px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .btn-icon-add:hover { background: #1d4ed8; }
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: .2s; text-decoration: none; }
+        .btn-primary { background: var(--primary); color: #fff; } .btn-primary:hover { background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: #fff; } .btn-success:hover { background: #059669; }
+        .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text-main); } .btn-outline:hover { background: var(--bg); }
+        .btn-icon-add { background: var(--primary); color: #fff; border: none; width: 40px; height: 40px; border-radius: 10px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-mini { border: 1px solid var(--border); background: #fff; color: var(--text-light); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+        .btn-mini:hover { color: var(--primary); border-color: var(--primary); background: #eff6ff; }
+        .btn-mini.perigo:hover { color: var(--danger); border-color: var(--danger); background: #fee2e2; }
 
-        .table-container{overflow-x:auto}
-        table{width:100%;border-collapse:collapse;font-size:13px}
-        thead th{background:var(--bg);padding:12px 14px;text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;color:var(--text-light);border-bottom:2px solid var(--border)}
-        tbody td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--text-main);vertical-align:middle}
-        tbody tr:hover{background:#f8fafc;}
+        .filtros-box { display: grid; grid-template-columns: 1fr 2fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 14px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        thead th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        tbody tr:hover { background: #f8fafc; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .badge-cliente { background: #dbeafe; color: #1e40af; } .badge-fornecedor { background: #fef3c7; color: #b45309; } .badge-ambos { background: #f3e8ff; color: #7e22ce; }
+        .acoes { display: flex; gap: 6px; justify-content: flex-end; }
 
-        .badge{padding:4px 10px;border-radius:6px;font-weight:700;font-size:10px;text-transform:uppercase;display:inline-block;}
-        .badge-cliente{background:#dbeafe;color:#1e40af}
-        .badge-fornecedor{background:#fef3c7;color:#d97706}
-        .badge-ambos{background:#f3e8ff;color:#7e22ce}
-
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(3px); z-index: 3000; display: none; align-items: center; justify-content: center; padding: 16px; }
         .modal-overlay.ativo { display: flex; }
-        .modal-card { background: var(--card); width: 100%; max-width: 600px; border-radius: 16px; padding: 28px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 20px; }
+        .modal-card { background: var(--card); width: 100%; max-width: 640px; border-radius: 16px; padding: 26px; box-shadow: 0 20px 50px rgba(15,23,42,0.3); max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 18px; }
+        .ficha-linha { display: grid; grid-template-columns: 170px 1fr; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 13px; }
+        .ficha-linha b { color: var(--text-light); font-size: 11px; text-transform: uppercase; letter-spacing: .3px; padding-top: 2px; }
 
-        .toast-container{position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px}
-        .toast{padding:12px 16px;border-radius:8px;color:#fff;font-size:13px;font-weight:500;box-shadow:0 10px 15px -3px rgba(0,0,0,0.08);display:flex;align-items:center;gap:10px}
-        .toast.success{background:var(--success)}.toast.error{background:var(--danger)}.toast.info{background:var(--primary)}
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 440px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
-        .print-header { display: none; }
-        .print-ficha-container { display: none; }
-
-        @media print {
-            @page { size: landscape; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; }
-            
-            body.imprimindo-ficha .container,
-            body.imprimindo-ficha .modal-overlay { display: none !important; }
-
-            body.imprimindo-ficha .print-ficha-container {
-                display: block !important;
-                padding: 20px;
-                font-family: 'Inter', sans-serif;
-            }
-
-            body:not(.imprimindo-ficha) .card:not(#cardRelatorioModo), 
-            body:not(.imprimindo-ficha) .toast-container, 
-            body:not(.imprimindo-ficha) button, 
-            body:not(.imprimindo-ficha) .modal-overlay, 
-            body:not(.imprimindo-ficha) .btn-colapsar, 
-            body:not(.imprimindo-ficha) .filtro-container-print,
-            body:not(.imprimindo-ficha) .site-header,
-            body:not(.imprimindo-ficha) .sub-nav-bar { display: none !important; }
-
-            body:not(.imprimindo-ficha) .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; width: 100% !important; }
-            body:not(.imprimindo-ficha) .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 10px !important; width: 100% !important; display: block !important; }
-            
-            .print-header { display: block !important; text-align: center; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 10px; }
-            .print-header h2 { font-size: 18px; color: #1e3a8a; font-weight: 800; text-transform: uppercase; }
-            .print-header p { font-size: 11px; color: #334155; margin-top: 4px; }
-            
-            table { width: 100% !important; border-collapse: collapse !important; margin-top: 10px; }
-            th, td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; font-size: 11px !important; color: #000 !important; }
-            th { background: #1e3a8a !important; color: #fff !important; }
-        }
-
-        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+        @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .form-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) { .kpi-grid, .form-grid { grid-template-columns: 1fr; } .ficha-linha { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- CABEÇALHO PADRÃO DO NOVO SISTEMA COM BLINDAGEM -->
-<header class="site-header">
-    <div class="site-brand">
-        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
-        <div class="brand-info">
-            <h1>Sacramento ERP</h1>
-            <span>Portal Corporativo</span>
-        </div>
-    </div>
-    <div class="site-nav-right">
-        <div class="empresa-selector" id="boxSeletorEmpresa">
-            <i class="fas fa-building" style="color: #93c5fd;"></i>
-            <select id="selectEmpresa" onchange="window.trocarEmpresa()"></select>
-        </div>
-        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
-        <div class="user-box">
-            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
-            <span id="userName">Usuário</span>
-        </div>
-        <button class="btn-sair" type="button" onclick="window.sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-</header>
-
-<!-- SUB-MENU / ABAS DE NAVEGAÇÃO INTERNA DE CADASTROS -->
 <div class="sub-nav-bar">
     <a href="parceiros.html" class="sub-nav-item ativo"><i class="fas fa-address-book"></i> Parceiros & Clientes</a>
     <a href="centros_custo.html" class="sub-nav-item"><i class="fas fa-sitemap"></i> Centros de Custo</a>
     <a href="ativos_equipamentos.html" class="sub-nav-item"><i class="fas fa-boxes"></i> Ativos & Equipamentos Gerais</a>
 </div>
 
-<!-- ÁREA EXCLUSIVA PARA IMPRESSÃO DA FICHA INDIVIDUAL -->
-<div class="print-ficha-container" id="printFichaArea"></div>
-
-<!-- MODAL DE VISUALIZAÇÃO E FICHA INDIVIDUAL -->
+<!-- MODAL: FICHA DO PARCEIRO -->
 <div class="modal-overlay" id="modalVisualizar">
     <div class="modal-card">
         <div class="modal-header">
-            <h3 style="font-size:16px; font-weight:700; color:var(--secondary);"><i class="fas fa-id-card"></i> Ficha Detalhada do Parceiro</h3>
-            <button onclick="fecharModalVisualizar()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+            <h3 style="font-size:16px; font-weight:800; color:var(--secondary);"><i class="fas fa-id-card"></i> Ficha detalhada do parceiro</h3>
+            <button type="button" onclick="fecharModalVisualizar()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
-        <div id="conteudoFichaDetalhada" style="font-size:13px; display:flex; flex-direction:column; gap:12px; line-height:1.6;"></div>
+        <div id="conteudoFichaDetalhada"></div>
         <div style="margin-top:20px; display:flex; justify-content:flex-end; gap:10px;">
-            <button class="btn btn-success" onclick="imprimirFichaIndividual()"><i class="fas fa-print"></i> Imprimir Ficha</button>
-            <button class="btn btn-outline" onclick="fecharModalVisualizar()">Fechar</button>
+            <button class="btn btn-success" type="button" onclick="imprimirFichaIndividual()"><i class="fas fa-print"></i> Imprimir ficha</button>
+            <button class="btn btn-outline" type="button" onclick="fecharModalVisualizar()">Fechar</button>
         </div>
     </div>
 </div>
 
-<!-- MODAL DE CADASTRO RÁPIDO DE CENTRO DE CUSTO INLINE -->
-<div class="modal-overlay" id="modalCentroCustoRápido">
+<!-- MODAL: CENTRO DE CUSTO RÁPIDO -->
+<div class="modal-overlay" id="modalCentroCustoRapido">
     <div class="modal-card" style="max-width: 450px;">
         <div class="modal-header">
-            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas fa-sitemap"></i> Novo Centro de Custo Rápido</h3>
-            <button onclick="fecharModalCcRapido()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
+            <h3 style="font-size:15px; font-weight:800; color:var(--secondary);"><i class="fas fa-sitemap"></i> Novo centro de custo rápido</h3>
+            <button type="button" onclick="fecharModalCcRapido()" style="background:none; border:none; font-size:16px; cursor:pointer;"><i class="fas fa-times"></i></button>
         </div>
         <div style="display:flex; flex-direction:column; gap:12px;">
-            <div>
-                <label>Código Automático / Sugerido</label>
-                <input type="text" id="novo_cc_codigo" class="form-control" placeholder="Ex: 1.05">
-            </div>
-            <div>
-                <label>Nome / Descrição do Projeto *</label>
-                <input type="text" id="novo_cc_nome" class="form-control" placeholder="Nome do centro de custo...">
-            </div>
-            <div style="margin-top:10px; display:flex; justify-content:flex-end; gap:10px;">
-                <button class="btn btn-outline" onclick="fecharModalCcRapido()">Cancelar</button>
-                <button class="btn btn-primary" onclick="salvarCentroCustoRapido()"><i class="fas fa-save"></i> Criar e Selecionar</button>
+            <div><label>Código (se deixar em branco, o sistema sugere)</label><input type="text" id="novo_cc_codigo" class="form-control" placeholder="Ex: 1.05"></div>
+            <div><label>Nome / descrição do projeto *</label><input type="text" id="novo_cc_nome" class="form-control" placeholder="Nome do centro de custo..."></div>
+            <div style="margin-top:8px; display:flex; justify-content:flex-end; gap:10px;">
+                <button class="btn btn-outline" type="button" onclick="fecharModalCcRapido()">Cancelar</button>
+                <button class="btn btn-primary" type="button" onclick="salvarCentroCustoRapido()"><i class="fas fa-save"></i> Criar e selecionar</button>
             </div>
         </div>
     </div>
 </div>
 
 <div class="container">
-    <!-- FORMULÁRIO DE CADASTRO -->
+    <div>
+        <div class="page-title"><i class="fas fa-address-book" style="color:var(--primary);"></i> Gestão de Parceiros</div>
+        <div class="page-subtitle">Cadastro de clientes e fornecedores da empresa</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-title">Total de parceiros</div><div class="kpi-value" id="kpiTotal">0</div></div>
+        <div class="kpi-card azul"><div class="kpi-title">Clientes</div><div class="kpi-value" id="kpiClientes">0</div></div>
+        <div class="kpi-card amarelo"><div class="kpi-title">Fornecedores</div><div class="kpi-value" id="kpiFornecedores">0</div></div>
+        <div class="kpi-card roxo"><div class="kpi-title">Cliente & Fornecedor</div><div class="kpi-value" id="kpiAmbos">0</div></div>
+    </div>
+
+    <!-- FORMULÁRIO -->
     <div class="card recolhido" id="cardFormulario">
-        <div class="card-header" onclick="alternarPainel('cardFormulario')">
-            <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro</h3>
-            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+        <div class="card-header clicavel" onclick="alternarPainel('cardFormulario')">
+            <h3 id="formTitle"><i class="fas fa-user-plus"></i> Novo cadastro de parceiro</h3>
+            <button class="btn-colapsar" type="button" title="Expandir / recolher"><i class="fas fa-chevron-down"></i></button>
         </div>
         <div class="card-body">
             <input type="hidden" id="edit_id">
             <div class="form-grid">
                 <div>
-                    <label>Tipo de Cadastro *</label>
+                    <label>Tipo de cadastro *</label>
                     <select id="tipo_cadastro" class="form-control">
                         <option value="Cliente">Cliente</option>
                         <option value="Fornecedor">Fornecedor</option>
@@ -239,628 +156,462 @@
                     </select>
                 </div>
                 <div>
-                    <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:normal;"></span></label>
+                    <label>CNPJ / CPF * <span id="status_doc" style="font-size:10px; font-weight:700;"></span></label>
                     <input type="text" id="cnpj_cpf" class="form-control" placeholder="Apenas números..." onblur="consultarOuValidarDocumento()">
                 </div>
                 <div style="grid-column: span 2;">
-                    <label id="label_nome">Razão Social / Nome Completo *</label>
+                    <label>Razão social / nome completo *</label>
                     <input type="text" id="nome" class="form-control" placeholder="Nome oficial ou razão social">
                 </div>
             </div>
             <div class="form-grid">
-                <div>
-                    <label>Nome Fantasia / Social</label>
-                    <input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial">
-                </div>
-                <div>
-                    <label>Inscrição Estadual (IE) / RG</label>
-                    <input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números">
-                </div>
-                <div>
-                    <label>Inscrição Municipal (IM)</label>
-                    <input type="text" id="fiscal_2" class="form-control" placeholder="Número IM">
-                </div>
-                <div>
-                    <label>Nome do Contato</label>
-                    <input type="text" id="nome_contato" class="form-control" placeholder="Responsável">
-                </div>
+                <div><label>Nome fantasia / social</label><input type="text" id="campo_alternativo" class="form-control" placeholder="Nome comercial"></div>
+                <div><label>Inscrição estadual (IE) / RG</label><input type="text" id="fiscal_1" class="form-control" placeholder="Isento ou números"></div>
+                <div><label>Inscrição municipal (IM)</label><input type="text" id="fiscal_2" class="form-control" placeholder="Número IM"></div>
+                <div><label>Nome do contato</label><input type="text" id="nome_contato" class="form-control" placeholder="Responsável"></div>
             </div>
             <div class="form-grid" style="grid-template-columns: 2fr 3fr;">
-                <div>
-                    <label>CNAE Principal</label>
-                    <input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição...">
-                </div>
-                <div>
-                    <label>CNAE Secundários</label>
-                    <input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias...">
-                </div>
+                <div><label>CNAE principal</label><input type="text" id="cnae_principal" class="form-control" placeholder="Código e descrição..."></div>
+                <div><label>CNAE secundários</label><input type="text" id="cnae_secundarios" class="form-control" placeholder="Atividades secundárias..."></div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr auto 1fr;">
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr 1.5fr auto 1fr; align-items:flex-end;">
+                <div><label>Telefone / WhatsApp</label><input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999"></div>
+                <div><label>E-mail principal</label><input type="email" id="email" class="form-control" placeholder="contato@empresa.com"></div>
+                <div><label>E-mail NF-e</label><input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com"></div>
                 <div>
-                    <label>Telefone / WhatsApp</label>
-                    <input type="text" id="telefone" class="form-control" placeholder="(31) 99999-9999">
+                    <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de custo *</label>
+                    <select id="centro_custo" class="form-control"><option value="">Selecione o projeto...</option></select>
                 </div>
-                <div>
-                    <label>E-mail Principal</label>
-                    <input type="email" id="email" class="form-control" placeholder="contato@empresa.com">
-                </div>
-                <div>
-                    <label>E-mail NF-e</label>
-                    <input type="email" id="email_nfe" class="form-control" placeholder="nfe@empresa.com">
-                </div>
-                <div>
-                    <label><i class="fas fa-sitemap" style="color:var(--primary)"></i> Centro de Custo *</label>
-                    <select id="centro_custo" class="form-control" required>
-                        <option value="">Selecione o Projeto...</option>
-                    </select>
-                </div>
-                <div style="display:flex; align-items:flex-end;">
-                    <button type="button" class="btn-icon-add" onclick="abrirModalCcRapido()" title="Criar Novo Centro de Custo Rapidamente"><i class="fas fa-plus"></i></button>
-                </div>
-                <div>
-                    <label>Observações</label>
-                    <input type="text" id="observacoes" class="form-control" placeholder="Anotações...">
-                </div>
+                <div><button type="button" class="btn-icon-add" onclick="abrirModalCcRapido()" title="Criar novo centro de custo"><i class="fas fa-plus"></i></button></div>
+                <div><label>Observações</label><input type="text" id="observacoes" class="form-control" placeholder="Anotações..."></div>
             </div>
             <div class="form-grid">
-                <div>
-                    <label>CEP <span id="status_cep" style="font-size:10px;"></span></label>
-                    <input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()">
-                </div>
-                <div style="grid-column: span 2;">
-                    <label>Logradouro (Endereço)</label>
-                    <input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida...">
-                </div>
-                <div>
-                    <label>Número</label>
-                    <input type="text" id="numero" class="form-control" placeholder="123">
-                </div>
+                <div><label>CEP <span id="status_cep" style="font-size:10px;"></span></label><input type="text" id="cep" class="form-control" placeholder="00000000" onblur="buscarCep()"></div>
+                <div style="grid-column: span 2;"><label>Logradouro (endereço)</label><input type="text" id="logradouro" class="form-control" placeholder="Rua, Avenida..."></div>
+                <div><label>Número</label><input type="text" id="numero" class="form-control" placeholder="123"></div>
             </div>
-            <div class="form-grid" style="grid-template-columns: 2fr 2fr 2fr;">
-                <div>
-                    <label>Complemento</label>
-                    <input type="text" id="complemento" class="form-control" placeholder="Bloco B...">
-                </div>
-                <div>
-                    <label>Bairro</label>
-                    <input type="text" id="bairro" class="form-control" placeholder="Centro">
-                </div>
-                <div>
-                    <label>Cidade / UF</label>
-                    <input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG">
-                </div>
+            <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr;">
+                <div><label>Complemento</label><input type="text" id="complemento" class="form-control" placeholder="Bloco B..."></div>
+                <div><label>Bairro</label><input type="text" id="bairro" class="form-control" placeholder="Centro"></div>
+                <div><label>Cidade / UF</label><input type="text" id="cidade_uf" class="form-control" placeholder="Belo Horizonte - MG"></div>
             </div>
-            <div style="margin-top: 15px; display:flex; gap:10px;">
-                <button class="btn btn-primary" type="button" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar Parceiro Completo</button>
-                <button class="btn btn-outline" type="button" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar Edição</button>
+            <div style="margin-top: 10px; display:flex; gap:10px;">
+                <button class="btn btn-primary" type="button" id="btnSalvar" onclick="salvarParceiro()"><i class="fas fa-save"></i> Salvar parceiro</button>
+                <button class="btn btn-outline" type="button" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;">Cancelar edição</button>
             </div>
         </div>
     </div>
 
-    <!-- RELATÓRIO OPERACIONAL -->
-    <div class="card" id="cardRelatorioModo">
-        <div class="print-header">
-            <h2>Sacramento ERP — Relatório Operacional: Diretório de Parceiros</h2>
-            <p>Emitido em: <span id="printDataEmissao"></span> | Emitido por: <span id="printUsuarioNome">Sistema</span> | Filtros aplicados: <span id="printFiltrosInfo">Todos os Tipos</span></p>
+    <!-- DIRETÓRIO -->
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-address-book"></i> Diretório de parceiros</h3>
+            <button class="btn btn-success" type="button" onclick="imprimirRelatorio()"><i class="fas fa-print"></i> Imprimir relatório</button>
         </div>
-        <div class="card-header" onclick="alternarPainel('cardRelatorioModo')">
-            <h3><i class="fas fa-file-alt"></i> Relatório Operacional de Parceiros</h3>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <button class="btn btn-success" type="button" onclick="event.stopPropagation(); window.print()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-                <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
+        <div class="filtros-box">
+            <div>
+                <label>Filtrar por tipo</label>
+                <select id="filtroTipo" class="form-control" onchange="renderTabela()">
+                    <option value="todos">Todos os tipos</option>
+                    <option value="Cliente">Cliente</option>
+                    <option value="Fornecedor">Fornecedor</option>
+                    <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
+                </select>
             </div>
+            <div><label>Buscar por nome, documento, cidade ou centro de custo</label><input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="renderTabela()"></div>
+            <div><button class="btn btn-outline" type="button" onclick="limparFiltros()" style="height:42px;"><i class="fas fa-eraser"></i> Limpar</button></div>
         </div>
-        <div class="card-body">
-            <div class="filtro-container-print" style="background:var(--bg); padding:12px; border-radius:8px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 2fr auto; gap:10px; align-items:flex-end;">
-                <div>
-                    <label>Filtrar por Tipo</label>
-                    <select id="filtroTipo" class="form-control" onchange="aplicarFiltrosRelatorio()">
-                        <option value="todos">Todos os Tipos</option>
-                        <option value="Cliente">Cliente</option>
-                        <option value="Fornecedor">Fornecedor</option>
-                        <option value="Cliente & Fornecedor">Cliente & Fornecedor</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Buscar por Nome, Documento ou Cidade</label>
-                    <input type="text" id="filtroBusca" class="form-control" placeholder="Nome, CNPJ, CPF..." oninput="aplicarFiltrosRelatorio()">
-                </div>
-                <div>
-                    <button class="btn btn-outline" type="button" onclick="limparFiltrosRelatorio()"><i class="fas fa-eraser"></i> Limpar</button>
-                </div>
-            </div>
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Contato & Fisco</th><th>Comunicação</th><th>Endereço Completo</th></tr>
-                    </thead>
-                    <tbody id="tbodyRelatorioModo"></tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- DIRETÓRIO AVANÇADO -->
-    <div class="card" id="cardDiretorioAvancado">
-        <div class="card-header" onclick="alternarPainel('cardDiretorioAvancado')">
-            <h3><i class="fas fa-address-book"></i> Diretório Avançado de Parceiros (Gerenciamento)</h3>
-            <button class="btn-colapsar" title="Expandir / Recolher"><i class="fas fa-chevron-down"></i></button>
-        </div>
-        <div class="card-body">
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / Razão Social</th><th>Centro de Custo</th><th>Fisco & Contato</th><th>Comunicação</th><th>Endereço Completo</th><th style="text-align:right;">Ações</th></tr>
-                    </thead>
-                    <tbody id="tbodyParceiros"></tbody>
-                </table>
-            </div>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>ID</th><th>Tipo</th><th>CNPJ / CPF</th><th>Nome / razão social</th><th>Centro de custo</th><th>Contato</th><th>Comunicação</th><th>Endereço</th><th style="text-align:right;">Ações</th></tr></thead>
+                <tbody id="tbodyParceiros"><tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-light);">Carregando parceiros...</td></tr></tbody>
+            </table>
         </div>
     </div>
 </div>
 
-<footer>
-    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
-</footer>
-
 <script>
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-let parceirosCache = [];
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    let parceirosCache = [];
+    let listaVisivel = [];
+    let salvando = false;
+    let fichaAtual = null;
 
-window.obterUsuario = function() {
-    try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
-};
-
-window.ehMaster = function() {
-    const u = window.obterUsuario();
-    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
-};
-
-window.clienteIdAtual = function() {
-    const u = window.obterUsuario();
-    if (!u) return 1;
-    if (window.ehMaster()) {
-        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    function esc(s) {
+        return String(s === null || s === undefined ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
-};
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+    function soDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+    function val(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+    function setVal(id, v) { const e = document.getElementById(id); if (e) e.value = (v === null || v === undefined) ? '' : v; }
 
-window.trocarEmpresa = function() {
-    const select = document.getElementById('selectEmpresa');
-    if (!select) return;
-    localStorage.setItem('empresaSelecionada', select.value);
-    carregarCentrosCustoSelect();
-    carregarParceiros();
-};
-
-window.sair = function() {
-    if (confirm('Deseja realmente sair?')) {
-        localStorage.removeItem('usuarioLogado');
-        localStorage.removeItem('empresaSelecionada');
-        location.href = 'login.html';
-    }
-};
-
-function alternarPainel(idCard) {
-    const card = document.getElementById(idCard);
-    if(card) card.classList.toggle('recolhido');
-}
-
-function sbFiltroLeitura(tabela) {
-    let q = sb.from(tabela).select('*');
-    const cid = window.clienteIdAtual();
-    if (cid) q = q.eq('cliente_id', cid);
-    return q;
-}
-
-function toast(msg, type='success'){
-    var c = document.getElementById('toastContainer'), x = document.createElement('div');
-    if(!c) {
-        c = document.createElement('div'); c.id = 'toastContainer';
-        c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:2000;display:flex;flex-direction:column;gap:8px';
-        document.body.appendChild(c);
-    }
-    x.className = 'toast '+type;
-    x.innerHTML = '<i class="fas fa-info-circle"></i> ' + msg;
-    c.appendChild(x);
-    setTimeout(function(){ x.remove(); }, 3000);
-}
-
-async function carregarCentrosCustoSelect(selecionarCodigo = null) {
-    try {
-        const { data } = await sbFiltroLeitura('centros_custo');
-        let selectEl = document.getElementById('centro_custo');
-        if(!selectEl) return;
-        let atual = selectEl.value;
-        selectEl.innerHTML = '<option value="">Selecione o Projeto...</option>';
-        if(data) {
-            data.forEach(cc => {
-                let codigoCC = cc.codigo || cc.id || '';
-                let nomeCC = cc.nome || cc.descricao || 'Centro de Custo';
-                let valOpt = `${codigoCC} - ${nomeCC}`;
-                let selected = (selecionarCodigo && valOpt === selecionarCodigo) ? 'selected' : '';
-                selectEl.innerHTML += `<option value="${valOpt}" ${selected}>${valOpt}</option>`;
-            });
-        }
-        if(selecionarCodigo) selectEl.value = selecionarCodigo;
-        else if(atual) selectEl.value = atual;
-    } catch(err) {}
-}
-
-function abrirModalCcRapido() {
-    document.getElementById('novo_cc_codigo').value = 'CC-' + Math.floor(100 + Math.random() * 900);
-    document.getElementById('novo_cc_nome').value = '';
-    document.getElementById('modalCentroCustoRápido').classList.add('ativo');
-}
-
-function fecharModalCcRapido() {
-    document.getElementById('modalCentroCustoRápido').classList.remove('ativo');
-}
-
-async function salvarCentroCustoRapido() {
-    const codigo = document.getElementById('novo_cc_codigo').value.trim();
-    const nome = document.getElementById('novo_cc_nome').value.trim();
-    if(!nome) { toast("Digite o nome do Centro de Custo!", "error"); return; }
-
-    const payload = { codigo, nome, descricao: nome, cliente_id: window.clienteIdAtual() };
-    const { data, error } = await sb.from('centros_custo').insert([payload]).select();
-    if(error) { toast("Erro ao criar centro de custo: " + error.message, "error"); return; }
-
-    toast("Centro de Custo criado com sucesso!");
-    fecharModalCcRapido();
-    await carregarCentrosCustoSelect(`${codigo} - ${nome}`);
-}
-
-document.getElementById('printDataEmissao').innerText = new Date().toLocaleDateString('pt-BR');
-
-async function buscarCep() {
-    let cep = document.getElementById('cep').value.replace(/\D/g, '');
-    if(cep.length !== 8) return;
-    try {
-        let res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-        let data = await res.json();
-        if(!data.erro) {
-            document.getElementById('logradouro').value = data.logradouro || '';
-            document.getElementById('bairro').value = data.bairro || '';
-            document.getElementById('cidade_uf').value = `${data.localidade || ''} - ${data.uf || ''}`;
-            toast("Endereço preenchido pelo CEP.", "info");
-        }
-    } catch(e) {}
-}
-
-async function consultarOuValidarDocumento() {
-    let doc = document.getElementById('cnpj_cpf').value.trim();
-    let docLimpo = doc.replace(/\D/g, '');
-    if (docLimpo.length === 14) {
+    function obterClienteIdAtivo() {
         try {
-            let resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${docLimpo}`);
-            if (resposta.ok) {
-                let dados = await resposta.json();
-                document.getElementById('nome').value = dados.razao_social || '';
-                document.getElementById('campo_alternativo').value = dados.nome_fantasia || '';
-                document.getElementById('email').value = dados.email || '';
-                document.getElementById('telefone').value = dados.ddd_telefone_1 || '';
-                document.getElementById('cep').value = dados.cep || '';
-                document.getElementById('logradouro').value = dados.logradouro || '';
-                document.getElementById('numero').value = dados.numero || '';
-                document.getElementById('bairro').value = dados.bairro || '';
-                document.getElementById('cidade_uf').value = `${dados.municipio || ''} - ${dados.uf || ''}`;
-                
-                if (dados.cnae_fiscal) {
-                    let descCnae = dados.cnae_fiscal_descricao ? ` - ${dados.cnae_fiscal_descricao}` : '';
-                    document.getElementById('cnae_principal').value = `${dados.cnae_fiscal}${descCnae}`;
-                }
-                if (dados.cnaes_secundarios && dados.cnaes_secundarios.length > 0) {
-                    let listaSec = dados.cnaes_secundarios.map(c => `${c.codigo}${c.descricao ? ' - '+c.descricao : ''}`).join(' | ');
-                    document.getElementById('cnae_secundarios').value = listaSec;
-                }
-                if (dados.inscricoes_estaduais && dados.inscricoes_estaduais.length > 0) {
-                    let ieAtiva = dados.inscricoes_estaduais.find(ie => ie.ativo === true) || dados.inscricoes_estaduais[0];
-                    if (ieAtiva && ieAtiva.inscricao_estadual) {
-                        document.getElementById('fiscal_1').value = ieAtiva.inscricao_estadual;
-                    }
-                }
-
-                toast("Dados, CNAE e Inscrição Estadual importados da Receita Federal com sucesso!", "success");
-            }
-        } catch (err) {}
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
     }
-}
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 4000);
+    }
+    function alternarPainel(id) { const c = document.getElementById(id); if (c) c.classList.toggle('recolhido'); }
 
-async function carregarParceiros() {
-    const { data, error } = await sbFiltroLeitura('parceiros').order('id', { ascending: false });
-    if(error) return;
-    parceirosCache = data || [];
-    renderTabela();
-    aplicarFiltrosRelatorio();
-}
+    async function lerTudo(tabela, cid) {
+        const out = [], PAG = 1000;
+        for (let ini = 0; ini < 200000; ini += PAG) {
+            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: false }).range(ini, ini + PAG - 1);
+            if (r.error) throw r.error;
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
+        }
+        return out;
+    }
 
-function normalizarTipo(tipoStr) {
-    let t = (tipoStr || 'Cliente').toLowerCase().trim();
-    if (t.includes('ambos') || t.includes('&') || (t.includes('cliente') && t.includes('fornecedor'))) return 'Cliente & Fornecedor';
-    if (t.includes('fornecedor') || t.includes('forn')) return 'Fornecedor';
-    return 'Cliente';
-}
-
-function aplicarFiltrosRelatorio() {
-    let stFiltro = document.getElementById('filtroTipo').value;
-    let txtBusca = document.getElementById('filtroBusca').value.trim().toLowerCase();
-    
-    let descFiltroTipo = stFiltro === 'todos' ? 'Todos os Tipos' : stFiltro;
-    let descBusca = txtBusca ? ` | Busca: "${txtBusca}"` : '';
-    document.getElementById('printFiltrosInfo').innerText = `${descFiltroTipo}${descBusca}`;
-
-    let dadosFiltrados = parceirosCache.filter(p => {
-        let tipoNormalizado = normalizarTipo(p.tipo_cadastro);
-        if (stFiltro !== 'todos' && tipoNormalizado !== stFiltro) return false;
-        if (txtBusca) {
-            let linha = (p.nome + ' ' + (p.cnpj_cpf || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || '')).toLowerCase();
-            if (!linha.includes(txtBusca)) return false;
+    /* ---------- validação de documento ---------- */
+    function cpfValido(c) {
+        if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+        for (let t = 9; t < 11; t++) {
+            let s = 0; for (let i = 0; i < t; i++) s += parseInt(c[i], 10) * (t + 1 - i);
+            const d = ((s * 10) % 11) % 10; if (d !== parseInt(c[t], 10)) return false;
         }
         return true;
-    });
-
-    const tbodyRel = document.getElementById('tbodyRelatorioModo');
-    tbodyRel.innerHTML = '';
-    if(dadosFiltrados.length === 0) {
-        tbodyRel.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-light); padding:15px;">Nenhum registro encontrado.</td></tr>`;
-        return;
     }
-    
-    dadosFiltrados.forEach(p => {
-        let tipoNorm = normalizarTipo(p.tipo_cadastro);
-        let badge = '<span class="badge badge-cliente">Cliente</span>';
-        if(tipoNorm === 'Fornecedor') badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        if(tipoNorm === 'Cliente & Fornecedor') badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
+    function cnpjValido(c) {
+        if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+        const calc = function (n) { let s = 0, p = n - 7; for (let i = 0; i < n; i++) { s += parseInt(c[i], 10) * p--; if (p < 2) p = 9; } const r = s % 11; return r < 2 ? 0 : 11 - r; };
+        return calc(12) === parseInt(c[12], 10) && calc(13) === parseInt(c[13], 10);
+    }
+    function documentoValido(doc) { const d = soDigitos(doc); return d.length === 11 ? cpfValido(d) : (d.length === 14 ? cnpjValido(d) : false); }
 
-        let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
-        tbodyRel.innerHTML += `<tr>
-            <td>${badge}</td>
-            <td>${p.cnpj_cpf || '-'}</td>
-            <td><strong>${p.nome || '-'}</strong></td>
-            <td>${p.centro_custo || '-'}</td>
-            <td><small><b>Contato:</b> ${p.nome_contato || '-'}<br>CNAE: ${p.cnae_principal || '-'}</small></td>
-            <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
-            <td><small>${enderecoCompleto}</small></td>
-        </tr>`;
-    });
-}
-
-function limparFiltrosRelatorio() {
-    document.getElementById('filtroTipo').value = 'todos';
-    document.getElementById('filtroBusca').value = '';
-    aplicarFiltrosRelatorio();
-}
-
-function renderTabela() {
-    const tbody = document.getElementById('tbodyParceiros');
-    tbody.innerHTML = '';
-    parceirosCache.forEach(p => {
-        let tipoNorm = normalizarTipo(p.tipo_cadastro);
-        let badge = '<span class="badge badge-cliente">Cliente</span>';
-        if(tipoNorm === 'Fornecedor') badge = '<span class="badge badge-fornecedor">Fornecedor</span>';
-        if(tipoNorm === 'Cliente & Fornecedor') badge = '<span class="badge badge-ambos">Cliente & Forn.</span>';
-
-        let enderecoCompleto = `${p.logradouro || ''}, nº ${p.numero || ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})`;
-        tbody.innerHTML += `<tr>
-            <td><strong>#${p.id}</strong></td>
-            <td>${badge}</td>
-            <td>${p.cnpj_cpf || '-'}</td>
-            <td><strong>${p.nome || '-'}</strong></td>
-            <td>${p.centro_custo || '-'}</td>
-            <td><small><b>Contato:</b> ${p.nome_contato || '-'}<br>CNAE: ${p.cnae_principal || '-'}</small></td>
-            <td><small>${p.email || '-'}<br>${p.telefone || '-'}</small></td>
-            <td><small>${enderecoCompleto}</small></td>
-            <td style="text-align:right;">
-                <button class="btn btn-outline" type="button" style="padding:4px 8px; font-size:11px;" onclick="visualizarParceiro(${p.id})" title="Visualizar / Ficha"><i class="fas fa-eye"></i></button>
-                <button class="btn btn-outline" type="button" style="padding:4px 8px; font-size:11px;" onclick="editarParceiro(${p.id})" title="Editar"><i class="fas fa-edit"></i></button>
-                <button class="btn" type="button" style="padding:4px 8px; font-size:11px; background:#fee2e2; color:#b91c1c;" onclick="excluirParceiro(${p.id})" title="Excluir"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-}
-
-window.visualizarParceiro = function(id) {
-    let p = parceirosCache.find(x => String(x.id) === String(id));
-    if(!p) return;
-    let tipoNorm = normalizarTipo(p.tipo_cadastro);
-    let html = `
-        <div style="border-bottom:2px solid var(--secondary); padding-bottom:8px; margin-bottom:10px;">
-            <h4 style="color:var(--secondary); font-size:16px;">${p.nome || 'Parceiro'}</h4>
-            <span style="font-size:11px; color:var(--text-light);">ID: #${p.id} | Tipo: <strong>${tipoNorm}</strong></span>
-        </div>
-        <div><b>CNPJ/CPF:</b> ${p.cnpj_cpf || '-'}</div>
-        <div><b>Nome Fantasia / Social:</b> ${p.nome_fantasia || p.nome_social || '-'}</div>
-        <div><b>Centro de Custo:</b> ${p.centro_custo || '-'}</div>
-        <div><b>Inscrição Estadual / RG:</b> ${p.inscricao_estadual || p.rg || '-'}</div>
-        <div><b>Inscrição Municipal:</b> ${p.inscricao_municipal || '-'}</div>
-        <div><b>CNAE Principal:</b> ${p.cnae_principal || '-'}</div>
-        <div><b>CNAE Secundários:</b> ${p.cnae_secundarios || '-'}</div>
-        <div><b>Contato:</b> ${p.nome_contato || '-'} | <b>Telefone:</b> ${p.telefone || '-'}</div>
-        <div><b>E-mail Principal:</b> ${p.email || '-'} | <b>E-mail NF-e:</b> ${p.email_nfe || '-'}</div>
-        <div><b>Endereço:</b> ${p.logradouro || ''}, nº ${p.numero || ''} ${p.complemento ? '('+p.complemento+')' : ''} - ${p.bairro || ''} - ${p.cidade_uf || ''} (CEP: ${p.cep || '-'})</div>
-        <div><b>Observações:</b> ${p.observacoes || '-'}</div>
-    `;
-    document.getElementById('conteudoFichaDetalhada').innerHTML = html;
-    
-    let u = window.obterUsuario();
-    let nomeUsuario = (u ? (u.nome || u.email) : 'Sistema');
-    let fichaPrintHtml = `
-        <div style="border-bottom:3px solid #1e3a8a; padding-bottom:12px; margin-bottom:20px;">
-            <h2 style="color:#1e3a8a; font-size:20px; font-weight:800; text-transform:uppercase;">Sacramento ERP — Ficha Cadastral de Parceiro</h2>
-            <p style="font-size:11px; color:#334155; margin-top:4px;">Emitido em: ${new Date().toLocaleDateString('pt-BR')} | Emitido por: ${nomeUsuario}</p>
-        </div>
-        ${html}
-        <div style="margin-top:40px; border-top:1px solid #cbd5e1; pt:10px; font-size:10px; color:#64748b; text-align:center;">
-            Documento gerado eletronicamente via Sacramento ERP — Todos os direitos reservados.
-        </div>
-    `;
-    document.getElementById('printFichaArea').innerHTML = fichaPrintHtml;
-    
-    document.getElementById('modalVisualizar').classList.add('ativo');
-}
-
-function fecharModalVisualizar() {
-    document.getElementById('modalVisualizar').classList.remove('ativo');
-    document.body.classList.remove('imprimindo-ficha');
-}
-
-function imprimirFichaIndividual() {
-    document.body.classList.add('imprimindo-ficha');
-    window.print();
-    setTimeout(() => {
-        document.body.classList.remove('imprimindo-ficha');
-    }, 500);
-}
-
-async function salvarParceiro() {
-    const id = document.getElementById('edit_id').value;
-    const tipo_cadastro = document.getElementById('tipo_cadastro').value;
-    const cnpj_cpf = document.getElementById('cnpj_cpf').value.trim();
-    const nome = document.getElementById('nome').value.trim();
-    const centro_custo = document.getElementById('centro_custo').value;
-
-    if(!nome || !cnpj_cpf || !centro_custo) {
-        toast("Preencha o documento, o nome e selecione o Centro de Custo!", "error");
-        return;
+    /* ---------- centros de custo ---------- */
+    let centrosCache = [];
+    async function carregarCentrosCustoSelect(selecionar) {
+        try {
+            const r = await sb.from('centros_custo').select('*').eq('cliente_id', obterClienteIdAtivo());
+            centrosCache = r.data || [];
+            const el = document.getElementById('centro_custo');
+            const atual = el.value;
+            el.innerHTML = '<option value="">Selecione o projeto...</option>';
+            centrosCache.forEach(function (cc) {
+                const v = (cc.codigo || cc.id || '') + ' - ' + (cc.nome || cc.descricao || 'Centro de custo');
+                const o = document.createElement('option'); o.value = v; o.textContent = v; el.appendChild(o);
+            });
+            const alvo = selecionar || atual;
+            if (alvo) {
+                if (![].some.call(el.options, function (o) { return o.value === alvo; })) { const o = document.createElement('option'); o.value = alvo; o.textContent = alvo; el.appendChild(o); }
+                el.value = alvo;
+            }
+        } catch (e) { console.error(e); }
+    }
+    function abrirModalCcRapido() {
+        setVal('novo_cc_codigo', ''); setVal('novo_cc_nome', '');
+        document.getElementById('modalCentroCustoRapido').classList.add('ativo');
+    }
+    function fecharModalCcRapido() { document.getElementById('modalCentroCustoRapido').classList.remove('ativo'); }
+    async function salvarCentroCustoRapido() {
+        let codigo = val('novo_cc_codigo'); const nome = val('novo_cc_nome');
+        if (!nome) { toast('Digite o nome do centro de custo.', 'error'); return; }
+        if (!codigo) codigo = 'CC-' + String(centrosCache.length + 1).padStart(2, '0');
+        const dup = centrosCache.find(function (c) { return norm(c.codigo) === norm(codigo) || norm(c.nome) === norm(nome); });
+        if (dup && !confirm('Já existe um centro de custo parecido ("' + (dup.codigo || '') + ' - ' + (dup.nome || dup.descricao) + '"). Criar mesmo assim?')) return;
+        const r = await sb.from('centros_custo').insert([{ codigo: codigo, nome: nome, descricao: nome, status: 'Ativo', cliente_id: obterClienteIdAtivo() }]);
+        if (r.error) { toast('Erro ao criar centro de custo: ' + r.error.message, 'error'); return; }
+        toast('Centro de custo criado!');
+        fecharModalCcRapido();
+        await carregarCentrosCustoSelect(codigo + ' - ' + nome);
     }
 
-    let payload = {
-        tipo_cadastro, cnpj_cpf, nome, centro_custo,
-        cliente_id: window.clienteIdAtual(),
-        email: document.getElementById('email').value.trim(),
-        email_nfe: document.getElementById('email_nfe').value.trim(),
-        telefone: document.getElementById('telefone').value.trim(),
-        cnae_principal: document.getElementById('cnae_principal').value.trim(),
-        cnae_secundarios: document.getElementById('cnae_secundarios').value.trim(),
-        nome_contato: document.getElementById('nome_contato').value.trim(),
-        cep: document.getElementById('cep').value.trim(),
-        logradouro: document.getElementById('logradouro').value.trim(),
-        numero: document.getElementById('numero').value.trim(),
-        bairro: document.getElementById('bairro').value.trim(),
-        cidade_uf: document.getElementById('cidade_uf').value.trim()
+    /* ---------- CEP e documento ---------- */
+    async function buscarCep() {
+        const cep = soDigitos(val('cep'));
+        if (cep.length !== 8) return;
+        try {
+            const res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+            const d = await res.json();
+            if (!d.erro) {
+                if (!val('logradouro')) setVal('logradouro', d.logradouro);
+                if (!val('bairro')) setVal('bairro', d.bairro);
+                if (!val('cidade_uf')) setVal('cidade_uf', (d.localidade || '') + ' - ' + (d.uf || ''));
+                toast('Endereço preenchido pelo CEP.', 'info');
+            }
+        } catch (e) {}
+    }
+
+    async function consultarOuValidarDocumento() {
+        const d = soDigitos(val('cnpj_cpf'));
+        const st = document.getElementById('status_doc');
+        if (!d) { st.textContent = ''; return; }
+        if (!documentoValido(d)) { st.textContent = '✗ documento inválido'; st.style.color = '#b91c1c'; return; }
+        st.textContent = '✓ válido'; st.style.color = '#047857';
+        if (d.length !== 14) return;
+        try {
+            const r = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + d);
+            if (!r.ok) return;
+            const x = await r.json();
+            const pre = function (id, v) { if (!val(id) && v) setVal(id, v); };   // só preenche o que está vazio
+            pre('nome', x.razao_social); pre('campo_alternativo', x.nome_fantasia); pre('email', x.email); pre('telefone', x.ddd_telefone_1);
+            pre('cep', x.cep); pre('logradouro', x.logradouro); pre('numero', x.numero); pre('bairro', x.bairro); pre('complemento', x.complemento);
+            pre('cidade_uf', (x.municipio || '') + ' - ' + (x.uf || ''));
+            if (x.cnae_fiscal) pre('cnae_principal', x.cnae_fiscal + (x.cnae_fiscal_descricao ? ' - ' + x.cnae_fiscal_descricao : ''));
+            if (x.cnaes_secundarios && x.cnaes_secundarios.length) pre('cnae_secundarios', x.cnaes_secundarios.map(function (c) { return c.codigo + (c.descricao ? ' - ' + c.descricao : ''); }).join(' | '));
+            if (x.inscricoes_estaduais && x.inscricoes_estaduais.length) {
+                const ie = x.inscricoes_estaduais.find(function (i) { return i.ativo === true; }) || x.inscricoes_estaduais[0];
+                if (ie && ie.inscricao_estadual) pre('fiscal_1', ie.inscricao_estadual);
+            }
+            toast('Dados da Receita Federal importados (campos já preenchidos foram mantidos).', 'success');
+        } catch (e) {}
+    }
+
+    /* ---------- lista ---------- */
+    async function carregarParceiros() {
+        const tb = document.getElementById('tbodyParceiros');
+        try {
+            parceirosCache = await lerTudo('parceiros', obterClienteIdAtivo());
+        } catch (e) {
+            tb.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--danger); font-weight:600;">Erro ao carregar parceiros: ' + esc(e.message || e) + '</td></tr>';
+            return;
+        }
+        renderTabela();
+    }
+    function normalizarTipo(t) {
+        t = norm(t || 'Cliente');
+        if (t.indexOf('ambos') >= 0 || t.indexOf('&') >= 0 || (t.indexOf('cliente') >= 0 && t.indexOf('fornecedor') >= 0)) return 'Cliente & Fornecedor';
+        if (t.indexOf('forn') >= 0) return 'Fornecedor';
+        return 'Cliente';
+    }
+    function badgeTipo(t) {
+        if (t === 'Fornecedor') return '<span class="badge badge-fornecedor">Fornecedor</span>';
+        if (t === 'Cliente & Fornecedor') return '<span class="badge badge-ambos">Cliente & Forn.</span>';
+        return '<span class="badge badge-cliente">Cliente</span>';
+    }
+    function enderecoTexto(p) {
+        const partes = [];
+        if (p.logradouro) partes.push(p.logradouro + (p.numero ? ', nº ' + p.numero : ''));
+        if (p.complemento) partes.push(p.complemento);
+        if (p.bairro) partes.push(p.bairro);
+        if (p.cidade_uf) partes.push(p.cidade_uf);
+        return (partes.join(' - ') || '—') + (p.cep ? ' (CEP ' + p.cep + ')' : '');
+    }
+
+    function renderTabela() {
+        const tipo = document.getElementById('filtroTipo').value;
+        const q = norm(document.getElementById('filtroBusca').value);
+        const qd = soDigitos(q);
+        let c = 0, f = 0, a = 0;
+        parceirosCache.forEach(function (p) { const t = normalizarTipo(p.tipo_cadastro); if (t === 'Fornecedor') f++; else if (t === 'Cliente & Fornecedor') a++; else c++; });
+        document.getElementById('kpiTotal').textContent = parceirosCache.length;
+        document.getElementById('kpiClientes').textContent = c;
+        document.getElementById('kpiFornecedores').textContent = f;
+        document.getElementById('kpiAmbos').textContent = a;
+
+        listaVisivel = parceirosCache.filter(function (p) {
+            if (tipo !== 'todos' && normalizarTipo(p.tipo_cadastro) !== tipo) return false;
+            if (q) {
+                const linha = norm((p.nome || '') + ' ' + (p.nome_fantasia || '') + ' ' + (p.cidade_uf || '') + ' ' + (p.centro_custo || ''));
+                const doc = soDigitos(p.cnpj_cpf);
+                if (linha.indexOf(q) < 0 && !(qd && doc.indexOf(qd) >= 0) && norm(p.cnpj_cpf).indexOf(q) < 0) return false;
+            }
+            return true;
+        });
+
+        const tb = document.getElementById('tbodyParceiros');
+        if (!listaVisivel.length) { tb.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum parceiro encontrado.</td></tr>'; return; }
+        tb.innerHTML = listaVisivel.map(function (p) {
+            return '<tr><td><strong>#' + esc(p.id) + '</strong></td>' +
+                '<td>' + badgeTipo(normalizarTipo(p.tipo_cadastro)) + '</td>' +
+                '<td style="white-space:nowrap;">' + esc(p.cnpj_cpf || '—') + '</td>' +
+                '<td><strong>' + esc(p.nome || '—') + '</strong>' + (p.nome_fantasia ? '<span class="sub">' + esc(p.nome_fantasia) + '</span>' : '') + '</td>' +
+                '<td>' + esc(p.centro_custo || '—') + '</td>' +
+                '<td><small>' + esc(p.nome_contato || '—') + '</small>' + (p.cnae_principal ? '<span class="sub">CNAE: ' + esc(p.cnae_principal) + '</span>' : '') + '</td>' +
+                '<td><small>' + esc(p.email || '—') + '</small><span class="sub">' + esc(p.telefone || '') + '</span></td>' +
+                '<td><small>' + esc(enderecoTexto(p)) + '</small></td>' +
+                '<td><div class="acoes">' +
+                    '<button type="button" class="btn-mini" title="Ver ficha" onclick="visualizarParceiro(' + p.id + ')"><i class="fas fa-eye"></i></button>' +
+                    '<button type="button" class="btn-mini" title="Editar" onclick="editarParceiro(' + p.id + ')"><i class="fas fa-edit"></i></button>' +
+                    '<button type="button" class="btn-mini perigo" title="Excluir" onclick="excluirParceiro(' + p.id + ')"><i class="fas fa-trash"></i></button>' +
+                '</div></td></tr>';
+        }).join('');
+    }
+
+    function limparFiltros() { document.getElementById('filtroTipo').value = 'todos'; document.getElementById('filtroBusca').value = ''; renderTabela(); }
+
+    /* ---------- ficha ---------- */
+    function camposFicha(p) {
+        return [
+            ['Tipo', normalizarTipo(p.tipo_cadastro)], ['CNPJ / CPF', p.cnpj_cpf], ['Razão social / nome', p.nome],
+            ['Nome fantasia / social', p.nome_fantasia || p.nome_social], ['Centro de custo', p.centro_custo],
+            ['Inscrição estadual / RG', p.inscricao_estadual || p.rg], ['Inscrição municipal', p.inscricao_municipal],
+            ['CNAE principal', p.cnae_principal], ['CNAE secundários', p.cnae_secundarios],
+            ['Contato', p.nome_contato], ['Telefone', p.telefone], ['E-mail principal', p.email], ['E-mail NF-e', p.email_nfe],
+            ['Endereço', enderecoTexto(p)], ['Observações', p.observacoes]
+        ].map(function (c) { return [c[0], (c[1] === null || c[1] === undefined || c[1] === '') ? '—' : String(c[1])]; });
+    }
+    window.visualizarParceiro = function (id) {
+        const p = parceirosCache.find(function (x) { return String(x.id) === String(id); });
+        if (!p) return;
+        fichaAtual = p;
+        let h = '<div style="border-bottom:2px solid var(--secondary); padding-bottom:8px; margin-bottom:10px;"><h4 style="color:var(--secondary); font-size:17px;">' + esc(p.nome || 'Parceiro') + '</h4>' +
+                '<span style="font-size:11px; color:var(--text-light);">ID #' + esc(p.id) + '</span></div>';
+        camposFicha(p).forEach(function (c) { h += '<div class="ficha-linha"><b>' + esc(c[0]) + '</b><span>' + esc(c[1]) + '</span></div>'; });
+        document.getElementById('conteudoFichaDetalhada').innerHTML = h;
+        document.getElementById('modalVisualizar').classList.add('ativo');
+    };
+    function fecharModalVisualizar() { document.getElementById('modalVisualizar').classList.remove('ativo'); }
+    function imprimirFichaIndividual() {
+        if (!fichaAtual) return;
+        const p = fichaAtual;
+        ERPPrint.imprimir({
+            titulo: 'Ficha Cadastral de Parceiro',
+            subtitulo: p.nome || '',
+            codigo: 'CAD-PA',
+            orientacao: 'portrait',
+            filtros: [['Parceiro', '#' + p.id + ' — ' + (p.nome || '')]],
+            colunas: [{ t: 'Campo', w: 1.6 }, { t: 'Informação', w: 4.4 }],
+            linhas: camposFicha(p).map(function (c) { return [{ t: c[0], cls: 'bold' }, c[1]]; }),
+            assinaturas: ['Responsável pelo cadastro']
+        });
+    }
+    function imprimirRelatorio() {
+        if (!listaVisivel.length) { toast('Não há parceiros para imprimir com os filtros atuais.', 'error'); return; }
+        const tipo = document.getElementById('filtroTipo').value, q = val('filtroBusca');
+        const filtros = [['Tipo', tipo === 'todos' ? 'Todos os tipos' : tipo]];
+        if (q) filtros.push(['Busca', q]);
+        let c = 0, f = 0, a = 0;
+        listaVisivel.forEach(function (p) { const t = normalizarTipo(p.tipo_cadastro); if (t === 'Fornecedor') f++; else if (t === 'Cliente & Fornecedor') a++; else c++; });
+        ERPPrint.imprimir({
+            titulo: 'Relatório de Parceiros',
+            subtitulo: 'Diretório de clientes e fornecedores',
+            codigo: 'CAD-PL',
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: [['Total listado', String(listaVisivel.length)], ['Clientes', String(c)], ['Fornecedores', String(f)], ['Cliente & Fornecedor', String(a)]],
+            colunas: [{ t: 'Tipo', w: 1.2 }, { t: 'CNPJ / CPF', w: 1.7 }, { t: 'Nome / razão social', w: 3 }, { t: 'Centro de custo', w: 1.7 }, { t: 'Contato / telefone', w: 1.9 }, { t: 'E-mail', w: 2.2 }, { t: 'Endereço', w: 3.4 }],
+            linhas: listaVisivel.map(function (p) {
+                return [normalizarTipo(p.tipo_cadastro), p.cnpj_cpf || '—', p.nome || '—', p.centro_custo || '—',
+                        (p.nome_contato || '—') + (p.telefone ? ' / ' + p.telefone : ''), p.email || '—', enderecoTexto(p)];
+            })
+        });
+    }
+
+    /* ---------- salvar / editar / excluir ---------- */
+    const CAMPOS_OPCIONAIS = ['nome_fantasia', 'inscricao_estadual', 'inscricao_municipal', 'complemento', 'observacoes'];
+
+    async function gravarComFallback(id, payload, cid) {
+        const naoGravados = [];
+        for (let tentativa = 0; tentativa < 10; tentativa++) {
+            const res = id ? await sb.from('parceiros').update(payload).eq('id', id).eq('cliente_id', cid) : await sb.from('parceiros').insert([payload]);
+            if (!res.error) return { ok: true, naoGravados: naoGravados };
+            const m = String(res.error.message || '').match(/'([^']+)' column/i) || String(res.error.message || '').match(/column "?([a-z_]+)"? /i);
+            if (m && Object.prototype.hasOwnProperty.call(payload, m[1]) && CAMPOS_OPCIONAIS.indexOf(m[1]) >= 0) { delete payload[m[1]]; naoGravados.push(m[1]); continue; }
+            return { ok: false, erro: res.error };
+        }
+        return { ok: false, erro: { message: 'Não foi possível gravar.' } };
+    }
+
+    async function salvarParceiro() {
+        if (salvando) return;
+        const cid = obterClienteIdAtivo();
+        const id = val('edit_id');
+        const tipo_cadastro = val('tipo_cadastro'), cnpj_cpf = val('cnpj_cpf'), nome = val('nome'), centro_custo = val('centro_custo');
+        if (!nome || !cnpj_cpf || !centro_custo) { toast('Preencha o documento, o nome e selecione o centro de custo.', 'error'); return; }
+        if (!documentoValido(cnpj_cpf) && !confirm('O CNPJ/CPF informado parece INVÁLIDO. Deseja salvar mesmo assim?')) return;
+        const d = soDigitos(cnpj_cpf);
+        const dup = parceirosCache.find(function (p) { return soDigitos(p.cnpj_cpf) === d && d && String(p.id) !== String(id); });
+        if (dup && !confirm('Já existe um parceiro com este documento: "' + dup.nome + '" (#' + dup.id + '). Salvar mesmo assim?')) return;
+
+        const payload = {
+            tipo_cadastro: tipo_cadastro, cnpj_cpf: cnpj_cpf, nome: nome, centro_custo: centro_custo, cliente_id: cid,
+            email: val('email'), email_nfe: val('email_nfe'), telefone: val('telefone'),
+            cnae_principal: val('cnae_principal'), cnae_secundarios: val('cnae_secundarios'), nome_contato: val('nome_contato'),
+            cep: val('cep'), logradouro: val('logradouro'), numero: val('numero'), bairro: val('bairro'), cidade_uf: val('cidade_uf'),
+            nome_fantasia: val('campo_alternativo'), inscricao_estadual: val('fiscal_1'), inscricao_municipal: val('fiscal_2'),
+            complemento: val('complemento'), observacoes: val('observacoes')
+        };
+        salvando = true; const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+        try {
+            const r = await gravarComFallback(id, payload, cid);
+            if (!r.ok) { toast('Erro ao salvar parceiro: ' + r.erro.message, 'error'); return; }
+            let msg = id ? 'Parceiro atualizado com sucesso!' : 'Parceiro cadastrado com sucesso!';
+            if (r.naoGravados.length) { toast(msg + ' Atenção: estes campos não existem na tabela e NÃO foram gravados: ' + r.naoGravados.join(', ') + '.', 'error'); }
+            else toast(msg);
+            cancelarEdicao();
+            await carregarParceiros();
+        } finally { salvando = false; btn.disabled = false; }
+    }
+
+    window.editarParceiro = function (id) {
+        const p = parceirosCache.find(function (x) { return String(x.id) === String(id); });
+        if (!p) return;
+        setVal('edit_id', p.id);
+        setVal('tipo_cadastro', normalizarTipo(p.tipo_cadastro));
+        setVal('cnpj_cpf', p.cnpj_cpf); setVal('nome', p.nome);
+        const sel = document.getElementById('centro_custo');
+        if (p.centro_custo && ![].some.call(sel.options, function (o) { return o.value === p.centro_custo; })) { const o = document.createElement('option'); o.value = p.centro_custo; o.textContent = p.centro_custo; sel.appendChild(o); }
+        sel.value = p.centro_custo || '';
+        setVal('email', p.email); setVal('email_nfe', p.email_nfe); setVal('telefone', p.telefone);
+        setVal('cnae_principal', p.cnae_principal); setVal('cnae_secundarios', p.cnae_secundarios); setVal('nome_contato', p.nome_contato);
+        setVal('campo_alternativo', p.nome_fantasia || p.nome_social); setVal('fiscal_1', p.inscricao_estadual || p.rg); setVal('fiscal_2', p.inscricao_municipal);
+        setVal('complemento', p.complemento); setVal('observacoes', p.observacoes);
+        setVal('cep', p.cep); setVal('logradouro', p.logradouro); setVal('numero', p.numero); setVal('bairro', p.bairro); setVal('cidade_uf', p.cidade_uf);
+        document.getElementById('status_doc').textContent = '';
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-edit"></i> Editando parceiro (#' + esc(p.id) + ')';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar parceiro';
+        document.getElementById('btnCancelar').style.display = 'inline-flex';
+        document.getElementById('cardFormulario').classList.remove('recolhido');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    let res;
-    if(id) {
-        res = await sb.from('parceiros').update(payload).eq('id', id);
-    } else {
-        res = await sb.from('parceiros').insert([payload]);
+    function cancelarEdicao() {
+        ['edit_id', 'cnpj_cpf', 'nome', 'centro_custo', 'email', 'email_nfe', 'telefone', 'cnae_principal', 'cnae_secundarios', 'nome_contato',
+         'campo_alternativo', 'fiscal_1', 'fiscal_2', 'complemento', 'observacoes', 'cep', 'logradouro', 'numero', 'bairro', 'cidade_uf'].forEach(function (i) { setVal(i, ''); });
+        setVal('tipo_cadastro', 'Cliente');
+        document.getElementById('status_doc').textContent = '';
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-user-plus"></i> Novo cadastro de parceiro';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar parceiro';
+        document.getElementById('btnCancelar').style.display = 'none';
     }
 
-    if(res.error) {
-        toast("Erro ao salvar parceiro: " + res.error.message, "error");
-        return;
-    }
-
-    toast(id ? "Parceiro atualizado com sucesso!" : "Parceiro cadastrado com sucesso!");
-    cancelarEdicao();
-    carregarParceiros();
-}
-
-window.editarParceiro = function(id) {
-    let p = parceirosCache.find(x => String(x.id) === String(id));
-    if(!p) return;
-    document.getElementById('edit_id').value = p.id;
-    document.getElementById('tipo_cadastro').value = p.tipo_cadastro || 'Cliente';
-    document.getElementById('cnpj_cpf').value = p.cnpj_cpf || '';
-    document.getElementById('nome').value = p.nome || '';
-    document.getElementById('centro_custo').value = p.centro_custo || '';
-    document.getElementById('email').value = p.email || '';
-    document.getElementById('email_nfe').value = p.email_nfe || '';
-    document.getElementById('telefone').value = p.telefone || '';
-    document.getElementById('cnae_principal').value = p.cnae_principal || '';
-    document.getElementById('cnae_secundarios').value = p.cnae_secundarios || '';
-    document.getElementById('nome_contato').value = p.nome_contato || '';
-    document.getElementById('cep').value = p.cep || '';
-    document.getElementById('logradouro').value = p.logradouro || '';
-    document.getElementById('numero').value = p.numero || '';
-    document.getElementById('bairro').value = p.bairro || '';
-    document.getElementById('cidade_uf').value = p.cidade_uf || '';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-edit"></i> Editando Parceiro (#${p.id})`;
-    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Parceiro';
-    document.getElementById('btnCancelar').style.display = 'inline-block';
-    
-    const cardForm = document.getElementById('cardFormulario');
-    if(cardForm.classList.contains('recolhido')) cardForm.classList.remove('recolhido');
-    
-    window.scrollTo({top: 0, behavior: 'smooth'});
-}
-
-function cancelarEdicao() {
-    document.getElementById('edit_id').value = '';
-    document.getElementById('tipo_cadastro').value = 'Cliente';
-    document.getElementById('cnpj_cpf').value = '';
-    document.getElementById('nome').value = '';
-    document.getElementById('centro_custo').value = '';
-    document.getElementById('email').value = '';
-    document.getElementById('email_nfe').value = '';
-    document.getElementById('telefone').value = '';
-    document.getElementById('cnae_principal').value = '';
-    document.getElementById('cnae_secundarios').value = '';
-    document.getElementById('nome_contato').value = '';
-    document.getElementById('cep').value = '';
-    document.getElementById('logradouro').value = '';
-    document.getElementById('numero').value = '';
-    document.getElementById('bairro').value = '';
-    document.getElementById('cidade_uf').value = '';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-user-plus"></i> Novo Cadastro Executivo de Parceiro`;
-    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Parceiro Completo';
-    document.getElementById('btnCancelar').style.display = 'none';
-}
-
-window.excluirParceiro = async function(id) {
-    if(confirm("Deseja realmente excluir este parceiro?")) {
-        const { error } = await sb.from('parceiros').delete().eq('id', id);
-        if(error) { toast("Erro ao excluir parceiro.", "error"); return; }
-        toast("Parceiro removido com sucesso!");
+    window.excluirParceiro = async function (id) {
+        const p = parceirosCache.find(function (x) { return String(x.id) === String(id); });
+        if (!p) return;
+        const cid = obterClienteIdAtivo();
+        let msg = 'Excluir o parceiro "' + (p.nome || '') + '" (#' + p.id + ')?';
+        try {
+            const nomeN = norm(p.nome);
+            const [pag, rec] = await Promise.all([lerTudo('contas_pagar', cid), lerTudo('contas_receber', cid)]);
+            const nP = pag.filter(function (t) { return nomeN && norm(t.fornecedor_nome || t.fornecedor) === nomeN; }).length;
+            const nR = rec.filter(function (t) { return nomeN && norm(t.cliente_nome || t.cliente) === nomeN; }).length;
+            if (nP + nR > 0) msg += '\n\nATENÇÃO: este parceiro aparece em ' + nP + ' título(s) a pagar e ' + nR + ' a receber. Os títulos continuam existindo, mas perdem o vínculo com o cadastro.';
+        } catch (e) { msg += '\n\n(Não foi possível verificar se o parceiro tem lançamentos.)'; }
+        msg += '\n\nEsta ação não pode ser desfeita.';
+        if (!confirm(msg)) return;
+        const r = await sb.from('parceiros').delete().eq('id', id).eq('cliente_id', cid);
+        if (r.error) { toast('Erro ao excluir parceiro: ' + r.error.message, 'error'); return; }
+        toast('Parceiro removido com sucesso!');
         carregarParceiros();
+    };
+
+    async function inicializarPagina() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            if (u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER) document.body.classList.add('usuario-master');
+        } catch (e) {}
+        await carregarCentrosCustoSelect();
+        await carregarParceiros();
     }
-}
-
-async function inicializarPagina() {
-    let u = window.obterUsuario();
-    if(!u || !u.email) { location.href = 'login.html'; return; }
-
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = window.ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
-
-    await carregarCentrosCustoSelect();
-    await carregarParceiros();
-}
-
-window.onload = inicializarPagina;
+    window.onload = inicializarPagina;
 </script>
-<!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-<script src="erp-core.js"></script>
 </body>
 </html>
