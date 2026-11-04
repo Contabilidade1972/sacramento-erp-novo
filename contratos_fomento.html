@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -96,43 +97,6 @@
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
-        .print-corporative-header { display: none !important; }
-
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 20mm 15mm 20mm 15mm;
-                @bottom-right {
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    font-family: 'Inter', sans-serif;
-                    color: #475569;
-                }
-            }
-            .site-header, .page-toolbar, .panel:first-of-type, .toast-container, footer, 
-            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-            body { background: #fff !important; color: #000 !important; font-size: 9.5pt; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 10mm !important; gap: 0 !important; width: 100% !important; }
-            .panel:not(:first-of-type) { border: none !important; box-shadow: none !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
-            table { font-size: 9pt !important; width: 100% !important; }
-            thead { display: table-header-group !important; }
-            tr { page-break-inside: avoid !important; }
-            .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 8px !important;
-                margin-bottom: 12px !important;
-                border-bottom: 2px solid #1e3a8a !important;
-            }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td { padding: 6px 8px !important; border-bottom: 1px solid #cbd5e1 !important; }
-        }
-
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -184,17 +148,6 @@
                 <select id="projetoId" class="form-control"><option value="">— Selecione o projeto —</option></select>
             </div>
             <div>
-                <label>Origem do Recurso *</label>
-                <input type="text" id="financiador" class="form-control" placeholder="Terceiro (financiador / parceiro / órgão de fomento)">
-            </div>
-        </div>
-
-        <div class="form-row">
-            <div>
-                <label>Financiador / Origem *</label>
-                <input type="text" id="origemDetalhe" class="form-control" placeholder="Ex.: Finep, Fapesp, BNDES, empresa parceira">
-            </div>
-            <div>
                 <label>Número do Contrato / Convênio *</label>
                 <input type="text" id="numContrato" class="form-control" placeholder="Ex.: 1234/2026">
             </div>
@@ -202,20 +155,27 @@
 
         <div class="form-row">
             <div>
-                <label>Valor Total (R\$) *</label>
-                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="window.formatarCampoMoeda(this)">
+                <label>Financiador / Origem do Recurso *</label>
+                <input type="text" id="origemDetalhe" class="form-control" placeholder="Ex.: Finep, Fapesp, BNDES, empresa parceira">
             </div>
             <div>
-                <label>Data de Assinatura *</label>
-                <input type="date" id="dataAssinatura" class="form-control">
+                <label>Valor Total (R\$) *</label>
+                <input type="text" id="valorTotal" class="form-control" placeholder="Ex.: 150.000,00" onblur="window.formatarCampoMoeda(this)">
             </div>
         </div>
 
         <div class="form-row">
             <div>
+                <label>Data de Assinatura *</label>
+                <input type="date" id="dataAssinatura" class="form-control">
+            </div>
+            <div>
                 <label>Data de Vigência Final *</label>
                 <input type="date" id="dataVigencia" class="form-control">
             </div>
+        </div>
+
+        <div class="form-row">
             <div>
                 <label>Status *</label>
                 <select id="statusContrato" class="form-control">
@@ -246,14 +206,14 @@
         </div>
 
         <div style="display:flex; gap:10px; margin-top:16px;">
-            <button class="btn-primary" type="button" onclick="window.salvarContrato()"><i class="fas fa-save"></i> Salvar contrato</button>
+            <button class="btn-primary" id="btnSalvar" type="button" onclick="window.salvarContrato()"><i class="fas fa-save"></i> Salvar contrato</button>
             <button class="btn-secondary" type="button" id="btnCancelar" onclick="window.cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
     </div>
 
     <div class="panel">
         <div class="panel-header">
-            <h3><i class="fas fa-list"></i> Contratos cadastrados e relatórios</h3>
+            <h3 style="font-size:15px; font-weight:700; color:var(--secondary);"><i class="fas fa-list"></i> Contratos cadastrados e relatórios</h3>
             <button class="btn-acao sucesso ocultar-print" type="button" onclick="window.executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
 
@@ -296,14 +256,6 @@
             <table class="analitica-table">
                 <thead>
                     <tr>
-                        <th colspan="7" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                            <div class="print-corporative-header">
-                                <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Relatório de Contratos & Aportes (Fomento)</h2>
-                                <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                            </div>
-                        </th>
-                    </tr>
-                    <tr>
                         <th>Contrato</th>
                         <th>Projeto</th>
                         <th>Financiador / Origem</th>
@@ -335,6 +287,18 @@ let projetosMap = {};
 let decisaoDevolucao = 'nao';
 let decisaoFinalidade = 'custeio';
 
+var NATUREZA_ROTULO = {
+    aporte_reembolsavel: 'Aporte Reembolsável',
+    subvencao_investimento: 'Subv. p/ Investimento',
+    subvencao_custeio: 'Subvenção para Custeio'
+};
+
+window.esc = function(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+};
+
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
 };
@@ -347,12 +311,12 @@ window.ehMaster = function() {
 
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
-    if (!u) return 1;
+    if (!u) return null;
     if (window.ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
 };
 
 window.sbFiltro = function(tabela){
@@ -372,9 +336,9 @@ window.toast = function(msg, type='success'){
         document.body.appendChild(c);
     }
     x.className = 'toast '+type;
-    x.innerHTML = '<i class="fas fa-info-circle"></i> '+msg;
+    x.innerHTML = '<i class="fas fa-info-circle"></i> '+window.esc(msg);
     c.appendChild(x);
-    setTimeout(function(){ x.remove(); }, 3000);
+    setTimeout(function(){ x.remove(); }, 3500);
 };
 
 window.parseValorBR = function(v){
@@ -393,6 +357,8 @@ window.formatarCampoMoeda = function(el){
 };
 
 window.formatBRL = function(valor){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(valor||0); };
+window.dataBR = function(d){ if(!d) return '—'; var p=String(d).substring(0,10).split('-'); return p.length===3 ? p[2]+'/'+p[1]+'/'+p[0] : d; };
+window.vigenciaDe = function(c){ return c.data_vigencia_fim || c.data_vigencia || ''; };
 
 window.selecionarDevolucao = function(val, btn){
     decisaoDevolucao = val;
@@ -440,8 +406,8 @@ async function carregarProjetosSelect(){
         filtroProj.innerHTML = '<option value="">— Todos os projetos —</option>';
         projetosMap = {};
         (data || []).forEach(p => {
-            projetosMap[p.id] = p.nome || ('Projeto #' + p.id);
-            let opt = `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+            projetosMap[p.id] = (p.codigo ? p.codigo + ' · ' : '') + (p.nome || ('Projeto #' + p.id));
+            let opt = `<option value="${window.esc(p.id)}">${window.esc(projetosMap[p.id])}</option>`;
             sel.innerHTML += opt;
             filtroProj.innerHTML += opt;
         });
@@ -450,10 +416,11 @@ async function carregarProjetosSelect(){
 
 async function carregarContratos(){
     const el = document.getElementById('listaContratosTbody');
+    if(!window.clienteIdAtual()) { el.innerHTML = '<tr><td colspan="7" class="empty-state">Empresa não identificada. Saia e entre novamente.</td></tr>'; return; }
     try {
         let q = window.sbFiltro('contratos_fomento');
-        const { data, error } = await q.order('id', { ascending: false });
-        if(error) { el.innerHTML = '<tr><td colspan="7" class="empty-state">Erro: '+error.message+'</td></tr>'; return; }
+        const { data, error } = await q.order('criado_em', { ascending: false });
+        if(error) { el.innerHTML = '<tr><td colspan="7" class="empty-state">Erro: '+window.esc(error.message)+'</td></tr>'; return; }
         contratosCache = data || [];
         window.renderTabela();
     } catch(e) {
@@ -461,24 +428,26 @@ async function carregarContratos(){
     }
 }
 
-window.renderTabela = function(){
-    const tbody = document.getElementById('listaContratosTbody');
+window.obterFiltrados = function(){
     const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
     const projFiltro = document.getElementById('filtroProjeto').value;
     const statusFiltro = document.getElementById('filtroStatus').value;
     const natFiltro = document.getElementById('filtroNatureza').value;
 
-    let dadosFiltrados = contratosCache.filter(c => {
+    return contratosCache.filter(c => {
         let numContrato = (c.numero_contrato || '').toLowerCase();
         let financiador = (c.financiador || '').toLowerCase();
         let matchTexto = !termo || numContrato.includes(termo) || financiador.includes(termo);
-        
         let matchProj = !projFiltro || String(c.projeto_id) === String(projFiltro);
         let matchStatus = !statusFiltro || (c.status || 'Ativo').toLowerCase() === statusFiltro.toLowerCase();
         let matchNat = !natFiltro || (c.natureza_contabil || '') === natFiltro;
-
         return matchTexto && matchProj && matchStatus && matchNat;
     });
+};
+
+window.renderTabela = function(){
+    const tbody = document.getElementById('listaContratosTbody');
+    const dadosFiltrados = window.obterFiltrados();
 
     if(!dadosFiltrados.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhum contrato encontrado com os filtros aplicados.</td></tr>';
@@ -488,17 +457,17 @@ window.renderTabela = function(){
     tbody.innerHTML = '';
     dadosFiltrados.forEach(c => {
         const nomeProj = projetosMap[c.projeto_id] || '—';
-        const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
-        
+        const natRotulo = NATUREZA_ROTULO[c.natureza_contabil] || NATUREZA_ROTULO.subvencao_custeio;
+
         var tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${c.numero_contrato || '-'}</strong></td>
-            <td>${nomeProj}</td>
-            <td>${c.financiador || '-'}</td>
+            <td><strong>${window.esc(c.numero_contrato) || '-'}</strong></td>
+            <td>${window.esc(nomeProj)}</td>
+            <td>${window.esc(c.financiador) || '-'}</td>
             <td style="font-weight:bold;">${window.formatBRL(c.valor_total)}</td>
             <td><span style="font-size:11px; font-weight:600; color:var(--success); background:#dcfce7; padding:3px 8px; border-radius:20px;">${natRotulo}</span></td>
-            <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${c.status || 'Ativo'}</span></td>
-            <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
+            <td><span style="padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; background:#dcfce7; color:#166534;">${window.esc(c.status || 'Ativo')}</span></td>
+            <td style="text-align:right; white-space:nowrap;">
                 <button class="btn-secondary btn-imprimir" type="button" title="Imprimir Comprovativo"><i class="fas fa-print"></i></button>
                 <button class="btn-secondary btn-editar" type="button" title="Editar"><i class="fas fa-pen"></i></button>
                 <button class="btn-secondary btn-excluir" type="button" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>
@@ -522,71 +491,73 @@ window.limparFiltros = function(){
 };
 
 window.imprimirContratoPorId = function(id) {
-    const c = contratosCache.find(x => x.id === id);
+    const c = contratosCache.find(x => String(x.id) === String(id));
     if (!c) return;
-    const nomeProj = projetosMap[c.projeto_id] || '—';
-    const natRotulo = c.natureza_contabil === 'aporte_reembolsavel' ? 'Aporte Reembolsável' : (c.natureza_contabil === 'subvencao_investimento' ? 'Subv. p/ Investimento' : 'Subvenção para Custeio');
-    const conteudo = `
-        <b>Número do Contrato:</b> ${c.numero_contrato || '—'}<br>
-        <b>Projeto Vinculado:</b> ${nomeProj}<br>
-        <b>Financiador / Origem:</b> ${c.financiador || '—'}<br>
-        <b>Valor Total:</b> ${window.formatBRL(c.valor_total)}<br>
-        <b>Data de Assinatura:</b> ${c.data_assinatura ? c.data_assinatura.split('-').reverse().join('/') : '—'}<br>
-        <b>Data de Vigência Final:</b> ${c.data_vigencia ? c.data_vigencia.split('-').reverse().join('/') : '—'}<br>
-        <b>Status:</b> ${c.status || 'Ativo'}<br>
-        <b>Tratamento Contábil:</b> ${natRotulo}
-    `;
-    const agora = new Date().toLocaleString('pt-BR');
-    const janela = window.open('', '_blank', 'width=700,height=600');
-    janela.document.write(`
-        <html>
-        <head><title>Comprovativo de Contrato — Sacramento ERP</title>
-        <style>body{font-family:Inter,sans-serif;padding:30px;color:#1e293b;}h2{color:#1e3a8a;border-bottom:2px solid #2563eb;padding-bottom:10px;margin-bottom:20px;font-size:18px;}.info-box{background:#f8fafc;border:1px solid #e2e8f0;padding:20px;border-radius:10px;font-size:14px;line-height:1.8;}.footer{margin-top:30px;font-size:11px;color:#64748b;border-top:1px solid #e2e8f0;padding-top:10px;}</style>
-        </head>
-        <body><h2>Comprovativo de Contrato / Fomento — Sacramento ERP</h2><div class="info-box">${conteudo}</div><div class="footer">Emitido em: ${agora}</div><script>window.print();<\/script></body>
-        </html>
-    `);
-    janela.document.close();
+    ERPPrint.imprimir({
+        titulo: 'Ficha de Contrato / Convênio de Fomento',
+        subtitulo: 'Contrato nº ' + (c.numero_contrato || '—'),
+        codigo: 'PD-CTR',
+        orientacao: 'portrait',
+        filtros: [['Contrato', c.numero_contrato || '—'], ['Projeto', projetosMap[c.projeto_id] || '—']],
+        resumo: [['Valor total', window.formatBRL(c.valor_total)], ['Status', c.status || 'Ativo'], ['Vigência final', window.dataBR(window.vigenciaDe(c))]],
+        colunas: [{ t: 'Campo', w: 1.6 }, { t: 'Informação', w: 4 }],
+        linhas: [
+            ['Número do contrato', c.numero_contrato || '—'],
+            ['Projeto vinculado', projetosMap[c.projeto_id] || '—'],
+            ['Financiador / origem', c.financiador || '—'],
+            ['Valor total', window.formatBRL(c.valor_total)],
+            ['Data de assinatura', window.dataBR(c.data_assinatura)],
+            ['Vigência final', window.dataBR(window.vigenciaDe(c))],
+            ['Status', c.status || 'Ativo'],
+            ['Precisa ser devolvido?', c.natureza_contabil === 'aporte_reembolsavel' || c.precisa_devolver ? 'Sim' : 'Não (fundo perdido)'],
+            ['Tratamento contábil', NATUREZA_ROTULO[c.natureza_contabil] || NATUREZA_ROTULO.subvencao_custeio]
+        ],
+        assinaturas: ['Responsável pelo projeto', 'Representante da empresa']
+    });
 };
 
-window.executarImpressao = async function() {
-    const agora = new Date();
-    const elData = document.getElementById('printDataEmissao');
-    if(elData) elData.innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+window.executarImpressao = function() {
+    const dados = window.obterFiltrados();
+    const filtros = [];
+    const termo = document.getElementById('filtroTexto').value.trim();
+    const projSel = document.getElementById('filtroProjeto');
+    const stSel = document.getElementById('filtroStatus').value;
+    const natSel = document.getElementById('filtroNatureza');
+    if (termo) filtros.push(['Busca', termo]);
+    if (projSel.value) filtros.push(['Projeto', projSel.options[projSel.selectedIndex].text]);
+    if (stSel) filtros.push(['Status', stSel]);
+    if (natSel.value) filtros.push(['Tratamento', natSel.options[natSel.selectedIndex].text]);
 
-    const selectEmp = document.getElementById('selectEmpresa');
-    const elEmpName = document.getElementById('printEmpresaNome');
-    if (elEmpName) {
-        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-            elEmpName.innerText = selectEmp.options[selectEmp.selectedIndex].text;
-        } else {
-            const cid = window.clienteIdAtual();
-            try {
-                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-                if (data) {
-                    elEmpName.innerText = data.nome_fantasia || data.razao_social;
-                } else {
-                    elEmpName.innerText = 'Empresa Contratante ID ' + cid;
-                }
-            } catch(e) {
-                elEmpName.innerText = 'Empresa Corporativa';
-            }
-        }
-    }
+    let total = 0, ativos = 0;
+    dados.forEach(c => { total += Number(c.valor_total) || 0; if ((c.status || 'Ativo') === 'Ativo') ativos++; });
 
-    const elUserName = document.getElementById('printUsuarioNome');
-    if (elUserName) {
-        const u = window.obterUsuario();
-        elUserName.innerText = u ? (u.nome || u.email || 'Usuário Atual') : 'Operador';
-    }
+    const linhas = dados.map(c => [
+        c.numero_contrato || '—',
+        projetosMap[c.projeto_id] || '—',
+        c.financiador || '—',
+        window.dataBR(c.data_assinatura),
+        window.dataBR(window.vigenciaDe(c)),
+        NATUREZA_ROTULO[c.natureza_contabil] || NATUREZA_ROTULO.subvencao_custeio,
+        c.status || 'Ativo',
+        { t: window.formatBRL(c.valor_total), cls: 'pos' }
+    ]);
 
-    window.print();
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Contratos e Convênios de Fomento',
+        subtitulo: 'Instrumentos de fomento, subvenções e aportes vinculados aos projetos de P&D',
+        codigo: 'PD-CTR',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [['Contratos listados', String(dados.length)], ['Ativos', String(ativos)], ['Valor total contratado', window.formatBRL(total)]],
+        colunas: [{ t: 'Contrato', w: 1.3 }, { t: 'Projeto', w: 2.2 }, { t: 'Financiador / origem', w: 2.2 }, { t: 'Assinatura', w: 1.1 }, { t: 'Vigência final', w: 1.1 }, { t: 'Tratamento contábil', w: 2 }, { t: 'Status', w: 1 }, { t: 'Valor (R$)', w: 1.4, a: 'right' }],
+        linhas: linhas,
+        totais: ['', '', '', '', '', '', 'TOTAL', { t: window.formatBRL(total), cls: 'pos' }]
+    });
 };
 
 window.salvarContrato = async function(){
     const id = document.getElementById('edit_id').value;
     const projId = document.getElementById('projetoId').value;
-    const origRecurso = document.getElementById('financiador').value.trim();
     const financiador = document.getElementById('origemDetalhe').value.trim();
     const num = document.getElementById('numContrato').value.trim();
     const valor = window.parseValorBR(document.getElementById('valorTotal').value);
@@ -594,28 +565,33 @@ window.salvarContrato = async function(){
     const vigencia = document.getElementById('dataVigencia').value;
     const status = document.getElementById('statusContrato').value;
     const natureza = document.getElementById('naturezaContabil').value;
+    const cid = window.clienteIdAtual();
 
+    if(!cid) { window.toast("Empresa não identificada. Saia e entre novamente.", "error"); return; }
     if(!projId) { window.toast("Selecione o projeto vinculado.", "error"); return; }
+    if(!financiador) { window.toast("Informe o financiador / origem do recurso.", "error"); return; }
     if(!num) { window.toast("Informe o número do contrato.", "error"); return; }
     if(valor <= 0) { window.toast("Informe um valor total válido.", "error"); return; }
     if(!assinatura || !vigencia) { window.toast("Informe as datas de assinatura e vigência final.", "error"); return; }
+    if(vigencia < assinatura) { window.toast("A vigência final não pode ser anterior à data de assinatura.", "error"); return; }
 
-    const cid = window.clienteIdAtual();
     const payload = {
         cliente_id: cid,
-        projeto_id: parseInt(projId),
-        financiador: financiador || origRecurso || 'Órgão de Fomento',
+        projeto_id: projId,
+        financiador: financiador,
         numero_contrato: num,
         valor_total: valor,
         data_assinatura: assinatura,
-        data_vigencia: vigencia,
+        data_vigencia_fim: vigencia,
         status: status,
-        natureza_contabil: natureza
+        natureza_contabil: natureza,
+        precisa_devolver: decisaoDevolucao === 'sim',
+        finalidade: decisaoFinalidade
     };
 
     let res;
     if(id) {
-        res = await sb.from('contratos_fomento').update(payload).eq('id', id);
+        res = await sb.from('contratos_fomento').update(payload).eq('id', id).eq('cliente_id', cid);
     } else {
         res = await sb.from('contratos_fomento').insert([payload]);
     }
@@ -623,33 +599,25 @@ window.salvarContrato = async function(){
     if(res.error) { window.toast("Erro ao salvar contrato: " + res.error.message, "error"); return; }
     window.toast("Contrato salvo com sucesso!");
     window.cancelarEdicao();
-    carregarContratos();
+    await carregarContratos();
 };
 
 window.editarContratoPorId = function(id){
-    const c = contratosCache.find(x => x.id === id);
+    const c = contratosCache.find(x => String(x.id) === String(id));
     if(!c) return;
     document.getElementById('edit_id').value = c.id;
     document.getElementById('projetoId').value = c.projeto_id || '';
-    document.getElementById('financiador').value = c.financiador || '';
     document.getElementById('origemDetalhe').value = c.financiador || '';
     document.getElementById('numContrato').value = c.numero_contrato || '';
-    document.getElementById('valorTotal').value = c.valor_total ? window.formatBRL(c.valor_total).replace('R\$', '').trim() : '';
+    document.getElementById('valorTotal').value = c.valor_total ? Number(c.valor_total).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
     document.getElementById('dataAssinatura').value = c.data_assinatura || '';
-    document.getElementById('dataVigencia').value = c.data_vigencia || '';
+    document.getElementById('dataVigencia').value = window.vigenciaDe(c);
     document.getElementById('statusContrato').value = c.status || 'Ativo';
-    document.getElementById('naturezaContabil').value = c.natureza_contabil || 'subvencao_custeio';
-    
-    if(c.natureza_contabil === 'aporte_reembolsavel'){
-        document.querySelectorAll('#grupoDevolucao .pill-btn')[1].click();
-    } else {
-        document.querySelectorAll('#grupoDevolucao .pill-btn')[0].click();
-        if(c.natureza_contabil === 'subvencao_investimento'){
-            document.querySelectorAll('#grupoFinalidade .pill-btn')[1].click();
-        } else {
-            document.querySelectorAll('#grupoFinalidade .pill-btn')[0].click();
-        }
-    }
+
+    const devolve = c.natureza_contabil === 'aporte_reembolsavel' || c.precisa_devolver === true;
+    const invest = c.natureza_contabil === 'subvencao_investimento' || c.finalidade === 'investimento';
+    document.querySelectorAll('#grupoDevolucao .pill-btn')[devolve ? 1 : 0].click();
+    document.querySelectorAll('#grupoFinalidade .pill-btn')[invest ? 1 : 0].click();
 
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar contrato';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
@@ -659,30 +627,39 @@ window.editarContratoPorId = function(id){
 window.cancelarEdicao = function(){
     document.getElementById('edit_id').value = '';
     document.getElementById('projetoId').value = '';
-    document.getElementById('financiador').value = '';
     document.getElementById('origemDetalhe').value = '';
     document.getElementById('numContrato').value = '';
     document.getElementById('valorTotal').value = '';
     document.getElementById('dataAssinatura').value = '';
     document.getElementById('dataVigencia').value = '';
     document.getElementById('statusContrato').value = 'Ativo';
+    document.querySelectorAll('#grupoDevolucao .pill-btn')[0].click();
+    document.querySelectorAll('#grupoFinalidade .pill-btn')[0].click();
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar contrato';
     document.getElementById('btnCancelar').style.display = 'none';
 };
 
 window.excluirContratoPorId = async function(id){
     if(!confirm("Deseja realmente excluir este contrato?")) return;
-    const { error } = await sb.from('contratos_fomento').delete().eq('id', id);
+    const cid = window.clienteIdAtual();
+    const vinculos = [['aportes_pd', 'aportes recebidos'], ['custos_pd', 'gastos']];
+    for (let i = 0; i < vinculos.length; i++) {
+        const chk = await sb.from(vinculos[i][0]).select('id').eq('contrato_id', id).eq('cliente_id', cid).limit(1);
+        if (!chk.error && chk.data && chk.data.length) {
+            window.toast("Este contrato não pode ser excluído: há " + vinculos[i][1] + " vinculados a ele. Mude o status para Encerrado.", "error");
+            return;
+        }
+    }
+    const { error } = await sb.from('contratos_fomento').delete().eq('id', id).eq('cliente_id', cid);
     if(error) { window.toast("Erro ao excluir: " + error.message, "error"); return; }
     window.toast("Contrato excluído com sucesso!");
-    carregarContratos();
+    await carregarContratos();
 };
 
 window.trocarEmpresa = function() {
     const select = document.getElementById('selectEmpresa');
     if (!select) return;
-    const val = select.value;
-    localStorage.setItem('empresaSelecionada', String(val));
+    localStorage.setItem('empresaSelecionada', String(select.value));
     location.reload();
 };
 
@@ -698,32 +675,9 @@ async function inicializarPagina(){
     let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = window.ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (window.ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
 
     await carregarProjetosSelect();
     await carregarContratos();
