@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -95,24 +96,6 @@
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
-        .print-corporative-header { display: none !important; }
-
-        @media print {
-            @page { size: A4 portrait; margin: 15mm; }
-            body { background: #fff !important; color: #000 !important; font-size: 8pt !important; }
-            body * { visibility: hidden !important; }
-            .panel:last-child, .panel:last-child * { visibility: visible !important; }
-            .panel:last-child {
-                position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; border: none !important; box-shadow: none !important; margin: 0 !important;
-            }
-            .ocultar-print { display: none !important; }
-            .print-corporative-header {
-                display: block !important; margin-bottom: 6mm !important; border-bottom: 2px solid #1e3a8a !important; padding-bottom: 4mm !important; width: 100% !important;
-            }
-            table { width: 100% !important; border-collapse: collapse !important; font-size: 7.5pt !important; }
-            thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            tbody td, tfoot td { padding: 5px 6px !important; border-bottom: 1px solid #cbd5e1 !important; }
-        }
     </style>
 </head>
 <body>
@@ -141,16 +124,16 @@
 </header>
 
 <div class="container">
-    <div class="page-toolbar ocultar-print">
+    <div class="page-toolbar">
         <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
     </div>
 
-    <div class="ocultar-print">
+    <div>
         <div class="page-title"><i class="fas fa-money-bill-wave" style="color:var(--primary);"></i> Aportes Recebidos de P&D</div>
         <div class="page-subtitle">Registro e controle de entradas de recursos vinculados a contratos de fomento e subvenções</div>
     </div>
 
-    <div class="panel ocultar-print">
+    <div class="panel">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
             <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar entrada de recurso (aporte)</span>
         </div>
@@ -196,8 +179,23 @@
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Aportes registrados</span>
-            <button class="btn-acao sucesso ocultar-print" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-primary" style="background:var(--success);" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
         </div>
+        <div class="form-row" style="margin-bottom:4px;">
+            <div>
+                <label>Contrato</label>
+                <select id="filtroContrato" class="form-control" onchange="renderAportes()"><option value="">— Todos os contratos —</option></select>
+            </div>
+            <div>
+                <label>Recebido a partir de</label>
+                <input id="filtroInicio" class="form-control" type="date" onchange="renderAportes()">
+            </div>
+            <div>
+                <label>Recebido até</label>
+                <input id="filtroFim" class="form-control" type="date" onchange="renderAportes()">
+            </div>
+        </div>
+        <div style="margin-bottom:12px;"><button class="btn-secondary" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar filtros</button></div>
         <div id="listaAportes" style="overflow-x:auto;">Carregando aportes...</div>
     </div>
 </div>
@@ -222,6 +220,12 @@ var NATUREZA = {
     recurso_proprio:         { rotulo: 'Recurso Próprio',            classe: 'b-proprio' }
 };
 
+function esc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
 };
@@ -234,12 +238,12 @@ window.ehMaster = function() {
 
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
-    if (!u) return 1;
+    if (!u) return null;
     if (window.ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
 };
 
 window.sbFiltro = function(tabela){
@@ -259,9 +263,9 @@ function toast(msg,type='success'){
         document.body.appendChild(c);
     }
     x.className='toast '+type;
-    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+esc(msg);
     c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+    setTimeout(function(){x.remove();},3500);
 }
 
 function parseValorBR(v){
@@ -278,13 +282,18 @@ function formatarCampoMoeda(el){
     el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function formatarData(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+function formatarData(d){if(!d)return '—';var p=String(d).substring(0,10).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+function dataAporte(a){ return a.data_recebimento || a.data || ''; }
 
 function nomeProjeto(id){
     for(var i=0;i<projetosCache.length;i++){
-        if(projetosCache[i].id===id) return (projetosCache[i].codigo?projetosCache[i].codigo+' · ':'')+projetosCache[i].nome;
+        if(String(projetosCache[i].id)===String(id)) return (projetosCache[i].codigo?projetosCache[i].codigo+' · ':'')+projetosCache[i].nome;
     }
     return '—';
+}
+function contratoPorId(id){
+    for(var i=0;i<contratosCache.length;i++){ if(String(contratosCache[i].id)===String(id)) return contratosCache[i]; }
+    return null;
 }
 function rotuloContrato(c){
     if(!c)return '—';
@@ -301,116 +310,159 @@ async function carregarContratos(){
     if(r.error){toast('Erro ao carregar contratos: '+r.error.message,'error');return;}
     contratosCache=r.data||[];
     var sel=document.getElementById('contrato_id');
+    var fil=document.getElementById('filtroContrato');
     sel.innerHTML='<option value="">— Selecione o contrato —</option>';
+    fil.innerHTML='<option value="">— Todos os contratos —</option>';
     contratosCache.forEach(function(c){
         var opt=document.createElement('option');
         opt.value=c.id;
-        opt.textContent=rotuloContrato(c)+' · R\$ '+fmtBR(c.valor_total);
+        opt.textContent=rotuloContrato(c)+' · R$ '+fmtBR(c.valor_total);
         sel.appendChild(opt);
+        var opt2=document.createElement('option');
+        opt2.value=c.id;
+        opt2.textContent=rotuloContrato(c);
+        fil.appendChild(opt2);
     });
 }
 
 function mostrarInfoContrato(){
     var id=document.getElementById('contrato_id').value;
-    var c=null;
-    for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==id)c=contratosCache[i];}
+    var c=contratoPorId(id);
     var box=document.getElementById('infoContrato');
     if(!c){box.style.display='none';document.getElementById('projeto_exib').value='';return;}
     var info=NATUREZA[c.natureza_contabil]||NATUREZA.subvencao_custeio;
     document.getElementById('projeto_exib').value=nomeProjeto(c.projeto_id);
-    box.innerHTML='<b>Tratamento contábil do contrato:</b> '+info.rotulo+' — '+
+    var recebido=0;
+    aportesCache.forEach(function(a){ if(String(a.contrato_id)===String(c.id)) recebido+=Number(a.valor)||0; });
+    box.innerHTML='<b>Tratamento contábil do contrato:</b> '+esc(info.rotulo)+' — '+
       (c.natureza_contabil==='aporte_reembolsavel'?'o valor entra como dívida (passivo), não como receita.':
        c.natureza_contabil==='subvencao_custeio'?'vira receita na medida em que os gastos do projeto acontecem.':
        c.natureza_contabil==='subvencao_investimento'?'vai para a Reserva de Incentivos Fiscais (não pode virar dividendo).':
-       'é aporte da própria empresa (despesa ou ativo intangível).');
+       'é aporte da própria empresa (despesa ou ativo intangível).')+
+      '<br><b>Valor do contrato:</b> R$ '+fmtBR(c.valor_total)+' · <b>Já recebido:</b> R$ '+fmtBR(recebido)+' · <b>A receber:</b> R$ '+fmtBR((Number(c.valor_total)||0)-recebido);
     box.style.display='block';
+}
+
+function obterFiltrados(){
+    var fc=document.getElementById('filtroContrato').value;
+    var fi=document.getElementById('filtroInicio').value;
+    var ff=document.getElementById('filtroFim').value;
+    return aportesCache.filter(function(a){
+        if(fc && String(a.contrato_id)!==String(fc)) return false;
+        var d=dataAporte(a);
+        if(fi && d<fi) return false;
+        if(ff && d>ff) return false;
+        return true;
+    }).sort(function(x,y){ return dataAporte(y).localeCompare(dataAporte(x)); });
+}
+
+function limparFiltros(){
+    document.getElementById('filtroContrato').value='';
+    document.getElementById('filtroInicio').value='';
+    document.getElementById('filtroFim').value='';
+    renderAportes();
 }
 
 async function carregarAportes(){
     var el=document.getElementById('listaAportes');
+    if(!window.clienteIdAtual()){el.innerHTML='<div class="empty-state">Empresa não identificada. Saia e entre novamente.</div>';return;}
     var r=await window.sbFiltro('aportes_pd');
-    if(r.error){el.innerHTML='<div class="empty-state">Erro: '+r.error.message+'</div>';return;}
+    if(r.error){el.innerHTML='<div class="empty-state">Erro: '+esc(r.error.message)+'</div>';return;}
     aportesCache=r.data||[];
-    if(!aportesCache.length){el.innerHTML='<div class="empty-state">Nenhum aporte registrado.</div>';return;}
-    
-    let somaTotalAportes = 0;
+    renderAportes();
+}
+
+function renderAportes(){
+    var el=document.getElementById('listaAportes');
+    var lista=obterFiltrados();
+    if(!lista.length){el.innerHTML='<div class="empty-state">Nenhum aporte encontrado.</div>';return;}
+
+    var soma=0;
     var html='<table class="analitica-table"><thead>'+
-        '<tr><th colspan="7" style="background:#fff !important; padding:0 !important; border:none !important;"><div class="print-corporative-header"><h2 style="font-size:11pt; font-weight:800; color:#1e3a8a; text-transform:uppercase; margin:0;">Sacramento ERP — Relatório de Aportes de P&D</h2><p style="font-size:7pt; color:#475569; margin:2px 0 0 0;"><strong>Empresa:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p></div></th></tr>'+
-        '<tr><th>Data</th><th>Contrato</th><th>Projeto</th><th style="text-align:right;">Valor</th><th>Tratamento Contábil</th><th>Observações</th><th style="text-align:right;" class="ocultar-print">Ações</th></tr></thead><tbody>';
-    
-    aportesCache.forEach(function(a){
-        somaTotalAportes += parseFloat(a.valor) || 0;
-        var c=null;
-        for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==a.contrato_id)c=contratosCache[i];}
-        var info=NATUREZA[(c&&c.natureza_contabil)||'subvencao_custeio'];
+        '<tr><th>Data</th><th>Contrato</th><th>Projeto</th><th style="text-align:right;">Valor</th><th>Tratamento Contábil</th><th>Observações</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+    lista.forEach(function(a){
+        soma+=parseFloat(a.valor)||0;
+        var c=contratoPorId(a.contrato_id);
+        var info=NATUREZA[(c&&c.natureza_contabil)||'subvencao_custeio']||NATUREZA.subvencao_custeio;
         html+='<tr>'+
-            '<td>'+formatarData(a.data_recebimento)+'</td>'+
-            '<td>'+(c?rotuloContrato(c):'—')+'</td>'+
-            '<td>'+nomeProjeto(a.projeto_id)+'</td>'+
-            '<td style="text-align:right; font-weight:bold;">R\$ '+fmtBR(a.valor)+'</td>'+
-            '<td><span class="badge '+info.classe+'">'+info.rotulo+'</span></td>'+
-            '<td>'+(a.observacoes||'—')+'</td>'+
-            '<td style="text-align:right; white-space:nowrap;" class="ocultar-print">'+
-                '<button class="btn-secondary" onclick="editarAporte('+a.id+')" title="Editar"><i class="fas fa-pen"></i></button>'+
-                '<button class="btn-secondary" onclick="excluirAporte('+a.id+')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '<td>'+formatarData(dataAporte(a))+'</td>'+
+            '<td>'+esc(c?rotuloContrato(c):'—')+'</td>'+
+            '<td>'+esc(nomeProjeto(a.projeto_id))+'</td>'+
+            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(a.valor)+'</td>'+
+            '<td><span class="badge '+info.classe+'">'+esc(info.rotulo)+'</span></td>'+
+            '<td>'+esc(a.observacoes||'—')+'</td>'+
+            '<td style="text-align:right; white-space:nowrap;">'+
+                '<button class="btn-secondary" data-acao="editar" data-id="'+esc(a.id)+'" title="Editar"><i class="fas fa-pen"></i></button> '+
+                '<button class="btn-secondary" data-acao="excluir" data-id="'+esc(a.id)+'" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
             '</td>'+
         '</tr>';
     });
-    
     html+='</tbody><tfoot><tr>'+
-        '<td colspan="3" style="text-align:right; text-transform:uppercase;">Total Geral de Aportes:</td>'+
-        '<td style="text-align:right;">R$ '+fmtBR(somaTotalAportes)+'</td>'+
+        '<td colspan="3" style="text-align:right; text-transform:uppercase;">Total de aportes listados:</td>'+
+        '<td style="text-align:right;">R$ '+fmtBR(soma)+'</td>'+
         '<td colspan="3"></td>'+
     '</tr></tfoot></table>';
     el.innerHTML=html;
+    el.querySelectorAll('button[data-acao]').forEach(function(b){
+        b.onclick=function(){
+            var id=b.getAttribute('data-id');
+            if(b.getAttribute('data-acao')==='editar') editarAporte(id); else excluirAporte(id);
+        };
+    });
 }
 
-async function executarImpressao(){
-    const selectEmp = document.getElementById('selectEmpresa');
-    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-    } else {
-        const cid = window.clienteIdAtual();
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) {
-                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-            } else {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-            }
-        } catch(e) {
-            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-        }
-    }
+function executarImpressao(){
+    var lista=obterFiltrados();
+    var fil=document.getElementById('filtroContrato');
+    var filtros=[];
+    if(fil.value) filtros.push(['Contrato', fil.options[fil.selectedIndex].text]);
+    var fi=document.getElementById('filtroInicio').value, ff=document.getElementById('filtroFim').value;
+    if(fi) filtros.push(['Recebido a partir de', formatarData(fi)]);
+    if(ff) filtros.push(['Recebido até', formatarData(ff)]);
 
-    const u = window.obterUsuario();
-    if (u) {
-        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-    } else {
-        document.getElementById('printUsuarioNome').innerText = 'Operador';
-    }
+    var total=0, reemb=0;
+    lista.forEach(function(a){
+        var v=parseFloat(a.valor)||0; total+=v;
+        var c=contratoPorId(a.contrato_id);
+        if(c && c.natureza_contabil==='aporte_reembolsavel') reemb+=v;
+    });
 
-    document.getElementById('printDataEmissao').innerText = new Date().toLocaleString('pt-BR');
-    window.print();
+    var linhas=lista.map(function(a){
+        var c=contratoPorId(a.contrato_id);
+        var info=NATUREZA[(c&&c.natureza_contabil)||'subvencao_custeio']||NATUREZA.subvencao_custeio;
+        return [formatarData(dataAporte(a)), c?rotuloContrato(c):'—', nomeProjeto(a.projeto_id), info.rotulo, a.observacoes||'—', {t:'R$ '+fmtBR(a.valor), cls:'pos'}];
+    });
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Aportes Recebidos de P&D',
+        subtitulo: 'Entradas de recursos vinculadas a contratos de fomento e subvenções',
+        codigo: 'PD-APT',
+        orientacao: 'portrait',
+        filtros: filtros,
+        resumo: [['Aportes listados', String(lista.length)], ['Total recebido', 'R$ '+fmtBR(total)], ['Reembolsáveis (dívida)', 'R$ '+fmtBR(reemb)]],
+        colunas: [{t:'Data',w:1.2},{t:'Contrato',w:2.2},{t:'Projeto',w:2.2},{t:'Tratamento contábil',w:2.1},{t:'Observações',w:2.4},{t:'Valor (R$)',w:1.6,a:'right'}],
+        linhas: linhas,
+        totais: ['','','','','TOTAL',{t:'R$ '+fmtBR(total), cls:'pos'}]
+    });
 }
 
-window.editarAporte = function(id){
+function editarAporte(id){
     var a=null;
-    for(var i=0;i<aportesCache.length;i++){if(aportesCache[i].id==id)a=aportesCache[i];}
+    for(var i=0;i<aportesCache.length;i++){if(String(aportesCache[i].id)===String(id))a=aportesCache[i];}
     if(!a)return;
     document.getElementById('edit_id').value=a.id;
     document.getElementById('contrato_id').value=a.contrato_id||'';
     document.getElementById('valor').value=a.valor?fmtBR(a.valor):'';
-    document.getElementById('data_recebimento').value=a.data_recebimento||'';
+    document.getElementById('data_recebimento').value=dataAporte(a);
     document.getElementById('observacoes').value=a.observacoes||'';
     mostrarInfoContrato();
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando aporte de '+formatarData(a.data_recebimento);
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando aporte de '+esc(formatarData(dataAporte(a)));
     document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar aporte';
     document.getElementById('btnCancelar').style.display='inline-flex';
     window.scrollTo({top:0,behavior:'smooth'});
 }
 
-window.cancelarEdicao = function(){
+function cancelarEdicao(){
     document.getElementById('edit_id').value='';
     document.getElementById('contrato_id').value='';
     document.getElementById('valor').value='';
@@ -423,15 +475,14 @@ window.cancelarEdicao = function(){
     document.getElementById('btnCancelar').style.display='none';
 }
 
-window.salvarAporte = async function(){
+async function salvarAporte(){
     var cid = window.clienteIdAtual();
-    if(!cid){toast('Cliente não identificado.','error');return;}
+    if(!cid){toast('Empresa não identificada. Saia e entre novamente.','error');return;}
 
     var contratoId=document.getElementById('contrato_id').value;
     if(!contratoId){toast('Selecione o contrato vinculado.','error');return;}
 
-    var c=null;
-    for(var i=0;i<contratosCache.length;i++){if(contratosCache[i].id==contratoId)c=contratosCache[i];}
+    var c=contratoPorId(contratoId);
     if(!c){toast('Contrato não encontrado.','error');return;}
 
     var valor=parseValorBR(document.getElementById('valor').value);
@@ -440,43 +491,50 @@ window.salvarAporte = async function(){
     var data=document.getElementById('data_recebimento').value;
     if(!data){toast('Informe a data do recebimento.','error');return;}
 
+    var editId=document.getElementById('edit_id').value;
+
+    // Aviso: soma dos aportes acima do valor do contrato
+    var jaRecebido=0;
+    aportesCache.forEach(function(a){ if(String(a.contrato_id)===String(c.id) && String(a.id)!==String(editId)) jaRecebido+=Number(a.valor)||0; });
+    if(c.valor_total && (jaRecebido+valor) > Number(c.valor_total)+0.005){
+        if(!confirm('Atenção: com este aporte o total recebido (R$ '+fmtBR(jaRecebido+valor)+') passa do valor do contrato (R$ '+fmtBR(c.valor_total)+'). Deseja registrar mesmo assim?')) return;
+    }
+
     var dados={
         cliente_id:cid,
-        contrato_id:parseInt(contratoId),
+        contrato_id:c.id,
         projeto_id:c.projeto_id,
         valor:valor,
         data_recebimento:data,
         observacoes:document.getElementById('observacoes').value.trim()||null
     };
 
-    var editId=document.getElementById('edit_id').value;
     if(editId){
-        var ru=await sb.from('aportes_pd').update(dados).eq('id',editId);
+        var ru=await sb.from('aportes_pd').update(dados).eq('id',editId).eq('cliente_id',cid);
         if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
         toast('Aporte atualizado com sucesso!');
-        cancelarEdicao();
     }else{
         var ri=await sb.from('aportes_pd').insert([dados]);
         if(ri.error){toast('Erro ao salvar: '+ri.error.message,'error');return;}
-        toast('Aporte registrado com sucesso! R\$ '+fmtBR(valor));
-        cancelarEdicao();
+        toast('Aporte registrado com sucesso! R$ '+fmtBR(valor));
     }
-    carregarAportes();
+    cancelarEdicao();
+    await carregarAportes();
 }
 
-window.excluirAporte = async function(id){
+async function excluirAporte(id){
     if(!confirm('Tem certeza que deseja excluir este aporte?'))return;
-    var r=await sb.from('aportes_pd').delete().eq('id',id);
+    var cid=window.clienteIdAtual();
+    var r=await sb.from('aportes_pd').delete().eq('id',id).eq('cliente_id',cid);
     if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
     toast('Aporte excluído com sucesso!');
-    carregarAportes();
+    await carregarAportes();
 }
 
 window.trocarEmpresa = function() {
     const select = document.getElementById('selectEmpresa');
     if (!select) return;
-    const val = select.value;
-    localStorage.setItem('empresaSelecionada', String(val));
+    localStorage.setItem('empresaSelecionada', String(select.value));
     location.reload();
 };
 
@@ -492,32 +550,9 @@ async function inicializarPagina(){
     let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = window.ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (window.ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
 
     await carregarProjetos();
     await carregarContratos();
