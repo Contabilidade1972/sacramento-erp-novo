@@ -175,7 +175,7 @@
         <div class="form-row">
             <div>
                 <label>Valor do Gasto (R\$) *</label>
-                <input id="valor" class="form-control" placeholder="Ex.: 12.500,00" onblur="formatarCampoMoeda(this)">
+                <input id="valor" class="form-control" placeholder="Ex.: 12.500,00" oninput="atualizarResumoDescontos()" onblur="formatarCampoMoeda(this); atualizarResumoDescontos()">
             </div>
             <div>
                 <label>Data do Gasto *</label>
@@ -244,6 +244,14 @@
                 <div style="font-size: 13px; font-weight: 600; color: var(--text-main);" id="txtArquivo">Clique para selecionar o comprovante (Opcional)</div>
             </div>
             <input type="file" id="inputArquivo" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="atualizarNomeArquivo(this)">
+        </div>
+
+        <div style="margin-bottom:14px;">
+            <label>Descontos / retenções do pagamento (opcional — aparecem no recibo)</label>
+            <div id="listaDescontos"></div>
+            <button class="btn-secondary" type="button" onclick="addDesconto()"><i class="fas fa-plus"></i> Adicionar desconto</button>
+            <div id="resumoDescontos" style="font-size:13px; margin-top:10px; color:var(--text-light);"></div>
+            <div style="font-size:11px; color:var(--text-light); margin-top:4px;">O valor do gasto acima é sempre o valor <b>bruto</b>. Os descontos (INSS, IRRF, ISS, adiantamento etc.) só alteram o valor líquido pago no recibo. Informe o valor em R$ ou a porcentagem sobre o bruto.</div>
         </div>
 
         <div class="rpa-alert">
@@ -414,6 +422,85 @@ async function gravarTolerante(tabela, dados, editId, cid){
         return { ok:false, erro:res.error };
     }
     return { ok:false, erro:{message:'Não foi possível gravar.'} };
+}
+
+var descontosAtuais = [];
+var TIPOS_DESCONTO = ['INSS','IRRF','ISS','Adiantamento','Outro desconto'];
+
+function addDesconto(d){
+    descontosAtuais.push(d || {tipo:'INSS', desc:'', pct:'', valor:''});
+    renderDescontos();
+}
+function removerDesconto(i){
+    descontosAtuais.splice(i,1);
+    renderDescontos();
+}
+function renderDescontos(){
+    var box=document.getElementById('listaDescontos');
+    box.innerHTML='';
+    descontosAtuais.forEach(function(d,i){
+        var row=document.createElement('div');
+        row.style.cssText='display:grid;grid-template-columns:150px 1fr 90px 130px 40px;gap:8px;align-items:start;margin-bottom:6px';
+        var sel=document.createElement('select'); sel.className='form-control'; sel.style.marginBottom='0';
+        TIPOS_DESCONTO.forEach(function(t){var o=document.createElement('option');o.value=t;o.textContent=t;if(t===d.tipo)o.selected=true;sel.appendChild(o);});
+        sel.onchange=function(){d.tipo=sel.value;atualizarResumoDescontos();};
+        var ds=document.createElement('input'); ds.className='form-control'; ds.style.marginBottom='0'; ds.placeholder='Descrição (opcional)'; ds.value=d.desc||'';
+        ds.oninput=function(){d.desc=ds.value;};
+        var pc=document.createElement('input'); pc.className='form-control'; pc.style.marginBottom='0'; pc.placeholder='% bruto'; pc.value=d.pct||'';
+        var vl=document.createElement('input'); vl.className='form-control'; vl.style.marginBottom='0'; vl.placeholder='Valor R$'; vl.value=d.valor||'';
+        pc.oninput=function(){
+            d.pct=pc.value;
+            var pn=parseValorBR(pc.value), br=parseValorBR(document.getElementById('valor').value);
+            if(pn>0 && br>0){ d.valor=fmtBR(Math.round(br*pn)/100); vl.value=d.valor; }
+            atualizarResumoDescontos();
+        };
+        vl.oninput=function(){ d.valor=vl.value; d.pct=''; pc.value=''; atualizarResumoDescontos(); };
+        vl.onblur=function(){ formatarCampoMoeda(vl); d.valor=vl.value; atualizarResumoDescontos(); };
+        var bt=document.createElement('button'); bt.type='button'; bt.className='btn-secondary'; bt.style.cssText='color:var(--danger);padding:9px 0;justify-content:center'; bt.title='Remover'; bt.innerHTML='<i class="fas fa-trash"></i>';
+        bt.onclick=function(){removerDesconto(i);};
+        [sel,ds,pc,vl,bt].forEach(function(el){row.appendChild(el);});
+        box.appendChild(row);
+    });
+    atualizarResumoDescontos();
+}
+function totalDescontos(){
+    var t=0; descontosAtuais.forEach(function(d){ t+=parseValorBR(d.valor); }); return Math.round(t*100)/100;
+}
+function atualizarResumoDescontos(){
+    var el=document.getElementById('resumoDescontos'); if(!el) return;
+    var br=parseValorBR(document.getElementById('valor').value);
+    // recalcula linhas em % quando o bruto muda
+    descontosAtuais.forEach(function(d){
+        var pn=parseValorBR(d.pct);
+        if(pn>0 && br>0) d.valor=fmtBR(Math.round(br*pn)/100);
+    });
+    var rows=document.getElementById('listaDescontos').children;
+    for(var i=0;i<descontosAtuais.length && i<rows.length;i++){
+        var vi=rows[i].children[3]; if(vi && document.activeElement!==vi) vi.value=descontosAtuais[i].valor||'';
+    }
+    if(!descontosAtuais.length){ el.innerHTML=''; return; }
+    var td=totalDescontos(), liq=br-td;
+    el.innerHTML='Bruto <b>R$ '+fmtBR(br)+'</b> − descontos <b>R$ '+fmtBR(td)+'</b> = líquido a pagar <b style="color:'+(liq<0?'var(--danger)':'var(--success)')+'">R$ '+fmtBR(liq)+'</b>'+(liq<0?' — os descontos passam do valor bruto!':'');
+}
+function descontosParaSalvar(){
+    var out=[];
+    descontosAtuais.forEach(function(d){
+        var v=parseValorBR(d.valor);
+        if(v>0) out.push({tipo:d.tipo, desc:(d.desc||'').trim(), pct:parseValorBR(d.pct)||null, valor:v});
+    });
+    return out;
+}
+function carregarDescontosSalvos(arr){
+    descontosAtuais=[];
+    if(Array.isArray(arr)) arr.forEach(function(d){
+        descontosAtuais.push({tipo:d.tipo||'Outro desconto', desc:d.desc||'', pct:d.pct?String(d.pct).replace('.',','):'', valor:fmtBR(d.valor)});
+    });
+    renderDescontos();
+}
+function descontosDoCusto(c){
+    if(Array.isArray(c.descontos)) return c.descontos;
+    if(typeof c.descontos==='string' && c.descontos){ try{ var a=JSON.parse(c.descontos); if(Array.isArray(a)) return a; }catch(e){} }
+    return [];
 }
 
 function gerarProximoNumeroDocumento(){
@@ -645,7 +732,11 @@ function gerarReciboRPA(){
 
     var projSel = document.getElementById('projeto_id');
     var ctrSel = document.getElementById('contrato_id');
+    var descs = descontosParaSalvar();
+    var somaD = 0; descs.forEach(function(x){somaD+=x.valor;});
+    if(somaD > valorNum + 0.005){ toast('Os descontos passam do valor bruto. Confira os valores.','error'); return; }
     abrirRecibo({
+        descontos: descs,
         empresa: empresa,
         cnpj: (empresa === nomeEmpresaAtual ? cnpjEmpresaAtual : ''),
         nome: nome, cpf: cpf,
@@ -672,7 +763,7 @@ function reciboDoCusto(id){
         valor: Number(c.valor)||0, desc: c.descricao || '', doc: docFiscal(c),
         projeto: nomeProjeto(c.projeto_id),
         contrato: ct ? ((ct.numero_contrato||'Contrato')+' · '+(ct.financiador||'Fomento')) : '—',
-        data: dataGasto(c), id: c.id
+        data: dataGasto(c), id: c.id, descontos: descontosDoCusto(c)
     });
 }
 
@@ -684,13 +775,17 @@ function fecharRecibo(){
 function abrirRecibo(d){
     var empresa=d.empresa, nome=d.nome, cpf=d.cpf, endereco=d.endereco, valorNum=d.valor, desc=d.desc, doc=d.doc;
     var projeto=d.projeto, contrato=d.contrato, cnpjEmpresa=d.cnpj||'';
+    var descs = d.descontos || [];
+    var somaDesc = 0; descs.forEach(function(x){ somaDesc += Number(x.valor)||0; });
+    somaDesc = Math.round(somaDesc*100)/100;
+    var liquido = Math.round((valorNum - somaDesc)*100)/100;
     var dataTxt = d.data ? formatDataBR(d.data) : '____/____/________';
     var u = obterUsuarioAtual() || {};
     var uNome = String(u.nome || u.email || 'Usuário').split('@')[0];
     var ag = new Date();
     function p2(n){ return String(n).padStart(2,'0'); }
     var emissao = p2(ag.getDate())+'/'+p2(ag.getMonth()+1)+'/'+ag.getFullYear()+' '+p2(ag.getHours())+':'+p2(ag.getMinutes());
-    var extenso = valorPorExtenso(valorNum);
+    var extenso = valorPorExtenso(descs.length ? liquido : valorNum);
     extenso = extenso.charAt(0).toUpperCase()+extenso.slice(1);
 
     var css =
@@ -738,8 +833,8 @@ function abrirRecibo(d){
       '<div class="tt">Recibo de Pagamento a Autônomo (RPA)</div>'+
       '<div class="st">Serviços prestados por pessoa física ou jurídica sem emissão de nota fiscal — projeto de Pesquisa e Desenvolvimento</div></div>'+
 
-      '<div class="vbox"><div class="v1"><div class="lb">Valor bruto</div><div class="vv">R$ '+fmtBR(valorNum)+'</div></div>'+
-      '<div class="v2"><div class="lb">Valor por extenso</div><div class="ex">'+esc(extenso)+'.</div></div></div>'+
+      '<div class="vbox"><div class="v1"><div class="lb">'+(descs.length?'Valor líquido a receber':'Valor bruto')+'</div><div class="vv">R$ '+fmtBR(descs.length?liquido:valorNum)+'</div></div>'+
+      '<div class="v2"><div class="lb">Valor por extenso'+(descs.length?' (líquido)':'')+'</div><div class="ex">'+esc(extenso)+'.</div></div></div>'+
 
       '<div class="sec">Pagador (tomador dos serviços)</div>'+
       '<table class="f"><tr><td><div class="lb">Razão social</div><div class="vl">'+esc(empresa)+'</div></td><td><div class="lb">CNPJ</div><div class="vl">'+esc(cnpjEmpresa||'—')+'</div></td></tr></table>'+
@@ -753,22 +848,31 @@ function abrirRecibo(d){
       '<tr><td><div class="lb">Projeto</div><div class="vl">'+esc(projeto)+'</div></td><td><div class="lb">Contrato / Convênio</div><div class="vl">'+esc(contrato)+'</div></td></tr>'+
       '<tr><td class="full" colspan="2"><div class="lb">Data do serviço / pagamento</div><div class="vl">'+esc(dataTxt)+'</div></td></tr></table>'+
 
-      '<div class="sec">Apuração do pagamento (a preencher pela contabilidade)</div>'+
+      '<div class="sec">Apuração do pagamento'+(descs.length?'':' (a preencher pela contabilidade)')+'</div>'+
       '<table class="ret">'+
-      '<tr><td class="n">Valor bruto dos serviços</td><td class="v">R$ '+fmtBR(valorNum)+'</td></tr>'+
-      '<tr><td class="n">(−) INSS retido</td><td class="v">R$ ____________</td></tr>'+
-      '<tr><td class="n">(−) IRRF retido</td><td class="v">R$ ____________</td></tr>'+
-      '<tr><td class="n">(−) ISS retido</td><td class="v">R$ ____________</td></tr>'+
-      '<tr class="tot"><td class="n">Valor líquido a pagar</td><td class="v">R$ ____________</td></tr></table>'+
+      '<tr><td class="n">Valor bruto dos serviços</td><td class="v" style="color:#0f172a">R$ '+fmtBR(valorNum)+'</td></tr>'+
+      (descs.length
+        ? descs.map(function(x){
+            var rot='(−) '+x.tipo+(x.desc?' — '+x.desc:'')+(x.pct?' ('+String(x.pct).replace('.',',')+'%)':'');
+            return '<tr><td class="n">'+esc(rot)+'</td><td class="v" style="color:#0f172a">R$ '+fmtBR(x.valor)+'</td></tr>';
+          }).join('')+
+          '<tr class="tot"><td class="n">Valor líquido a pagar</td><td class="v">R$ '+fmtBR(liquido)+'</td></tr>'
+        : '<tr><td class="n">(−) INSS retido</td><td class="v">R$ ____________</td></tr>'+
+          '<tr><td class="n">(−) IRRF retido</td><td class="v">R$ ____________</td></tr>'+
+          '<tr><td class="n">(−) ISS retido</td><td class="v">R$ ____________</td></tr>'+
+          '<tr class="tot"><td class="n">Valor líquido a pagar</td><td class="v">R$ ____________</td></tr>')+
+      '</table>'+
 
-      '<div class="decl">Declaro ter recebido de <b>'+esc(empresa)+'</b> a importância bruta de <b>R$ '+fmtBR(valorNum)+'</b> ('+esc(extenso.toLowerCase())+'), referente aos serviços acima descritos, dando plena e geral quitação pelo valor recebido. Declaro que os serviços foram prestados sem vínculo empregatício com o pagador.</div>'+
+      '<div class="decl">Declaro ter recebido de <b>'+esc(empresa)+'</b> '+(descs.length
+        ? 'a importância líquida de <b>R$ '+fmtBR(liquido)+'</b> ('+esc(extenso.toLowerCase())+'), correspondente ao valor bruto de R$ '+fmtBR(valorNum)+' após os descontos acima, referente aos serviços descritos, dando plena e geral quitação pelo valor recebido.'
+        : 'a importância bruta de <b>R$ '+fmtBR(valorNum)+'</b> ('+esc(extenso.toLowerCase())+'), referente aos serviços acima descritos, dando plena e geral quitação pelo valor recebido.')+' Declaro que os serviços foram prestados sem vínculo empregatício com o pagador.</div>'+
 
       '<div class="decl" style="margin-bottom:0">Local e data: ______________________________, ____ de ____________________ de ________.</div>'+
 
       '<div class="assin"><div class="cx"><b>'+esc(nome)+'</b><br>CPF/CNPJ: '+esc(cpf)+'<br>Beneficiário</div>'+
       '<div class="cx"><b>'+esc(empresa)+'</b><br>Responsável pelo pagamento</div></div>'+
 
-      '<div class="obs">As retenções legais (INSS, IRRF e ISS), quando aplicáveis, devem ser apuradas e conferidas pela contabilidade antes do pagamento. Guarde este recibo junto ao comprovante de pagamento.</div>'+
+      '<div class="obs">As retenções legais (INSS, IRRF e ISS), quando aplicáveis, devem ser apuradas e conferidas pela contabilidade. Guarde este recibo junto ao comprovante de pagamento.</div>'+
 
       '<div class="rod"><span>'+esc(empresa)+' · PD-RPA</span><span class="m">Emitido por '+esc(uNome)+' em '+esc(emissao)+'</span><span class="pg2">Página 1 de 1</span></div>'+
       '</div>';
@@ -953,6 +1057,7 @@ function editarCusto(id){
     document.getElementById('prestador_nome').value=c.prestador_nome||'';
     document.getElementById('prestador_endereco').value=c.prestador_endereco||'';
     document.getElementById('descricao').value=c.descricao||'';
+    carregarDescontosSalvos(descontosDoCusto(c));
     document.getElementById('painelPreCadastro').style.display='none';
     arquivoAnexadoUrl = c.comprovante || null;
     arquivoAnexadoNome = null;
@@ -979,6 +1084,7 @@ function cancelarEdicao(){
     document.getElementById('prestador_nome').value='';
     document.getElementById('prestador_endereco').value='';
     document.getElementById('descricao').value='';
+    descontosAtuais=[]; renderDescontos();
     document.getElementById('painelPreCadastro').style.display='none';
     document.getElementById('inputArquivo').value='';
     document.getElementById('txtArquivo').innerHTML='Clique para selecionar o comprovante (Opcional)';
@@ -1017,9 +1123,14 @@ async function salvarCusto(){
     var doc=document.getElementById('documento_fiscal').value.trim();
     if(!doc){doc = gerarProximoNumeroDocumento();}
 
+    var descsSalvar = descontosParaSalvar();
+    var somaD = 0; descsSalvar.forEach(function(x){somaD+=x.valor;});
+    if(somaD > valor + 0.005){toast('Os descontos passam do valor bruto. Confira os valores.','error');return;}
+
     var btn=document.getElementById('btnSalvar'); btn.disabled=true;
 
     var dados={
+        descontos: descsSalvar.length ? descsSalvar : null,
         cliente_id: cid,
         projeto_id: projetoId,
         contrato_id: contratoId ? contratoId : null,
