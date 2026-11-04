@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="erp-print.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -74,77 +75,6 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        /* CABEÇALHO CORPORATIVO INVISÍVEL NA TELA */
-        .print-corporative-header {
-            display: none !important;
-        }
-
-        /* REGRAS DE IMPRESSÃO PROFISSIONAL A4 */
-        @media print {
-            @page {
-                size: A4 portrait;
-                margin: 15mm 15mm 15mm 15mm;
-                @bottom-right {
-                    content: "Página " counter(page) " de " counter(pages);
-                    font-size: 8.5pt;
-                    font-family: 'Inter', sans-serif;
-                    color: #475569;
-                }
-            }
-            .site-header, .page-toolbar, .toolbar, .btn-sair, footer, 
-            .assistant-widget, .assistant-avatar, .assistant-bubble, 
-            button, .ocultar-print, div[style*="position: fixed"], div[style*="z-index: 9999"] {
-                display: none !important;
-                visibility: hidden !important;
-                opacity: 0 !important;
-                pointer-events: none !important;
-            }
-            body {
-                background: #fff !important;
-                color: #000 !important;
-                font-size: 9.5pt;
-            }
-            .container {
-                max-width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                gap: 10px !important;
-            }
-            .card-table {
-                border: 1px solid #cbd5e1 !important;
-                box-shadow: none !important;
-                padding: 4px !important;
-                border-radius: 4px !important;
-            }
-            table {
-                font-size: 9pt !important;
-                width: 100% !important;
-            }
-            thead {
-                display: table-header-group !important;
-            }
-            tr {
-                page-break-inside: avoid !important;
-            }
-            .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 8px !important;
-                margin-bottom: 10px !important;
-                border-bottom: 2px solid #1e3a8a !important;
-            }
-            thead th {
-                background: #1e3a8a !important;
-                color: #fff !important;
-                padding: 6px 8px !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-            }
-            tbody td {
-                padding: 5px 8px !important;
-                border-bottom: 1px solid #e2e8f0 !important;
-            }
-        }
     </style>
 </head>
 <body>
@@ -189,6 +119,10 @@
                 </select>
             </div>
             <div class="filtro-group">
+                <label>Projeto</label>
+                <select id="filtroProjeto"><option value="">— Todos os projetos —</option></select>
+            </div>
+            <div class="filtro-group">
                 <label>Data Inicial</label>
                 <input type="date" id="filtroDataInicio">
             </div>
@@ -197,20 +131,20 @@
                 <input type="date" id="filtroDataFim">
             </div>
             <div class="filtro-group">
-                <label>Pesquisar (Projeto / Parceiro)</label>
-                <input type="text" id="filtroTexto" placeholder="Ex: Financiador, Inovação...">
+                <label>Pesquisar (descrição / financiador / prestador)</label>
+                <input type="text" id="filtroTexto" placeholder="Ex: Finep, reagentes, firmware...">
             </div>
         </div>
         <div class="toolbar-actions">
-            <button class="btn-secundario" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
-            <button class="btn-acao" onclick="carregarRelatorioPD()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
-            <button class="btn-acao" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-secundario" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            <button class="btn-acao" type="button" onclick="renderRelatorioPD()"><i class="fas fa-filter"></i> Aplicar Filtros</button>
+            <button class="btn-acao" type="button" style="background: var(--success);" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
     </div>
 
     <!-- TABELA DE RESULTADOS -->
     <div class="card-table">
-        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;" class="ocultar-print">
+        <div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
                 <h3 style="font-size:18px; font-weight:800; color:var(--secondary);">Extrato Analítico de Projetos de P&D</h3>
                 <p style="font-size:12px; color:var(--text-light); margin-top:2px;">Rastreabilidade de aportes, subvenções e custos vinculados ao centro de inovação.</p>
@@ -219,34 +153,26 @@
                 --
             </div>
         </div>
+        <div style="overflow-x:auto;">
         <table>
             <thead>
-                <!-- CABEÇALHO CORPORATIVO REPETIDO NO TOPO DE CADA PÁGINA IMPRESSA -->
                 <tr>
-                    <th colspan="5" style="background: #fff !important; padding: 0 !important; border: none !important;">
-                        <div class="print-corporative-header">
-                            <h2 style="font-size: 13pt; font-weight: 800; color: #1e3a8a; text-transform: uppercase; margin: 0;">Sacramento ERP — Extrato Analítico de Projetos de P&D</h2>
-                            <p style="font-size: 8pt; color: #475569; margin: 3px 0 0 0;"><strong>Empresa / Contratante:</strong> <span id="printEmpresaNome">Carregando...</span> &nbsp;|&nbsp; <strong>Operador:</strong> <span id="printUsuarioNome">Carregando...</span> &nbsp;|&nbsp; <strong>Emitido em:</strong> <span id="printDataEmissao"></span></p>
-                            <p style="font-size: 8pt; color: #475569; margin: 2px 0 0 0;"><strong>Período de Apuração:</strong> <span id="printPeriodoFiltro"></span> &nbsp;|&nbsp; <span id="printResumoTotais"></span></p>
-                        </div>
-                    </th>
-                </tr>
-                <tr>
-                    <th>Data Venc.</th>
+                    <th>Data</th>
                     <th>Natureza</th>
-                    <th>Descrição do Projeto / Rubrica</th>
-                    <th>Financiador / Fornecedor</th>
-                    <th class="num">Valor (R\$)</th>
+                    <th>Projeto</th>
+                    <th>Descrição</th>
+                    <th>Financiador / Prestador</th>
+                    <th class="num">Valor (R$)</th>
+                    <th class="num">Saldo acumulado (R$)</th>
                 </tr>
             </thead>
             <tbody id="tbodyPD">
-                <tr><td colspan="5" class="vazio">A carregar dados do Supabase...</td></tr>
+                <tr><td colspan="7" class="vazio">Carregando dados...</td></tr>
             </tbody>
         </table>
+        </div>
     </div>
-
 </div>
-
 <footer>
     Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
 </footer>
@@ -254,237 +180,217 @@
 <script>
     const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
     const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+    var projetosCache = [], contratosCache = [], aportesCache = [], custosCache = [];
+    var CATEGORIAS = { pessoal:'Pessoal (RH)', material_consumo:'Material / Insumos', servicos_terceiros:'Serviços Terceiros', equipamentos:'Equipamentos', outros:'Outros Custos' };
 
+    function esc(t){
+        return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+            return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+        });
+    }
     function obterUsuario() {
         try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
     }
-
     function ehMaster() {
         const u = obterUsuario();
         if (!u || !u.email) return false;
         return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
     }
-
     function clienteIdAtual() {
         const u = obterUsuario();
-        if (!u) return 1;
+        if (!u) return null;
         if (ehMaster()) {
             try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-            return u.cliente_id ? parseInt(u.cliente_id) : 2;
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
         }
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : null;
     }
-
+    function sbFiltro(tabela){
+        let q = sb.from(tabela).select('*');
+        const cid = clienteIdAtual();
+        if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+        return q;
+    }
     function formatarMoeda(valor) {
         let num = parseFloat(valor) || 0;
         return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     }
-
-    if (!document.getElementById('filtroDataInicio').value || !document.getElementById('filtroDataFim').value) {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+    function fmtBR(n){ return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+    function formatDataBR(d){ if(!d) return '—'; var p = String(d).substring(0,10).split('-'); return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : d; }
+    function rotuloProjeto(id){
+        for (var i = 0; i < projetosCache.length; i++) if (String(projetosCache[i].id) === String(id)) return (projetosCache[i].codigo ? projetosCache[i].codigo + ' · ' : '') + projetosCache[i].nome;
+        return '—';
+    }
+    function contratoPorId(id){
+        for (var i = 0; i < contratosCache.length; i++) if (String(contratosCache[i].id) === String(id)) return contratosCache[i];
+        return null;
     }
 
     function limparFiltros() {
-        const agora = new Date();
-        const ano = agora.getFullYear();
-        const mes = String(agora.getMonth() + 1).padStart(2, '0');
-        const ultimoDia = new Date(ano, agora.getMonth() + 1, 0).getDate();
-
-        document.getElementById('filtroDataInicio').value = `${ano}-${mes}-01`;
-        document.getElementById('filtroDataFim').value = `${ano}-${mes}-${ultimoDia}`;
+        document.getElementById('filtroDataInicio').value = '';
+        document.getElementById('filtroDataFim').value = '';
         document.getElementById('filtroTipo').value = 'todos';
+        document.getElementById('filtroProjeto').value = '';
         document.getElementById('filtroTexto').value = '';
-        carregarRelatorioPD();
+        renderRelatorioPD();
     }
-
-    function sair() {
+    window.sair = function() {
         if (confirm('Deseja realmente sair?')) {
             localStorage.removeItem('usuarioLogado');
             localStorage.removeItem('empresaSelecionada');
             location.href = 'login.html';
         }
-    }
+    };
+    window.trocarEmpresa = function() {
+        const select = document.getElementById('selectEmpresa');
+        if (!select) return;
+        localStorage.setItem('empresaSelecionada', String(select.value));
+        location.reload();
+    };
 
-    async function executarImpressao() {
-        const dIni = document.getElementById('filtroDataInicio').value.split('-').reverse().join('/');
-        const dFim = document.getElementById('filtroDataFim').value.split('-').reverse().join('/');
-        document.getElementById('printPeriodoFiltro').innerText = `${dIni} até ${dFim}`;
-        
-        const agora = new Date();
-        document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
-
-        const selectEmp = document.getElementById('selectEmpresa');
-        if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-            document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-        } else {
-            const cid = clienteIdAtual();
-            try {
-                const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-                if (data) {
-                    document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-                } else {
-                    document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-                }
-            } catch(e) {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-            }
-        }
-
-        const u = obterUsuario();
-        if (u) {
-            document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-        } else {
-            document.getElementById('printUsuarioNome').innerText = 'Operador';
-        }
-
-        const resumoTexto = document.getElementById('resumoTotaisPD').innerText;
-        document.getElementById('printResumoTotais').innerText = resumoTexto;
-
-        window.print();
-    }
-
-    async function carregarRelatorioPD() {
-        const cid = clienteIdAtual();
-        const dataInicio = document.getElementById('filtroDataInicio').value;
-        const dataFim = document.getElementById('filtroDataFim').value;
-        const tipoFiltro = document.getElementById('filtroTipo').value;
-        const textoFiltro = document.getElementById('filtroTexto').value.toLowerCase().trim();
-
+    async function carregarBase() {
         const tbody = document.getElementById('tbodyPD');
-        tbody.innerHTML = `<tr><td colspan="5" class="vazio">A consultar base de P&D...</td></tr>`;
+        if (!clienteIdAtual()) { tbody.innerHTML = '<tr><td colspan="7" class="vazio">Empresa não identificada. Saia e entre novamente.</td></tr>'; return; }
+        const res = await Promise.all([sbFiltro('projetos_pd'), sbFiltro('contratos_fomento'), sbFiltro('aportes_pd'), sbFiltro('custos_pd')]);
+        const erro = res.filter(function(r){ return r.error; })[0];
+        if (erro) { tbody.innerHTML = '<tr><td colspan="7" class="vazio" style="color:var(--danger);">Erro ao carregar P&D: ' + esc(erro.error.message) + '</td></tr>'; return; }
+        projetosCache = res[0].data || [];
+        contratosCache = res[1].data || [];
+        aportesCache = res[2].data || [];
+        custosCache = res[3].data || [];
+        const sel = document.getElementById('filtroProjeto');
+        sel.innerHTML = '<option value="">— Todos os projetos —</option>';
+        projetosCache.forEach(function(p){
+            var o = document.createElement('option'); o.value = p.id; o.textContent = (p.codigo ? p.codigo + ' · ' : '') + p.nome; sel.appendChild(o);
+        });
+        renderRelatorioPD();
+    }
 
-        try {
-            let promessas = [];
+    // Monta a lista de lançamentos já filtrada, em ordem de data, com saldo acumulado
+    function montarLista() {
+        const dIni = document.getElementById('filtroDataInicio').value;
+        const dFim = document.getElementById('filtroDataFim').value;
+        const tipo = document.getElementById('filtroTipo').value;
+        const fProj = document.getElementById('filtroProjeto').value;
+        const txt = document.getElementById('filtroTexto').value.toLowerCase().trim();
+        const lista = [];
 
-            if (tipoFiltro === 'todos' || tipoFiltro === 'receber') {
-                let queryAportes = sb.from('aportes_pd').select('*').eq('cliente_id', cid);
-                if (dataInicio) queryAportes = queryAportes.gte('data', dataInicio);
-                if (dataFim) queryAportes = queryAportes.lte('data', dataFim);
-                promessas.push(queryAportes);
-            } else {
-                promessas.push(Promise.resolve({ data: [] }));
-            }
-
-            if (tipoFiltro === 'todos' || tipoFiltro === 'pagar') {
-                let queryCustos = sb.from('custos_pd').select('*').eq('cliente_id', cid);
-                if (dataInicio) queryCustos = queryCustos.gte('data', dataInicio);
-                if (dataFim) queryCustos = queryCustos.lte('data', dataFim);
-                promessas.push(queryCustos);
-            } else {
-                promessas.push(Promise.resolve({ data: [] }));
-            }
-
-            const [resAportes, resCustos] = await Promise.all(promessas);
-            const lista = [];
-
-            if (resAportes.data) {
-                resAportes.data.forEach(r => {
-                    lista.push({
-                        data: r.data || r.created_at || '',
-                        natureza: 'Aporte / Subvenção P&D',
-                        tipo: 'Entrada',
-                        descricao: r.descricao || r.projeto || 'Aporte de Inovação',
-                        parceiro: r.financiador || r.parceiro || 'Financiador Externo',
-                        valor: parseFloat(r.valor) || 0
-                    });
+        if (tipo === 'todos' || tipo === 'receber') {
+            aportesCache.forEach(function(a){
+                var c = contratoPorId(a.contrato_id);
+                lista.push({
+                    data: String(a.data_recebimento || a.data || '').substring(0, 10),
+                    entrada: true,
+                    natureza: 'Aporte / Subvenção',
+                    projeto_id: a.projeto_id,
+                    descricao: a.observacoes || ('Aporte' + (c && c.numero_contrato ? ' do contrato ' + c.numero_contrato : '')),
+                    parceiro: c ? (c.financiador || '—') : '—',
+                    valor: parseFloat(a.valor) || 0
                 });
-            }
-
-            if (resCustos.data) {
-                resCustos.data.forEach(p => {
-                    lista.push({
-                        data: p.data || p.created_at || '',
-                        natureza: 'Custo / Despesa P&D',
-                        tipo: 'Saída',
-                        descricao: p.descricao || p.rubrica || 'Custo de Pesquisa',
-                        parceiro: p.fornecedor || p.favorecido || 'Fornecedor P&D',
-                        valor: parseFloat(p.valor) || 0
-                    });
-                });
-            }
-
-            let listaFiltrada = lista.filter(item => {
-                let matchTexto = (!textoFiltro || item.descricao.toLowerCase().includes(textoFiltro) || item.parceiro.toLowerCase().includes(textoFiltro));
-                return matchTexto;
             });
-
-            listaFiltrada.sort((a, b) => new Date(a.data) - new Date(b.data));
-
-            if (listaFiltrada.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="vazio">Nenhum registo de P&D encontrado nas tabelas de aportes e custos para os filtros selecionados.</td></tr>`;
-                document.getElementById('resumoTotaisPD').innerText = `Total Aportes: R$ 0,00 | Total Custos: R$ 0,00`;
-                return;
-            }
-
-            let totalAportes = 0;
-            let totalCustos = 0;
-            let html = '';
-
-            listaFiltrada.forEach(item => {
-                if (item.tipo === 'Entrada') totalAportes += item.valor;
-                else totalCustos += item.valor;
-
-                let badgeClass = item.tipo === 'Entrada' ? 'badge-entrada' : 'badge-saida';
-                let valorCor = item.tipo === 'Entrada' ? 'color:var(--success);' : 'color:var(--danger);';
-                let valorSinal = item.tipo === 'Entrada' ? '+ ' : '- ';
-                let dataFormatada = item.data ? item.data.split('T')[0].split('-').reverse().join('/') : '--/--/----';
-
-                html += `<tr>
-                    <td>${dataFormatada}</td>
-                    <td><span class="badge-tipo ${badgeClass}">${item.natureza}</span></td>
-                    <td><strong>${item.descricao}</strong></td>
-                    <td>${item.parceiro}</td>
-                    <td class="num" style="font-weight:700; ${valorCor}">${valorSinal}${formatarMoeda(item.valor)}</td>
-                </tr>`;
-            });
-
-            tbody.innerHTML = html;
-            document.getElementById('resumoTotaisPD').innerHTML = `
-                <span style="color:var(--success);">Aportes: ${formatarMoeda(totalAportes)}</span> &nbsp;|&nbsp; 
-                <span style="color:var(--danger);">Custos P&D: ${formatarMoeda(totalCustos)}</span> &nbsp;|&nbsp; 
-                <span>Saldo Projetos: ${formatarMoeda(totalAportes - totalCustos)}</span>
-            `;
-
-        } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="vazio" style="color:var(--danger);">Erro ao carregar P&D: ${err.message}</td></tr>`;
         }
+        if (tipo === 'todos' || tipo === 'pagar') {
+            custosCache.forEach(function(g){
+                lista.push({
+                    data: String(g.data_gasto || g.data || '').substring(0, 10),
+                    entrada: false,
+                    natureza: 'Custo · ' + (CATEGORIAS[g.categoria] || CATEGORIAS.outros),
+                    projeto_id: g.projeto_id,
+                    descricao: g.descricao || 'Custo de pesquisa',
+                    parceiro: g.prestador_nome || g.fornecedor || '—',
+                    valor: parseFloat(g.valor) || 0
+                });
+            });
+        }
+        const filtrada = lista.filter(function(i){
+            if (fProj && String(i.projeto_id) !== String(fProj)) return false;
+            if (dIni && i.data < dIni) return false;
+            if (dFim && i.data > dFim) return false;
+            if (txt && (i.descricao + ' ' + i.parceiro + ' ' + rotuloProjeto(i.projeto_id)).toLowerCase().indexOf(txt) < 0) return false;
+            return true;
+        });
+        filtrada.sort(function(a, b){ return a.data < b.data ? -1 : (a.data > b.data ? 1 : (a.entrada === b.entrada ? 0 : (a.entrada ? -1 : 1))); });
+        var saldo = 0, totalA = 0, totalC = 0;
+        filtrada.forEach(function(i){
+            if (i.entrada) { saldo += i.valor; totalA += i.valor; } else { saldo -= i.valor; totalC += i.valor; }
+            i.saldo = saldo;
+        });
+        return { lista: filtrada, totalA: totalA, totalC: totalC, saldo: totalA - totalC };
+    }
+
+    function renderRelatorioPD() {
+        const tbody = document.getElementById('tbodyPD');
+        const d = montarLista();
+        if (!d.lista.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="vazio">Nenhum lançamento de P&D encontrado para os filtros selecionados.</td></tr>';
+            document.getElementById('resumoTotaisPD').innerText = 'Aportes: R$ 0,00 | Custos: R$ 0,00 | Saldo: R$ 0,00';
+            return;
+        }
+        let html = '';
+        d.lista.forEach(function(i){
+            var badge = i.entrada ? 'badge-entrada' : 'badge-saida';
+            var cor = i.entrada ? 'color:var(--success);' : 'color:var(--danger);';
+            html += '<tr>' +
+                '<td>' + formatDataBR(i.data) + '</td>' +
+                '<td><span class="badge-tipo ' + badge + '">' + esc(i.natureza) + '</span></td>' +
+                '<td>' + esc(rotuloProjeto(i.projeto_id)) + '</td>' +
+                '<td><strong>' + esc(i.descricao) + '</strong></td>' +
+                '<td>' + esc(i.parceiro) + '</td>' +
+                '<td class="num" style="font-weight:700; ' + cor + '">' + (i.entrada ? '+ ' : '- ') + formatarMoeda(i.valor) + '</td>' +
+                '<td class="num" style="font-weight:700; color:' + (i.saldo >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">' + formatarMoeda(i.saldo) + '</td>' +
+                '</tr>';
+        });
+        tbody.innerHTML = html;
+        document.getElementById('resumoTotaisPD').innerHTML =
+            '<span style="color:var(--success);">Aportes: ' + formatarMoeda(d.totalA) + '</span> &nbsp;|&nbsp; ' +
+            '<span style="color:var(--danger);">Custos P&D: ' + formatarMoeda(d.totalC) + '</span> &nbsp;|&nbsp; ' +
+            '<span>Saldo: ' + formatarMoeda(d.saldo) + '</span>';
+    }
+
+    function executarImpressao() {
+        const d = montarLista();
+        const filtros = [];
+        const tipo = document.getElementById('filtroTipo');
+        if (tipo.value !== 'todos') filtros.push(['Tipo', tipo.options[tipo.selectedIndex].text]);
+        const fp = document.getElementById('filtroProjeto');
+        if (fp.value) filtros.push(['Projeto', fp.options[fp.selectedIndex].text]);
+        const di = document.getElementById('filtroDataInicio').value, df = document.getElementById('filtroDataFim').value;
+        if (di) filtros.push(['Data inicial', formatDataBR(di)]);
+        if (df) filtros.push(['Data final', formatDataBR(df)]);
+        const tx = document.getElementById('filtroTexto').value.trim();
+        if (tx) filtros.push(['Pesquisa', tx]);
+
+        const linhas = d.lista.map(function(i){
+            return [formatDataBR(i.data), i.natureza, rotuloProjeto(i.projeto_id), i.descricao, i.parceiro,
+                    {t: (i.entrada ? '+ ' : '- ') + 'R$ ' + fmtBR(i.valor), cls: i.entrada ? 'pos' : 'neg'},
+                    {t: 'R$ ' + fmtBR(i.saldo), cls: i.saldo < 0 ? 'neg' : 'bold'}];
+        });
+
+        ERPPrint.imprimir({
+            titulo: 'Extrato Analítico de Projetos de P&D',
+            subtitulo: 'Rastreabilidade de aportes, subvenções e custos vinculados aos projetos de inovação',
+            codigo: 'PD-EXT',
+            orientacao: 'landscape',
+            filtros: filtros,
+            resumo: [['Lançamentos', String(d.lista.length)], ['Aportes', 'R$ ' + fmtBR(d.totalA)], ['Custos de P&D', 'R$ ' + fmtBR(d.totalC)], ['Saldo do período', 'R$ ' + fmtBR(d.saldo)]],
+            colunas: [{t:'Data',w:1.3},{t:'Natureza',w:2},{t:'Projeto',w:2.2},{t:'Descrição',w:2.8},{t:'Financiador / Prestador',w:2.2},{t:'Valor (R$)',w:1.6,a:'right'},{t:'Saldo acum. (R$)',w:1.7,a:'right'}],
+            linhas: linhas,
+            totais: ['','','','','TOTAL (aportes − custos)', '', {t:'R$ ' + fmtBR(d.saldo), cls: d.saldo < 0 ? 'neg' : 'bold'}],
+            observacao: 'O saldo acumulado considera somente os lançamentos listados, em ordem cronológica.'
+        });
     }
 
     async function inicializarPagina() {
         let u = obterUsuario();
-        if(!u || !u.email) { location.href = 'login.html'; return; }
-
-        if (u.email) {
-            const elUserName = document.getElementById('userName');
-            if (elUserName) {
-                elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-            }
-        }
-
-        const master = ehMaster();
-        if (master) {
-            document.body.classList.add('usuario-master');
-            const select = document.getElementById('selectEmpresa');
-            const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-            if (data && select) {
-                select.innerHTML = '';
-                data.forEach(emp => {
-                    select.innerHTML += `<option value="${emp.id}">${emp.nome_fantasia || emp.razao_social}</option>`;
-                });
-                select.value = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-            }
-        } else {
-            document.body.classList.remove('usuario-master');
-        }
-
-        carregarRelatorioPD();
+        if (!u || !u.email) { location.href = 'login.html'; return; }
+        // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+        if (ehMaster()) document.body.classList.add('usuario-master');
+        else document.body.classList.remove('usuario-master');
+        ['filtroTipo','filtroProjeto','filtroDataInicio','filtroDataFim'].forEach(function(id){ document.getElementById(id).addEventListener('change', renderRelatorioPD); });
+        document.getElementById('filtroTexto').addEventListener('input', renderRelatorioPD);
+        await carregarBase();
     }
-
     window.onload = inicializarPagina;
 </script>
 <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
