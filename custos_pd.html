@@ -634,7 +634,6 @@ function gerarReciboRPA(){
     var empresa = document.getElementById('empresa_pagadora').value.trim() || nomeEmpresaAtual || 'Empresa executora';
     var nome = document.getElementById('prestador_nome').value.trim();
     var cpf = document.getElementById('prestador_cpf').value.trim();
-    var endereco = document.getElementById('prestador_endereco').value.trim();
     var valorNum = parseValorBR(document.getElementById('valor').value);
     var desc = document.getElementById('descricao').value.trim();
     if(!nome || !cpf){ toast('Informe o CPF/CNPJ e o prestador antes de gerar o recibo.','error'); return; }
@@ -645,12 +644,47 @@ function gerarReciboRPA(){
     document.getElementById('documento_fiscal').value = doc;
 
     var projSel = document.getElementById('projeto_id');
-    var projeto = projSel.value ? projSel.options[projSel.selectedIndex].text : '—';
     var ctrSel = document.getElementById('contrato_id');
-    var contrato = ctrSel.value ? ctrSel.options[ctrSel.selectedIndex].text : '—';
-    var dataGastoVal = document.getElementById('data_gasto').value;
-    var dataTxt = dataGastoVal ? formatDataBR(dataGastoVal) : '____/____/________';
+    abrirRecibo({
+        empresa: empresa,
+        cnpj: (empresa === nomeEmpresaAtual ? cnpjEmpresaAtual : ''),
+        nome: nome, cpf: cpf,
+        endereco: document.getElementById('prestador_endereco').value.trim(),
+        valor: valorNum, desc: desc, doc: doc,
+        projeto: projSel.value ? projSel.options[projSel.selectedIndex].text : '—',
+        contrato: ctrSel.value ? ctrSel.options[ctrSel.selectedIndex].text : '—',
+        data: document.getElementById('data_gasto').value
+    });
+}
 
+function reciboDoCusto(id){
+    var c=null;
+    for(var i=0;i<custosCache.length;i++){if(String(custosCache[i].id)===String(id))c=custosCache[i];}
+    if(!c)return;
+    var ct=null;
+    for(var j=0;j<contratosCache.length;j++){ if(String(contratosCache[j].id)===String(c.contrato_id)) ct=contratosCache[j]; }
+    var emp = c.empresa_pagadora || nomeEmpresaAtual || 'Empresa executora';
+    abrirRecibo({
+        empresa: emp,
+        cnpj: (emp === nomeEmpresaAtual ? cnpjEmpresaAtual : ''),
+        nome: c.prestador_nome || '', cpf: c.prestador_cpf || '',
+        endereco: c.prestador_endereco || '',
+        valor: Number(c.valor)||0, desc: c.descricao || '', doc: docFiscal(c),
+        projeto: nomeProjeto(c.projeto_id),
+        contrato: ct ? ((ct.numero_contrato||'Contrato')+' · '+(ct.financiador||'Fomento')) : '—',
+        data: dataGasto(c), id: c.id
+    });
+}
+
+function fecharRecibo(){
+    var m=document.getElementById('modalRecibo');
+    if(m&&m.parentNode)m.parentNode.removeChild(m);
+}
+
+function abrirRecibo(d){
+    var empresa=d.empresa, nome=d.nome, cpf=d.cpf, endereco=d.endereco, valorNum=d.valor, desc=d.desc, doc=d.doc;
+    var projeto=d.projeto, contrato=d.contrato, cnpjEmpresa=d.cnpj||'';
+    var dataTxt = d.data ? formatDataBR(d.data) : '____/____/________';
     var u = obterUsuarioAtual() || {};
     var ag = new Date();
     function p2(n){ return String(n).padStart(2,'0'); }
@@ -697,7 +731,7 @@ function gerarReciboRPA(){
     var corpo =
       '<div class="pg">'+
       '<div class="topo"><div class="tl">'+
-        '<div><div class="en">'+esc(empresa)+'</div>'+(cnpjEmpresaAtual?'<div class="ec">CNPJ: '+esc(cnpjEmpresaAtual)+'</div>':'')+'</div>'+
+        '<div><div class="en">'+esc(empresa)+'</div>'+(cnpjEmpresa?'<div class="ec">CNPJ: '+esc(cnpjEmpresa)+'</div>':'')+'</div>'+
         '<div class="ib"><div>Documento: <b>PD-RPA</b></div><div>Recibo nº <b>'+esc(doc)+'</b></div><div>Emitido em <b>'+esc(emissao)+'</b></div><div>Por <b>'+esc(u.nome||u.email||'Usuário')+'</b></div></div>'+
       '</div>'+
       '<div class="tt">Recibo de Pagamento a Autônomo (RPA)</div>'+
@@ -707,7 +741,7 @@ function gerarReciboRPA(){
       '<div class="v2"><div class="lb">Valor por extenso</div><div class="ex">'+esc(extenso)+'.</div></div></div>'+
 
       '<div class="sec">Pagador (tomador dos serviços)</div>'+
-      '<table class="f"><tr><td><div class="lb">Razão social</div><div class="vl">'+esc(empresa)+'</div></td><td><div class="lb">CNPJ</div><div class="vl">'+esc(cnpjEmpresaAtual||'—')+'</div></td></tr></table>'+
+      '<table class="f"><tr><td><div class="lb">Razão social</div><div class="vl">'+esc(empresa)+'</div></td><td><div class="lb">CNPJ</div><div class="vl">'+esc(cnpjEmpresa||'—')+'</div></td></tr></table>'+
 
       '<div class="sec">Beneficiário (prestador dos serviços)</div>'+
       '<table class="f"><tr><td><div class="lb">Nome / Razão social</div><div class="vl">'+esc(nome)+'</div></td><td><div class="lb">CPF / CNPJ</div><div class="vl">'+esc(cpf)+'</div></td></tr>'+
@@ -738,28 +772,48 @@ function gerarReciboRPA(){
       '<div class="rod"><span>'+esc(empresa)+' · PD-RPA</span><span class="m">Sacramento ERP · Emitido por '+esc(u.nome||u.email||'Usuário')+' em '+esc(emissao)+'</span><span class="pg2">Página 1 de 1</span></div>'+
       '</div>';
 
-    var old = document.getElementById('erpReciboFrame');
-    if(old && old.parentNode) old.parentNode.removeChild(old);
-    var fr = document.createElement('iframe');
-    fr.id = 'erpReciboFrame';
-    fr.setAttribute('aria-hidden','true');
-    fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden;';
-    document.body.appendChild(fr);
-    var d = fr.contentWindow.document;
-    d.open();
-    d.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo RPA '+esc(doc)+' — '+esc(empresa)+'</title><style>'+css+'</style></head><body>'+corpo+'</body></html>');
-    d.close();
+    var docHtml='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo RPA '+esc(doc)+' — '+esc(empresa)+'</title><style>'+css+'</style></head><body>'+corpo+'</body></html>';
 
-    var tituloAntigo = document.title;
-    document.title = ('Recibo RPA '+doc+' - '+nome).replace(/[\\\/:*?"<>|]/g,'');
-    function restaurar(){ document.title = tituloAntigo; setTimeout(function(){ if(fr.parentNode) fr.parentNode.removeChild(fr); },500); }
-    setTimeout(function(){
+    fecharRecibo();
+    var m=document.createElement('div');
+    m.id='modalRecibo';
+    m.style.cssText='position:fixed;inset:0;z-index:5000;background:rgba(15,23,42,.65);display:flex;flex-direction:column;align-items:center;padding:14px;overflow:auto';
+    var barra=document.createElement('div');
+    barra.style.cssText='width:100%;max-width:820px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:#fff;border-radius:10px;padding:10px 14px;margin-bottom:10px;box-shadow:0 6px 24px rgba(0,0,0,.25)';
+    barra.innerHTML='<b style="color:#1e3a8a;font-size:14px"><i class="fas fa-file-invoice"></i> Recibo '+esc(doc)+'</b>'+
+        '<span style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button type="button" class="btn-primary" id="rcImprimir" style="background:#10b981"><i class="fas fa-print"></i> Imprimir / Salvar PDF</button>'+
+        (d.id?'<button type="button" class="btn-secondary" id="rcEditar"><i class="fas fa-pen"></i> Editar gasto</button>':'')+
+        '<button type="button" class="btn-secondary" id="rcFechar"><i class="fas fa-times"></i> Fechar</button></span>';
+    m.appendChild(barra);
+    var caixa=document.createElement('div');
+    caixa.style.cssText='width:100%;max-width:820px;background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.25);overflow:hidden';
+    var fr=document.createElement('iframe');
+    fr.style.cssText='border:0;width:794px;height:1123px;background:#fff;display:block;transform-origin:top left';
+    caixa.appendChild(fr);
+    m.appendChild(caixa);
+    document.body.appendChild(m);
+
+    function ajustar(){
+        var w=Math.min(caixa.clientWidth||794,794), esc2=w/794;
+        fr.style.transform='scale('+esc2+')';
+        caixa.style.height=Math.round(1123*esc2)+'px';
+    }
+    fr.srcdoc=docHtml;
+    ajustar();
+    window.addEventListener('resize',ajustar);
+
+    document.getElementById('rcFechar').onclick=function(){window.removeEventListener('resize',ajustar);fecharRecibo();};
+    if(d.id) document.getElementById('rcEditar').onclick=function(){window.removeEventListener('resize',ajustar);fecharRecibo();editarCusto(d.id);};
+    document.getElementById('rcImprimir').onclick=function(){
+        var tituloAntigo=document.title;
+        document.title=('Recibo RPA '+doc+' - '+nome).replace(/[\\\/:*?"<>|]/g,'');
         try{
-            fr.contentWindow.addEventListener('afterprint', restaurar);
             fr.contentWindow.focus();
             fr.contentWindow.print();
-        }catch(e){ restaurar(); toast('Não foi possível abrir a impressão do recibo.','error'); }
-    }, 250);
+        }catch(e){ toast('Não foi possível abrir a impressão do recibo.','error'); }
+        setTimeout(function(){document.title=tituloAntigo;},1500);
+    };
 }
 
 function obterFiltrados(){
@@ -828,6 +882,7 @@ function renderCustos(){
             '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(c.valor)+'</td>'+
             '<td>'+comprovanteHTML+'</td>'+
             '<td style="text-align:right; white-space:nowrap;">'+
+                (/^RPA-/i.test(docFiscal(c))?'<button class="btn-secondary" data-acao="recibo" data-id="'+esc(c.id)+'" title="Ver / imprimir recibo RPA" style="color:var(--primary);"><i class="fas fa-file-invoice"></i></button> ':'')+
                 '<button class="btn-secondary" data-acao="editar" data-id="'+esc(c.id)+'" title="Editar"><i class="fas fa-pen"></i></button> '+
                 '<button class="btn-secondary" data-acao="excluir" data-id="'+esc(c.id)+'" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
             '</td>'+
@@ -838,7 +893,8 @@ function renderCustos(){
     tbody.querySelectorAll('button[data-acao]').forEach(function(b){
         b.onclick=function(){
             var id=b.getAttribute('data-id');
-            if(b.getAttribute('data-acao')==='editar') editarCusto(id); else excluirCusto(id);
+            var ac=b.getAttribute('data-acao');
+            if(ac==='editar') editarCusto(id); else if(ac==='recibo') reciboDoCusto(id); else excluirCusto(id);
         };
     });
 }
