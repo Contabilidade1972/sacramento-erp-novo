@@ -85,6 +85,7 @@
         .btn { padding: 7px 14px; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; color: #fff; }
         .btn-transmitir { background: var(--secondary); }
         .btn-status { background: #475569; }
+        .btn-imprimir { background: #0f766e; }
 
         .rodape { text-align: center; padding: 22px; color: var(--text-light); font-size: 12px; }
 
@@ -394,7 +395,7 @@
     tbody.innerHTML = '<tr><td colspan="8" class="vazio">Carregando...</td></tr>';
     if (!clienteId) { tbody.innerHTML = '<tr><td colspan="8" class="vazio">Empresa não identificada ou sem permissão.</td></tr>'; limparKpis(); return; }
     
-    let q = sb.from('calendario_fiscal').select('id, competencia, data_vencimento, status, responsavel, observacoes, obrigacoes_fiscais(codigo, descricao, orgao)').eq('cliente_id', clienteId);
+    let q = sb.from('calendario_fiscal').select('id, cliente_id, competencia, data_vencimento, status, responsavel, observacoes, obrigacoes_fiscais(codigo, descricao, orgao)').eq('cliente_id', clienteId);
     if (competencia) q = q.eq('competencia', competencia);
     if (tipo) q = q.eq('obrigacoes_fiscais.codigo', tipo);
     q = q.order('data_vencimento');
@@ -428,10 +429,36 @@
         '<td><div class="acoes">' +
           '<button class="btn btn-transmitir" onclick="abrirTransmissao(' + item.id + ',' + clienteId + ',\'' + item.competencia + '\',\'' + (o.codigo || '') + '\')">Transmitir</button>' +
           '<button class="btn btn-status" onclick="mudarStatus(' + item.id + ')">Status</button>' +
+          '<button class="btn btn-imprimir" onclick="imprimirObrigacao(' + item.id + ')"><i class="fas fa-print"></i> Imprimir</button>' +
         '</div></td>';
+      LISTA_CAL[item.id] = item;
       tbody.appendChild(tr);
       carregarHistorico(item.id, clienteId);
     }
+  }
+
+  const LISTA_CAL = {};
+  async function imprimirObrigacao(calId) {
+    const item = LISTA_CAL[calId]; if (!item) return;
+    const o = item.obrigacoes_fiscais || {};
+    const sel = document.getElementById('selectEmpresa');
+    const empresa = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '';
+    let trans = [];
+    try {
+      const { data } = await sb.from('transmissoes_obrigacoes').select('*').eq('cliente_id', item.cliente_id || sel.value).eq('competencia', item.competencia).order('data_transmissao', { ascending: false });
+      trans = data || [];
+    } catch (e) {}
+    const linhas = trans.length ? trans.map(t => '<tr><td>' + formatarDataHora(t.data_transmissao) + '</td><td>' + esc(ROTULOS_STATUS[t.status] || t.status) + '</td><td>' + esc(t.protocolo_numero || '—') + '</td><td>' + esc(t.responsavel || '—') + '</td><td>' + esc(t.observacoes || '') + '</td></tr>').join('') : '<tr><td colspan="5" style="text-align:center;color:#64748b">Nenhuma transmissão registrada.</td></tr>';
+    const w = window.open('', '_blank');
+    if (!w) { alert('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.'); return; }
+    w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha da obrigação ' + esc(o.codigo || '') + '</title><style>body{font-family:Arial,sans-serif;color:#0f172a;margin:32px}h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:22px 0 8px;border-bottom:1px solid #cbd5e1;padding-bottom:4px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#f1f5f9}.g{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:13px}.g b{color:#475569;font-weight:600}.aviso{margin-top:24px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:8px;border-radius:6px}@media print{button{display:none}}</style></head><body>' +
+      '<button onclick="window.print()" style="float:right;padding:8px 14px">Imprimir</button>' +
+      '<h1>Ficha de controle da obrigação</h1><div style="color:#64748b;font-size:12px">Sacramento ERP · emitida em ' + new Date().toLocaleString('pt-BR') + '</div>' +
+      '<h2>Dados</h2><div class="g"><div><b>Empresa:</b> ' + esc(empresa) + '</div><div><b>Código:</b> ' + esc(o.codigo || '—') + '</div><div><b>Obrigação:</b> ' + esc(o.descricao || '—') + '</div><div><b>Órgão:</b> ' + esc(o.orgao || '—') + '</div><div><b>Competência:</b> ' + esc(item.competencia) + '</div><div><b>Vencimento:</b> ' + formatarData(item.data_vencimento) + '</div><div><b>Status:</b> ' + esc(ROTULOS_STATUS[item.status] || item.status || 'Pendente') + '</div><div><b>Responsável:</b> ' + esc(item.responsavel || '—') + '</div></div>' +
+      (item.observacoes ? '<h2>Observações</h2><div style="font-size:13px">' + esc(item.observacoes) + '</div>' : '') +
+      '<h2>Registro de transmissões</h2><table><tr><th>Data</th><th>Situação</th><th>Nº do protocolo</th><th>Responsável</th><th>Observações</th></tr>' + linhas + '</table>' +
+      '<div class="aviso">Documento de controle interno. Não substitui o recibo/protocolo oficial do órgão. O sistema não transmite obrigações: o status e o protocolo são informados manualmente.</div></body></html>');
+    w.document.close();
   }
 
   function limparKpis() { document.getElementById('kpiTotal').textContent='—'; document.getElementById('kpiPendente').textContent='—'; document.getElementById('kpiConcluida').textContent='—'; }
