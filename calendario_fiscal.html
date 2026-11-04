@@ -441,11 +441,21 @@
   async function imprimirObrigacao(calId) {
     const item = LISTA_CAL[calId]; if (!item) return;
     const o = item.obrigacoes_fiscais || {};
-    const sel = document.getElementById('selectEmpresa');
-    const empresa = sel && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '';
+    const cid = item.cliente_id || clienteIdAtual();
+    let empresa = '—', cnpjEmp = '';
+    try {
+      const { data: emp } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
+      if (emp) {
+        const kc = Object.keys(emp).find(k => /cnpj/i.test(k));
+        const dig = kc ? String(emp[kc] || '').replace(/\D/g, '') : '';
+        cnpjEmp = dig.length === 14 ? dig.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : dig;
+        empresa = emp.razao_social || emp.nome_fantasia || ('Empresa ' + cid);
+        if (emp.nome_fantasia && emp.razao_social && emp.nome_fantasia !== emp.razao_social) empresa += ' (' + emp.nome_fantasia + ')';
+      }
+    } catch (e) {}
     let trans = [];
     try {
-      const { data } = await sb.from('transmissoes_obrigacoes').select('*').eq('cliente_id', item.cliente_id || sel.value).eq('competencia', item.competencia).order('data_transmissao', { ascending: false });
+      const { data } = await sb.from('transmissoes_obrigacoes').select('*').eq('cliente_id', cid).eq('competencia', item.competencia).order('data_transmissao', { ascending: false });
       trans = data || [];
     } catch (e) {}
     const linhas = trans.length ? trans.map(t => '<tr><td>' + formatarDataHora(t.data_transmissao) + '</td><td>' + esc(ROTULOS_STATUS[t.status] || t.status) + '</td><td>' + esc(t.protocolo_numero || '—') + '</td><td>' + esc(t.responsavel || '—') + '</td><td>' + esc(t.observacoes || '') + '</td></tr>').join('') : '<tr><td colspan="5" style="text-align:center;color:#64748b">Nenhuma transmissão registrada.</td></tr>';
@@ -454,7 +464,7 @@
     w.document.write('<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>Ficha da obrigação ' + esc(o.codigo || '') + '</title><style>body{font-family:Arial,sans-serif;color:#0f172a;margin:32px}h1{font-size:20px;margin:0 0 4px}h2{font-size:14px;margin:22px 0 8px;border-bottom:1px solid #cbd5e1;padding-bottom:4px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border:1px solid #cbd5e1;padding:6px 8px;text-align:left}th{background:#f1f5f9}.g{display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-size:13px}.g b{color:#475569;font-weight:600}.aviso{margin-top:24px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;padding:8px;border-radius:6px}@media print{button{display:none}}</style></head><body>' +
       '<button onclick="window.print()" style="float:right;padding:8px 14px">Imprimir</button>' +
       '<h1>Ficha de controle da obrigação</h1><div style="color:#64748b;font-size:12px">Sacramento ERP · emitida em ' + new Date().toLocaleString('pt-BR') + '</div>' +
-      '<h2>Dados</h2><div class="g"><div><b>Empresa:</b> ' + esc(empresa) + '</div><div><b>Código:</b> ' + esc(o.codigo || '—') + '</div><div><b>Obrigação:</b> ' + esc(o.descricao || '—') + '</div><div><b>Órgão:</b> ' + esc(o.orgao || '—') + '</div><div><b>Competência:</b> ' + esc(item.competencia) + '</div><div><b>Vencimento:</b> ' + formatarData(item.data_vencimento) + '</div><div><b>Status:</b> ' + esc(ROTULOS_STATUS[item.status] || item.status || 'Pendente') + '</div><div><b>Responsável:</b> ' + esc(item.responsavel || '—') + '</div></div>' +
+      '<h2>Dados</h2><div class="g"><div><b>Empresa:</b> ' + esc(empresa) + '</div><div><b>CNPJ:</b> ' + esc(cnpjEmp || '—') + '</div><div><b>Código:</b> ' + esc(o.codigo || '—') + '</div><div><b>Obrigação:</b> ' + esc(o.descricao || '—') + '</div><div><b>Órgão:</b> ' + esc(o.orgao || '—') + '</div><div><b>Competência:</b> ' + esc(item.competencia) + '</div><div><b>Vencimento:</b> ' + formatarData(item.data_vencimento) + '</div><div><b>Status:</b> ' + esc(ROTULOS_STATUS[item.status] || item.status || 'Pendente') + '</div><div><b>Responsável:</b> ' + esc(item.responsavel || '—') + '</div></div>' +
       (item.observacoes ? '<h2>Observações</h2><div style="font-size:13px">' + esc(item.observacoes) + '</div>' : '') +
       '<h2>Registro de transmissões</h2><table><tr><th>Data</th><th>Situação</th><th>Nº do protocolo</th><th>Responsável</th><th>Observações</th></tr>' + linhas + '</table>' +
       '<div class="aviso">Documento de controle interno. Não substitui o recibo/protocolo oficial do órgão. O sistema não transmite obrigações: o status e o protocolo são informados manualmente.</div></body></html>');
