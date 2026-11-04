@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backup dos Dados — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="auth-guard.js"></script>
+    <style>
+        :root { --primary:#2563eb; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:block; }
+        .container { max-width:960px; margin:30px auto; padding:0 24px; display:flex; flex-direction:column; gap:20px; }
+        .nav-modulo { display:flex; gap:8px; flex-wrap:wrap; }
+        .nav-modulo a { display:inline-flex; align-items:center; gap:8px; padding:9px 16px; border-radius:8px; border:1px solid var(--primary); color:var(--primary); background:#fff; text-decoration:none; font-size:13px; font-weight:600; }
+        .nav-modulo a.nm-voltar { background:var(--secondary); border-color:var(--secondary); color:#fff; }
+        h1 { font-size:24px; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .sub { color:var(--text-light); font-size:14px; margin-top:4px; }
+        .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:22px; }
+        .aviso { background:#fffbeb; border:1px solid #fcd34d; color:#92400e; border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.5; }
+        .aviso.ok { background:#ecfdf5; border-color:#6ee7b7; color:#065f46; }
+        .aviso.erro { background:#fef2f2; border-color:#fca5a5; color:#991b1b; }
+        .btn { display:inline-flex; align-items:center; gap:8px; border:0; background:var(--primary); color:#fff; padding:12px 20px; border-radius:10px; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit; }
+        .btn:disabled { opacity:.55; cursor:not-allowed; }
+        .btn.sec { background:#fff; color:var(--primary); border:1px solid var(--primary); }
+        .linha { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+        .linha:last-child { border-bottom:0; }
+        .st-ok { color:var(--success); font-weight:700; } .st-erro { color:var(--text-light); } .st-run { color:var(--primary); }
+        .barra { height:10px; background:#e2e8f0; border-radius:99px; overflow:hidden; margin:14px 0 6px; }
+        .barra > div { height:100%; width:0; background:var(--primary); transition:width .2s; }
+        label.opc { display:flex; gap:8px; align-items:center; font-size:14px; margin-top:10px; }
+        select { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-family:inherit; font-size:14px; }
+        ol { margin-left:18px; font-size:14px; line-height:1.7; color:var(--text-main); }
+        @media print { .nav-modulo { display:none !important; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <nav class="nav-modulo" aria-label="Navegação">
+        <a href="index.html" class="nm-voltar"><i class="fas fa-arrow-left"></i> Painel Principal</a>
+    </nav>
+
+    <div>
+        <h1><i class="fas fa-database"></i> Backup dos Dados</h1>
+        <div class="sub">Baixe uma cópia de segurança dos dados do sistema. O arquivo gerado fica no seu computador.</div>
+    </div>
+
+    <div class="aviso">
+        <b><i class="fas fa-lock"></i> Atenção (LGPD):</b> o arquivo de backup contém dados pessoais e financeiros. Guarde em local seguro (pen drive, HD externo ou nuvem com senha) e <b>não envie por e-mail ou WhatsApp</b>. Senhas e chaves de acesso <b>não</b> entram no backup.
+    </div>
+
+    <div class="card">
+        <div id="boxEscopo" style="display:none;margin-bottom:14px;">
+            <b style="font-size:14px;">O que incluir (acesso Master):</b><br>
+            <label class="opc"><input type="radio" name="escopo" value="empresa" checked> Somente a empresa selecionada no momento</label>
+            <label class="opc"><input type="radio" name="escopo" value="todas"> Todas as empresas (backup geral do sistema)</label>
+        </div>
+        <div class="sub" id="infoEmpresa" style="margin-bottom:12px;"></div>
+        <button class="btn" id="btnBackup" onclick="gerarBackup()"><i class="fas fa-download"></i> Gerar backup agora</button>
+        <div class="sub" id="ultimoBackup" style="margin-top:12px;"></div>
+
+        <div id="boxProgresso" style="display:none;margin-top:18px;">
+            <div class="barra"><div id="barraFill"></div></div>
+            <div class="sub" id="txtProgresso">Preparando...</div>
+            <div id="listaTabelas" style="margin-top:12px;"></div>
+        </div>
+        <div id="boxResultado" style="display:none;margin-top:16px;"></div>
+    </div>
+
+    <div class="card">
+        <b style="font-size:15px;">Como usar o arquivo</b>
+        <ol style="margin-top:10px;">
+            <li>O arquivo <b>.zip</b> baixado tem uma pasta <b>planilhas</b> com um arquivo <b>.csv</b> por tabela. Abra no Excel para consultar.</li>
+            <li>Também vem o arquivo <b>backup_completo.json</b>, usado para restaurar os dados se algo der errado.</li>
+            <li>Faça o backup <b>toda semana</b> (ou todo fechamento mensal) e guarde as 3 últimas cópias.</li>
+        </ol>
+        <div class="aviso" style="margin-top:12px;">O plano gratuito do banco de dados <b>não faz cópias automáticas</b>. Este backup manual é a sua proteção contra perda de dados.</div>
+    </div>
+</div>
+
+<script>
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+
+// Tabelas incluídas (as que não existirem ou não forem permitidas são apenas listadas como "ignoradas")
+var TABELAS = [
+  'clientes_contratantes','clientes_contabeis','vinculos_contador','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema',
+  'parceiros','centros_custo','plano_contas','contas_bancarias','conexoes_bancarias_pluggy','taxas_gateway_config',
+  'contas_pagar','contas_receber','transferencias','faturas','extrato_ofx_importado','lancamentos_contabeis',
+  'ativos_equipamentos','socios','pro_labore','colaboradores_rh','colaboradores_dependentes',
+  'parametros_fiscais','apuracoes_impostos','obrigacoes_acessorias','obrigacoes_fiscais','calendario_fiscal','transmissoes_obrigacoes','protocolos',
+  'documentos_contabeis','documentos_xml','acessos_contabilidade','logs_auditoria'
+];
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','obrigacoes_fiscais'];
+var COLUNA_SECRETA = /senha|password|passwd|secret|token|api_?key|chave_?(privada|secreta)/i;
+
+function usuario() { try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) { return null; } }
+function ehMaster() { var u = usuario(); return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER); }
+function clienteId() { try { var s = localStorage.getItem('empresaSelecionada'); if (s) return parseInt(s, 10); } catch (e) {} var u = usuario(); return u && u.cliente_id ? parseInt(u.cliente_id, 10) : null; }
+function esc(v) { return String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDataHora(d) { return d.toLocaleDateString('pt-BR') + ' às ' + d.toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }); }
+
+function iniciarTela() {
+  var m = ehMaster();
+  document.getElementById('boxEscopo').style.display = m ? 'block' : 'none';
+  document.getElementById('infoEmpresa').textContent = m ? '' : 'O backup inclui somente os dados da sua empresa.';
+  try { var u = localStorage.getItem('sacramentoUltimoBackup'); if (u) document.getElementById('ultimoBackup').textContent = 'Último backup feito neste computador: ' + fmtDataHora(new Date(u)); } catch (e) {}
+  if (!window.JSZip) document.getElementById('infoEmpresa').textContent += ' (Aviso: não foi possível carregar o gerador de .zip; será baixado apenas o arquivo .json.)';
+}
+
+function limparSecretos(rows) {
+  return rows.map(function (r) { var o = {}; Object.keys(r).forEach(function (k) { if (!COLUNA_SECRETA.test(k)) o[k] = r[k]; }); return o; });
+}
+
+async function lerTabela(tab, cid) {
+  var tudo = [], passo = 1000, de = 0, filtrar = (cid != null) && TABELAS_SEM_CLIENTE.indexOf(tab) < 0;
+  while (true) {
+    var q = sb.from(tab).select('*');
+    if (filtrar) q = q.eq('cliente_id', cid);
+    var r = await q.range(de, de + passo - 1);
+    if (r.error && filtrar && /cliente_id/i.test(r.error.message || '')) { filtrar = false; continue; }
+    if (r.error) throw r.error;
+    tudo = tudo.concat(r.data || []);
+    if (!r.data || r.data.length < passo) break;
+    de += passo;
+    if (de > 200000) break;
+  }
+  return tudo;
+}
+
+function paraCsv(rows) {
+  if (!rows.length) return '﻿';
+  var cols = []; rows.forEach(function (r) { Object.keys(r).forEach(function (k) { if (cols.indexOf(k) < 0) cols.push(k); }); });
+  function cel(v) { if (v == null) return ''; if (typeof v === 'object') v = JSON.stringify(v); v = String(v); return /[";\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  var linhas = [cols.map(cel).join(';')];
+  rows.forEach(function (r) { linhas.push(cols.map(function (c) { return cel(r[c]); }).join(';')); });
+  return '﻿' + linhas.join('\r\n');
+}
+
+function baixar(blob, nome) {
+  var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
+  document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+}
+
+async function gerarBackup() {
+  var btn = document.getElementById('btnBackup'); btn.disabled = true;
+  document.getElementById('boxResultado').style.display = 'none';
+  var box = document.getElementById('boxProgresso'); box.style.display = 'block';
+  var lista = document.getElementById('listaTabelas'); lista.innerHTML = '';
+  var escopo = 'empresa';
+  if (ehMaster()) { var rd = document.querySelector('input[name=escopo]:checked'); escopo = rd ? rd.value : 'empresa'; }
+  var cid = (escopo === 'todas') ? null : clienteId();
+  if (!ehMaster() && cid == null) { document.getElementById('boxResultado').style.display = 'block'; document.getElementById('boxResultado').innerHTML = '<div class="aviso erro">Empresa não identificada. Entre novamente no sistema.</div>'; btn.disabled = false; return; }
+
+  var dados = {}, resumo = [], total = 0, ok = 0;
+  for (var i = 0; i < TABELAS.length; i++) {
+    var t = TABELAS[i];
+    document.getElementById('txtProgresso').textContent = 'Lendo ' + t + ' (' + (i + 1) + ' de ' + TABELAS.length + ')...';
+    document.getElementById('barraFill').style.width = Math.round((i / TABELAS.length) * 100) + '%';
+    var linha = document.createElement('div'); linha.className = 'linha';
+    linha.innerHTML = '<span>' + esc(t) + '</span><span class="st-run"><i class="fas fa-spinner fa-spin"></i></span>';
+    lista.appendChild(linha);
+    try {
+      var rows = limparSecretos(await lerTabela(t, cid));
+      dados[t] = rows; total += rows.length; ok++;
+      resumo.push({ tabela: t, linhas: rows.length, situacao: 'ok' });
+      linha.lastChild.className = 'st-ok'; linha.lastChild.textContent = rows.length + ' registro(s)';
+    } catch (e) {
+      resumo.push({ tabela: t, linhas: 0, situacao: 'ignorada' });
+      linha.lastChild.className = 'st-erro'; linha.lastChild.textContent = 'ignorada (não existe ou sem acesso)';
+    }
+  }
+  document.getElementById('barraFill').style.width = '100%';
+  document.getElementById('txtProgresso').textContent = 'Montando o arquivo...';
+
+  var agora = new Date();
+  var carimbo = agora.getFullYear() + '-' + String(agora.getMonth() + 1).padStart(2, '0') + '-' + String(agora.getDate()).padStart(2, '0') + '_' + String(agora.getHours()).padStart(2, '0') + 'h' + String(agora.getMinutes()).padStart(2, '0');
+  var u = usuario();
+  var cabecalho = { sistema: 'Sacramento ERP', gerado_em: agora.toISOString(), gerado_por: u && u.email || '', escopo: (cid == null ? 'todas as empresas' : 'empresa ' + cid), tabelas: resumo };
+  var json = JSON.stringify({ cabecalho: cabecalho, dados: dados }, null, 1);
+  var nomeBase = 'sacramento-erp-backup_' + carimbo;
+
+  try {
+    if (window.JSZip) {
+      var zip = new JSZip();
+      zip.file('backup_completo.json', json);
+      var pasta = zip.folder('planilhas');
+      Object.keys(dados).forEach(function (t) { if (dados[t].length) pasta.file(t + '.csv', paraCsv(dados[t])); });
+      zip.file('LEIA-ME.txt', 'Backup do Sacramento ERP\r\nGerado em: ' + fmtDataHora(agora) + '\r\nPor: ' + (cabecalho.gerado_por) + '\r\nEscopo: ' + cabecalho.escopo + '\r\n\r\n- backup_completo.json : todos os dados (usado para restaurar).\r\n- planilhas\\*.csv : uma planilha por tabela (abra no Excel).\r\n\r\nContém dados pessoais e financeiros (LGPD). Guarde em local seguro e nao envie por e-mail/WhatsApp.\r\nSenhas e chaves nao fazem parte do backup.\r\n');
+      var blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+      baixar(blob, nomeBase + '.zip');
+    } else {
+      baixar(new Blob([json], { type: 'application/json' }), nomeBase + '.json');
+    }
+    try { localStorage.setItem('sacramentoUltimoBackup', agora.toISOString()); } catch (e) {}
+    document.getElementById('ultimoBackup').textContent = 'Último backup feito neste computador: ' + fmtDataHora(agora);
+    document.getElementById('txtProgresso').textContent = 'Concluído.';
+    document.getElementById('boxResultado').style.display = 'block';
+    document.getElementById('boxResultado').innerHTML = '<div class="aviso ok"><b><i class="fas fa-check-circle"></i> Backup gerado.</b> ' + ok + ' tabela(s) lidas, ' + total + ' registro(s) no total. O arquivo <b>' + esc(nomeBase) + (window.JSZip ? '.zip' : '.json') + '</b> foi baixado para a pasta de Downloads do seu computador. Guarde-o em local seguro.</div>';
+  } catch (e) {
+    document.getElementById('boxResultado').style.display = 'block';
+    document.getElementById('boxResultado').innerHTML = '<div class="aviso erro">Não foi possível montar o arquivo: ' + esc(e.message || e) + '</div>';
+  }
+  btn.disabled = false;
+}
+
+iniciarTela();
+</script>
+<script src="erp-core.js"></script>
+</body>
+</html>
