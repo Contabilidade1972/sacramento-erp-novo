@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Faturamento de Serviços (NFS-e) — Sacramento ERP</title>
+    <title>Faturamento de Serviços (NFS-e) P&D — Sacramento ERP</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
+    <script src="erp-print.js"></script>
     <script src="erp-core.js"></script>
     <style>
         :root {
@@ -24,14 +25,43 @@
             --border: #e2e8f0;
         }
 
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
         .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
         .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
         .btn-acao:hover { background: var(--primary-dark); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        /* MENU DE ABAS INTERNO DE CADASTROS & ESTRUTURA (GARANTIDO NO TOPO) */
+        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); position: sticky; top: 67px; z-index: 999; }
+        .sub-nav-item { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); text-decoration: none; border-bottom: 3px solid transparent; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .sub-nav-item:hover { color: var(--primary); }
+        .sub-nav-item.ativo { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
 
         .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
         .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
@@ -50,16 +80,18 @@
         .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
         .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
 
         .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
-        .b-emitida { background: #dcfce7; color: #166534; }
-        .b-pendente { background: #fef3c7; color: #92400e; }
-        .b-cancelada { background: #fee2e2; color: #991b1b; }
+        .b-ativo { background: #dcfce7; color: #166534; }
+        .b-manutencao { background: #fef3c7; color: #92400e; }
+        .b-baixado { background: #fee2e2; color: #991b1b; }
 
         .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
         .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
         .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { background: #f1f5f9; padding: 12px 14px; font-weight: 800; border-top: 2px solid var(--border); color: var(--secondary); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
@@ -67,39 +99,66 @@
         .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+    
+        .b-emitida { background: #dcfce7; color: #166534; }
+        .b-pendente { background: #fef3c7; color: #92400e; }
+        .b-cancelada { background: #fee2e2; color: #991b1b; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .nota-cancelada td { color: var(--text-light); text-decoration: line-through; }
+        .nota-cancelada td:last-child, .nota-cancelada td:nth-child(5) { text-decoration: none; }
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
 <div class="container">
     <div class="page-toolbar">
-        <button class="btn-acao" onclick="location.href='modulo_tecnologia_pd.html'"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</button>
+        <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
     </div>
 
     <div>
         <div class="page-title"><i class="fas fa-file-invoice-dollar" style="color:var(--primary);"></i> Faturamento de Serviços (NFS-e) — P&D</div>
-        <div class="page-subtitle">Emissão, controle e vinculação de Notas Fiscais de Serviços Eletrônicas para clientes e parceiros de P&D</div>
+        <div class="page-subtitle">Registro e controle das Notas Fiscais de Serviço emitidas, vinculadas aos projetos de P&D</div>
     </div>
 
     <div class="panel">
         <div class="panel-header" style="border:none; margin-bottom:4px;">
-            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registar / Emitir NFS-e</span>
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar NFS-e</span>
         </div>
         <input type="hidden" id="edit_id">
 
         <div class="form-row">
             <div>
-                <label>Projeto Vinculado *</label>
-                <select id="projeto_id" class="form-control">
-                    <option value="">— Selecione o projeto —</option>
-                </select>
+                <label>Projeto vinculado *</label>
+                <select id="projeto_id" class="form-control"><option value="">— Selecione o projeto —</option></select>
             </div>
             <div>
-                <label>Tomador / Cliente (Parceiro) *</label>
-                <select id="cliente_tomador" class="form-control">
-                    <option value="">— Selecione o tomador —</option>
-                </select>
+                <label>Tomador / Cliente *</label>
+                <select id="cliente_tomador" class="form-control"><option value="">— Selecione o tomador —</option></select>
+                <div style="font-size:11px; color:var(--text-light); margin-top:-6px; margin-bottom:10px;">Vem do cadastro de <a href="parceiros.html" style="color:var(--primary); font-weight:700;">Parceiros &amp; Clientes</a> (clientes).</div>
             </div>
         </div>
 
@@ -116,35 +175,79 @@
 
         <div class="form-row">
             <div>
-                <label>Data de Emissão *</label>
+                <label>Data de emissão *</label>
                 <input id="data_emissao" class="form-control" type="date">
             </div>
             <div>
-                <label>Status da NFS-e *</label>
+                <label>Situação da NFS-e *</label>
                 <select id="status_nf" class="form-control">
                     <option value="emitida">Emitida / Autorizada</option>
-                    <option value="pendente">Pendente de Emissão</option>
+                    <option value="pendente">Pendente de emissão</option>
                     <option value="cancelada">Cancelada</option>
                 </select>
             </div>
         </div>
 
         <div>
-            <label>Discriminação dos Serviços Prestados *</label>
-            <input id="discriminacao" class="form-control" placeholder="Descreva detalhadamente os serviços técnicos de P&D executados...">
+            <label>Discriminação dos serviços prestados *</label>
+            <input id="discriminacao" class="form-control" placeholder="Descreva os serviços técnicos de P&D executados...">
         </div>
 
         <div style="display:flex; gap:10px; margin-top:4px;">
-            <button class="btn-primary" id="btnSalvar" onclick="salvarNota()"><i class="fas fa-save"></i> Registar NFS-e</button>
+            <button class="btn-primary" id="btnSalvar" onclick="salvarNota()"><i class="fas fa-save"></i> Registrar NFS-e</button>
             <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
     </div>
 
     <div class="panel">
         <div class="panel-header">
-            <span><i class="fas fa-list"></i> Notas Fiscais Emitidas (P&D)</span>
+            <h3><i class="fas fa-list"></i> Notas fiscais registradas (P&D)</h3>
+            <button class="btn-primary" style="background: var(--success); padding: 7px 14px;" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir relatório filtrado</button>
         </div>
-        <div id="listaNotas" style="overflow-x:auto;">A carregar notas fiscais...</div>
+
+        <div class="filter-grid">
+            <div>
+                <label>Pesquisar (nº / tomador / discriminação)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Digite para buscar..." oninput="renderNotas()">
+            </div>
+            <div>
+                <label>Situação</label>
+                <select id="filtroStatus" class="form-control" onchange="renderNotas()">
+                    <option value="">— Todas —</option>
+                    <option value="emitida">Emitida</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="cancelada">Cancelada</option>
+                </select>
+            </div>
+            <div>
+                <label>Projeto</label>
+                <select id="filtroProjeto" class="form-control" onchange="renderNotas()"><option value="">— Todos os projetos —</option></select>
+            </div>
+            <div>
+                <label>Emissão — de</label>
+                <input type="date" id="filtroDataIni" class="form-control" onchange="renderNotas()">
+            </div>
+            <div>
+                <label>Emissão — até</label>
+                <input type="date" id="filtroDataFim" class="form-control" onchange="renderNotas()">
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-secondary" style="width:100%; height:42px; margin-bottom: 12px;" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar filtros</button>
+            </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th>NFS-e nº</th><th>Emissão</th><th>Tomador / Cliente</th><th>Projeto</th><th>Situação</th>
+                        <th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyNotas"><tr><td colspan="7" class="empty-state">Carregando notas fiscais...</td></tr></tbody>
+                <tfoot id="tfootNotas"></tfoot>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -155,28 +258,55 @@
 <script>
 var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
-
-const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-let notasCache = [];
-let projetosCache = [];
-let parceirosCache = [];
-
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let notasCache = [], projetosCache = [], parceirosCache = [];
 var STATUS_MAP = {
-    emitida:    { rotulo: 'Emitida',    classe: 'b-emitida' },
-    pendente:   { rotulo: 'Pendente',   classe: 'b-pendente' },
-    cancelada:  { rotulo: 'Cancelada',  classe: 'b-cancelada' }
+    emitida:   { rotulo: 'Emitida',   classe: 'b-emitida' },
+    pendente:  { rotulo: 'Pendente',  classe: 'b-pendente' },
+    cancelada: { rotulo: 'Cancelada', classe: 'b-cancelada' }
 };
 
-function obterUsuarioAtual(){try{const s=localStorage.getItem('usuarioLogado');if(s)return JSON.parse(s);}catch(e){}return null;}
-function clienteIdAtual(){try{const sel=localStorage.getItem('empresaSelecionada');if(sel)return parseInt(sel);}catch(e){}const u=obterUsuarioAtual();return (u&&u.cliente_id)?u.cliente_id:1;}
-
-function sbFiltro(tabela){
-    let q=sb.from(tabela).select('*');
-    const cid=clienteIdAtual();
-    if(!TABELAS_SEM_CLIENTE.includes(tabela)&&cid) q=q.eq('cliente_id',cid);
-    return q;
+function esc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
 }
-
+window.obterUsuario = function(){
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+};
+window.ehMaster = function(){
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+window.clienteIdAtual = function(){
+    const u = window.obterUsuario();
+    if (!u) return null;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
+};
+window.sbFiltro = function(tabela){
+    let q = sb.from(tabela).select('*');
+    const cid = window.clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) q = q.eq('cliente_id', cid);
+    return q;
+};
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', String(select.value));
+    location.reload();
+};
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
 function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){
@@ -185,14 +315,13 @@ function toast(msg,type='success'){
         document.body.appendChild(c);
     }
     x.className='toast '+type;
-    x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+esc(msg);
     c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+    setTimeout(function(){x.remove();},3500);
 }
-
 function parseValorBR(v){
     if(v===null||v===undefined)return 0;
-    var s=String(v).trim().replace(/[R$\s]/g,'');
+    var s=String(v).trim().replace(/[R\$\s]/g,'');
     if(!s)return 0;
     if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
     var n=parseFloat(s);
@@ -204,124 +333,211 @@ function formatarCampoMoeda(el){
     el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 }
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function formatDataBR(d){if(!d)return '—';var p=String(d).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+function formatDataBR(d){if(!d)return '—';var p=String(d).substring(0,10).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
 
-async function carregarProjetosSelect(){
-    var r = await sbFiltro('projetos_pd');
-    if(!r.error) {
-        projetosCache = r.data || [];
-        var sel = document.getElementById('projeto_id');
-        sel.innerHTML = '<option value="">— Selecione o projeto —</option>';
-        projetosCache.forEach(p => {
-            sel.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
-        });
-    }
+function rotuloProjeto(id){
+    for(var i=0;i<projetosCache.length;i++){ if(String(projetosCache[i].id)===String(id)) return (projetosCache[i].codigo ? projetosCache[i].codigo + ' · ' : '') + (projetosCache[i].nome || ''); }
+    return '—';
+}
+function parceiroPorId(id){
+    for(var i=0;i<parceirosCache.length;i++){ if(String(parceirosCache[i].id)===String(id)) return parceirosCache[i]; }
+    return null;
+}
+function nomeParceiro(p){ return p ? (p.nome || p.razao_social || p.nome_fantasia || 'Cliente') : '—'; }
+function docParceiro(p){ return p ? (p.cnpj_cpf || p.cnpj || p.cpf || '') : ''; }
+
+async function carregarBase(){
+    var tbody = document.getElementById('tbodyNotas');
+    if(!window.clienteIdAtual()){ tbody.innerHTML='<tr><td colspan="7" class="empty-state">Empresa não identificada. Saia e entre novamente.</td></tr>'; return; }
+    var res = await Promise.all([window.sbFiltro('projetos_pd'), window.sbFiltro('parceiros'), window.sbFiltro('faturamento_pd')]);
+    if(res[0].error){ tbody.innerHTML='<tr><td colspan="7" class="empty-state">Erro ao carregar projetos: '+esc(res[0].error.message)+'</td></tr>'; return; }
+    if(res[2].error){ tbody.innerHTML='<tr><td colspan="7" class="empty-state">Erro ao carregar notas fiscais: '+esc(res[2].error.message)+'</td></tr>'; return; }
+    projetosCache = res[0].data || [];
+    parceirosCache = res[1].error ? [] : (res[1].data || []);
+    notasCache = res[2].data || [];
+    montarSelects();
+    renderNotas();
 }
 
-async function carregarParceirosSelect(){
-    var r = await sbFiltro('parceiros');
-    if(!r.error) {
-        parceirosCache = r.data || [];
-        var sel = document.getElementById('cliente_tomador');
-        sel.innerHTML = '<option value="">— Selecione o tomador —</option>';
-        parceirosCache.forEach(p => {
-            sel.innerHTML += `<option value="${p.id}">${p.nome || p.razao_social || 'Cliente'} (${p.cnpj || p.cpf || 'Sem doc'})</option>`;
-        });
-    }
+function montarSelects(extraTomador){
+    var sp = document.getElementById('projeto_id'), fp = document.getElementById('filtroProjeto'), st = document.getElementById('cliente_tomador');
+    var vp = sp.value, vf = fp.value, vt = st.value;
+    sp.innerHTML = '<option value="">— Selecione o projeto —</option>';
+    fp.innerHTML = '<option value="">— Todos os projetos —</option>';
+    projetosCache.forEach(function(p){
+        var t = (p.codigo ? p.codigo + ' · ' : '') + (p.nome || '');
+        [sp, fp].forEach(function(s){ var o = document.createElement('option'); o.value = p.id; o.textContent = t; s.appendChild(o); });
+    });
+    st.innerHTML = '<option value="">— Selecione o tomador —</option>';
+    var vistos = {};
+    parceirosCache.filter(function(p){
+        var tp = String(p.tipo_cadastro || '');
+        return !tp || /cliente/i.test(tp);
+    }).forEach(function(p){
+        vistos[String(p.id)] = true;
+        var o = document.createElement('option'); o.value = p.id;
+        o.textContent = nomeParceiro(p) + (docParceiro(p) ? ' (' + docParceiro(p) + ')' : '');
+        st.appendChild(o);
+    });
+    // tomador já gravado numa nota, mesmo que o cadastro tenha mudado, continua selecionável
+    [extraTomador].concat(notasCache.map(function(n){ return n.cliente_tomador; })).forEach(function(id){
+        if(!id || vistos[String(id)]) return;
+        var p = parceiroPorId(id); if(!p) return;
+        vistos[String(id)] = true;
+        var o = document.createElement('option'); o.value = p.id; o.textContent = nomeParceiro(p) + (docParceiro(p) ? ' (' + docParceiro(p) + ')' : ''); st.appendChild(o);
+    });
+    sp.value = vp; fp.value = vf; st.value = vt;
 }
 
-async function carregarNotas(){
-    var el=document.getElementById('listaNotas');
-    var cid=clienteIdAtual();
-    if(!cid){el.innerHTML='<div class="empty-state">Cliente não identificado.</div>';return;}
-    var r=await sbFiltro('faturamento_pd');
-    if(r.error){el.innerHTML='<div class="empty-state">Tabela em configuração ou vazia.</div>';return;}
-    notasCache=r.data||[];
-    if(!notasCache.length){el.innerHTML='<div class="empty-state">Nenhuma NFS-e registrada.</div>';return;}
-    
-    var html='<table class="analitica-table"><thead><tr><th>NFS-e Nº</th><th>Emissão</th><th>Tomador / Cliente</th><th>Projeto</th><th>Status</th><th style="text-align:right;">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-    notasCache.forEach(function(n){
-        var proj = null;
-        for(var i=0; i<projetosCache.length; i++){ if(String(projetosCache[i].id) === String(n.projeto_id)) proj = projetosCache[i]; }
-        var nomeProj = proj ? (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome : '—';
+function obterFiltradas(){
+    var termo = document.getElementById('filtroTexto').value.toLowerCase().trim();
+    var fs = document.getElementById('filtroStatus').value;
+    var fpj = document.getElementById('filtroProjeto').value;
+    var di = document.getElementById('filtroDataIni').value, df = document.getElementById('filtroDataFim').value;
+    return notasCache.filter(function(n){
+        var dt = String(n.data_emissao || '').substring(0,10);
+        if(fs && (n.status_nf || 'emitida') !== fs) return false;
+        if(fpj && String(n.projeto_id) !== String(fpj)) return false;
+        if(di && dt < di) return false;
+        if(df && dt > df) return false;
+        if(termo){
+            var alvo = ((n.numero_nf||'') + ' ' + nomeParceiro(parceiroPorId(n.cliente_tomador)) + ' ' + (n.discriminacao||'') + ' ' + rotuloProjeto(n.projeto_id)).toLowerCase();
+            if(alvo.indexOf(termo) < 0) return false;
+        }
+        return true;
+    }).sort(function(a,b){ return String(b.data_emissao||'').localeCompare(String(a.data_emissao||'')); });
+}
 
-        var parc = null;
-        for(var j=0; j<parceirosCache.length; j++){ if(String(parceirosCache[j].id) === String(n.cliente_tomador)) parc = parceirosCache[j]; }
-        var nomeParc = parc ? (parc.nome || parc.razao_social) : '—';
+function totais(lista){
+    var t = { emitida:0, pendente:0, cancelada:0 };
+    lista.forEach(function(n){ var k = t.hasOwnProperty(n.status_nf) ? n.status_nf : 'emitida'; t[k] += parseFloat(n.valor_nf) || 0; });
+    return t;
+}
 
+function renderNotas(){
+    var tbody = document.getElementById('tbodyNotas'), tfoot = document.getElementById('tfootNotas');
+    var lista = obterFiltradas();
+    if(!lista.length){
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Nenhuma NFS-e encontrada.</td></tr>';
+        tfoot.innerHTML = '';
+        return;
+    }
+    tbody.innerHTML = '';
+    lista.forEach(function(n){
         var st = STATUS_MAP[n.status_nf] || STATUS_MAP.emitida;
-
-        html+='<tr>'+
-            '<td><strong>'+(n.numero_nf||'—')+'</strong><br><small style="color:var(--text-light)">'+(n.discriminacao||'')+'</small></td>'+
+        var tr = document.createElement('tr');
+        if(n.status_nf === 'cancelada') tr.className = 'nota-cancelada';
+        tr.innerHTML =
+            '<td><strong>'+esc(n.numero_nf||'—')+'</strong><br><small style="color:var(--text-light)">'+esc(n.discriminacao||'')+'</small></td>'+
             '<td>'+formatDataBR(n.data_emissao)+'</td>'+
-            '<td>'+nomeParc+'</td>'+
-            '<td>'+nomeProj+'</td>'+
+            '<td>'+esc(nomeParceiro(parceiroPorId(n.cliente_tomador)))+'</td>'+
+            '<td>'+esc(rotuloProjeto(n.projeto_id))+'</td>'+
             '<td><span class="badge '+st.classe+'">'+st.rotulo+'</span></td>'+
             '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(n.valor_nf)+'</td>'+
             '<td style="text-align:right; white-space:nowrap;">'+
-                '<button class="btn-secondary" onclick="editarNota(\''+n.id+'\')" title="Editar"><i class="fas fa-pen"></i></button>'+
-                '<button class="btn-secondary" onclick="excluirNota(\''+n.id+'\')" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
-            '</td>'+
-        '</tr>';
+                '<button class="btn-secondary btn-editar" type="button" title="Editar"><i class="fas fa-pen"></i></button> '+
+                '<button class="btn-secondary btn-excluir" type="button" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>';
+        tr.querySelector('.btn-editar').onclick = function(){ editarNota(n.id); };
+        tr.querySelector('.btn-excluir').onclick = function(){ excluirNota(n.id); };
+        tbody.appendChild(tr);
     });
-    html+='</tbody></table>';
-    el.innerHTML=html;
+    var t = totais(lista);
+    tfoot.innerHTML =
+        '<tr><td colspan="5" style="text-align:right; text-transform:uppercase;">Total faturado (emitidas):</td><td style="text-align:right;">R$ '+fmtBR(t.emitida)+'</td><td></td></tr>'+
+        '<tr><td colspan="5" style="text-align:right; text-transform:uppercase; font-weight:600;">Pendentes de emissão:</td><td style="text-align:right; font-weight:600;">R$ '+fmtBR(t.pendente)+'</td><td></td></tr>'+
+        '<tr><td colspan="5" style="text-align:right; text-transform:uppercase; font-weight:600;">Canceladas (não somam no faturamento):</td><td style="text-align:right; font-weight:600;">R$ '+fmtBR(t.cancelada)+'</td><td></td></tr>';
+}
+
+function limparFiltros(){
+    ['filtroTexto','filtroStatus','filtroProjeto','filtroDataIni','filtroDataFim'].forEach(function(id){ document.getElementById(id).value = ''; });
+    renderNotas();
+}
+
+function executarImpressao(){
+    var lista = obterFiltradas();
+    var filtros = [];
+    var tx = document.getElementById('filtroTexto').value.trim();
+    var fs = document.getElementById('filtroStatus'), fp = document.getElementById('filtroProjeto');
+    var di = document.getElementById('filtroDataIni').value, df = document.getElementById('filtroDataFim').value;
+    if(tx) filtros.push(['Pesquisa', tx]);
+    if(fs.value) filtros.push(['Situação', fs.options[fs.selectedIndex].text]);
+    if(fp.value) filtros.push(['Projeto', fp.options[fp.selectedIndex].text]);
+    if(di) filtros.push(['Emissão de', formatDataBR(di)]);
+    if(df) filtros.push(['Emissão até', formatDataBR(df)]);
+    var t = totais(lista);
+    var linhas = lista.map(function(n){
+        var st = STATUS_MAP[n.status_nf] || STATUS_MAP.emitida;
+        return [n.numero_nf || '—', formatDataBR(n.data_emissao), nomeParceiro(parceiroPorId(n.cliente_tomador)), rotuloProjeto(n.projeto_id),
+                (n.discriminacao || '—'),
+                {t: st.rotulo, cls: n.status_nf === 'cancelada' ? 'neg' : (n.status_nf === 'pendente' ? 'warn' : '')},
+                'R$ ' + fmtBR(n.valor_nf)];
+    });
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Faturamento de Serviços (NFS-e) — P&D',
+        subtitulo: 'Notas fiscais de serviço vinculadas aos projetos de P&D',
+        codigo: 'PD-NFS',
+        orientacao: 'landscape',
+        filtros: filtros,
+        resumo: [['Notas listadas', String(lista.length)], ['Faturado (emitidas)', 'R$ ' + fmtBR(t.emitida)], ['Pendentes', 'R$ ' + fmtBR(t.pendente)], ['Canceladas', 'R$ ' + fmtBR(t.cancelada)]],
+        colunas: [{t:'NFS-e nº',w:1.3},{t:'Emissão',w:1.2},{t:'Tomador / Cliente',w:2.2},{t:'Projeto',w:2.2},{t:'Discriminação',w:3},{t:'Situação',w:1.2},{t:'Valor (R$)',w:1.5,a:'right'}],
+        linhas: linhas,
+        totais: ['TOTAL FATURADO (emitidas)', '', '', '', '', '', 'R$ ' + fmtBR(t.emitida)],
+        observacao: 'Notas canceladas e pendentes não compõem o total faturado.'
+    });
 }
 
 function editarNota(id){
-    var n=null;
-    for(var i=0;i<notasCache.length;i++){if(String(notasCache[i].id)===String(id))n=notasCache[i];}
-    if(!n)return;
-    document.getElementById('edit_id').value=n.id;
-    document.getElementById('projeto_id').value=n.projeto_id||'';
-    document.getElementById('cliente_tomador').value=n.cliente_tomador||'';
-    document.getElementById('numero_nf').value=n.numero_nf||'';
-    document.getElementById('valor_nf').value=n.valor_nf?fmtBR(n.valor_nf):'';
-    document.getElementById('data_emissao').value=n.data_emissao||'';
-    document.getElementById('status_nf').value=n.status_nf||'emitida';
-    document.getElementById('discriminacao').value=n.discriminacao||'';
-
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando NFS-e';
-    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar NFS-e';
-    document.getElementById('btnCancelar').style.display='inline-flex';
+    var n = null;
+    for(var i=0;i<notasCache.length;i++){ if(String(notasCache[i].id)===String(id)) n = notasCache[i]; }
+    if(!n) return;
+    montarSelects(n.cliente_tomador);
+    document.getElementById('edit_id').value = n.id;
+    document.getElementById('projeto_id').value = n.projeto_id || '';
+    document.getElementById('cliente_tomador').value = n.cliente_tomador || '';
+    document.getElementById('numero_nf').value = n.numero_nf || '';
+    document.getElementById('valor_nf').value = n.valor_nf ? fmtBR(n.valor_nf) : '';
+    document.getElementById('data_emissao').value = String(n.data_emissao || '').substring(0,10);
+    document.getElementById('status_nf').value = n.status_nf || 'emitida';
+    document.getElementById('discriminacao').value = n.discriminacao || '';
+    document.getElementById('tituloForm').innerHTML = '<i class="fas fa-edit" style="color:var(--primary)"></i> Editando NFS-e';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar NFS-e';
+    document.getElementById('btnCancelar').style.display = 'inline-flex';
     window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function cancelarEdicao(){
-    document.getElementById('edit_id').value='';
-    document.getElementById('projeto_id').value='';
-    document.getElementById('cliente_tomador').value='';
-    document.getElementById('numero_nf').value='';
-    document.getElementById('valor_nf').value='';
-    document.getElementById('data_emissao').value='';
-    document.getElementById('status_nf').value='emitida';
-    document.getElementById('discriminacao').value='';
-
-    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registar / Emitir NFS-e';
-    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Registar NFS-e';
-    document.getElementById('btnCancelar').style.display='none';
+    ['edit_id','projeto_id','cliente_tomador','numero_nf','valor_nf','data_emissao','discriminacao'].forEach(function(id){ document.getElementById(id).value = ''; });
+    document.getElementById('status_nf').value = 'emitida';
+    document.getElementById('tituloForm').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--success)"></i> Registrar NFS-e';
+    document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Registrar NFS-e';
+    document.getElementById('btnCancelar').style.display = 'none';
 }
 
 async function salvarNota(){
-    var cid=clienteIdAtual();
-    if(!cid){toast('Cliente não identificado.','error');return;}
+    var cid = window.clienteIdAtual();
+    if(!cid){ toast('Empresa não identificada. Saia e entre novamente.','error'); return; }
+    var projetoId = document.getElementById('projeto_id').value;
+    if(!projetoId){ toast('Selecione o projeto vinculado.','error'); return; }
+    var tomador = document.getElementById('cliente_tomador').value;
+    if(!tomador){ toast('Selecione o tomador / cliente.','error'); return; }
+    var numNf = document.getElementById('numero_nf').value.trim();
+    if(!numNf){ toast('Informe o número da NFS-e.','error'); return; }
+    var valor = parseValorBR(document.getElementById('valor_nf').value);
+    if(!valor || valor <= 0){ toast('Informe o valor da NFS-e.','error'); return; }
+    var data = document.getElementById('data_emissao').value;
+    if(!data){ toast('Informe a data de emissão.','error'); return; }
+    var disc = document.getElementById('discriminacao').value.trim();
+    if(!disc){ toast('Informe a discriminação dos serviços.','error'); return; }
+    var editId = document.getElementById('edit_id').value;
 
-    var projetoId=document.getElementById('projeto_id').value;
-    if(!projetoId){toast('Selecione o projeto vinculado.','error');return;}
+    // número de NFS-e não pode se repetir na mesma empresa (notas canceladas não contam)
+    var duplicada = notasCache.some(function(n){
+        return String(n.id) !== String(editId) && String(n.numero_nf||'').trim().toLowerCase() === numNf.toLowerCase() && n.status_nf !== 'cancelada';
+    });
+    if(duplicada && document.getElementById('status_nf').value !== 'cancelada'){ toast('Já existe uma NFS-e com esse número.','error'); return; }
 
-    var tomador=document.getElementById('cliente_tomador').value;
-    if(!tomador){toast('Selecione o tomador/cliente.','error');return;}
-
-    var numNf=document.getElementById('numero_nf').value.trim();
-    if(!numNf){toast('Informe o número da NFS-e.','error');return;}
-
-    var valor=parseValorBR(document.getElementById('valor_nf').value);
-    if(!valor||valor<=0){toast('Informe o valor da NFS-e.','error');return;}
-
-    var data=document.getElementById('data_emissao').value;
-    if(!data){toast('Informe a data de emissão.','error');return;}
-
-    var dados={
+    var dados = {
         cliente_id: cid,
         projeto_id: projetoId,
         cliente_tomador: tomador,
@@ -329,49 +545,46 @@ async function salvarNota(){
         valor_nf: valor,
         data_emissao: data,
         status_nf: document.getElementById('status_nf').value,
-        discriminacao: document.getElementById('discriminacao').value.trim()||null
+        discriminacao: disc
     };
-
-    var editId=document.getElementById('edit_id').value;
-    if(editId){
-        var ru=await sb.from('faturamento_pd').update(dados).eq('id', editId);
-        if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
-        toast('NFS-e atualizada com sucesso!');
-        cancelarEdicao();
-    }else{
-        var ri=await sb.from('faturamento_pd').insert([dados]);
-        if(ri.error){
-            toast('Erro ao salvar (verifique se a tabela faturamento_pd existe no Supabase).', 'error');
-            return;
+    var btn = document.getElementById('btnSalvar'); btn.disabled = true;
+    try{
+        if(editId){
+            var ru = await sb.from('faturamento_pd').update(dados).eq('id', editId).eq('cliente_id', cid);
+            if(ru.error){ toast('Erro ao atualizar: '+ru.error.message,'error'); return; }
+            toast('NFS-e atualizada com sucesso!');
+        }else{
+            var ri = await sb.from('faturamento_pd').insert([dados]);
+            if(ri.error){ toast('Erro ao salvar: '+ri.error.message,'error'); return; }
+            toast('NFS-e registrada com sucesso!');
         }
-        toast('NFS-e registada com sucesso!');
         cancelarEdicao();
-    }
-    carregarNotas();
+        await carregarBase();
+    } finally { btn.disabled = false; }
 }
 
 async function excluirNota(id){
-    if(!confirm('Tem certeza que deseja excluir este registo de NFS-e?'))return;
-    var r=await sb.from('faturamento_pd').delete().eq('id', id);
-    if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
+    if(!confirm('Tem certeza que deseja excluir este registro de NFS-e? Se a nota foi cancelada, prefira mudar a situação para "Cancelada".')) return;
+    var cid = window.clienteIdAtual();
+    var r = await sb.from('faturamento_pd').delete().eq('id', id).eq('cliente_id', cid);
+    if(r.error){ toast('Erro ao excluir: '+r.error.message,'error'); return; }
     toast('NFS-e excluída com sucesso!');
-    carregarNotas();
+    await carregarBase();
 }
 
 async function inicializarPagina(){
-    let u=obterUsuarioAtual();
-    if(!u||!u.email){location.href='login.html';return;}
-    await carregarProjetosSelect();
-    await carregarParceirosSelect();
-    await carregarNotas();
+    let u = window.obterUsuario();
+    if(!u || !u.email){ location.href='login.html'; return; }
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (window.ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
+    await carregarBase();
 }
-
-window.onload=inicializarPagina;
+window.onload = inicializarPagina;
 </script>
-    <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
-    <script src="erp-core.js"></script>
+<script src="erp-core.js"></script>
 </body>
 </html>
