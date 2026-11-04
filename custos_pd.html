@@ -248,10 +248,19 @@
 
         <div style="margin-bottom:14px;">
             <label>Descontos / retenções do pagamento (opcional — aparecem no recibo)</label>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;margin-bottom:10px;">
+                <div style="font-size:13px;font-weight:700;color:#1e40af;margin-bottom:8px;"><i class="fas fa-calculator"></i> Cálculo automático de INSS e IRRF (prestador autônomo — RPA)</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px;">
+                    <div><label style="font-size:12px;">Nº de dependentes (IRRF)</label><input id="rpaDependentes" class="form-control" type="number" min="0" value="0" style="margin-bottom:0;"></div>
+                    <div><label style="font-size:12px;">INSS já retido no mês por outras fontes (R$)</label><input id="rpaInssOutras" class="form-control" placeholder="0,00" onblur="formatarCampoMoeda(this)" style="margin-bottom:0;"></div>
+                </div>
+                <button class="btn-secondary" type="button" onclick="calcularRetencoesRPA()" style="margin-top:10px;"><i class="fas fa-magic"></i> Calcular INSS e IRRF automaticamente</button>
+                <div id="rpaMemoria" style="font-size:12px;color:#1e3a8a;margin-top:8px;"></div>
+            </div>
             <div id="listaDescontos"></div>
             <button class="btn-secondary" type="button" onclick="addDesconto()"><i class="fas fa-plus"></i> Adicionar desconto</button>
             <div id="resumoDescontos" style="font-size:13px; margin-top:10px; color:var(--text-light);"></div>
-            <div style="font-size:11px; color:var(--text-light); margin-top:4px;">O valor do gasto acima é sempre o valor <b>bruto</b>. Os descontos (INSS, IRRF, ISS, adiantamento etc.) só alteram o valor líquido pago no recibo. Informe o valor em R$ ou a porcentagem sobre o bruto.</div>
+            <div style="font-size:11px; color:var(--text-light); margin-top:4px;">O valor do gasto acima é sempre o valor <b>bruto</b>. A contribuição patronal de 20% (INSS) é encargo da empresa e <b>não</b> é descontada do prestador. Os descontos (INSS, IRRF, ISS, adiantamento etc.) só alteram o valor líquido pago no recibo. Informe o valor em R$ ou a porcentagem sobre o bruto.</div>
         </div>
 
         <div class="rpa-alert">
@@ -424,6 +433,55 @@ async function gravarTolerante(tabela, dados, editId, cid){
     return { ok:false, erro:{message:'Não foi possível gravar.'} };
 }
 
+// ===== CÁLCULO AUTOMÁTICO INSS/IRRF DO RPA (parâmetros 2026) =====
+var PARAM_RPA = {
+    ano: 2026,
+    inssAliq: 0.11, inssTeto: 8475.55, inssMax: 932.31,      // 11% sobre o teto do RGPS
+    deducaoDependente: 189.59, descontoSimplificado: 607.20,
+    irrf: [ // base mensal: [até, alíquota, parcela a deduzir]
+        [2428.80, 0, 0], [2826.65, 0.075, 182.16], [3751.05, 0.15, 394.16],
+        [4664.68, 0.225, 675.49], [Infinity, 0.275, 908.73]
+    ],
+    redutorAte: 5000.00, redutorMax: 312.89, redutorFim: 7350.00, redutorA: 978.62, redutorB: 0.133145  // Lei 15.270/2025
+};
+function r2(n){ return Math.round((n+Number.EPSILON)*100)/100; }
+function calcularRPA(bruto, dependentes, inssOutras){
+    var P=PARAM_RPA, m=[];
+    var limite=Math.max(0, r2(P.inssMax-(inssOutras||0)));
+    var inss=Math.min(r2(bruto*P.inssAliq), limite);
+    m.push('INSS: 11% de R$ '+fmtBR(bruto)+' = R$ '+fmtBR(r2(bruto*P.inssAliq))+(inss<r2(bruto*P.inssAliq)?' → limitado ao teto (R$ '+fmtBR(P.inssMax)+(inssOutras>0?' menos R$ '+fmtBR(inssOutras)+' já retidos':'')+') = R$ '+fmtBR(inss):''));
+    var baseLegal=bruto-inss-(dependentes||0)*P.deducaoDependente;
+    var baseSimpl=bruto-P.descontoSimplificado;
+    var usaSimpl=baseSimpl<baseLegal;
+    var base=Math.max(0, r2(usaSimpl?baseSimpl:baseLegal));
+    m.push('Base do IRRF: '+(usaSimpl?'desconto simplificado (R$ '+fmtBR(P.descontoSimplificado)+')':'bruto − INSS'+(dependentes>0?' − '+dependentes+' dependente(s)':''))+' = R$ '+fmtBR(base));
+    var f=P.irrf.filter(function(x){return base<=x[0];})[0];
+    var imposto=Math.max(0, r2(base*f[1]-f[2]));
+    var redutor=0;
+    if(bruto<=P.redutorAte) redutor=Math.min(P.redutorMax, imposto);
+    else if(bruto<=P.redutorFim) redutor=Math.max(0, r2(P.redutorA-P.redutorB*bruto));
+    redutor=Math.min(redutor, imposto);
+    var irrf=Math.max(0, r2(imposto-redutor));
+    m.push('IRRF: tabela progressiva R$ '+fmtBR(imposto)+(redutor>0?' − redutor da Lei 15.270/2025 R$ '+fmtBR(redutor):'')+' = R$ '+fmtBR(irrf));
+    return {inss:inss, irrf:irrf, memoria:m};
+}
+function calcularRetencoesRPA(){
+    var bruto=parseValorBR(document.getElementById('valor').value);
+    if(!(bruto>0)){ alert('Informe primeiro o valor bruto do gasto (campo Valor).'); return; }
+    var dt=document.getElementById('data_gasto').value;
+    var ano=dt?parseInt(dt.substring(0,4),10):new Date().getFullYear();
+    if(ano!==PARAM_RPA.ano){ alert('Os parâmetros automáticos desta tela são de '+PARAM_RPA.ano+' e a data do gasto é de '+ano+'. Informe INSS e IRRF manualmente ou peça a atualização da tabela.'); return; }
+    var dep=Math.max(0, parseInt(document.getElementById('rpaDependentes').value,10)||0);
+    var outras=parseValorBR(document.getElementById('rpaInssOutras').value)||0;
+    var r=calcularRPA(bruto, dep, outras);
+    // remove INSS/IRRF automáticos anteriores e insere os novos (editáveis)
+    descontosAtuais=descontosAtuais.filter(function(d){ return !(d.auto && (d.tipo==='INSS'||d.tipo==='IRRF')); });
+    if(r.inss>0) descontosAtuais.unshift({tipo:'INSS', desc:'Automático — 11% (teto '+fmtBR(PARAM_RPA.inssMax)+')', pct:'', valor:fmtBR(r.inss), auto:true});
+    if(r.irrf>0) descontosAtuais.splice(r.inss>0?1:0,0,{tipo:'IRRF', desc:'Automático — tabela '+PARAM_RPA.ano+' + Lei 15.270', pct:'', valor:fmtBR(r.irrf), auto:true});
+    renderDescontos();
+    document.getElementById('rpaMemoria').innerHTML='<b>Memória de cálculo</b><br>'+r.memoria.join('<br>')+'<br><i>Valores editáveis abaixo. ISS e adiantamentos continuam manuais. Considera só este pagamento: se o prestador recebeu outros rendimentos no mês, confira com a contabilidade.</i>';
+}
+
 var descontosAtuais = [];
 var TIPOS_DESCONTO = ['INSS','IRRF','ISS','Adiantamento','Outro desconto'];
 
@@ -454,7 +512,7 @@ function renderDescontos(){
             if(pn>0 && br>0){ d.valor=fmtBR(Math.round(br*pn)/100); vl.value=d.valor; }
             atualizarResumoDescontos();
         };
-        vl.oninput=function(){ d.valor=vl.value; d.pct=''; pc.value=''; atualizarResumoDescontos(); };
+        vl.oninput=function(){ d.auto=false; d.valor=vl.value; d.pct=''; pc.value=''; atualizarResumoDescontos(); };
         vl.onblur=function(){ formatarCampoMoeda(vl); d.valor=vl.value; atualizarResumoDescontos(); };
         var bt=document.createElement('button'); bt.type='button'; bt.className='btn-secondary'; bt.style.cssText='color:var(--danger);padding:9px 0;justify-content:center'; bt.title='Remover'; bt.innerHTML='<i class="fas fa-trash"></i>';
         bt.onclick=function(){removerDesconto(i);};
@@ -872,7 +930,7 @@ function abrirRecibo(d){
       '<div class="assin"><div class="cx"><b>'+esc(nome)+'</b><br>CPF/CNPJ: '+esc(cpf)+'<br>Beneficiário</div>'+
       '<div class="cx"><b>'+esc(empresa)+'</b><br>Responsável pelo pagamento</div></div>'+
 
-      '<div class="obs">As retenções legais (INSS, IRRF e ISS), quando aplicáveis, devem ser apuradas e conferidas pela contabilidade. Guarde este recibo junto ao comprovante de pagamento.</div>'+
+      '<div class="obs">INSS e IRRF calculados conforme a legislação vigente (tabelas e Lei 15.270/2025); ISS e demais retenções, quando aplicáveis, devem ser conferidos pela contabilidade. Guarde este recibo junto ao comprovante de pagamento.</div>'+
 
       '<div class="rod"><span>'+esc(empresa)+' · PD-RPA</span><span class="m">Emitido por '+esc(uNome)+' em '+esc(emissao)+'</span><span class="pg2">Página 1 de 1</span></div>'+
       '</div>';
