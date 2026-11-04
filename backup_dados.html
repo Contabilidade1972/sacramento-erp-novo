@@ -34,6 +34,17 @@
         label.opc { display:flex; gap:8px; align-items:center; font-size:14px; margin-top:10px; }
         select { padding:9px 12px; border:1px solid var(--border); border-radius:8px; font-family:inherit; font-size:14px; }
         ol { margin-left:18px; font-size:14px; line-height:1.7; color:var(--text-main); }
+        .bloco-auto { border:1px solid var(--border); border-radius:12px; padding:16px; margin-top:12px; background:#fcfdff; }
+        .bloco-auto h3 { font-size:15px; color:var(--secondary); margin-bottom:10px; }
+        .campos-auto { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; }
+        .campos-auto label { font-size:12px; font-weight:600; color:var(--text-light); display:flex; flex-direction:column; gap:4px; }
+        .campos-auto input[type=number] { width:90px; padding:9px 10px; border:1px solid var(--border); border-radius:8px; font-family:inherit; font-size:14px; }
+        .campos-auto .chk { flex-direction:row; align-items:center; gap:8px; font-size:14px; color:var(--text-main); font-weight:600; }
+        .status-auto { font-size:13px; color:var(--text-light); margin-top:10px; line-height:1.6; }
+        .lista-arq { margin-top:10px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+        .lista-arq .it { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; font-size:13px; border-bottom:1px solid var(--border); background:#fff; }
+        .lista-arq .it:last-child { border-bottom:0; }
+        .btn.mini { padding:6px 12px; font-size:12px; border-radius:8px; }
         @media print { .nav-modulo { display:none !important; } }
     </style>
 </head>
@@ -70,6 +81,18 @@
         <div id="boxResultado" style="display:none;margin-top:16px;"></div>
     </div>
 
+    <div class="card" id="cardAuto">
+        <b style="font-size:16px;"><i class="fas fa-clock" style="color:var(--primary)"></i> Backup automático (guardado no servidor)</b>
+        <div class="sub" style="margin:6px 0 14px;">O sistema faz a cópia sozinho, todo dia às 03:00 (horário de Brasília), quando chega o prazo da frequência escolhida. Os arquivos ficam em um espaço privado, e você baixa quando quiser.</div>
+
+        <div id="blocoEmpresa" class="bloco-auto"></div>
+        <div id="blocoGeral" class="bloco-auto" style="display:none;"></div>
+
+        <div class="aviso" style="margin-top:14px;">
+            <b>Importante:</b> estes backups ficam no mesmo serviço do banco de dados. Para uma proteção completa, <b>baixe uma cópia de tempos em tempos</b> (botão "Baixar" abaixo, ou o backup manual acima) e guarde fora do sistema, em um HD externo ou pen drive.
+        </div>
+    </div>
+
     <div class="card">
         <b style="font-size:15px;">Como usar o arquivo</b>
         <ol style="margin-top:10px;">
@@ -77,7 +100,7 @@
             <li>Também vem o arquivo <b>backup_completo.json</b>, usado para restaurar os dados se algo der errado.</li>
             <li>Faça o backup <b>toda semana</b> (ou todo fechamento mensal) e guarde as 3 últimas cópias.</li>
         </ol>
-        <div class="aviso" style="margin-top:12px;">O plano gratuito do banco de dados <b>não faz cópias automáticas</b>. Este backup manual é a sua proteção contra perda de dados.</div>
+        <div class="aviso" style="margin-top:12px;">O plano gratuito do banco de dados <b>não faz cópias automáticas por conta própria</b>. Por isso existem o backup manual (acima) e o backup automático configurável (no cartão acima).</div>
     </div>
 </div>
 
@@ -208,6 +231,122 @@ async function gerarBackup() {
 }
 
 iniciarTela();
+
+// ===================== BACKUP AUTOMÁTICO (servidor) =====================
+var URL_FUNCAO = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co/functions/v1/backup-automatico';
+var CHAVE_PUBLICA = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+var ROTULO_FREQ = { diario: 'Diário', semanal: 'Semanal', quinzenal: 'Quinzenal (a cada 15 dias)', mensal: 'Mensal (a cada 30 dias)' };
+var CFG = {};   // cliente_id -> linha de backup_config
+
+function fmtBytes(n) { n = Number(n) || 0; if (n < 1024) return n + ' B'; if (n < 1048576) return (n / 1024).toFixed(1) + ' KB'; return (n / 1048576).toFixed(1) + ' MB'; }
+function msgStatus(c) {
+  if (!c) return 'Ainda não configurado.';
+  var t = [];
+  t.push(c.ativo ? '<b style="color:#047857">Ativo</b> · ' + esc(ROTULO_FREQ[c.frequencia] || c.frequencia) + ' · guarda as últimas ' + esc(c.manter) + ' cópias' : '<b style="color:#92400e">Desligado</b>');
+  if (c.ultimo_backup) {
+    t.push('Último: ' + fmtDataHora(new Date(c.ultimo_backup)) + ' — ' + (String(c.ultimo_status || '').indexOf('erro') === 0 ? '<span style="color:#b91c1c">' + esc(c.ultimo_status) + '</span>' : 'ok (' + esc(c.ultimo_registros || 0) + ' registros, ' + fmtBytes(c.ultimo_tamanho) + ')'));
+  } else if (c.ultimo_status) {
+    t.push(String(c.ultimo_status).indexOf('erro') === 0 ? '<span style="color:#b91c1c">' + esc(c.ultimo_status) + '</span>' : esc(c.ultimo_status));
+  } else {
+    t.push('Nenhum backup automático feito ainda.');
+  }
+  return t.join('<br>');
+}
+
+function desenharBloco(el, cid, titulo, geral) {
+  var c = CFG[cid] || { ativo: false, frequencia: geral ? 'mensal' : 'semanal', manter: geral ? 3 : 8 };
+  var id = 'a' + cid;
+  var opts = Object.keys(ROTULO_FREQ).map(function (k) { return '<option value="' + k + '"' + (c.frequencia === k ? ' selected' : '') + '>' + esc(ROTULO_FREQ[k]) + '</option>'; }).join('');
+  el.innerHTML =
+    '<h3>' + esc(titulo) + '</h3>' +
+    '<div class="campos-auto">' +
+      '<label class="chk"><input type="checkbox" id="' + id + '_ativo"' + (c.ativo ? ' checked' : '') + '> Ativar backup automático</label>' +
+      '<label>Frequência<select id="' + id + '_freq">' + opts + '</select></label>' +
+      '<label>Cópias a guardar<input type="number" id="' + id + '_manter" min="1" max="60" value="' + esc(c.manter) + '"></label>' +
+      '<button class="btn mini" onclick="salvarConfig(' + cid + ')"><i class="fas fa-save"></i> Salvar</button>' +
+      '<button class="btn mini sec" id="' + id + '_agora" onclick="executarAgora(' + cid + ')"><i class="fas fa-play"></i> Executar agora</button>' +
+    '</div>' +
+    '<div class="status-auto" id="' + id + '_status">' + msgStatus(CFG[cid]) + '</div>' +
+    '<div class="sub" style="margin-top:12px;font-weight:600;">Backups guardados no servidor</div>' +
+    '<div class="lista-arq" id="' + id + '_lista"><div class="it"><span>Carregando...</span></div></div>';
+}
+
+async function carregarConfig() {
+  var u = usuario(), master = ehMaster(), cid = clienteId();
+  try {
+    var q = await sb.from('backup_config').select('*');
+    CFG = {};
+    (q.data || []).forEach(function (r) { CFG[Number(r.cliente_id)] = r; });
+  } catch (e) {}
+  var bE = document.getElementById('blocoEmpresa'), bG = document.getElementById('blocoGeral');
+  if (cid != null) {
+    var nome = 'Empresa';
+    try { var e1 = await sb.from('clientes_contratantes').select('nome_fantasia, razao_social').eq('id', cid).maybeSingle(); if (e1.data) nome = e1.data.nome_fantasia || e1.data.razao_social || nome; } catch (e) {}
+    desenharBloco(bE, cid, 'Empresa: ' + nome, false);
+    listarArquivos(cid);
+  } else { bE.innerHTML = '<div class="sub">Empresa não identificada.</div>'; }
+  if (master) { bG.style.display = 'block'; desenharBloco(bG, 0, 'Backup geral (todas as empresas) — somente Master', true); listarArquivos(0); }
+}
+
+async function salvarConfig(cid) {
+  var id = 'a' + cid;
+  var manter = parseInt(document.getElementById(id + '_manter').value, 10);
+  if (isNaN(manter) || manter < 1 || manter > 60) { alert('Informe de 1 a 60 cópias a guardar.'); return; }
+  var linha = { cliente_id: cid, ativo: document.getElementById(id + '_ativo').checked, frequencia: document.getElementById(id + '_freq').value, manter: manter, atualizado_em: new Date().toISOString() };
+  var r = await sb.from('backup_config').upsert(linha, { onConflict: 'cliente_id' });
+  if (r.error) { alert('Não foi possível salvar: ' + r.error.message); return; }
+  CFG[cid] = Object.assign({}, CFG[cid] || {}, linha);
+  document.getElementById(id + '_status').innerHTML = msgStatus(CFG[cid]) + '<br><span style="color:#047857"><b>Configuração salva.</b></span>';
+}
+
+async function executarAgora(cid) {
+  var id = 'a' + cid, btn = document.getElementById(id + '_agora'), st = document.getElementById(id + '_status');
+  btn.disabled = true; st.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Executando o backup no servidor... (pode levar alguns segundos)';
+  try {
+    var ss = await sb.auth.getSession();
+    var token = ss && ss.data && ss.data.session && ss.data.session.access_token;
+    if (!token) throw new Error('Sessão expirada. Saia e entre novamente no sistema.');
+    var corpo = (cid === 0) ? { geral: true } : { cliente_id: cid };
+    var resp = await fetch(URL_FUNCAO, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token, 'apikey': CHAVE_PUBLICA }, body: JSON.stringify(corpo) });
+    var j = {}; try { j = await resp.json(); } catch (e) {}
+    if (!resp.ok || !j.ok) throw new Error(j.erro || ('Falha (código ' + resp.status + ').'));
+    var r = (j.resultados && j.resultados[0]) || {};
+    var q = await sb.from('backup_config').select('*').eq('cliente_id', cid).maybeSingle();
+    if (q && q.data) CFG[cid] = q.data;
+    st.innerHTML = msgStatus(CFG[cid]) + '<br><span style="color:#047857"><b>Backup concluído:</b> ' + esc(r.registros || 0) + ' registros em ' + esc(r.tabelas || 0) + ' tabelas (' + fmtBytes(r.tamanho) + ').</span>';
+    listarArquivos(cid);
+  } catch (e) {
+    st.innerHTML = msgStatus(CFG[cid]) + '<br><span style="color:#b91c1c"><b>Não foi possível executar:</b> ' + esc(e.message || e) + '</span>';
+  }
+  btn.disabled = false;
+}
+
+async function listarArquivos(cid) {
+  var el = document.getElementById('a' + cid + '_lista'); if (!el) return;
+  try {
+    var r = await sb.storage.from('backups').list(String(cid === 0 ? 'geral' : cid), { limit: 100, sortBy: { column: 'name', order: 'desc' } });
+    if (r.error) throw r.error;
+    var itens = (r.data || []).filter(function (f) { return /\.zip$/i.test(f.name); });
+    if (!itens.length) { el.innerHTML = '<div class="it"><span style="color:var(--text-light)">Nenhum backup guardado ainda.</span></div>'; return; }
+    el.innerHTML = itens.map(function (f) {
+      var pasta = (cid === 0 ? 'geral' : String(cid));
+      var tam = f.metadata && f.metadata.size ? ' · ' + fmtBytes(f.metadata.size) : '';
+      return '<div class="it"><span><i class="fas fa-file-zipper" style="color:var(--primary)"></i> ' + esc(f.name) + esc(tam) + '</span>' +
+             '<button class="btn mini sec" data-p="' + esc(pasta + '/' + f.name) + '" data-n="' + esc(f.name) + '" onclick="baixarArquivo(this)"><i class="fas fa-download"></i> Baixar</button></div>';
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="it"><span style="color:var(--text-light)">Não foi possível listar os arquivos (' + esc((e && e.message) || e) + ').</span></div>';
+  }
+}
+
+async function baixarArquivo(btn) {
+  var p = btn.getAttribute('data-p'), n = btn.getAttribute('data-n');
+  var r = await sb.storage.from('backups').createSignedUrl(p, 120, { download: n });
+  if (r.error || !r.data || !r.data.signedUrl) { alert('Não foi possível baixar: ' + ((r.error && r.error.message) || 'sem permissão.')); return; }
+  var a = document.createElement('a'); a.href = r.data.signedUrl; a.download = n; document.body.appendChild(a); a.click(); a.remove();
+}
+
+carregarConfig();
 </script>
 <script src="erp-core.js"></script>
 </body>
