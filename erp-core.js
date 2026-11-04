@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v6.9: ASSISTENTE DE IA (chat de ajuda) — carrega assistente-ia.js
     - v6.8: GUARDA DE SESSÃO REAL (login do Supabase + código de 6 números para o Master) em todas as páginas
     - v6.7: APLICATIVO INSTALÁVEL (PWA) + AJUSTE PARA CELULAR — carrega pwa.js (manifesto, ícones, service worker, botão Instalar e CSS mobile)
     - White-Label lê de configuracoes_sistema (fonte única)
@@ -823,4 +824,14 @@ window.addEventListener('beforeprint', () => {
         }).catch(function () { liberar(); });
     }
     verificar();
+})();
+
+/* ===== ASSISTENTE DE IA (v6.9) =====
+   O chat de ajuda fica no arquivo assistente-ia.js; aqui só garantimos que ele seja carregado. */
+(function () {
+  try {
+    if (document.querySelector('script[src*="assistente-ia.js"]') || window.__assistenteIaCarregado) return;
+    var sc = document.createElement('script'); sc.src = '/assistente-ia.js'; sc.defer = true;
+    document.head.appendChild(sc);
+  } catch (e) {}
 })();
