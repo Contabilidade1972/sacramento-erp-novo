@@ -62,6 +62,15 @@
 
         .login-footer { text-align: center; font-size: 11px; color: var(--text-light); margin-top: 8px; }
         .erro-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; display: none; }
+
+        .mfa-titulo { font-size: 16px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 8px; }
+        .mfa-texto { font-size: 13px; color: var(--text-light); line-height: 1.5; }
+        .mfa-qr { display: flex; justify-content: center; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+        .mfa-qr img { width: 190px; height: 190px; }
+        .mfa-segredo { font-family: monospace; font-size: 13px; background: #f1f5f9; border: 1px dashed #94a3b8; border-radius: 8px; padding: 10px; text-align: center; word-break: break-all; user-select: all; }
+        .mfa-codigo { text-align: center; letter-spacing: 8px; font-size: 22px; font-weight: 700; padding: 0 12px !important; }
+        .btn-voltar-login { background: none; border: none; color: var(--text-light); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: underline; }
+        .aviso-mfa { background: #fef3c7; color: #92400e; padding: 10px 14px; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -100,6 +109,25 @@
         <button type="submit" id="btnEntrar" class="btn-entrar"><i class="fas fa-sign-in-alt"></i> Entrar no Sistema</button>
     </form>
 
+    <div id="painelMfa" style="display:none; flex-direction:column; gap:16px;">
+        <div class="mfa-titulo"><i class="fas fa-shield-halved" style="color:var(--primary);"></i> <span id="mfaTitulo">Verificação em duas etapas</span></div>
+        <div id="mfaCadastro" style="display:none; flex-direction:column; gap:12px;">
+            <div class="aviso-mfa"><i class="fas fa-triangle-exclamation"></i> A conta Master exige verificação em duas etapas. Configure uma única vez.</div>
+            <div class="mfa-texto"><strong>1.</strong> No celular, abra o app autenticador (Google Authenticator, Microsoft Authenticator ou Authy) e escolha <em>Adicionar conta / Ler QR Code</em>.</div>
+            <div class="mfa-qr"><img id="mfaQr" alt="QR Code para o aplicativo autenticador"></div>
+            <div class="mfa-texto">Se não conseguir ler o QR Code, digite esta chave no app. <strong>Guarde-a em local seguro</strong>: ela permite recuperar o acesso se você trocar de celular.</div>
+            <div class="mfa-segredo" id="mfaSegredo">—</div>
+            <div class="mfa-texto"><strong>2.</strong> Digite abaixo o código de 6 números que o app mostrar.</div>
+        </div>
+        <div id="mfaVerificar" style="display:none;" class="mfa-texto">Abra o app autenticador no seu celular e digite o código de 6 números do Sacramento ERP.</div>
+        <div class="form-group">
+            <label>Código de 6 números</label>
+            <div class="input-box"><input type="text" id="mfaCodigo" class="mfa-codigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" onkeydown="if(event.key==='Enter'){confirmarMfa();}"></div>
+        </div>
+        <button type="button" id="btnMfa" class="btn-entrar" onclick="confirmarMfa()"><i class="fas fa-check"></i> Confirmar e entrar</button>
+        <button type="button" class="btn-voltar-login" onclick="cancelarMfa()">Cancelar e voltar ao login</button>
+    </div>
+
     <div class="login-footer">
         Sacramento ERP — Licenciamento Seguro e Isolado © 2026
     </div>
@@ -126,6 +154,21 @@
         erroBox.style.display = 'block';
     }
 
+    var sessaoPendente = null;   // { user, vinculo, factorId, modo: 'verificar' | 'cadastrar' }
+
+    function concluirLogin(user, vinculo) {
+        // Master começa na empresa 1; os demais ficam na própria empresa
+        const clienteId = vinculo.is_master ? 1 : vinculo.cliente_id;
+        localStorage.setItem('usuarioLogado', JSON.stringify({
+            nome: user.email,
+            email: user.email,
+            cliente_id: clienteId,
+            perfil: vinculo.is_master ? 'master' : (vinculo.perfil || 'Administrador')
+        }));
+        localStorage.setItem('empresaSelecionada', String(clienteId));
+        location.href = 'index.html';
+    }
+
     async function realizarLogin(event) {
         event.preventDefault();
         const btn = document.getElementById('btnEntrar');
@@ -150,35 +193,98 @@
                 .eq('user_id', data.user.id)
                 .maybeSingle();
 
-            if (erroVinculo || !vinculo) {
+            if (erroVinculo || !vinculo || !(vinculo.is_master ? 1 : vinculo.cliente_id)) {
                 await sb.auth.signOut();
                 mostrarErro('Utilizador sem empresa vinculada. Contacte o administrador.');
                 btn.disabled = false;
                 return;
             }
 
-            // 3) Master começa na empresa 1; os demais ficam na própria empresa
-            const clienteId = vinculo.is_master ? 1 : vinculo.cliente_id;
-            if (!clienteId) {
-                await sb.auth.signOut();
-                mostrarErro('Utilizador sem empresa vinculada. Contacte o administrador.');
+            // 3) Verificação em duas etapas (obrigatória para o Master; para os demais, só se já tiverem ativado)
+            const aal = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
+            const nivelAtual = aal && aal.data ? aal.data.currentLevel : null;
+            const proximo = aal && aal.data ? aal.data.nextLevel : null;
+
+            if (proximo === 'aal2' && nivelAtual !== 'aal2') {
+                const lf = await sb.auth.mfa.listFactors();
+                const fator = lf && lf.data && lf.data.totp ? lf.data.totp[0] : null;
+                if (!fator) { await sb.auth.signOut(); mostrarErro('Não foi possível carregar a verificação em duas etapas.'); btn.disabled = false; return; }
+                sessaoPendente = { user: data.user, vinculo: vinculo, factorId: fator.id, modo: 'verificar' };
+                abrirPainelMfa('verificar');
                 btn.disabled = false;
                 return;
             }
 
-            localStorage.setItem('usuarioLogado', JSON.stringify({
-                nome: data.user.email,
-                email: data.user.email,
-                cliente_id: clienteId,
-                perfil: vinculo.is_master ? 'master' : (vinculo.perfil || 'Administrador')
-            }));
-            localStorage.setItem('empresaSelecionada', String(clienteId));
+            if (vinculo.is_master && nivelAtual !== 'aal2') {
+                // Master ainda sem autenticador: cadastro obrigatório
+                const lf = await sb.auth.mfa.listFactors();
+                const todos = (lf && lf.data && lf.data.all) ? lf.data.all : [];
+                for (const f of todos) { if (f.status !== 'verified') { await sb.auth.mfa.unenroll({ factorId: f.id }); } }
+                const en = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Sacramento ERP ' + new Date().toISOString().slice(0, 10) });
+                if (en.error || !en.data) {
+                    await sb.auth.signOut();
+                    mostrarErro('Não foi possível iniciar a verificação em duas etapas: ' + (en.error ? en.error.message : 'tente novamente.'));
+                    btn.disabled = false;
+                    return;
+                }
+                sessaoPendente = { user: data.user, vinculo: vinculo, factorId: en.data.id, modo: 'cadastrar' };
+                document.getElementById('mfaQr').src = en.data.totp.qr_code;
+                document.getElementById('mfaSegredo').textContent = en.data.totp.secret;
+                abrirPainelMfa('cadastrar');
+                btn.disabled = false;
+                return;
+            }
 
-            location.href = 'index.html';
+            concluirLogin(data.user, vinculo);
         } catch (err) {
             mostrarErro('Erro de autenticação: ' + err.message);
             btn.disabled = false;
         }
+    }
+
+    function abrirPainelMfa(modo) {
+        document.getElementById('formLogin').style.display = 'none';
+        document.getElementById('painelMfa').style.display = 'flex';
+        document.getElementById('mfaCadastro').style.display = modo === 'cadastrar' ? 'flex' : 'none';
+        document.getElementById('mfaVerificar').style.display = modo === 'verificar' ? 'block' : 'none';
+        document.getElementById('mfaTitulo').textContent = modo === 'cadastrar' ? 'Ativar verificação em duas etapas' : 'Verificação em duas etapas';
+        document.getElementById('mfaCodigo').value = '';
+        document.getElementById('mfaCodigo').focus();
+    }
+
+    async function confirmarMfa() {
+        if (!sessaoPendente) return;
+        const codigo = document.getElementById('mfaCodigo').value.replace(/\D/g, '');
+        document.getElementById('erroBox').style.display = 'none';
+        if (codigo.length !== 6) { mostrarErro('Digite os 6 números do aplicativo autenticador.'); return; }
+        const btn = document.getElementById('btnMfa');
+        btn.disabled = true;
+        try {
+            const r = await sb.auth.mfa.challengeAndVerify({ factorId: sessaoPendente.factorId, code: codigo });
+            if (r.error) {
+                mostrarErro('Código incorreto ou expirado. Confira o relógio do celular e tente o próximo código.');
+                btn.disabled = false;
+                document.getElementById('mfaCodigo').value = '';
+                document.getElementById('mfaCodigo').focus();
+                return;
+            }
+            concluirLogin(sessaoPendente.user, sessaoPendente.vinculo);
+        } catch (err) {
+            mostrarErro('Erro na verificação: ' + err.message);
+            btn.disabled = false;
+        }
+    }
+
+    async function cancelarMfa() {
+        try {
+            if (sessaoPendente && sessaoPendente.modo === 'cadastrar') { await sb.auth.mfa.unenroll({ factorId: sessaoPendente.factorId }); }
+        } catch (e) {}
+        try { await sb.auth.signOut(); } catch (e) {}
+        sessaoPendente = null;
+        document.getElementById('painelMfa').style.display = 'none';
+        document.getElementById('formLogin').style.display = 'flex';
+        document.getElementById('senha').value = '';
+        document.getElementById('erroBox').style.display = 'none';
     }
 </script>
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
