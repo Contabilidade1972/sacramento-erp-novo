@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v6.8: GUARDA DE SESSÃO REAL (login do Supabase + código de 6 números para o Master) em todas as páginas
     - v6.7: APLICATIVO INSTALÁVEL (PWA) + AJUSTE PARA CELULAR — carrega pwa.js (manifesto, ícones, service worker, botão Instalar e CSS mobile)
     - White-Label lê de configuracoes_sistema (fonte única)
     - Reusa a conexão única window.sb (nunca cria outra)
@@ -78,7 +79,8 @@
         { nome:"Aportes Recebidos", url:"aportes_pd.html", icon:"fa-money-bill-wave", keywords:["aporte","recebido","subvencao"] },
         { nome:"Gastos de P&D", url:"custos_pd.html", icon:"fa-receipt", keywords:["gasto","custo","despesa","pd"] },
         { nome:"Painel de Saldos P&D", url:"painel_saldos.html", icon:"fa-chart-pie", keywords:["saldo","painel","pd"] },
-        { nome:"Ativos & Equipamentos", url:"ativos_equipamentos.html", icon:"fa-microscope", keywords:["ativo","equipamento","patrimonio"] },
+        { nome:"Ativos & Equipamentos", url:"ativos_equipamentos.html", icon:"fa-boxes", keywords:["ativo","equipamento","patrimonio"] },
+        { nome:"Ativos & Equipamentos de P&D", url:"ativos_pd.html", icon:"fa-microscope", keywords:["ativo","equipamento","pd","laboratorio","pesquisa"] },
         { nome:"Sócios & Acionistas", url:"socios.html", icon:"fa-users", keywords:["socio","acionista","participacao"] },
         { nome:"Documentos Recebidos", url:"documentos_recebidos.html", icon:"fa-file-invoice", keywords:["xml","nfe","cte","recebido"] },
         { nome:"Contabilidade (ECD/ECF)", url:"modulo_contabil.html", icon:"fa-book", keywords:["contabilidade","ecd","ecf","balanco"] },
@@ -101,7 +103,7 @@
         { nome:"Relatórios & BI", url:"relatorios.html", icon:"fa-chart-bar", keywords:["relatorio","bi","indicador"] },
         { nome:"Backup de Dados", url:"backup.html", icon:"fa-database", keywords:["backup","dados","exportar"] },
         { nome:"Produtos & Serviços", url:"produtos.html", icon:"fa-boxes", keywords:["produto","insumo","servico","estoque"] },
-        { nome:"Faturamento NFS-e (P&D)", url:"nfse_servicos.html", icon:"fa-file-invoice", keywords:["nfse","servico","faturamento"] }
+        { nome:"Faturamento NFS-e (P&D)", url:"faturamento_pd.html", icon:"fa-file-invoice", keywords:["nfse","servico","faturamento"] }
     ];
 
     function nomeModuloAtual() {
@@ -539,7 +541,11 @@
                 localStorage.removeItem('contadorCtx');
                 sessionStorage.removeItem('contadorCheckTs');
             } catch(e) {}
-            location.href = 'login.html';
+            var cliSair = getSb();
+            var irLogin = function () { location.href = 'login.html'; };
+            if (cliSair && cliSair.auth) {
+                Promise.race([cliSair.auth.signOut(), new Promise(function (ok) { setTimeout(ok, 2000); })]).then(irLogin, irLogin);
+            } else { irLogin(); }
         }
     };
     window.abrirModalSenhaCore = function() {
@@ -744,4 +750,77 @@ window.addEventListener('beforeprint', () => {
     var sc = document.createElement('script'); sc.src = '/pwa.js'; sc.defer = true;
     document.head.appendChild(sc);
   } catch (e) {}
+})();
+
+/* ==========================================================================
+   GUARDA DE SESSÃO REAL (v6.8) — vale para TODAS as páginas que carregam o erp-core.js
+   - Confere se existe sessão válida no Supabase Auth (não basta o localStorage)
+   - Confere se a sessão pertence ao mesmo e-mail guardado no navegador
+   - Conta Master só entra com verificação em duas etapas concluída (aal2)
+   - Esconde a página até a verificação terminar, para não mostrar a tela a quem não está logado
+   A proteção dos dados continua no banco (RLS); esta guarda impede o acesso à tela.
+   ========================================================================== */
+(function () {
+    if (window.__erpGuardaSessao) return;
+    window.__erpGuardaSessao = true;
+
+    var pagina = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    if (['login.html', 'cadastro.html', 'recuperar.html'].indexOf(pagina) > -1) return;
+
+    var EMAIL_MASTER = 'lucianojorgesacramento@gmail.com';
+
+    function esconder() {
+        var st = document.createElement('style');
+        st.id = 'erpGuardaOculta';
+        st.textContent = 'html{visibility:hidden !important}';
+        (document.head || document.documentElement).appendChild(st);
+    }
+    function liberar() {
+        var e = document.getElementById('erpGuardaOculta');
+        if (e && e.parentNode) e.parentNode.removeChild(e);
+    }
+    function expulsar() {
+        try { localStorage.removeItem('usuarioLogado'); localStorage.removeItem('empresaSelecionada'); } catch (e) {}
+        location.replace('login.html');
+    }
+    function lerAal(token) {
+        try {
+            var p = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            while (p.length % 4) p += '=';
+            return (JSON.parse(atob(p)) || {}).aal || '';
+        } catch (e) { return ''; }
+    }
+
+    var u = null;
+    try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) {}
+    if (!u || !u.email) { expulsar(); return; }
+
+    esconder();
+
+    var tentativas = 0;
+    function verificar() {
+        if (!window.supabase) {
+            // biblioteca ainda não carregou: espera até 6 segundos
+            if (++tentativas > 60) { liberar(); return; }
+            setTimeout(verificar, 100);
+            return;
+        }
+        var cli = window.sb;
+        if (!cli) {
+            try { cli = window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'); } catch (e) { liberar(); return; }
+        }
+        cli.auth.getSession().then(function (r) {
+            var sessao = r && r.data ? r.data.session : null;
+            if (!sessao || !sessao.user) { expulsar(); return; }
+            var emailSessao = String(sessao.user.email || '').toLowerCase().trim();
+            if (emailSessao !== String(u.email || '').toLowerCase().trim()) { expulsar(); return; }
+            var ehMaster = emailSessao === EMAIL_MASTER.toLowerCase();
+            if (ehMaster && lerAal(sessao.access_token) !== 'aal2') { expulsar(); return; }
+            liberar();
+            try {
+                cli.auth.onAuthStateChange(function (evento) { if (evento === 'SIGNED_OUT') expulsar(); });
+            } catch (e) {}
+        }).catch(function () { liberar(); });
+    }
+    verificar();
 })();
