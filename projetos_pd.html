@@ -116,13 +116,8 @@
             table { font-size: 9pt !important; width: 100% !important; }
             thead { display: table-header-group !important; }
             tr { page-break-inside: avoid !important; }
-            .print-corporative-header {
-                display: block !important;
-                background: #fff !important;
-                padding-bottom: 8px !important;
-                margin-bottom: 10px !important;
-                border-bottom: 2px solid #1e3a8a !important;
-            }
+            .print-corporative-header { display: none !important; }
+            #cardRelatorioModo .card-header { display: none !important; }
             thead th { background: #1e3a8a !important; color: #fff !important; padding: 6px 8px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             tbody td { padding: 5px 8px !important; border-bottom: 1px solid #e2e8f0 !important; }
         }
@@ -438,34 +433,8 @@ function limparFiltros() {
     renderTabela();
 }
 
-async function executarImpressao() {
-    const agora = new Date();
-    document.getElementById('printDataEmissao').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
-
-    const selectEmp = document.getElementById('selectEmpresa');
-    if (selectEmp && selectEmp.options.length > 0 && selectEmp.selectedIndex >= 0) {
-        document.getElementById('printEmpresaNome').innerText = selectEmp.options[selectEmp.selectedIndex].text;
-    } else {
-        const cid = clienteIdAtual();
-        try {
-            const { data } = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (data) {
-                document.getElementById('printEmpresaNome').innerText = data.nome_fantasia || data.razao_social;
-            } else {
-                document.getElementById('printEmpresaNome').innerText = 'Empresa Contratante ID ' + cid;
-            }
-        } catch(e) {
-            document.getElementById('printEmpresaNome').innerText = 'Empresa Corporativa';
-        }
-    }
-
-    const u = obterUsuario();
-    if (u) {
-        document.getElementById('printUsuarioNome').innerText = u.nome || u.email || 'Usuário Atual';
-    } else {
-        document.getElementById('printUsuarioNome').innerText = 'Operador';
-    }
-
+function executarImpressao() {
+    // O cabeçalho oficial de impressão (empresa, CNPJ, usuário e data) é montado pelo erp-core.js
     window.print();
 }
 
@@ -583,32 +552,9 @@ async function inicializarPagina() {
     let u = obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
 
     await carregarProjetos();
 }
