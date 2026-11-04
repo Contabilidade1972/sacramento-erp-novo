@@ -8,480 +8,567 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="auth-guard.js"></script>
-    <script src="erp-core.js"></script>
     <script src="erp-print.js"></script>
+    <script src="erp-core.js"></script>
     <style>
         :root {
-            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
-            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
-            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
         }
+
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
 
-        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
-        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
-        .btn-acao:hover { background: var(--primary-dark); }
-        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
-        .btn-acao.sucesso:hover { background: #059669; }
-        .btn-acao.cinza { background: #64748b; box-shadow: none; }
-        .btn-acao.cinza:hover { background: #475569; }
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
 
-        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
-        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
 
-        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
-        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
-        .kpi-card.azul { border-top-color: var(--primary); } .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); }
-        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
-        .kpi-value { font-size: 22px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
-        .kpi-sub { font-size: 11px; color: var(--text-light); }
+        /* MENU DE ABAS INTERNO DE CADASTROS & ESTRUTURA (GARANTIDO NO TOPO) */
+        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); position: sticky; top: 67px; z-index: 999; }
+        .sub-nav-item { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); text-decoration: none; border-bottom: 3px solid transparent; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .sub-nav-item:hover { color: var(--primary); }
+        .sub-nav-item.ativo { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
 
         .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
-        .panel.recolhido { display: none; }
-        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
 
-        .form-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 14px; }
-        .form-grid.dois { grid-template-columns: repeat(2, 1fr); }
-        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
-        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
-        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
-        .dica { font-size: 11px; color: var(--text-light); margin-top: 5px; }
-        .aviso { display: none; background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
 
-        .filtros-box { display: grid; grid-template-columns: 2fr 1.2fr 1.5fr 1fr 1fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
 
-        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
-        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
-        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
-        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        .tabela tbody tr:hover { background: #f8fafc; }
-        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
-        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
-        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
-        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
-        .b-operacional { background: #dcfce7; color: #166534; } .b-manutencao { background: #fef3c7; color: #92400e; } .b-baixado { background: #fee2e2; color: #991b1b; }
-        .pat { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 700; color: var(--secondary); font-size: 12px; }
-        .btn-mini { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; margin-left: 4px; }
-        .btn-mini:hover { background: var(--bg); }
-        .btn-mini.perigo { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
+        .b-ativo { background: #dcfce7; color: #166534; }
+        .b-manutencao { background: #fef3c7; color: #92400e; }
+        .b-baixado { background: #fee2e2; color: #991b1b; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { background: #f1f5f9; padding: 12px 14px; font-weight: 800; border-top: 2px solid var(--border); color: var(--secondary); }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
-        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
 
-        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .form-grid, .form-grid.dois, .filtros-box { grid-template-columns: 1fr; } }
-        @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
     </style>
 </head>
 <body>
 <div class="toast-container" id="toastContainer"></div>
 
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<!-- SUB-MENU / ABAS DE NAVEGAÇÃO INTERNA DE CADASTROS (FIXO EM TODAS AS PÁGINAS DO GRUPO) -->
+<div class="sub-nav-bar">
+    <a href="parceiros.html" class="sub-nav-item"><i class="fas fa-address-book"></i> Parceiros & Clientes</a>
+    <a href="centros_custo.html" class="sub-nav-item"><i class="fas fa-sitemap"></i> Centros de Custo</a>
+    <a href="ativos_equipamentos.html" class="sub-nav-item ativo"><i class="fas fa-boxes"></i> Ativos & Equipamentos Gerais</a>
+</div>
+
 <div class="container">
-    <div class="page-toolbar">
-        <a href="cadastros_estrutura.html" class="btn-acao" id="btnVoltar"><i class="fas fa-arrow-left"></i> <span id="btnVoltarTxt">Voltar a Cadastros & Estrutura</span></a>
-        <button class="btn-acao" type="button" onclick="novoAtivo()"><i class="fas fa-plus"></i> Novo Ativo</button>
-        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório</button>
-    </div>
-
     <div>
-        <div class="page-title"><i class="fas fa-boxes" style="color:var(--primary);"></i> Ativos e Equipamentos</div>
-        <div class="page-subtitle">Controle patrimonial de maquinário, instrumentos, móveis, utensílios e infraestrutura</div>
+        <div class="page-title"><i class="fas fa-boxes" style="color:var(--primary);"></i> Gestão de Ativos e Equipamentos Gerais</div>
+        <div class="page-subtitle">Controle patrimonial de maquinário corporativo, móveis, utensílios e infraestrutura geral</div>
     </div>
 
-    <div class="kpi-grid">
-        <div class="kpi-card azul"><div class="kpi-title">Patrimônio em uso</div><div class="kpi-value" id="kpiValor">R$ 0,00</div><div class="kpi-sub">Valor de aquisição, sem os baixados</div></div>
-        <div class="kpi-card verde"><div class="kpi-title">Operacionais</div><div class="kpi-value" style="color:#166534;" id="kpiOper">0</div><div class="kpi-sub" id="kpiOperSub"></div></div>
-        <div class="kpi-card amarelo"><div class="kpi-title">Em manutenção</div><div class="kpi-value" style="color:#92400e;" id="kpiManut">0</div><div class="kpi-sub" id="kpiManutSub"></div></div>
-        <div class="kpi-card vermelho"><div class="kpi-title">Baixados / alienados</div><div class="kpi-value" style="color:#991b1b;" id="kpiBaix">0</div><div class="kpi-sub" id="kpiBaixSub"></div></div>
-    </div>
-
-    <div class="panel recolhido" id="painelForm">
-        <div class="panel-title"><span class="t" id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success);"></i> Cadastrar novo ativo patrimonial</span></div>
+    <div class="panel">
+        <div class="panel-header" style="border:none; margin-bottom:4px;">
+            <span id="tituloForm"><i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo patrimonial</span>
+        </div>
         <input type="hidden" id="edit_id">
-        <div class="aviso" id="avisoForm"></div>
-        <div class="form-grid dois">
+
+        <div class="form-row">
             <div>
-                <label>Nome do equipamento / ativo *</label>
-                <input id="nome_ativo" class="form-control" placeholder="Ex.: Computador Dell / Mesa de escritório">
+                <label>Centro de Custo / Setor *</label>
+                <select id="centro_custo" class="form-control">
+                    <option value="">— Selecione o setor —</option>
+                </select>
+                <div style="font-size:11px; color:var(--text-light); margin-top:-6px; margin-bottom:10px;">Os setores vêm do cadastro de <a href="centros_custo.html" style="color:var(--primary); font-weight:700;">Centros de Custo</a>. Ativos de P&D devem usar o centro de custo de P&D.</div>
             </div>
             <div>
-                <label>Centro de custo / setor *</label>
-                <select id="centro_custo" class="form-control"><option value="">— Selecione o setor —</option></select>
-                <div class="dica">Lista vinda de Centros de Custo (somente ativos).</div>
+                <label>Nome do Equipamento / Ativo *</label>
+                <input id="nome_ativo" class="form-control" placeholder="Ex.: Computador Dell / Mesa de Escritório">
             </div>
         </div>
-        <div class="form-grid">
+
+        <div class="form-row">
             <div>
-                <label>Nº de patrimônio / série</label>
-                <input id="patrimonio" class="form-control" placeholder="Ex.: PAT-00142" onblur="verificarPatrimonio()">
-                <div class="dica">Não pode repetir dentro da mesma empresa.</div>
+                <label>Número de Patrimônio / Série</label>
+                <input id="patrimonio" class="form-control" placeholder="Ex.: PAT-00142">
             </div>
             <div>
-                <label>Valor de aquisição (R$) *</label>
+                <label>Valor de Aquisição (R\$) *</label>
                 <input id="valor_aquisicao" class="form-control" placeholder="Ex.: 5.500,00" onblur="formatarCampoMoeda(this)">
             </div>
+        </div>
+
+        <div class="form-row">
             <div>
-                <label>Data de aquisição *</label>
+                <label>Data de Aquisição *</label>
                 <input id="data_aquisicao" class="form-control" type="date">
             </div>
-        </div>
-        <div class="form-grid dois">
             <div>
-                <label>Status operacional *</label>
+                <label>Status Operacional *</label>
                 <select id="status_ativo" class="form-control">
-                    <option value="operacional">Operacional / em uso</option>
-                    <option value="manutencao">Em manutenção</option>
-                    <option value="baixado">Baixado / alienado</option>
+                    <option value="operacional">Operacional / Em Uso</option>
+                    <option value="manutencao">Em Manutenção</option>
+                    <option value="baixado">Baixado / Alienado</option>
                 </select>
             </div>
-            <div>
-                <label>Especificações / localização física</label>
-                <input id="especificacoes" class="form-control" placeholder="Modelo, nº de série, sala ou departamento...">
-            </div>
         </div>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button class="btn-acao" type="button" id="btnSalvar" onclick="salvarAtivo()"><i class="fas fa-save"></i> Salvar ativo</button>
-            <button class="btn-acao cinza" type="button" onclick="cancelarEdicao()"><i class="fas fa-times"></i> Cancelar</button>
+
+        <div>
+            <label>Especificações / Localização Física *</label>
+            <input id="especificacoes" class="form-control" placeholder="Descreva o modelo, número de série e sala/departamento físico...">
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:4px;">
+            <button class="btn-primary" id="btnSalvar" onclick="salvarAtivo()"><i class="fas fa-save"></i> Salvar ativo</button>
+            <button class="btn-secondary" id="btnCancelar" onclick="cancelarEdicao()" style="display:none;"><i class="fas fa-times"></i> Cancelar edição</button>
         </div>
     </div>
 
     <div class="panel">
-        <div class="panel-title"><span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Diretório de ativos e equipamentos patrimoniais</span></div>
-        <div class="filtros-box">
-            <div><label>Pesquisar</label><input type="text" id="filtroTexto" class="form-control" placeholder="Nome, patrimônio ou especificação..." oninput="renderTabela()"></div>
-            <div><label>Status</label>
-                <select id="filtroStatus" class="form-control" onchange="renderTabela()">
-                    <option value="">Todos</option><option value="operacional">Operacional</option><option value="manutencao">Manutenção</option><option value="baixado">Baixado</option>
+        <div class="panel-header">
+            <h3><i class="fas fa-list"></i> Diretório de Ativos e Equipamentos Patrimoniais</h3>
+            <button class="btn-primary" style="background: var(--success); padding: 7px 14px;" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Relatório Filtrado</button>
+        </div>
+
+        <!-- PAINEL DE FILTROS AVANÇADOS -->
+        <div class="filter-grid">
+            <div>
+                <label>Pesquisar (Ativo / Patrimônio)</label>
+                <input type="text" id="filtroTexto" class="form-control" placeholder="Nome do ativo ou patrimônio..." oninput="renderTabelaAtivos()">
+            </div>
+            <div>
+                <label>Status Operacional</label>
+                <select id="filtroStatus" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os status —</option>
+                    <option value="operacional">Operacional</option>
+                    <option value="manutencao">Manutenção</option>
+                    <option value="baixado">Baixado</option>
                 </select>
             </div>
-            <div><label>Centro de custo</label><select id="filtroCentro" class="form-control" onchange="renderTabela()"><option value="">Todos os setores</option></select></div>
-            <div><label>Aquisição — de</label><input type="date" id="filtroDe" class="form-control" onchange="renderTabela()"></div>
-            <div><label>Aquisição — até</label><input type="date" id="filtroAte" class="form-control" onchange="renderTabela()"></div>
-            <div><button class="btn-acao cinza" type="button" onclick="limparFiltros()"><i class="fas fa-eraser"></i> Limpar</button></div>
+            <div>
+                <label>Setor / Centro de Custo</label>
+                <select id="filtroCentro" class="form-control" onchange="renderTabelaAtivos()">
+                    <option value="">— Todos os setores —</option>
+                </select>
+            </div>
+            <div style="display:flex; align-items:flex-end;">
+                <button class="btn-secondary" style="width:100%; height:42px; margin-bottom: 12px;" onclick="limparFiltrosAtivos()"><i class="fas fa-eraser"></i> Limpar Filtros</button>
+            </div>
         </div>
-        <div class="table-wrap" id="listaAtivos"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead>
+                    <tr>
+                        <th>Equipamento / Ativo</th>
+                        <th>Patrimônio</th>
+                        <th>Setor / Centro de Custo</th>
+                        <th>Aquisição</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Valor (R\$)</th>
+                        <th style="text-align:right;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbodyAtivos">
+                    <tr><td colspan="7" class="empty-state">A carregar ativos patrimoniais...</td></tr>
+                </tbody>
+                <tfoot id="tfootAtivos"></tfoot>
+            </table>
+        </div>
     </div>
 </div>
 
+<footer>
+    Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026
+</footer>
+
 <script>
-    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
-    const SETORES_PADRAO = ['1.02 - Administrativo', '2.01 - Comercial', '3.01 - Operacional'];
-    const STATUS_MAP = {
-        operacional: { rotulo: 'Operacional', classe: 'b-operacional' },
-        manutencao: { rotulo: 'Manutenção', classe: 'b-manutencao' },
-        baixado: { rotulo: 'Baixado', classe: 'b-baixado' }
+var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+let ativosCache = [];
+let centrosCache = [];
+var STATUS_MAP = {
+    operacional: { rotulo: 'Operacional', classe: 'b-ativo' },
+    manutencao:  { rotulo: 'Manutenção',  classe: 'b-manutencao' },
+    baixado:     { rotulo: 'Baixado',     classe: 'b-baixado' }
+};
+
+function esc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+
+window.obterUsuario = function(){
+    try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {}
+    return null;
+};
+window.ehMaster = function(){
+    const u = window.obterUsuario();
+    return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim());
+};
+window.clienteIdAtual = function(){
+    const u = window.obterUsuario();
+    if (!u) return null;
+    if (window.ehMaster()) {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    }
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
+};
+window.sbFiltro = function(tabela){
+    let q = sb.from(tabela).select('*');
+    const cid = window.clienteIdAtual();
+    if (!TABELAS_SEM_CLIENTE.includes(tabela) && cid) {
+        q = q.eq('cliente_id', cid);
+    }
+    return q;
+};
+window.trocarEmpresa = function() {
+    const select = document.getElementById('selectEmpresa');
+    if (!select) return;
+    localStorage.setItem('empresaSelecionada', String(select.value));
+    location.reload();
+};
+window.sair = function() {
+    if (confirm('Deseja realmente sair?')) {
+        localStorage.removeItem('usuarioLogado');
+        localStorage.removeItem('empresaSelecionada');
+        location.href = 'login.html';
+    }
+};
+function toast(msg,type='success'){
+    var c=document.getElementById('toastContainer'),x=document.createElement('div');
+    if(!c){
+        c=document.createElement('div');c.id='toastContainer';
+        c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';
+        document.body.appendChild(c);
+    }
+    x.className='toast '+type;
+    x.innerHTML='<i class="fas fa-info-circle"></i> '+esc(msg);
+    c.appendChild(x);
+    setTimeout(function(){x.remove();},3500);
+}
+function parseValorBR(v){
+    if(v===null||v===undefined)return 0;
+    var s=String(v).trim().replace(/[R\$\s]/g,'');
+    if(!s)return 0;
+    if(s.indexOf(',')>-1){s=s.replace(/\./g,'').replace(',','.');}
+    var n=parseFloat(s);
+    return isNaN(n)?0:n;
+}
+function formatarCampoMoeda(el){
+    if(el.value.trim()===''){el.value='';return;}
+    var n=parseValorBR(el.value);
+    el.value=n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatDataBR(d){if(!d)return '—';var p=String(d).substring(0,10).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+
+// ---------- Centros de custo (vêm do cadastro da empresa) ----------
+function rotuloCentro(cc){ return (cc.codigo || cc.id || '') + ' - ' + (cc.nome || cc.descricao || 'Centro de custo'); }
+
+async function carregarCentros(){
+    var r = await window.sbFiltro('centros_custo');
+    centrosCache = (r.data || []).filter(function(cc){ return (cc.status || 'Ativo') === 'Ativo'; });
+    montarSelectsCentro();
+}
+
+function montarSelectsCentro(extraValor){
+    var sel = document.getElementById('centro_custo');
+    var fil = document.getElementById('filtroCentro');
+    var atual = sel.value, atualFil = fil.value;
+    sel.innerHTML = '<option value="">— Selecione o setor —</option>';
+    fil.innerHTML = '<option value="">— Todos os setores —</option>';
+    var vistos = {};
+    function add(v){
+        if(!v || vistos[v]) return; vistos[v] = true;
+        var o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    }
+    centrosCache.forEach(function(cc){ add(rotuloCentro(cc)); });
+    // valores já gravados em ativos (inclusive antigos) continuam selecionáveis e filtráveis
+    ativosCache.forEach(function(a){ add(a.centro_custo); });
+    if(extraValor) add(extraValor);
+    Object.keys(vistos).sort().forEach(function(v){
+        var o = document.createElement('option'); o.value = v; o.textContent = v; fil.appendChild(o);
+    });
+    sel.value = atual; fil.value = atualFil;
+}
+
+async function carregarAtivos(){
+    var tbody = document.getElementById('tbodyAtivos');
+    if(!window.clienteIdAtual()){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Empresa não identificada. Saia e entre novamente.</td></tr>';return;}
+    var r = await window.sbFiltro('ativos_equipamentos');
+    if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Erro ao carregar ativos: '+esc(r.error.message)+'</td></tr>';return;}
+    ativosCache = r.data || [];
+    montarSelectsCentro();
+    renderTabelaAtivos();
+}
+
+function obterFiltrados(){
+    const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
+    const statusFiltro = document.getElementById('filtroStatus').value;
+    const centroFiltro = document.getElementById('filtroCentro').value;
+    return ativosCache.filter(function(a){
+        var nome = (a.nome_ativo || '').toLowerCase();
+        var pat = (a.patrimonio || '').toLowerCase();
+        if(termo && nome.indexOf(termo) < 0 && pat.indexOf(termo) < 0) return false;
+        if(statusFiltro && (a.status_ativo || 'operacional') !== statusFiltro) return false;
+        if(centroFiltro && (a.centro_custo || '') !== centroFiltro) return false;
+        return true;
+    }).sort(function(x, y){ return String(x.nome_ativo || '').localeCompare(String(y.nome_ativo || ''), 'pt-BR'); });
+}
+
+function renderTabelaAtivos(){
+    var tbody = document.getElementById('tbodyAtivos');
+    var tfoot = document.getElementById('tfootAtivos');
+    var dados = obterFiltrados();
+    if(!dados.length){
+        tbody.innerHTML='<tr><td colspan="7" class="empty-state">Nenhum ativo patrimonial encontrado.</td></tr>';
+        tfoot.innerHTML='';
+        return;
+    }
+    tbody.innerHTML = '';
+    var soma = 0;
+    dados.forEach(function(a){
+        soma += parseFloat(a.valor_aquisicao) || 0;
+        var st = STATUS_MAP[a.status_ativo] || STATUS_MAP.operacional;
+        var tr = document.createElement('tr');
+        tr.innerHTML=''+
+            '<td><strong>'+esc(a.nome_ativo||'—')+'</strong><br><small style="color:var(--text-light)">'+esc(a.especificacoes||'')+'</small></td>'+
+            '<td>'+esc(a.patrimonio||'—')+'</td>'+
+            '<td>'+esc(a.centro_custo||'—')+'</td>'+
+            '<td>'+formatDataBR(a.data_aquisicao)+'</td>'+
+            '<td><span class="badge '+st.classe+'">'+st.rotulo+'</span></td>'+
+            '<td style="text-align:right; font-weight:bold;">R$ '+fmtBR(a.valor_aquisicao)+'</td>'+
+            '<td style="text-align:right; white-space:nowrap;">'+
+                '<button class="btn-secondary btn-editar" type="button" title="Editar"><i class="fas fa-pen"></i></button> '+
+                '<button class="btn-secondary btn-excluir" type="button" title="Excluir" style="color:var(--danger);"><i class="fas fa-trash"></i></button>'+
+            '</td>';
+        tr.querySelector('.btn-editar').onclick = function() { editarAtivo(a.id); };
+        tr.querySelector('.btn-excluir').onclick = function() { excluirAtivo(a.id); };
+        tbody.appendChild(tr);
+    });
+    tfoot.innerHTML = '<tr><td colspan="5" style="text-align:right; text-transform:uppercase;">Total dos ativos listados:</td>'+
+        '<td style="text-align:right;">R$ '+fmtBR(soma)+'</td><td></td></tr>';
+}
+
+function limparFiltrosAtivos(){
+    document.getElementById('filtroTexto').value = '';
+    document.getElementById('filtroStatus').value = '';
+    document.getElementById('filtroCentro').value = '';
+    renderTabelaAtivos();
+}
+
+function executarImpressao(){
+    var lista = obterFiltrados();
+    var filtros = [];
+    var t = document.getElementById('filtroTexto').value.trim();
+    var fs = document.getElementById('filtroStatus'), fc = document.getElementById('filtroCentro');
+    if(t) filtros.push(['Pesquisa', t]);
+    if(fs.value) filtros.push(['Status', fs.options[fs.selectedIndex].text]);
+    if(fc.value) filtros.push(['Setor / Centro de custo', fc.value]);
+
+    var total = 0, porSt = { operacional: 0, manutencao: 0, baixado: 0 }, valSt = { operacional: 0, manutencao: 0, baixado: 0 };
+    lista.forEach(function(a){
+        var v = parseFloat(a.valor_aquisicao) || 0; total += v;
+        var k = STATUS_MAP[a.status_ativo] ? a.status_ativo : 'operacional';
+        porSt[k]++; valSt[k] += v;
+    });
+
+    var linhas = lista.map(function(a){
+        var st = STATUS_MAP[a.status_ativo] || STATUS_MAP.operacional;
+        var nome = (a.nome_ativo || '—') + (a.especificacoes ? ' — ' + a.especificacoes : '');
+        return [nome, a.patrimonio || '—', a.centro_custo || '—', formatDataBR(a.data_aquisicao),
+                {t: st.rotulo, cls: a.status_ativo === 'baixado' ? 'neg' : (a.status_ativo === 'manutencao' ? 'warn' : '')},
+                'R$ ' + fmtBR(a.valor_aquisicao)];
+    });
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Ativos e Equipamentos',
+        subtitulo: 'Controle patrimonial de maquinário, móveis, utensílios e infraestrutura',
+        codigo: 'ATV-LST',
+        orientacao: 'portrait',
+        filtros: filtros,
+        resumo: [['Ativos listados', String(lista.length)], ['Valor de aquisição', 'R$ ' + fmtBR(total)],
+                 ['Em uso / manutenção', 'R$ ' + fmtBR(valSt.operacional + valSt.manutencao)], ['Baixados', 'R$ ' + fmtBR(valSt.baixado)]],
+        colunas: [{t:'Equipamento / Ativo',w:3.4},{t:'Patrimônio',w:1.3},{t:'Setor / Centro de custo',w:2},{t:'Aquisição',w:1.2},{t:'Status',w:1.2},{t:'Valor (R$)',w:1.5,a:'right'}],
+        linhas: linhas,
+        totais: ['TOTAL', '', '', '', '', 'R$ ' + fmtBR(total)],
+        observacao: 'Valores de aquisição (custo histórico). Não representam valor de mercado nem depreciação.'
+    });
+}
+
+function editarAtivo(id){
+    var a=null;
+    for(var i=0;i<ativosCache.length;i++){if(String(ativosCache[i].id)===String(id))a=ativosCache[i];}
+    if(!a)return;
+    document.getElementById('edit_id').value=a.id;
+    montarSelectsCentro(a.centro_custo);
+    document.getElementById('centro_custo').value=a.centro_custo||'';
+    document.getElementById('nome_ativo').value=a.nome_ativo||'';
+    document.getElementById('patrimonio').value=a.patrimonio||'';
+    document.getElementById('valor_aquisicao').value=a.valor_aquisicao?fmtBR(a.valor_aquisicao):'';
+    document.getElementById('data_aquisicao').value=a.data_aquisicao||'';
+    document.getElementById('status_ativo').value=a.status_ativo||'operacional';
+    document.getElementById('especificacoes').value=a.especificacoes||'';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-edit" style="color:var(--primary)"></i> Editando ativo patrimonial';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-sync-alt"></i> Atualizar ativo';
+    document.getElementById('btnCancelar').style.display='inline-flex';
+    window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function cancelarEdicao(){
+    document.getElementById('edit_id').value='';
+    document.getElementById('centro_custo').value='';
+    document.getElementById('nome_ativo').value='';
+    document.getElementById('patrimonio').value='';
+    document.getElementById('valor_aquisicao').value='';
+    document.getElementById('data_aquisicao').value='';
+    document.getElementById('status_ativo').value='operacional';
+    document.getElementById('especificacoes').value='';
+    document.getElementById('tituloForm').innerHTML='<i class="fas fa-plus-circle" style="color:var(--success)"></i> Cadastrar novo ativo patrimonial';
+    document.getElementById('btnSalvar').innerHTML='<i class="fas fa-save"></i> Salvar ativo';
+    document.getElementById('btnCancelar').style.display='none';
+}
+
+async function salvarAtivo(){
+    var cid = window.clienteIdAtual();
+    if(!cid){toast('Empresa não identificada. Saia e entre novamente.','error');return;}
+    var centro = document.getElementById('centro_custo').value;
+    if(!centro){toast('Selecione o setor / centro de custo.','error');return;}
+    var nome=document.getElementById('nome_ativo').value.trim();
+    if(!nome){toast('Informe o nome do equipamento ou ativo.','error');return;}
+    var valor=parseValorBR(document.getElementById('valor_aquisicao').value);
+    if(!valor||valor<=0){toast('Informe o valor de aquisição.','error');return;}
+    var data=document.getElementById('data_aquisicao').value;
+    if(!data){toast('Informe a data de aquisição.','error');return;}
+    var espec=document.getElementById('especificacoes').value.trim();
+    if(!espec){toast('Informe as especificações / localização física.','error');return;}
+
+    var dados={
+        cliente_id: cid,
+        centro_custo: centro,
+        nome_ativo: nome,
+        patrimonio: document.getElementById('patrimonio').value.trim()||null,
+        valor_aquisicao: valor,
+        data_aquisicao: data,
+        status_ativo: document.getElementById('status_ativo').value,
+        especificacoes: espec
     };
-
-    let ativos = [];
-    let visiveis = [];
-    let setores = [];   // opções do select de centro de custo
-
-    function esc(s) {
-        return String(s === null || s === undefined ? '' : s)
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
-    function numero(v) {
-        if (typeof v === 'number') return v;
-        let s = String(v === null || v === undefined ? '' : v).replace(/[R$\s]/g, '').trim();
-        if (!s) return 0;
-        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
-        const n = parseFloat(s);
-        return isNaN(n) ? 0 : n;
-    }
-    function fmtBR(n) { return (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
-    function formatarCampoMoeda(el) { if (!el.value.trim()) return; el.value = fmtBR(numero(el.value)); }
-    function dataISO(d) {
-        if (!d) return '';
-        const s = String(d).trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.substring(0, 10);
-        const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-        return m ? m[3] + '-' + m[2] + '-' + m[1] : '';
-    }
-    function dataBR(iso) { return iso ? iso.split('-').reverse().join('/') : '—'; }
-    function stDe(a) { return STATUS_MAP[a.status_ativo] ? a.status_ativo : 'operacional'; }
-
-    function obterClienteIdAtivo() {
-        try {
-            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
-            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
-            return u.cliente_id ? parseInt(u.cliente_id) : 1;
-        } catch (e) { return 1; }
-    }
-    function toast(msg, type) {
-        type = type || 'success';
-        let c = document.getElementById('toastContainer');
-        if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.className = 'toast-container'; document.body.appendChild(c); }
-        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
-        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
-    }
-
-    async function lerTudo(tabela, cid) {
-        const out = [], PAG = 1000;
-        for (let ini = 0; ini < 200000; ini += PAG) {
-            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
-            if (r.error) throw r.error;
-            out.push.apply(out, r.data || []);
-            if (!r.data || r.data.length < PAG) break;
+    var editId=document.getElementById('edit_id').value;
+    var btn=document.getElementById('btnSalvar'); btn.disabled=true;
+    try{
+        if(editId){
+            var ru=await sb.from('ativos_equipamentos').update(dados).eq('id', editId).eq('cliente_id', cid);
+            if(ru.error){toast('Erro ao atualizar: '+ru.error.message,'error');return;}
+            toast('Ativo atualizado com sucesso!');
+        }else{
+            var ri=await sb.from('ativos_equipamentos').insert([dados]);
+            if(ri.error){toast('Erro ao salvar: '+ri.error.message,'error');return;}
+            toast('Ativo cadastrado com sucesso!');
         }
-        return out;
-    }
-
-    // botão "Voltar" inteligente: P&D volta ao módulo de P&D; senão volta ao início
-    function configurarVoltar() {
-        let ref = '';
-        try { ref = document.referrer || ''; } catch (e) {}
-        const a = document.getElementById('btnVoltar'), t = document.getElementById('btnVoltarTxt');
-        if (/modulo_tecnologia_pd|_pd\.html/i.test(ref)) { a.href = 'modulo_tecnologia_pd.html'; t.textContent = 'Voltar ao Módulo Tecnologia & P&D'; }
-        else if (/modulo_financeiro/i.test(ref)) { a.href = 'modulo_financeiro.html'; t.textContent = 'Voltar ao Módulo Financeiro'; }
-    }
-
-    async function carregarSetores() {
-        const cid = obterClienteIdAtivo();
-        let lista = [];
-        try {
-            const dados = await lerTudo('centros_custo', cid);
-            dados.forEach(function (cc) {
-                if ((cc.status || 'Ativo') !== 'Ativo') return;
-                const nome = cc.nome || cc.descricao || '';
-                if (!nome) return;
-                lista.push(cc.codigo ? cc.codigo + ' - ' + nome : nome);
-            });
-        } catch (e) { console.warn('centros_custo', e); }
-        setores = lista.length ? lista : SETORES_PADRAO.slice();
-    }
-
-    function preencherSelectSetor(valorAtual) {
-        const sel = document.getElementById('centro_custo');
-        const opts = setores.slice();
-        if (valorAtual && opts.indexOf(valorAtual) < 0) opts.push(valorAtual);   // preserva valor antigo ao editar
-        sel.innerHTML = '<option value="">— Selecione o setor —</option>' + opts.map(function (o) { return '<option value="' + esc(o) + '">' + esc(o) + '</option>'; }).join('');
-        sel.value = valorAtual || '';
-    }
-
-    function preencherFiltroSetor() {
-        const sel = document.getElementById('filtroCentro'), atual = sel.value;
-        const usados = {};
-        ativos.forEach(function (a) { if (a.centro_custo) usados[a.centro_custo] = true; });
-        const nomes = Object.keys(usados).sort(function (a, b) { return a.localeCompare(b, 'pt-BR', { numeric: true }); });
-        sel.innerHTML = '<option value="">Todos os setores</option>' + nomes.map(function (n) { return '<option value="' + esc(n) + '">' + esc(n) + '</option>'; }).join('');
-        sel.value = usados[atual] ? atual : '';
-    }
-
-    async function carregarAtivos() {
-        const el = document.getElementById('listaAtivos');
-        try {
-            await carregarSetores();
-            const dados = await lerTudo('ativos_equipamentos', obterClienteIdAtivo());
-            ativos = dados.map(function (a) {
-                return Object.assign({}, a, { _valor: numero(a.valor_aquisicao), _data: dataISO(a.data_aquisicao), _st: stDe(a) });
-            }).sort(function (a, b) { return a._data < b._data ? 1 : (a._data > b._data ? -1 : 0); });
-            preencherSelectSetor('');
-            preencherFiltroSetor();
-            atualizarKpis();
-            renderTabela();
-        } catch (e) {
-            console.error(e);
-            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Erro ao carregar ativos: ' + esc(e.message || e) + '</div>';
-        }
-    }
-
-    function atualizarKpis() {
-        let vUso = 0; const n = { operacional: 0, manutencao: 0, baixado: 0 }, v = { operacional: 0, manutencao: 0, baixado: 0 };
-        ativos.forEach(function (a) { n[a._st]++; v[a._st] += a._valor; if (a._st !== 'baixado') vUso += a._valor; });
-        document.getElementById('kpiValor').textContent = 'R$ ' + fmtBR(vUso);
-        document.getElementById('kpiOper').textContent = n.operacional;
-        document.getElementById('kpiOperSub').textContent = 'R$ ' + fmtBR(v.operacional);
-        document.getElementById('kpiManut').textContent = n.manutencao;
-        document.getElementById('kpiManutSub').textContent = 'R$ ' + fmtBR(v.manutencao);
-        document.getElementById('kpiBaix').textContent = n.baixado;
-        document.getElementById('kpiBaixSub').textContent = 'R$ ' + fmtBR(v.baixado);
-    }
-
-    function filtrar() {
-        const termo = norm(document.getElementById('filtroTexto').value);
-        const st = document.getElementById('filtroStatus').value, cc = document.getElementById('filtroCentro').value;
-        const de = document.getElementById('filtroDe').value, ate = document.getElementById('filtroAte').value;
-        return ativos.filter(function (a) {
-            if (st && a._st !== st) return false;
-            if (cc && a.centro_custo !== cc) return false;
-            if (de && (!a._data || a._data < de)) return false;
-            if (ate && (!a._data || a._data > ate)) return false;
-            if (!termo) return true;
-            return norm((a.nome_ativo || '') + ' ' + (a.patrimonio || '') + ' ' + (a.especificacoes || '')).indexOf(termo) >= 0;
-        });
-    }
-
-    function renderTabela() {
-        const el = document.getElementById('listaAtivos');
-        visiveis = filtrar();
-        if (!visiveis.length) {
-            el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">' + (ativos.length ? 'Nenhum ativo encontrado com esses filtros.' : 'Nenhum ativo cadastrado. Clique em "Novo Ativo".') + '</div>';
-            return;
-        }
-        let total = 0;
-        let h = '<table class="tabela"><thead><tr><th>Equipamento / ativo</th><th>Patrimônio</th><th>Setor / centro de custo</th><th>Aquisição</th><th>Status</th><th class="num">Valor (R$)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
-        visiveis.forEach(function (a) {
-            total += a._valor;
-            const st = STATUS_MAP[a._st];
-            h += '<tr><td><strong>' + esc(a.nome_ativo || '—') + '</strong>' + (a.especificacoes ? '<span class="sub">' + esc(a.especificacoes) + '</span>' : '') + '</td>' +
-                '<td>' + (a.patrimonio ? '<span class="pat">' + esc(a.patrimonio) + '</span>' : '—') + '</td>' +
-                '<td>' + esc(a.centro_custo || '—') + '</td>' +
-                '<td style="white-space:nowrap;">' + dataBR(a._data) + '</td>' +
-                '<td><span class="badge-st ' + st.classe + '">' + st.rotulo + '</span></td>' +
-                '<td class="num"><strong>' + fmtBR(a._valor) + '</strong></td>' +
-                '<td style="text-align:right; white-space:nowrap;">' +
-                '<button class="btn-mini" type="button" title="Editar" onclick="editarAtivo(' + Number(a.id) + ')"><i class="fas fa-pen"></i></button>' +
-                '<button class="btn-mini perigo" type="button" title="Excluir" onclick="excluirAtivo(' + Number(a.id) + ')"><i class="fas fa-trash"></i></button></td></tr>';
-        });
-        h += '</tbody><tfoot><tr><td colspan="5">TOTAL (' + visiveis.length + ' ativo(s))</td><td class="num">R$ ' + fmtBR(total) + '</td><td></td></tr></tfoot></table>';
-        el.innerHTML = h;
-    }
-
-    function limparFiltros() {
-        ['filtroTexto', 'filtroDe', 'filtroAte'].forEach(function (i) { document.getElementById(i).value = ''; });
-        document.getElementById('filtroStatus').value = '';
-        document.getElementById('filtroCentro').value = '';
-        renderTabela();
-    }
-
-    /* ---------- formulário ---------- */
-    function mostrarAviso(msg) {
-        const a = document.getElementById('avisoForm');
-        if (!msg) { a.style.display = 'none'; a.textContent = ''; return; }
-        a.textContent = msg; a.style.display = 'block';
-    }
-    function limparForm() {
-        ['edit_id', 'nome_ativo', 'patrimonio', 'valor_aquisicao', 'data_aquisicao', 'especificacoes'].forEach(function (i) { document.getElementById(i).value = ''; });
-        document.getElementById('status_ativo').value = 'operacional';
-        preencherSelectSetor('');
-        mostrarAviso('');
-        document.getElementById('tituloForm').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--success);"></i> Cadastrar novo ativo patrimonial';
-        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar ativo';
-    }
-    function novoAtivo() {
-        limparForm();
-        document.getElementById('painelForm').classList.remove('recolhido');
-        document.getElementById('nome_ativo').focus();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    function cancelarEdicao() { limparForm(); document.getElementById('painelForm').classList.add('recolhido'); }
-
-    function acharPatrimonio(pat, idAtual) {
-        const p = norm(pat);
-        if (!p) return null;
-        return ativos.find(function (a) { return norm(a.patrimonio) === p && String(a.id) !== String(idAtual || ''); }) || null;
-    }
-    function verificarPatrimonio() {
-        const pat = document.getElementById('patrimonio').value.trim();
-        const dup = acharPatrimonio(pat, document.getElementById('edit_id').value);
-        if (!dup) return;
-        const abrir = confirm('O patrimônio "' + pat + '" já está cadastrado para "' + (dup.nome_ativo || 'outro ativo') + '".\n\nDeseja abrir esse ativo para EDITAR?\n\n(OK = abrir para editar · Cancelar = limpar o campo)');
-        if (abrir) editarAtivo(dup.id); else document.getElementById('patrimonio').value = '';
-    }
-
-    function editarAtivo(id) {
-        const a = ativos.find(function (x) { return String(x.id) === String(id); });
-        if (!a) return;
-        document.getElementById('edit_id').value = a.id;
-        document.getElementById('nome_ativo').value = a.nome_ativo || '';
-        preencherSelectSetor(a.centro_custo || '');
-        document.getElementById('patrimonio').value = a.patrimonio || '';
-        document.getElementById('valor_aquisicao').value = a._valor ? fmtBR(a._valor) : '';
-        document.getElementById('data_aquisicao').value = a._data || '';
-        document.getElementById('status_ativo').value = a._st;
-        document.getElementById('especificacoes').value = a.especificacoes || '';
-        document.getElementById('tituloForm').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Editando ativo patrimonial (#' + Number(a.id) + ')';
-        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar ativo';
-        mostrarAviso('');
-        document.getElementById('painelForm').classList.remove('recolhido');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    async function salvarAtivo() {
-        const cid = obterClienteIdAtivo();
-        const id = document.getElementById('edit_id').value;
-        const nome = document.getElementById('nome_ativo').value.trim();
-        const setor = document.getElementById('centro_custo').value;
-        const pat = document.getElementById('patrimonio').value.trim();
-        const valor = numero(document.getElementById('valor_aquisicao').value);
-        const data = document.getElementById('data_aquisicao').value;
-
-        if (!nome) { toast('Informe o nome do equipamento ou ativo.', 'error'); return; }
-        if (!setor) { toast('Selecione o centro de custo / setor.', 'error'); return; }
-        if (!valor || valor <= 0) { toast('Informe o valor de aquisição.', 'error'); return; }
-        if (!data) { toast('Informe a data de aquisição.', 'error'); return; }
-        const dup = acharPatrimonio(pat, id);
-        if (dup) { toast('O patrimônio "' + pat + '" já existe (' + (dup.nome_ativo || 'outro ativo') + '). Abra o cadastro existente para editar.', 'error'); return; }
-
-        const dados = {
-            cliente_id: cid, centro_custo: setor, nome_ativo: nome, patrimonio: pat || null, valor_aquisicao: valor,
-            data_aquisicao: data, status_ativo: document.getElementById('status_ativo').value,
-            especificacoes: document.getElementById('especificacoes').value.trim() || null
-        };
-        const btn = document.getElementById('btnSalvar'); btn.disabled = true;
-        try {
-            const r = id ? await sb.from('ativos_equipamentos').update(dados).eq('id', id).eq('cliente_id', cid)
-                         : await sb.from('ativos_equipamentos').insert([dados]);
-            if (r.error) { toast('Erro ao salvar: ' + r.error.message, 'error'); return; }
-            toast(id ? 'Ativo atualizado com sucesso!' : 'Ativo cadastrado com sucesso!');
-            limparForm();
-            document.getElementById('painelForm').classList.add('recolhido');
-            await carregarAtivos();
-        } finally { btn.disabled = false; }
-    }
-
-    async function excluirAtivo(id) {
-        const a = ativos.find(function (x) { return String(x.id) === String(id); });
-        if (!a) return;
-        const aviso = a._st !== 'baixado' ? '\n\nDica: se o equipamento saiu de uso, prefira mudar o status para "Baixado" para manter o histórico.' : '';
-        if (!confirm('Deseja realmente excluir o ativo "' + (a.nome_ativo || '') + '"?' + aviso)) return;
-        const r = await sb.from('ativos_equipamentos').delete().eq('id', id).eq('cliente_id', obterClienteIdAtivo());
-        if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
-        toast('Ativo excluído com sucesso!');
+        cancelarEdicao();
         await carregarAtivos();
-    }
+    } finally { btn.disabled=false; }
+}
 
-    /* ---------- impressão padronizada ---------- */
-    function executarImpressao() {
-        if (!visiveis.length) { toast('Não há ativos para imprimir com os filtros atuais.', 'error'); return; }
-        const st = document.getElementById('filtroStatus').value, cc = document.getElementById('filtroCentro').value;
-        const de = document.getElementById('filtroDe').value, ate = document.getElementById('filtroAte').value, termo = document.getElementById('filtroTexto').value.trim();
-        let total = 0; const n = { operacional: 0, manutencao: 0, baixado: 0 };
-        visiveis.forEach(function (a) { total += a._valor; n[a._st]++; });
-        ERPPrint.imprimir({
-            titulo: 'Ativos e Equipamentos', subtitulo: 'Relação patrimonial', codigo: 'CAD-AT', orientacao: 'landscape',
-            filtros: [['Status', st ? STATUS_MAP[st].rotulo : 'Todos'], ['Centro de custo', cc || 'Todos'],
-                ['Aquisição', (de || ate) ? ((de ? dataBR(de) : 'início') + ' a ' + (ate ? dataBR(ate) : 'sem limite')) : 'Todos os períodos'], ['Busca', termo || 'Sem filtro']],
-            resumo: [['Ativos listados', String(visiveis.length)], ['Operacionais', String(n.operacional)], ['Em manutenção', String(n.manutencao)], ['Baixados', String(n.baixado)], ['Valor total', 'R$ ' + fmtBR(total)]],
-            colunas: [{ t: 'Equipamento / ativo', w: 3.2 }, { t: 'Patrimônio', w: 1.4 }, { t: 'Setor / centro de custo', w: 2.4 }, { t: 'Aquisição', w: 1.1 }, { t: 'Status', w: 1.1 }, { t: 'Valor (R$)', w: 1.5, a: 'right' }, { t: 'Especificações / localização', w: 3 }],
-            linhas: visiveis.map(function (a) {
-                return [{ t: a.nome_ativo || '—', cls: 'bold' }, a.patrimonio || '—', a.centro_custo || '—', dataBR(a._data),
-                    { t: STATUS_MAP[a._st].rotulo, cls: a._st === 'operacional' ? 'pos' : (a._st === 'baixado' ? 'muted' : 'warn') }, { t: fmtBR(a._valor), cls: 'bold' }, a.especificacoes || '—'];
-            }),
-            totais: ['TOTAL', '', '', '', '', fmtBR(total), ''],
-            observacao: 'Valores correspondem ao custo de aquisição de cada bem; não considera depreciação.'
-        });
-    }
+async function excluirAtivo(id){
+    if(!confirm('Tem certeza que deseja excluir este registro patrimonial?'))return;
+    var cid = window.clienteIdAtual();
+    var r=await sb.from('ativos_equipamentos').delete().eq('id', id).eq('cliente_id', cid);
+    if(r.error){toast('Erro ao excluir: '+r.error.message,'error');return;}
+    toast('Ativo excluído com sucesso!');
+    await carregarAtivos();
+}
 
-    async function inicializarPagina() {
-        try {
-            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
-            if (u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER) document.body.classList.add('usuario-master');
-        } catch (e) {}
-        configurarVoltar();
-        await carregarAtivos();
-    }
-    window.onload = inicializarPagina;
+async function inicializarPagina(){
+    let u = window.obterUsuario();
+    if(!u || !u.email){location.href='login.html';return;}
+
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (window.ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
+
+    await carregarCentros();
+    await carregarAtivos();
+}
+window.onload=inicializarPagina;
 </script>
-<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
+<script src="erp-core.js"></script>
 </body>
 </html>
