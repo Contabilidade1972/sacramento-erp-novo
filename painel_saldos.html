@@ -7,9 +7,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="erp-print.js"></script>
     <script src="auth-guard.js"></script>
-    <script src="filtro_cliente.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -71,7 +71,7 @@
         .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--bg); color: var(--text-main); outline: none; }
         .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
 
-        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) auto; gap: 16px; align-items: flex-end; }
+        .filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; }
 
         .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         @media(max-width: 1024px) { .charts-grid { grid-template-columns: 1fr; } }
@@ -95,16 +95,6 @@
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
 
-        @media print {
-            @page { size: A4 landscape; margin: 12mm; }
-            body { background: #fff; color: #0f172a; font-size: 12px; }
-            .site-header, .page-toolbar, .panel:has(.filtros-grid), footer { display: none !important; }
-            .container { max-width: 100% !important; margin: 0 !important; padding: 0 !important; gap: 16px !important; }
-            .charts-grid { display: grid !important; grid-template-columns: 2fr 1fr !important; gap: 16px !important; }
-            .chart-card { height: 260px !important; padding: 14px !important; border: 1px solid var(--border) !important; box-shadow: none !important; page-break-inside: avoid; }
-            .panel { padding: 16px !important; border: 1px solid var(--border) !important; box-shadow: none !important; page-break-inside: avoid; }
-            .analitica-table th, .analitica-table td { padding: 10px 12px !important; }
-        }
     </style>
 </head>
 <body>
@@ -138,7 +128,7 @@
         <a href="modulo_tecnologia_pd.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Tecnologia & P&D</a>
         <div>
             <span style="font-size: 12px; color: var(--text-light); margin-right: 15px;"><i class="far fa-clock"></i> <span id="relogioTopo"></span></span>
-            <button class="btn-acao" onclick="window.print()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório</button>
+            <button class="btn-acao" type="button" onclick="executarImpressao()" style="background:var(--secondary);"><i class="fas fa-print"></i> Imprimir Relatório</button>
         </div>
     </div>
 
@@ -199,7 +189,7 @@
 
     <!-- EVOLUÇÃO MÊS A MÊS -->
     <div class="chart-card" style="height: 320px;">
-        <div class="chart-title"><i class="fas fa-chart-line"></i> Evolução do Saldo (Mês a Mês)</div>
+        <div class="chart-title"><i class="fas fa-chart-line"></i> <span id="tituloEvolucao">Evolução do Saldo (acumulado mês a mês)</span></div>
         <div class="chart-container">
             <canvas id="chartEvolucao"></canvas>
         </div>
@@ -209,6 +199,7 @@
     <div class="panel">
         <div class="panel-header">
             <span><i class="fas fa-list"></i> Saldos por Projeto</span>
+            <span id="notaFiltro" style="font-size:11px; font-weight:600; color:var(--text-light);"></span>
         </div>
         <div id="tabelaPainel" style="overflow-x:auto;">A carregar dados analíticos...</div>
     </div>
@@ -221,39 +212,39 @@
 <script>
 var EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
 var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa','cliente_modulos','configuracoes_sistema','logs'];
-
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
-
 let projetosCache = [];
 let aportesCache = [];
 let custosCache = [];
 let contratosCache = [];
-
 let chartRGInstance = null;
 let chartCatInstance = null;
 let chartEvolInstance = null;
 
+function esc(t){
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+
 window.obterUsuario = function() {
     try { return JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch(e) { return null; }
 };
-
 window.ehMaster = function() {
     const u = window.obterUsuario();
     if (!u || !u.email) return false;
     return u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim();
 };
-
 window.clienteIdAtual = function() {
     const u = window.obterUsuario();
-    if (!u) return 1;
+    if (!u) return null;
     if (window.ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    // BLINDAGEM LGPD: Força estritamente o próprio cliente_id do utilizador comum
-    return u.cliente_id ? parseInt(u.cliente_id) : 1;
+    // Usuário comum: somente o próprio cliente_id
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
 };
-
 window.sbFiltro = function(tabela){
     let q = sb.from(tabela).select('*');
     const cid = window.clienteIdAtual();
@@ -262,15 +253,12 @@ window.sbFiltro = function(tabela){
     }
     return q;
 };
-
 window.trocarEmpresa = function() {
     const select = document.getElementById('selectEmpresa');
     if (!select) return;
-    const val = select.value;
-    localStorage.setItem('empresaSelecionada', String(val));
+    localStorage.setItem('empresaSelecionada', String(select.value));
     location.reload();
 };
-
 window.sair = function() {
     if (confirm('Deseja realmente sair?')) {
         localStorage.removeItem('usuarioLogado');
@@ -280,6 +268,14 @@ window.sair = function() {
 };
 
 function fmtBR(n){return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function formatDataBR(d){if(!d)return '—';var p=String(d).substring(0,10).split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];return d;}
+function dataAporte(a){ return String(a.data_recebimento || a.data || '').substring(0,10); }
+function dataGasto(g){ return String(g.data_gasto || g.data || '').substring(0,10); }
+function rotuloProjeto(p){ return (p.codigo ? p.codigo + ' · ' : '') + p.nome; }
+
+var CATEGORIAS_ROTULO = {
+    pessoal:'Pessoal (RH)', material_consumo:'Material / Insumos', servicos_terceiros:'Serviços Terceiros', equipamentos:'Equipamentos', outros:'Outros Custos'
+};
 
 setInterval(function(){
     var d = new Date();
@@ -289,24 +285,29 @@ setInterval(function(){
 
 async function carregarDadosGerais(){
     var cid = window.clienteIdAtual();
-    if(!cid) return;
+    var tab = document.getElementById('tabelaPainel');
+    if(!cid){ tab.innerHTML = '<div class="empty-state">Empresa não identificada. Saia e entre novamente.</div>'; return; }
 
-    var pRes = await window.sbFiltro('projetos_pd');
-    var cRes = await window.sbFiltro('contratos_fomento');
-    var aRes = await window.sbFiltro('aportes_pd');
-    var gRes = await window.sbFiltro('custos_pd');
-
-    projetosCache = pRes.data || [];
-    contratosCache = cRes.data || [];
-    aportesCache = aRes.data || [];
-    custosCache = gRes.data || [];
+    var res = await Promise.all([
+        window.sbFiltro('projetos_pd'),
+        window.sbFiltro('contratos_fomento'),
+        window.sbFiltro('aportes_pd'),
+        window.sbFiltro('custos_pd')
+    ]);
+    var erro = res.filter(function(r){ return r.error; })[0];
+    if(erro){ tab.innerHTML = '<div class="empty-state">Erro ao carregar dados: ' + esc(erro.error.message) + '</div>'; return; }
+    projetosCache = res[0].data || [];
+    contratosCache = res[1].data || [];
+    aportesCache = res[2].data || [];
+    custosCache = res[3].data || [];
 
     var selProj = document.getElementById('filtro_projeto');
     selProj.innerHTML = '<option value="">— Todos os projetos —</option>';
     projetosCache.forEach(function(p){
-        selProj.innerHTML += `<option value="${p.id}">${p.codigo ? p.codigo + ' · ' : ''}${p.nome}</option>`;
+        var o = document.createElement('option');
+        o.value = p.id; o.textContent = rotuloProjeto(p);
+        selProj.appendChild(o);
     });
-
     aplicarFiltros();
 }
 
@@ -318,142 +319,201 @@ function limparFiltros(){
     aplicarFiltros();
 }
 
-function aplicarFiltros(){
+// Devolve os dados já filtrados e os totais por projeto
+function calcular(){
     var fProj = document.getElementById('filtro_projeto').value;
     var fInicio = document.getElementById('filtro_inicio').value;
     var fFim = document.getElementById('filtro_fim').value;
     var fCat = document.getElementById('filtro_categoria').value;
 
-    var aportesFiltrados = aportesCache.filter(function(a){
+    var aportes = aportesCache.filter(function(a){
         if(fProj && String(a.projeto_id) !== String(fProj)) return false;
-        if(fInicio && a.data_recebimento < fInicio) return false;
-        if(fFim && a.data_recebimento > fFim) return false;
+        var d = dataAporte(a);
+        if(fInicio && d < fInicio) return false;
+        if(fFim && d > fFim) return false;
         return true;
     });
-
-    var custosFiltrados = custosCache.filter(function(g){
+    var custos = custosCache.filter(function(g){
         if(fProj && String(g.projeto_id) !== String(fProj)) return false;
-        if(fInicio && g.data_gasto < fInicio) return false;
-        if(fFim && g.data_gasto > fFim) return false;
+        var d = dataGasto(g);
+        if(fInicio && d < fInicio) return false;
+        if(fFim && d > fFim) return false;
         if(fCat && g.categoria !== fCat) return false;
         return true;
     });
+    var projetos = fProj ? projetosCache.filter(function(p){ return String(p.id) === String(fProj); }) : projetosCache;
 
-    renderizarTabelaAnalitica(fProj, aportesFiltrados, custosFiltrados);
-    renderizarGraficos(fProj, aportesFiltrados, custosFiltrados);
+    var linhas = projetos.map(function(p){
+        var tA = 0; aportes.forEach(function(a){ if(String(a.projeto_id) === String(p.id)) tA += Number(a.valor || 0); });
+        var tG = 0; custos.forEach(function(g){ if(String(g.projeto_id) === String(p.id)) tG += Number(g.valor || 0); });
+        return { proj: p, recebido: tA, gasto: tG, disponivel: tA - tG,
+                 pct: tA > 0 ? (tG / tA) * 100 : (tG > 0 ? 100 : 0) };
+    });
+    var totA = 0, totG = 0;
+    linhas.forEach(function(l){ totA += l.recebido; totG += l.gasto; });
+    return { fProj:fProj, fInicio:fInicio, fFim:fFim, fCat:fCat, aportes:aportes, custos:custos, projetos:projetos, linhas:linhas,
+             totA:totA, totG:totG, totDisp: totA - totG, totPct: totA > 0 ? (totG / totA) * 100 : (totG > 0 ? 100 : 0) };
 }
 
-function renderizarTabelaAnalitica(fProj, aportes, custos){
-    var el = document.getElementById('tabelaPainel');
-    var projetosAtivos = fProj ? projetosCache.filter(function(p){ return String(p.id) === String(fProj); }) : projetosCache;
+function aplicarFiltros(){
+    var d = calcular();
+    document.getElementById('notaFiltro').textContent = d.fCat ? 'Com filtro de categoria o saldo não é calculado (os aportes não têm categoria).' : '';
+    renderizarTabelaAnalitica(d);
+    renderizarGraficos(d);
+}
 
-    if(!projetosAtivos.length){
+function renderizarTabelaAnalitica(d){
+    var el = document.getElementById('tabelaPainel');
+    if(!d.linhas.length){
         el.innerHTML = '<div class="empty-state">Nenhum projeto encontrado para os filtros selecionados.</div>';
         return;
     }
-
     var html = '<table class="analitica-table"><thead><tr><th>Projeto</th><th style="text-align:right;">Recebido (Aportes)</th><th style="text-align:right;">Gasto (Executado)</th><th style="text-align:right;">Disponível (Saldo)</th><th style="width:180px;">% Utilizado</th></tr></thead><tbody>';
-
-    projetosAtivos.forEach(function(proj){
-        var aProj = aportes.filter(function(a){ return String(a.projeto_id) === String(proj.id); });
-        var gProj = custos.filter(function(g){ return String(g.projeto_id) === String(proj.id); });
-
-        var totalA = 0; aProj.forEach(function(a){ totalA += Number(a.valor || 0); });
-        var totalG = 0; gProj.forEach(function(g){ totalG += Number(g.valor || 0); });
-        var disponivel = totalA - totalG;
-        var pct = totalA > 0 ? Math.min(100, (totalG / totalA) * 100) : (totalG > 0 ? 100 : 0);
-
+    d.linhas.forEach(function(l){
+        var pctBarra = Math.min(100, l.pct);
         html += '<tr>'+
-            '<td><strong>' + (proj.codigo ? proj.codigo + ' · ' : '') + proj.nome + '</strong></td>'+
-            '<td style="text-align:right; color:var(--success);">R\$ ' + fmtBR(totalA) + '</td>'+
-            '<td style="text-align:right; color:var(--warning);">R\$ ' + fmtBR(totalG) + '</td>'+
-            '<td style="text-align:right; font-weight:bold; color:' + (disponivel >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R\$ ' + fmtBR(disponivel) + '</td>'+
+            '<td><strong>' + esc(rotuloProjeto(l.proj)) + '</strong></td>'+
+            '<td style="text-align:right; color:var(--success);">' + (d.fCat ? '—' : 'R$ ' + fmtBR(l.recebido)) + '</td>'+
+            '<td style="text-align:right; color:var(--warning);">R$ ' + fmtBR(l.gasto) + '</td>';
+        if(d.fCat){
+            html += '<td style="text-align:right; color:var(--text-light);">—</td><td>—</td></tr>';
+        } else {
+            html += '<td style="text-align:right; font-weight:bold; color:' + (l.disponivel >= 0 ? 'var(--secondary)' : 'var(--danger)') + ';">R$ ' + fmtBR(l.disponivel) + '</td>'+
             '<td>'+
-                '<div style="font-size:11px; font-weight:700; margin-bottom:2px;">' + pct.toFixed(1) + '%</div>'+
-                '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pct + '%; background:' + (pct > 90 ? 'var(--danger)' : 'var(--primary)') + ';"></div></div>'+
-            '</td>'+
-        '</tr>';
+                '<div style="font-size:11px; font-weight:700; margin-bottom:2px;">' + l.pct.toFixed(1).replace('.', ',') + '%</div>'+
+                '<div class="progress-bar-container"><div class="progress-bar-fill" style="width:' + pctBarra + '%; background:' + (l.pct > 90 ? 'var(--danger)' : 'var(--primary)') + ';"></div></div>'+
+            '</td></tr>';
+        }
     });
-
-    html += '</tbody></table>';
+    html += '</tbody>';
+    if(d.linhas.length > 1){
+        html += '<tfoot><tr style="font-weight:800; background:var(--bg);"><td style="padding:12px 14px;">TOTAL</td>'+
+            '<td style="text-align:right; padding:12px 14px;">' + (d.fCat ? '—' : 'R$ ' + fmtBR(d.totA)) + '</td>'+
+            '<td style="text-align:right; padding:12px 14px;">R$ ' + fmtBR(d.totG) + '</td>'+
+            '<td style="text-align:right; padding:12px 14px;">' + (d.fCat ? '—' : 'R$ ' + fmtBR(d.totDisp)) + '</td>'+
+            '<td style="padding:12px 14px;">' + (d.fCat ? '—' : d.totPct.toFixed(1).replace('.', ',') + '%') + '</td></tr></tfoot>';
+    }
+    html += '</table>';
     el.innerHTML = html;
 }
 
-function renderizarGraficos(fProj, aportes, custos){
-    var projetosAtivos = fProj ? projetosCache.filter(function(p){ return String(p.id) === String(fProj); }) : projetosCache;
+function mesLabel(m){ var p = m.split('-'); return p[1] + '/' + p[0]; }
+function proximoMes(m){ var p = m.split('-'); var y = +p[0], mo = +p[1] + 1; if(mo > 12){ mo = 1; y++; } return y + '-' + String(mo).padStart(2, '0'); }
 
-    var labelsProj = [];
-    var dataRecebido = [];
-    var dataGasto = [];
+function opcoesGrafico(extra){
+    var o = {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: { label: function(ctx){
+                var v = ctx.parsed && ctx.parsed.y !== undefined ? ctx.parsed.y : ctx.parsed;
+                return (ctx.dataset.label ? ctx.dataset.label + ': ' : (ctx.label ? ctx.label + ': ' : '')) + 'R$ ' + fmtBR(v);
+            } } }
+        }
+    };
+    return Object.assign(o, extra || {});
+}
 
-    projetosAtivos.forEach(function(p){
-        labelsProj.push(p.codigo || p.nome);
-        var tA = 0; aportes.filter(function(a){ return String(a.projeto_id) === String(p.id); }).forEach(function(a){ tA += Number(a.valor||0); });
-        var tG = 0; custos.filter(function(g){ return String(g.projeto_id) === String(p.id); }).forEach(function(g){ tG += Number(g.valor||0); });
-        dataRecebido.push(tA);
-        dataGasto.push(tG);
-    });
+function renderizarGraficos(d){
+    if(typeof Chart === 'undefined') return;
 
+    // 1) Recebido x Gasto por projeto
+    var labelsProj = d.linhas.map(function(l){ return l.proj.codigo || l.proj.nome; });
     if(chartRGInstance) chartRGInstance.destroy();
-    var ctxRG = document.getElementById('chartRecebidoGasto').getContext('2d');
-    chartRGInstance = new Chart(ctxRG, {
-        type: 'bar',
-        data: {
-            labels: labelsProj,
-            datasets: [
-                { label: 'Recebido', data: dataRecebido, backgroundColor: '#10b981', borderRadius: 6 },
-                { label: 'Gasto', data: dataGasto, backgroundColor: '#f59e0b', borderRadius: 6 }
-            ]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    var datasetsRG = [];
+    if(!d.fCat) datasetsRG.push({ label: 'Recebido', data: d.linhas.map(function(l){ return l.recebido; }), backgroundColor: '#10b981', borderRadius: 6 });
+    datasetsRG.push({ label: 'Gasto', data: d.linhas.map(function(l){ return l.gasto; }), backgroundColor: '#f59e0b', borderRadius: 6 });
+    chartRGInstance = new Chart(document.getElementById('chartRecebidoGasto').getContext('2d'), {
+        type: 'bar', data: { labels: labelsProj, datasets: datasetsRG }, options: opcoesGrafico()
     });
 
+    // 2) Gastos por categoria
     var catTotais = { pessoal: 0, material_consumo: 0, servicos_terceiros: 0, equipamentos: 0, outros: 0 };
-    custos.forEach(function(g){
+    d.custos.forEach(function(g){
         if(catTotais[g.categoria] !== undefined) catTotais[g.categoria] += Number(g.valor || 0);
         else catTotais.outros += Number(g.valor || 0);
     });
-
     if(chartCatInstance) chartCatInstance.destroy();
-    var ctxCat = document.getElementById('chartCategorias').getContext('2d');
-    chartCatInstance = new Chart(ctxCat, {
+    chartCatInstance = new Chart(document.getElementById('chartCategorias').getContext('2d'), {
         type: 'doughnut',
         data: {
-            labels: ['Pessoal (RH)', 'Material / Insumos', 'Terceiros (PJ)', 'Equipamentos', 'Outros'],
-            datasets: [{
-                data: [catTotais.pessoal, catTotais.material_consumo, catTotais.servicos_terceiros, catTotais.equipamentos, catTotais.outros],
-                backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#64748b']
-            }]
+            labels: ['Pessoal (RH)', 'Material / Insumos', 'Serviços Terceiros', 'Equipamentos', 'Outros'],
+            datasets: [{ data: [catTotais.pessoal, catTotais.material_consumo, catTotais.servicos_terceiros, catTotais.equipamentos, catTotais.outros],
+                         backgroundColor: ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#64748b'] }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        options: opcoesGrafico()
     });
 
-    var mesesMap = {};
-    custos.forEach(function(g){
-        if(g.data_gasto){
-            var mes = g.data_gasto.substring(0, 7);
-            mesesMap[mes] = (mesesMap[mes] || 0) + Number(g.valor || 0);
-        }
+    // 3) Evolução: saldo acumulado mês a mês (recebido acumulado − gasto acumulado)
+    var recMes = {}, gasMes = {};
+    d.aportes.forEach(function(a){ var m = dataAporte(a).substring(0, 7); if(m) recMes[m] = (recMes[m] || 0) + Number(a.valor || 0); });
+    d.custos.forEach(function(g){ var m = dataGasto(g).substring(0, 7); if(m) gasMes[m] = (gasMes[m] || 0) + Number(g.valor || 0); });
+    var todos = Object.keys(recMes).concat(Object.keys(gasMes)).sort();
+    var meses = [];
+    if(todos.length){
+        var m = todos[0], fim = todos[todos.length - 1], guarda = 0;
+        while(m <= fim && guarda++ < 240){ meses.push(m); m = proximoMes(m); }
+    }
+    var cumR = 0, cumG = 0, serieR = [], serieG = [], serieS = [];
+    meses.forEach(function(m){
+        cumR += recMes[m] || 0; cumG += gasMes[m] || 0;
+        serieR.push(cumR); serieG.push(cumG); serieS.push(cumR - cumG);
     });
-    var mesesOrdenados = Object.keys(mesesMap).sort();
-    var valoresEvolucao = mesesOrdenados.map(function(m){ return mesesMap[m]; });
-
+    document.getElementById('tituloEvolucao').textContent = d.fCat ? 'Evolução dos Gastos (acumulado mês a mês)' : 'Evolução do Saldo (acumulado mês a mês)';
+    var datasets = [];
+    if(!d.fCat){
+        datasets.push({ label: 'Recebido acumulado', data: serieR, borderColor: '#10b981', backgroundColor: 'transparent', tension: 0.25, borderWidth: 2 });
+        datasets.push({ label: 'Gasto acumulado', data: serieG, borderColor: '#f59e0b', backgroundColor: 'transparent', tension: 0.25, borderWidth: 2 });
+        datasets.push({ label: 'Saldo disponível', data: serieS, borderColor: '#2563eb', backgroundColor: 'rgba(37, 99, 235, 0.10)', fill: true, tension: 0.25, borderWidth: 3 });
+    } else {
+        datasets.push({ label: 'Gasto acumulado', data: serieG, borderColor: '#f59e0b', backgroundColor: 'rgba(245, 158, 11, 0.12)', fill: true, tension: 0.25, borderWidth: 3 });
+    }
     if(chartEvolInstance) chartEvolInstance.destroy();
-    var ctxEvol = document.getElementById('chartEvolucao').getContext('2d');
-    chartEvolInstance = new Chart(ctxEvol, {
+    chartEvolInstance = new Chart(document.getElementById('chartEvolucao').getContext('2d'), {
         type: 'line',
-        data: {
-            labels: mesesOrdenados.length ? mesesOrdenados : ['Nenhum período'],
-            datasets: [{
-                label: 'Gastos Acumulados (R\$)',
-                data: valoresEvolucao.length ? valoresEvolucao : [0],
-                borderColor: '#2563eb',
-                backgroundColor: 'rgba(37, 99, 235, 0.1)',
-                fill: true,
-                tension: 0.3
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        data: { labels: meses.length ? meses.map(mesLabel) : ['Nenhum período'], datasets: meses.length ? datasets : [{ label: 'Sem dados', data: [0], borderColor: '#94a3b8' }] },
+        options: opcoesGrafico()
+    });
+}
+
+function executarImpressao(){
+    var d = calcular();
+    var filtros = [];
+    if(d.fProj){ var sel = document.getElementById('filtro_projeto'); filtros.push(['Projeto', sel.options[sel.selectedIndex].text]); }
+    if(d.fInicio) filtros.push(['Período inicial', formatDataBR(d.fInicio)]);
+    if(d.fFim) filtros.push(['Período final', formatDataBR(d.fFim)]);
+    if(d.fCat) filtros.push(['Categoria', CATEGORIAS_ROTULO[d.fCat] || d.fCat]);
+
+    var resumo = d.fCat
+        ? [['Projetos listados', String(d.linhas.length)], ['Total gasto na categoria', 'R$ ' + fmtBR(d.totG)]]
+        : [['Total recebido', 'R$ ' + fmtBR(d.totA)], ['Total gasto', 'R$ ' + fmtBR(d.totG)], ['Saldo disponível', 'R$ ' + fmtBR(d.totDisp)], ['% utilizado', d.totPct.toFixed(1).replace('.', ',') + '%']];
+
+    var linhas = d.linhas.map(function(l){
+        if(d.fCat) return [rotuloProjeto(l.proj), '—', {t:'R$ ' + fmtBR(l.gasto), cls:'neg'}, '—', '—'];
+        return [rotuloProjeto(l.proj),
+                {t:'R$ ' + fmtBR(l.recebido), cls:'pos'},
+                {t:'R$ ' + fmtBR(l.gasto), cls:'neg'},
+                {t:'R$ ' + fmtBR(l.disponivel), cls: l.disponivel < 0 ? 'neg' : 'bold'},
+                {t: l.pct.toFixed(1).replace('.', ',') + '%', cls: l.pct > 90 ? 'warn' : ''}];
+    });
+
+    var catTot = {};
+    d.custos.forEach(function(g){ var k = CATEGORIAS_ROTULO[g.categoria] || CATEGORIAS_ROTULO.outros; catTot[k] = (catTot[k] || 0) + Number(g.valor || 0); });
+    var obs = Object.keys(catTot).length
+        ? 'Gastos por categoria: ' + Object.keys(catTot).map(function(k){ return k + ' R$ ' + fmtBR(catTot[k]); }).join(' · ') + '.'
+        : '';
+
+    ERPPrint.imprimir({
+        titulo: 'Painel de Saldos de P&D',
+        subtitulo: 'Aportes recebidos, execução orçamentária e saldo disponível por projeto',
+        codigo: 'PD-SLD',
+        orientacao: 'portrait',
+        filtros: filtros,
+        resumo: resumo,
+        colunas: [{t:'Projeto',w:3.4},{t:'Recebido (R$)',w:1.8,a:'right'},{t:'Gasto (R$)',w:1.8,a:'right'},{t:'Disponível (R$)',w:1.8,a:'right'},{t:'% utilizado',w:1.2,a:'right'}],
+        linhas: linhas,
+        totais: linhas.length > 1 ? ['TOTAL', d.fCat ? '—' : 'R$ ' + fmtBR(d.totA), 'R$ ' + fmtBR(d.totG), d.fCat ? '—' : 'R$ ' + fmtBR(d.totDisp), d.fCat ? '—' : d.totPct.toFixed(1).replace('.', ',') + '%'] : null,
+        observacao: obs + (d.fInicio || d.fFim ? ' O saldo considera apenas os lançamentos dentro do período filtrado.' : '')
     });
 }
 
@@ -461,36 +521,12 @@ async function inicializarPagina(){
     let u = window.obterUsuario();
     if(!u || !u.email) { location.href = 'login.html'; return; }
 
-    if (u.email) {
-        const elUserName = document.getElementById('userName');
-        if (elUserName) {
-            elUserName.innerText = (u.nome || u.email || 'Usuário').split('@')[0];
-        }
-    }
-
-    const master = window.ehMaster();
-
-    if (master) {
-        document.body.classList.add('usuario-master');
-        const select = document.getElementById('selectEmpresa');
-        const { data } = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id', { ascending: true });
-        select.innerHTML = '';
-        if (data) {
-            data.forEach(emp => {
-                const nome = emp.nome_fantasia || emp.razao_social || ('Empresa ' + emp.id);
-                select.innerHTML += `<option value="${emp.id}">${nome}</option>`;
-            });
-        }
-        const selAtual = localStorage.getItem('empresaSelecionada') || String(window.clienteIdAtual());
-        select.value = selAtual;
-        select.disabled = false;
-    } else {
-        document.body.classList.remove('usuario-master');
-    }
+    // O seletor de empresa e o nome do usuário no topo são montados pelo erp-core.js
+    if (window.ehMaster()) document.body.classList.add('usuario-master');
+    else document.body.classList.remove('usuario-master');
 
     await carregarDadosGerais();
 }
-
 window.onload = inicializarPagina;
 </script>
     <!-- BOTÃO FLUTUANTE DE AJUDA GLOBAL -->
