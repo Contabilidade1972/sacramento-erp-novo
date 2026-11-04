@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
     <style>
         :root {
             --primary: #2563eb;
@@ -90,14 +91,6 @@
         .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
         .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
 
-        /* IMPRESSÃO: o padrão (cabeçalho com empresa/CNPJ, tabela em largura total e rodapé) vem do erp-core.js */
-        @media print {
-            .ocultar-print, .toast-container, .card:not(#cardRelatorioModo) { display: none !important; }
-            .card#cardRelatorioModo { border: none !important; box-shadow: none !important; padding: 0 !important; }
-            .btn-icon { display: none !important; }
-            html, body { min-height: 0 !important; height: auto !important; display: block !important; }
-            .container { gap: 0 !important; display: block !important; }
-        }
     </style>
 </head>
 <body>
@@ -342,9 +335,7 @@ async function carregarProjetos() {
     renderTabela();
 }
 
-function renderTabela() {
-    const tbody = document.getElementById('tbodyProjetos');
-    
+function obterFiltrados() {
     const termo = (document.getElementById('filtroTexto').value || '').toLowerCase().trim();
     const statusFiltro = document.getElementById('filtroStatus').value;
     const dataInicioFiltro = document.getElementById('filtroDataInicio').value;
@@ -365,6 +356,12 @@ function renderTabela() {
 
         return matchTexto && matchStatus && matchData;
     });
+    return dadosFiltrados;
+}
+
+function renderTabela() {
+    const tbody = document.getElementById('tbodyProjetos');
+    const dadosFiltrados = obterFiltrados();
 
     if (!dadosFiltrados.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum projeto encontrado com os filtros aplicados.</td></tr>';
@@ -403,8 +400,48 @@ function limparFiltros() {
 }
 
 function executarImpressao() {
-    // O cabeçalho oficial de impressão (empresa, CNPJ, usuário e data) é montado pelo erp-core.js
-    window.print();
+    const dados = obterFiltrados();
+    const statusFiltro = document.getElementById('filtroStatus').value;
+    const termo = document.getElementById('filtroTexto').value.trim();
+    const dataIni = document.getElementById('filtroDataInicio').value;
+
+    const filtros = [];
+    if (statusFiltro) filtros.push(['Situação', statusFiltro]);
+    if (termo) filtros.push(['Busca', termo]);
+    if (dataIni) filtros.push(['Início a partir de', formatDataBR(dataIni)]);
+
+    let ativos = 0, finalizados = 0, outros = 0;
+    dados.forEach(p => {
+        const t = calcularStatusExibicao(p).texto.toLowerCase();
+        if (t === 'ativo' || t === 'prorrogado') ativos++;
+        else if (t === 'finalizado' || t === 'encerrado') finalizados++;
+        else outros++;
+    });
+
+    const linhas = dados.map(p => {
+        const info = calcularStatusExibicao(p);
+        const t = info.texto.toLowerCase();
+        const cls = (t === 'ativo' || t === 'prorrogado') ? 'pos' : (t === 'suspenso' ? 'warn' : 'muted');
+        return [
+            p.codigo || '—',
+            p.nome || '—',
+            p.descricao || '—',
+            formatDataBR(dataInicioDe(p)),
+            formatDataBR(dataFimDe(p)),
+            { t: info.texto, cls: cls }
+        ];
+    });
+
+    ERPPrint.imprimir({
+        titulo: 'Relatório de Projetos de P&D',
+        subtitulo: 'Projetos de pesquisa, desenvolvimento e inovação cadastrados',
+        codigo: 'PD-PRJ',
+        orientacao: 'portrait',
+        filtros: filtros,
+        resumo: [['Projetos listados', String(dados.length)], ['Ativos / prorrogados', String(ativos)], ['Finalizados / encerrados', String(finalizados)], ['Suspensos', String(outros)]],
+        colunas: [{ t: 'Código', w: 1.3 }, { t: 'Projeto', w: 3 }, { t: 'Descrição / objetivo', w: 3 }, { t: 'Início', w: 1.6 }, { t: 'Fim', w: 1.6 }, { t: 'Situação', w: 1.7 }],
+        linhas: linhas
+    });
 }
 
 async function salvarProjeto() {
