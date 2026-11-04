@@ -49,7 +49,7 @@
       '#assistenteIaPainel .ai-form button:disabled{opacity:.5;cursor:not-allowed}' +
       '#assistenteIaPainel .ai-rodape{padding:6px 12px 9px;font-size:11px;text-align:center;background:#fff}' +
       '#assistenteIaPainel .ai-rodape a{color:#2563eb;font-weight:700;text-decoration:none}' +
-      '@media print{#assistenteIaPainel{display:none !important}}';
+      '@media print{#assistenteIaPainel,#assistenteIaBotao{display:none !important}}';
     document.head.appendChild(st);
   }
 
@@ -71,10 +71,25 @@
     desenhar();
   }
 
+  // Converte **negrito** em negrito e "* item" em "• item", sem aceitar HTML do texto
+  function preencher(el, texto) {
+    var linhas = String(texto || '').replace(/\r/g, '').split('\n');
+    linhas.forEach(function (linha, idx) {
+      if (idx > 0) el.appendChild(document.createTextNode('\n'));
+      linha = linha.replace(/^\s*[*\-]\s+/, '\u2022 ').replace(/^#+\s*/, '');
+      var partes = linha.split('**');
+      partes.forEach(function (parte, i) {
+        if (!parte) return;
+        if (i % 2 === 1) { var b = document.createElement('strong'); b.textContent = parte.replace(/\*/g, ''); el.appendChild(b); }
+        else el.appendChild(document.createTextNode(parte.replace(/\*/g, '')));
+      });
+    });
+  }
+
   function bolha(texto, classe) {
     var d = document.createElement('div');
     d.className = 'ai-m ' + classe;
-    d.textContent = texto;
+    if (classe === 'ai-a') preencher(d, texto); else d.textContent = texto;
     return d;
   }
 
@@ -147,6 +162,30 @@
     if (btn) btn.disabled = false;
     var i2 = document.getElementById('aiEntrada'); if (i2) i2.focus();
   }
+
+  // Algumas telas (ex.: tela principal e Módulo Financeiro) não têm o botão azul de interrogação.
+  // Nelas, o assistente cria o seu próprio botão.
+  function garantirBotao() {
+    if (document.querySelector('button[title="Central de Ajuda"]') || document.getElementById('assistenteIaBotao')) return;
+    if (!document.body) return;
+    css();
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.id = 'assistenteIaBotao';
+    b.className = 'ocultar-print no-print';
+    b.title = 'Assistente Sacramento';
+    b.setAttribute('aria-label', 'Abrir o assistente');
+    b.textContent = '?';
+    var direita = (pagina === 'index.html' || pagina === '') ? 96 : 24;
+    b.style.cssText = 'position:fixed;bottom:24px;right:' + direita + 'px;z-index:999999;width:52px;height:52px;border-radius:50%;background:#2563eb;color:#fff;border:none;font-size:22px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(37,99,235,.45);display:flex;align-items:center;justify-content:center;font-family:Inter,Arial,sans-serif';
+    b.onclick = function () {
+      var p = document.getElementById('assistenteIaPainel');
+      if (p && p.classList.contains('aberto')) fechar(); else abrir();
+    };
+    document.body.appendChild(b);
+  }
+  function iniciarBotao() { garantirBotao(); setTimeout(garantirBotao, 1500); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciarBotao); else iniciarBotao();
 
   // Intercepta o botão azul de interrogação (Central de Ajuda) em todas as telas
   document.addEventListener('click', function (e) {
