@@ -329,6 +329,7 @@ let parceirosCache = [];
 let arquivoAnexadoUrl = null;
 let arquivoAnexadoNome = null;
 let nomeEmpresaAtual = '';
+let cnpjEmpresaAtual = '';
 
 var CATEGORIAS = {
     pessoal:            { rotulo: 'Pessoal (RH)',       classe: 'b-pesessoal' },
@@ -590,52 +591,175 @@ function atualizarNomeArquivo(input){
     reader.readAsDataURL(file);
 }
 
+function valorPorExtenso(v){
+    var un=['zero','um','dois','três','quatro','cinco','seis','sete','oito','nove','dez','onze','doze','treze','quatorze','quinze','dezesseis','dezessete','dezoito','dezenove'];
+    var dz=['','','vinte','trinta','quarenta','cinquenta','sessenta','setenta','oitenta','noventa'];
+    var ce=['','cento','duzentos','trezentos','quatrocentos','quinhentos','seiscentos','setecentos','oitocentos','novecentos'];
+    function ate999(n){
+        if(n===0)return '';
+        if(n===100)return 'cem';
+        var r=[],c=Math.floor(n/100),resto=n%100;
+        if(c)r.push(ce[c]);
+        if(resto){
+            if(resto<20)r.push(un[resto]);
+            else{var d=Math.floor(resto/10),u=resto%10;r.push(dz[d]+(u?' e '+un[u]:''));}
+        }
+        return r.join(' e ');
+    }
+    function inteiro(n){
+        if(n===0)return 'zero';
+        var partes=[],mi=Math.floor(n/1000000),mil=Math.floor((n%1000000)/1000),res=n%1000;
+        if(mi)partes.push(ate999(mi)+(mi===1?' milhão':' milhões'));
+        if(mil)partes.push(mil===1?'mil':ate999(mil)+' mil');
+        if(res)partes.push(ate999(res));
+        if(partes.length===1)return partes[0];
+        var ultimo=partes.pop();
+        var lv=res||mil;
+        var usaE=(lv>0&&(lv<100||lv%100===0));
+        return partes.join(' ')+(usaE?' e ':' ')+ultimo;
+    }
+    var cent=Math.round((Number(v)||0)*100);
+    var reais=Math.floor(cent/100),cts=cent%100;
+    var t=[];
+    if(reais>0||cts===0){
+        var ext=inteiro(reais);
+        var sufixo=(reais===1)?' real':((reais>=1000000&&reais%1000000===0)?' de reais':' reais');
+        t.push(ext+sufixo);
+    }
+    if(cts>0)t.push(inteiro(cts)+(cts===1?' centavo':' centavos'));
+    return t.join(' e ');
+}
+
 function gerarReciboRPA(){
     var empresa = document.getElementById('empresa_pagadora').value.trim() || nomeEmpresaAtual || 'Empresa executora';
-    var nome = document.getElementById('prestador_nome').value.trim() || 'Nome do Prestador / Autônomo';
-    var cpf = document.getElementById('prestador_cpf').value.trim() || '000.000.000-00';
-    var endereco = document.getElementById('prestador_endereco').value.trim() || 'Endereço não informado';
-    var valor = document.getElementById('valor').value.trim() || '0,00';
-    var desc = document.getElementById('descricao').value.trim() || 'Serviços técnicos especializados prestados ao projeto de P&D';
-    var doc = document.getElementById('documento_fiscal').value.trim() || gerarProximoNumeroDocumento();
-    if(!document.getElementById('documento_fiscal').value.trim()) {
-        document.getElementById('documento_fiscal').value = doc;
-    }
-    var hoje = new Date().toLocaleDateString('pt-BR', {day: '2-digit', month: 'long', year: 'numeric'});
+    var nome = document.getElementById('prestador_nome').value.trim();
+    var cpf = document.getElementById('prestador_cpf').value.trim();
+    var endereco = document.getElementById('prestador_endereco').value.trim();
+    var valorNum = parseValorBR(document.getElementById('valor').value);
+    var desc = document.getElementById('descricao').value.trim();
+    if(!nome || !cpf){ toast('Informe o CPF/CNPJ e o prestador antes de gerar o recibo.','error'); return; }
+    if(!valorNum || valorNum<=0){ toast('Informe o valor do gasto antes de gerar o recibo.','error'); return; }
+    if(!desc){ toast('Informe a descrição do gasto antes de gerar o recibo.','error'); return; }
 
-    var janela = window.open('', '_blank');
-    if(!janela){ toast('O navegador bloqueou a janela do recibo. Permita pop-ups para este site.','error'); return; }
-    janela.document.write(
-        '<html><head><meta charset="UTF-8"><title>Recibo de Pagamento (RPA) — '+esc(doc)+'</title>'+
-        '<style>'+
-        "body{font-family:'Inter',Arial,sans-serif;padding:40px;color:#0f172a;background:#fff}"+
-        '.recibo-container{border:2px solid #1e3a8a;padding:40px;border-radius:12px;max-width:800px;margin:auto}'+
-        '.header{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #e2e8f0;padding-bottom:20px;margin-bottom:25px}'+
-        '.header h1{font-size:18px;color:#1e3a8a;text-transform:uppercase;letter-spacing:1px}'+
-        '.header span{font-size:12px;color:#64748b;font-weight:bold}'+
-        '.valor-box{background:#f8fafc;border:1.5px solid #cbd5e1;padding:16px 20px;border-radius:8px;font-size:20px;font-weight:bold;color:#1e3a8a;margin:20px 0;display:inline-block}'+
-        '.corpo{font-size:14px;line-height:1.6;color:#334155;margin-bottom:30px}'+
-        '.detalhes{background:#f1f5f9;padding:16px;border-radius:8px;font-size:13px;margin-bottom:20px}'+
-        '.detalhes table{width:100%;border-collapse:collapse}.detalhes td{padding:6px 0}'+
-        '.aviso{font-size:11px;color:#64748b;border-top:1px dashed #cbd5e1;padding-top:10px;margin-top:10px}'+
-        '.assinatura{margin-top:50px;text-align:center}'+
-        '.linha{border-top:1.5px solid #1e3a8a;width:350px;margin:0 auto 10px auto}'+
-        '@media print{body{padding:0}.recibo-container{border:1px solid #333}}'+
-        '</style></head><body>'+
-        '<div class="recibo-container">'+
-        '<div class="header"><h1>Recibo de Pagamento de Autônomo (RPA)</h1><span>Ref. Documento: '+esc(doc)+'</span></div>'+
-        '<div class="corpo"><p>Recebi de <b>'+esc(empresa)+'</b>, vinculada ao projeto de Pesquisa e Desenvolvimento (P&amp;D), a importância abaixo especificada, pela prestação de serviços técnicos:</p>'+
-        '<div class="valor-box">VALOR BRUTO: R$ '+esc(valor)+'</div>'+
-        '<p><b>Histórico / Descrição dos Serviços:</b><br>'+esc(desc)+'</p></div>'+
-        '<div class="detalhes"><table>'+
-        '<tr><td><b>Prestador / Favorecido:</b> '+esc(nome)+'</td><td><b>CPF / CNPJ:</b> '+esc(cpf)+'</td></tr>'+
-        '<tr><td colspan="2"><b>Endereço:</b> '+esc(endereco)+'</td></tr>'+
-        '<tr><td colspan="2"><b>Local e Data:</b> ______________________________, '+esc(hoje)+'</td></tr></table>'+
-        '<div class="aviso">Valor bruto. Eventuais retenções legais (INSS, IRRF, ISS), quando aplicáveis, devem ser apuradas e conferidas pela contabilidade antes do pagamento.</div></div>'+
-        '<div class="assinatura"><div class="linha"></div><p><b>'+esc(nome)+'</b><br>CPF/CNPJ: '+esc(cpf)+'</p></div>'+
-        '</div><script>window.print();<\/script></body></html>'
-    );
-    janela.document.close();
+    var doc = document.getElementById('documento_fiscal').value.trim() || gerarProximoNumeroDocumento();
+    document.getElementById('documento_fiscal').value = doc;
+
+    var projSel = document.getElementById('projeto_id');
+    var projeto = projSel.value ? projSel.options[projSel.selectedIndex].text : '—';
+    var ctrSel = document.getElementById('contrato_id');
+    var contrato = ctrSel.value ? ctrSel.options[ctrSel.selectedIndex].text : '—';
+    var dataGastoVal = document.getElementById('data_gasto').value;
+    var dataTxt = dataGastoVal ? formatDataBR(dataGastoVal) : '____/____/________';
+
+    var u = obterUsuarioAtual() || {};
+    var ag = new Date();
+    function p2(n){ return String(n).padStart(2,'0'); }
+    var emissao = p2(ag.getDate())+'/'+p2(ag.getMonth()+1)+'/'+ag.getFullYear()+' '+p2(ag.getHours())+':'+p2(ag.getMinutes());
+    var extenso = valorPorExtenso(valorNum);
+    extenso = extenso.charAt(0).toUpperCase()+extenso.slice(1);
+
+    var css =
+      '@page{size:A4 portrait;margin:0}*{box-sizing:border-box;margin:0;padding:0}'+
+      'html,body{background:#fff}'+
+      'body{font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;color:#0f172a;font-size:9.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+      '.pg{position:relative;width:210mm;height:297mm;padding:10mm 12mm 0 12mm;overflow:hidden}'+
+      '.topo{border-bottom:2.2px solid #1e3a8a;padding-bottom:3mm;margin-bottom:4mm}'+
+      '.tl{display:flex;justify-content:space-between;align-items:flex-start;gap:8mm}'+
+      '.en{font-size:14pt;font-weight:800;color:#1e3a8a;text-transform:uppercase;line-height:1.15}'+
+      '.ec{font-size:8pt;color:#475569;margin-top:1mm}'+
+      '.ib{text-align:right;font-size:7.5pt;color:#475569;line-height:1.5;white-space:nowrap}.ib b{color:#0f172a}'+
+      '.tt{margin-top:3.5mm;font-size:12.5pt;font-weight:800;text-transform:uppercase;letter-spacing:.4px}'+
+      '.st{font-size:8pt;color:#64748b;margin-top:.8mm}'+
+      '.vbox{display:flex;align-items:stretch;border:1px solid #cbd5e1;border-left:4px solid #1e3a8a;border-radius:1.5mm;margin-bottom:4mm}'+
+      '.vbox .v1{padding:3mm 5mm;border-right:1px solid #e2e8f0;min-width:62mm}'+
+      '.vbox .v2{padding:3mm 5mm;flex:1}'+
+      '.lb{font-size:6.8pt;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.5px}'+
+      '.vv{font-size:17pt;font-weight:800;color:#1e3a8a;margin-top:1mm}'+
+      '.ex{font-size:10pt;font-weight:600;margin-top:1.2mm;line-height:1.35}'+
+      '.sec{font-size:7.5pt;font-weight:800;color:#fff;background:#1e3a8a;text-transform:uppercase;letter-spacing:.5px;padding:1.6mm 3mm}'+
+      'table.f{width:100%;border-collapse:collapse;margin-bottom:3.5mm}'+
+      'table.f td{border:1px solid #dbe3ee;padding:1.4mm 3mm;vertical-align:top;line-height:1.35;width:50%}'+
+      'table.f td.full{width:100%}'+
+      'table.f td .vl{font-size:9.5pt;font-weight:600;margin-top:.6mm}'+
+      'table.ret{width:100%;border-collapse:collapse;margin-bottom:3.5mm}'+
+      'table.ret td{border:1px solid #dbe3ee;padding:1.3mm 3mm;font-size:9pt}'+
+      'table.ret td.n{background:#f6f8fc;font-weight:700;width:60%}'+
+      'table.ret td.v{text-align:right;color:#94a3b8}'+
+      'table.ret tr.tot td{background:#eef2ff;font-weight:800;border-top:1.6px solid #1e3a8a}'+
+      'table.ret tr.tot td.v{color:#0f172a}'+
+      '.decl{font-size:9pt;line-height:1.55;color:#334155;margin-bottom:3.5mm;text-align:justify}'+
+      '.assin{display:flex;gap:14mm;margin-top:13mm;padding:0 6mm}'+
+      '.assin .cx{flex:1 1 0;border-top:1px solid #0f172a;padding-top:1.4mm;text-align:center;font-size:8pt;color:#334155;line-height:1.4}'+
+      '.obs{margin-top:5mm;font-size:7.5pt;color:#475569;border-left:3px solid #cbd5e1;padding-left:2.5mm;line-height:1.5}'+
+      '.rod{position:absolute;left:12mm;right:12mm;bottom:7mm;border-top:1px solid #94a3b8;padding-top:1.6mm;display:flex;justify-content:space-between;gap:6mm;font-size:7pt;color:#64748b}'+
+      '.rod .m{flex:1;text-align:center}.rod .pg2{font-weight:800;color:#0f172a;white-space:nowrap}';
+
+    var corpo =
+      '<div class="pg">'+
+      '<div class="topo"><div class="tl">'+
+        '<div><div class="en">'+esc(empresa)+'</div>'+(cnpjEmpresaAtual?'<div class="ec">CNPJ: '+esc(cnpjEmpresaAtual)+'</div>':'')+'</div>'+
+        '<div class="ib"><div>Documento: <b>PD-RPA</b></div><div>Recibo nº <b>'+esc(doc)+'</b></div><div>Emitido em <b>'+esc(emissao)+'</b></div><div>Por <b>'+esc(u.nome||u.email||'Usuário')+'</b></div></div>'+
+      '</div>'+
+      '<div class="tt">Recibo de Pagamento a Autônomo (RPA)</div>'+
+      '<div class="st">Serviços prestados por pessoa física ou jurídica sem emissão de nota fiscal — projeto de Pesquisa e Desenvolvimento</div></div>'+
+
+      '<div class="vbox"><div class="v1"><div class="lb">Valor bruto</div><div class="vv">R$ '+fmtBR(valorNum)+'</div></div>'+
+      '<div class="v2"><div class="lb">Valor por extenso</div><div class="ex">'+esc(extenso)+'.</div></div></div>'+
+
+      '<div class="sec">Pagador (tomador dos serviços)</div>'+
+      '<table class="f"><tr><td><div class="lb">Razão social</div><div class="vl">'+esc(empresa)+'</div></td><td><div class="lb">CNPJ</div><div class="vl">'+esc(cnpjEmpresaAtual||'—')+'</div></td></tr></table>'+
+
+      '<div class="sec">Beneficiário (prestador dos serviços)</div>'+
+      '<table class="f"><tr><td><div class="lb">Nome / Razão social</div><div class="vl">'+esc(nome)+'</div></td><td><div class="lb">CPF / CNPJ</div><div class="vl">'+esc(cpf)+'</div></td></tr>'+
+      '<tr><td class="full" colspan="2"><div class="lb">Endereço</div><div class="vl">'+esc(endereco||'—')+'</div></td></tr></table>'+
+
+      '<div class="sec">Referente a</div>'+
+      '<table class="f"><tr><td class="full" colspan="2"><div class="lb">Descrição dos serviços</div><div class="vl">'+esc(desc)+'</div></td></tr>'+
+      '<tr><td><div class="lb">Projeto</div><div class="vl">'+esc(projeto)+'</div></td><td><div class="lb">Contrato / Convênio</div><div class="vl">'+esc(contrato)+'</div></td></tr>'+
+      '<tr><td class="full" colspan="2"><div class="lb">Data do serviço / pagamento</div><div class="vl">'+esc(dataTxt)+'</div></td></tr></table>'+
+
+      '<div class="sec">Apuração do pagamento (a preencher pela contabilidade)</div>'+
+      '<table class="ret">'+
+      '<tr><td class="n">Valor bruto dos serviços</td><td class="v">R$ '+fmtBR(valorNum)+'</td></tr>'+
+      '<tr><td class="n">(−) INSS retido</td><td class="v">R$ ____________</td></tr>'+
+      '<tr><td class="n">(−) IRRF retido</td><td class="v">R$ ____________</td></tr>'+
+      '<tr><td class="n">(−) ISS retido</td><td class="v">R$ ____________</td></tr>'+
+      '<tr class="tot"><td class="n">Valor líquido a pagar</td><td class="v">R$ ____________</td></tr></table>'+
+
+      '<div class="decl">Declaro ter recebido de <b>'+esc(empresa)+'</b> a importância bruta de <b>R$ '+fmtBR(valorNum)+'</b> ('+esc(extenso.toLowerCase())+'), referente aos serviços acima descritos, dando plena e geral quitação pelo valor recebido. Declaro que os serviços foram prestados sem vínculo empregatício com o pagador.</div>'+
+
+      '<div class="decl" style="margin-bottom:0">Local e data: ______________________________, ____ de ____________________ de ________.</div>'+
+
+      '<div class="assin"><div class="cx"><b>'+esc(nome)+'</b><br>CPF/CNPJ: '+esc(cpf)+'<br>Beneficiário</div>'+
+      '<div class="cx"><b>'+esc(empresa)+'</b><br>Responsável pelo pagamento</div></div>'+
+
+      '<div class="obs">As retenções legais (INSS, IRRF e ISS), quando aplicáveis, devem ser apuradas e conferidas pela contabilidade antes do pagamento. Guarde este recibo junto ao comprovante de pagamento.</div>'+
+
+      '<div class="rod"><span>'+esc(empresa)+' · PD-RPA</span><span class="m">Sacramento ERP · Emitido por '+esc(u.nome||u.email||'Usuário')+' em '+esc(emissao)+'</span><span class="pg2">Página 1 de 1</span></div>'+
+      '</div>';
+
+    var old = document.getElementById('erpReciboFrame');
+    if(old && old.parentNode) old.parentNode.removeChild(old);
+    var fr = document.createElement('iframe');
+    fr.id = 'erpReciboFrame';
+    fr.setAttribute('aria-hidden','true');
+    fr.style.cssText = 'position:fixed;left:-99999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden;';
+    document.body.appendChild(fr);
+    var d = fr.contentWindow.document;
+    d.open();
+    d.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Recibo RPA '+esc(doc)+' — '+esc(empresa)+'</title><style>'+css+'</style></head><body>'+corpo+'</body></html>');
+    d.close();
+
+    var tituloAntigo = document.title;
+    document.title = ('Recibo RPA '+doc+' - '+nome).replace(/[\\\/:*?"<>|]/g,'');
+    function restaurar(){ document.title = tituloAntigo; setTimeout(function(){ if(fr.parentNode) fr.parentNode.removeChild(fr); },500); }
+    setTimeout(function(){
+        try{
+            fr.contentWindow.addEventListener('afterprint', restaurar);
+            fr.contentWindow.focus();
+            fr.contentWindow.print();
+        }catch(e){ restaurar(); toast('Não foi possível abrir a impressão do recibo.','error'); }
+    }, 250);
 }
 
 function obterFiltrados(){
@@ -901,8 +1025,8 @@ async function inicializarPagina(){
     try {
         var cid = clienteIdAtual();
         if (cid) {
-            var re = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia').eq('id', cid).maybeSingle();
-            if (re && re.data) nomeEmpresaAtual = re.data.razao_social || re.data.nome_fantasia || '';
+            var re = await sb.from('clientes_contratantes').select('razao_social, nome_fantasia, cnpj').eq('id', cid).maybeSingle();
+            if (re && re.data) { nomeEmpresaAtual = re.data.razao_social || re.data.nome_fantasia || ''; cnpjEmpresaAtual = re.data.cnpj || ''; }
         }
     } catch(e){}
     document.getElementById('empresa_pagadora').value = nomeEmpresaAtual;
