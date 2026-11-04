@@ -183,6 +183,10 @@
                 <input type="date" id="fim" class="form-control">
             </div>
         </div>
+        <div>
+            <label>Descrição / Objetivo (Opcional)</label>
+            <textarea id="descricao" class="form-control" style="height:70px; padding:10px 14px; margin-bottom:16px; resize:vertical;" placeholder="Resumo do objetivo do projeto..."></textarea>
+        </div>
         <div class="form-grid">
             <div>
                 <label>Status *</label>
@@ -283,10 +287,24 @@ function clienteIdAtual() {
     if (!u) return 1;
     if (ehMaster()) {
         try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {}
-        return u.cliente_id ? parseInt(u.cliente_id) : 2;
+        return u.cliente_id ? parseInt(u.cliente_id) : 1;
     }
-    return u.cliente_id ? parseInt(u.cliente_id) : 2;
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
 }
+
+function esc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, function(c) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+}
+
+function hojeLocal() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function dataInicioDe(p) { return p.data_inicio || ''; }
+function dataFimDe(p) { return p.data_fim || p.fim || p.termino || ''; }
 
 function toast(msg, type='success') {
     var c = document.getElementById('toastContainer'), x = document.createElement('div');
@@ -310,11 +328,11 @@ function formatDataBR(d) {
 
 function calcularStatusExibicao(p) {
     let statusCadastrado = p.status || 'Ativo';
-    let dataFim = p.fim || p.data_fim;
+    let dataFim = dataFimDe(p);
     
     // Se a data de fim já passou e o status cadastrado for Ativo, considera-se Finalizado automaticamente
     if (dataFim && statusCadastrado.toLowerCase() === 'ativo') {
-        let hojeStr = new Date().toISOString().split('T')[0];
+        let hojeStr = hojeLocal();
         if (dataFim < hojeStr) {
             return { texto: 'Finalizado', classe: 'badge-finalizado' };
         }
@@ -343,6 +361,10 @@ function gerarProximoCodigo() {
 async function carregarProjetos() {
     const cid = clienteIdAtual();
     const tbody = document.getElementById('tbodyProjetos');
+    if (!cid) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--danger);">Empresa não identificada. Saia e entre novamente.</td></tr>';
+        return;
+    }
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">A carregar dados do Supabase...</td></tr>';
 
     const { data, error } = await sb.from('projetos_pd').select('*').eq('cliente_id', cid).order('id', { ascending: false });
@@ -373,7 +395,7 @@ function renderTabela() {
         
         let matchData = true;
         if (dataInicioFiltro) {
-            let pInicio = p.inicio || p.data_inicio || '';
+            let pInicio = dataInicioDe(p);
             if (!pInicio || pInicio < dataInicioFiltro) matchData = false;
         }
 
@@ -391,11 +413,11 @@ function renderTabela() {
 
         var tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${p.codigo || '—'}</strong></td>
-            <td>${p.nome || '—'}</td>
-            <td>${formatDataBR(p.inicio || p.data_inicio)}</td>
-            <td>${formatDataBR(p.fim || p.data_fim)}</td>
-            <td><span class="badge ${infoStatus.classe}">${infoStatus.texto}</span></td>
+            <td><strong>${esc(p.codigo) || '—'}</strong></td>
+            <td>${esc(p.nome) || '—'}${p.descricao ? '<br><small style="color:var(--text-light)">' + esc(p.descricao) + '</small>' : ''}</td>
+            <td>${formatDataBR(dataInicioDe(p))}</td>
+            <td>${formatDataBR(dataFimDe(p))}</td>
+            <td><span class="badge ${infoStatus.classe}">${esc(infoStatus.texto)}</span></td>
             <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
                 <button class="btn-icon" title="Editar"><i class="fas fa-edit"></i></button>
                 <button class="btn-icon excluir" title="Excluir"><i class="fas fa-trash"></i></button>
@@ -452,10 +474,21 @@ async function salvarProjeto() {
     const codigo = document.getElementById('codigo').value.trim();
     const nome = document.getElementById('nome').value.trim();
     const status = document.getElementById('status').value;
+    const dataInicio = document.getElementById('inicio').value || null;
+    const dataFim = document.getElementById('fim').value || null;
+    const descricao = document.getElementById('descricao').value.trim() || null;
     const cliente_id = clienteIdAtual();
 
+    if(!cliente_id) {
+        toast("Empresa não identificada. Saia e entre novamente.", "error");
+        return;
+    }
     if(!nome) {
         toast("Preencha o nome do projeto.", "error");
+        return;
+    }
+    if(dataInicio && dataFim && dataFim < dataInicio) {
+        toast("A data de fim não pode ser anterior à data de início.", "error");
         return;
     }
 
@@ -463,7 +496,10 @@ async function salvarProjeto() {
         cliente_id: cliente_id, 
         codigo: codigo, 
         nome: nome, 
-        status: status 
+        status: status,
+        data_inicio: dataInicio,
+        data_fim: dataFim,
+        descricao: descricao
     };
 
     let res;
@@ -486,10 +522,11 @@ function editarProjeto(id) {
     document.getElementById('edit_id').value = p.id;
     document.getElementById('codigo').value = p.codigo || '';
     document.getElementById('nome').value = p.nome || '';
-    document.getElementById('inicio').value = p.inicio || p.data_inicio || '';
-    document.getElementById('fim').value = p.fim || p.data_fim || '';
+    document.getElementById('inicio').value = dataInicioDe(p);
+    document.getElementById('fim').value = dataFimDe(p);
+    document.getElementById('descricao').value = p.descricao || '';
     document.getElementById('status').value = p.status || 'Ativo';
-    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando projeto (${p.codigo})`;
+    document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando projeto (${esc(p.codigo)})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar projeto';
     document.getElementById('btnCancelar').style.display = 'inline-flex';
     window.scrollTo({top: 0, behavior: 'smooth'});
@@ -501,6 +538,7 @@ function cancelarEdicao() {
     document.getElementById('nome').value = '';
     document.getElementById('inicio').value = '';
     document.getElementById('fim').value = '';
+    document.getElementById('descricao').value = '';
     document.getElementById('status').value = 'Ativo';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cadastrar novo projeto';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar projeto';
@@ -510,6 +548,14 @@ function cancelarEdicao() {
 async function excluirProjeto(id) {
     if(confirm("Deseja realmente excluir este projeto de P&D?")) {
         const cid = clienteIdAtual();
+        const vinculos = [['contratos_fomento', 'contratos de fomento'], ['aportes_pd', 'aportes'], ['custos_pd', 'gastos'], ['faturamento_pd', 'notas de faturamento']];
+        for (let i = 0; i < vinculos.length; i++) {
+            const chk = await sb.from(vinculos[i][0]).select('id').eq('projeto_id', id).eq('cliente_id', cid).limit(1);
+            if (!chk.error && chk.data && chk.data.length) {
+                toast("Este projeto não pode ser excluído: há " + vinculos[i][1] + " vinculados a ele. Mude o status para Encerrado.", "error");
+                return;
+            }
+        }
         let res = await sb.from('projetos_pd').delete().eq('id', id).eq('cliente_id', cid);
         if(res.error) { toast("Erro ao excluir: " + res.error.message, "error"); return; }
         toast("Projeto excluído com sucesso!");
