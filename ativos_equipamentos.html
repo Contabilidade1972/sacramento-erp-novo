@@ -149,7 +149,7 @@
                 <select id="centro_custo" class="form-control">
                     <option value="">— Selecione o setor —</option>
                 </select>
-                <div style="font-size:11px; color:var(--text-light); margin-top:-6px; margin-bottom:10px;">Os setores vêm do cadastro de <a href="centros_custo.html" style="color:var(--primary); font-weight:700;">Centros de Custo</a>. Ativos de P&D devem usar o centro de custo de P&D.</div>
+                <div style="font-size:11px; color:var(--text-light); margin-top:-6px; margin-bottom:10px;">Os setores vêm do cadastro de <a href="centros_custo.html" style="color:var(--primary); font-weight:700;">Centros de Custo</a>. Equipamentos de P&D são cadastrados no módulo Tecnologia & P&D (página própria) e não aparecem aqui.</div>
             </div>
             <div>
                 <label>Nome do Equipamento / Ativo *</label>
@@ -258,6 +258,7 @@ var TABELAS_SEM_CLIENTE = ['clientes_contratantes','usuarios','usuarios_empresa'
 const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 let ativosCache = [];
 let centrosCache = [];
+function ehCentroPD(txt){ return /p\s*&\s*d|pesquisa\s+e\s+desenvolvimento/i.test(String(txt || '')); }
 var STATUS_MAP = {
     operacional: { rotulo: 'Operacional', classe: 'b-ativo' },
     manutencao:  { rotulo: 'Manutenção',  classe: 'b-manutencao' },
@@ -341,7 +342,7 @@ function rotuloCentro(cc){ return (cc.codigo || cc.id || '') + ' - ' + (cc.nome 
 
 async function carregarCentros(){
     var r = await window.sbFiltro('centros_custo');
-    centrosCache = (r.data || []).filter(function(cc){ return (cc.status || 'Ativo') === 'Ativo'; });
+    centrosCache = (r.data || []).filter(function(cc){ return (cc.status || 'Ativo') === 'Ativo' && !ehCentroPD(rotuloCentro(cc)); });
     montarSelectsCentro();
 }
 
@@ -358,8 +359,8 @@ function montarSelectsCentro(extraValor){
     }
     centrosCache.forEach(function(cc){ add(rotuloCentro(cc)); });
     // valores já gravados em ativos (inclusive antigos) continuam selecionáveis e filtráveis
-    ativosCache.forEach(function(a){ add(a.centro_custo); });
-    if(extraValor) add(extraValor);
+    ativosCache.forEach(function(a){ if(!ehCentroPD(a.centro_custo)) add(a.centro_custo); });
+    if(extraValor && !ehCentroPD(extraValor)) add(extraValor);
     Object.keys(vistos).sort().forEach(function(v){
         var o = document.createElement('option'); o.value = v; o.textContent = v; fil.appendChild(o);
     });
@@ -371,7 +372,8 @@ async function carregarAtivos(){
     if(!window.clienteIdAtual()){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Empresa não identificada. Saia e entre novamente.</td></tr>';return;}
     var r = await window.sbFiltro('ativos_equipamentos');
     if(r.error){tbody.innerHTML='<tr><td colspan="7" class="empty-state">Erro ao carregar ativos: '+esc(r.error.message)+'</td></tr>';return;}
-    ativosCache = r.data || [];
+    // ativos de P&D ficam somente no módulo Tecnologia & P&D
+    ativosCache = (r.data || []).filter(function(a){ return !ehCentroPD(a.centro_custo); });
     montarSelectsCentro();
     renderTabelaAtivos();
 }
