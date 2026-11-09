@@ -1002,7 +1002,7 @@ window.addEventListener('beforeprint', () => {
 /* BOTÃO FLUTUANTE "MÓDULO CONTÁBIL" NAS TELAS DO MÓDULO */
 (function () {
     var arq = (location.pathname.split('/').pop() || '').toLowerCase();
-    var telas = ['documentos_contabeis.html', 'calendario_fiscal.html', 'acessos_contabilidade.html'];
+    var telas = ['documentos_contabeis.html', 'calendario_fiscal.html', 'acessos_contabilidade.html', 'fiscal_contabil.html'];
     if (telas.indexOf(arq) < 0 && arq.indexOf('apuracao') < 0) return;
     function criar() {
         if (document.getElementById('erpVoltarModContabil')) return;
