@@ -121,6 +121,28 @@
         .btn-voltar-fixo { position: fixed; left: 20px; bottom: 24px; z-index: 900; background: var(--secondary); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 22px rgba(30,58,138,.4); }
         .btn-voltar-fixo:hover { background: var(--primary-dark); }
         @media print { .btn-voltar-fixo { display: none; } }
+        .guia { background: linear-gradient(135deg,#eff6ff,#f0fdf4); border: 1px solid #bfdbfe; border-radius: 16px; padding: 20px 22px; }
+        .guia h3 { font-size: 16px; color: var(--secondary); display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; margin: 0; }
+        .guia .guia-intro { font-size: 13.5px; line-height: 1.6; color: var(--text-main); margin: 12px 0 14px; }
+        .guia-passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+        .gp { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+        .gp.ok { border-color: #86efac; background: #f0fdf4; }
+        .gp .gp-t { font-weight: 800; font-size: 13px; color: var(--secondary); display: flex; gap: 8px; align-items: flex-start; }
+        .gp .gp-t i { margin-top: 2px; }
+        .gp .gp-d { font-size: 12.3px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .gp button { align-self: flex-start; }
+        .ajuda-aba { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+        .ajuda-aba > .ah { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; font-weight: 800; font-size: 13.5px; color: #92400e; }
+        .ajuda-aba .ac { font-size: 13px; line-height: 1.6; color: #451a03; margin-top: 10px; }
+        .ajuda-aba .ac p { margin: 0 0 8px; }
+        .ajuda-aba .ac ul { margin: 4px 0 8px 18px; }
+        .ajuda-aba .ac li { margin-bottom: 4px; }
+        .ajuda-aba .ex { background: #fff; border: 1px dashed #f59e0b; border-radius: 10px; padding: 9px 12px; margin: 6px 0 8px; font-size: 12.5px; }
+        .ajuda-aba .cu { background: #fee2e2; color: #7f1d1d; border-radius: 10px; padding: 8px 12px; font-size: 12.5px; }
+        .dic-item { border-bottom: 1px solid var(--border); padding: 10px 2px; }
+        .dic-item b { color: var(--secondary); font-size: 13.5px; }
+        .dic-item div { font-size: 12.8px; color: var(--text-main); line-height: 1.55; margin-top: 3px; }
+        @media print { .guia, .ajuda-aba { display: none !important; } }
         .rep-sint td { font-weight: 800; background: #f8fafc; }
         .rep-total td { font-weight: 800; background: #eef2ff; border-top: 2px solid var(--secondary); }
         .rep-sub td { font-weight: 800; background: #f1f5f9; }
@@ -137,6 +159,7 @@
     <div class="page-toolbar">
         <a href="modulo_contabil.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
         <a href="canal_contabil.html" class="btn-acao cinza"><i class="fas fa-comments"></i> Canal com Clientes</a>
+        <button class="btn-acao cinza" type="button" onclick="abrirDicionario()"><i class="fas fa-book-open"></i> Dicionário contábil</button>
     </div>
 
     <div>
@@ -148,6 +171,8 @@
         <div class="f"><label for="selEmpresa">Empresa (escrituração)</label><select id="selEmpresa" class="form-control" onchange="trocarEmpresa()"></select></div>
         <div id="infoPerm" class="dica" style="flex:2; min-width:260px;"></div>
     </div>
+
+    <div id="guiaInicio"></div>
 
     <div class="abas">
         <button class="aba ativa" data-aba="plano" type="button" onclick="mudarAba('plano')"><i class="fas fa-sitemap"></i> Plano de Contas</button>
@@ -332,6 +357,16 @@
     </div>
 </div>
 
+<!-- Dicionário -->
+<div class="modal-overlay" id="modalDic">
+    <div class="modal-box" style="max-width:720px; max-height:88vh; display:flex; flex-direction:column;">
+        <h3><i class="fas fa-book-open" style="color:var(--primary);"></i> Dicionário contábil (em português simples)</h3>
+        <input type="text" id="dicBusca" class="form-control" placeholder="Buscar um termo (ex.: débito, balanço, DRE...)" oninput="renderDicionario()" style="margin-bottom:10px;">
+        <div id="dicLista" style="overflow-y:auto; flex:1; min-height:200px;"></div>
+        <div style="text-align:right; margin-top:12px;"><button class="btn-acao cinza" type="button" onclick="document.getElementById('modalDic').style.display='none'">Fechar</button></div>
+    </div>
+</div>
+
 <!-- Modal conta -->
 <div class="modal-overlay" id="modalConta">
     <div class="modal-box" style="max-width:560px;">
@@ -384,6 +419,7 @@
         document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
         if (a === 'per') renderMeses();
         if (a === 'fin') finIniciar();
+        guiaAtualizar();
         if (['razao','bal','dre','bp'].indexOf(a) > -1) padroesRelatorios();
     }
     async function rpc(fn, args) {
@@ -450,6 +486,7 @@
             if (!document.getElementById('lData').value) document.getElementById('lData').value = hojeISO();
             await carregarDiario();
             resetLancamento();
+            guiaAtualizar();
         } catch (err) { toast('Erro ao carregar: ' + (err.message || err), 'error'); }
     }
 
@@ -464,6 +501,7 @@
             .map(function (c) { return '<option value="' + esc(rotuloConta(c)) + '"></option>'; }).join('');
         document.getElementById('btnImportar').style.display = (podeEditar && !contas.length) ? '' : 'none';
         renderPlano();
+        guiaAtualizar();
     }
     function rotuloConta(c) { return c.codigo + ' - ' + c.descricao + ' [' + c.reduzido + ']'; }
     function renderPlano() {
@@ -625,6 +663,7 @@
     async function carregarPeriodos() {
         const r = await sb.from('contab_periodos').select('competencia').eq('cliente_id', emp);
         periodosFechados = {}; ((r && r.data) || []).forEach(function (p) { periodosFechados[p.competencia] = true; });
+        guiaAtualizar();
     }
     async function carregarDiario() {
         const mes = document.getElementById('fMes').value || mesAtual();
@@ -1075,12 +1114,145 @@
             toast(r.gerados + ' lançamento(s) gerado(s).' + ((r.erros && r.erros.length) ? ' Alguns não foram lançados (veja o aviso).' : ''), (r.erros && r.erros.length) ? 'error' : 'success');
             await finCarregar();
             try { await carregarDiario(); } catch (e) {}
+            guiaAtualizar();
         } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
         finally { bt.disabled = false; }
     }
 
+
+    // ---------- ajuda para quem não é contador ----------
+    const AJUDA = {
+        plano: { t: 'O que é o Plano de Contas?',
+            h: '<p>É a <b>lista de "gavetas"</b> onde cada centavo da empresa é classificado: Caixa, Banco, Fornecedores, Aluguel, Receita de Serviços, Impostos... Todo lançamento precisa dizer em quais gavetas mexeu.</p>' +
+               '<ul><li><b>Se a lista estiver vazia:</b> clique em <b>Importar plano padrão</b>. Já vem pronto com um modelo completo, e você pode ajustar depois.</li>' +
+               '<li><b>Contas "sintéticas"</b> são só títulos de grupo (ex.: "ATIVO", "Disponibilidades"). Não recebem lançamento.</li>' +
+               '<li><b>Contas "analíticas"</b> são as gavetas de verdade (ex.: "Caixa", "Aluguel"). É nelas que se lança.</li>' +
+               '<li>Só crie uma conta nova (<b>Nova conta</b>) se faltar uma gaveta específica. O sistema sugere o código sozinho.</li></ul>' +
+               '<div class="cu"><b>Cuidado:</b> conta que já tem lançamento não pode ser excluída. Use o botão do olho para <b>inativar</b> (ela some das listas, mas o histórico fica).</div>' },
+        lanc: { t: 'Para que serve a aba Lançamentos?',
+            h: '<p>Cada lançamento conta <b>uma história</b> com duas pontas: <b>de onde veio</b> o dinheiro (crédito) e <b>para onde foi</b> (débito). A soma dos débitos tem que ser igual à soma dos créditos, senão o sistema não deixa salvar.</p>' +
+               '<div class="ex"><b>Exemplo:</b> a empresa pagou R$ 1.000 de aluguel pelo banco.<br>Débito: <b>Aluguel</b> R$ 1.000 (onde o dinheiro foi gasto) · Crédito: <b>Banco</b> R$ 1.000 (de onde saiu).</div>' +
+               '<p><b>Macete para não se perder:</b></p><ul><li>Dinheiro <b>entrou</b> no banco/caixa → <b>débito</b> no banco/caixa.</li><li>Dinheiro <b>saiu</b> do banco/caixa → <b>crédito</b> no banco/caixa.</li><li><b>Despesa</b> → sempre <b>débito</b>. <b>Receita</b> → sempre <b>crédito</b>.</li></ul>' +
+               '<p><b>Você quase não precisa digitar aqui:</b> o que foi pago, recebido ou transferido no Financeiro entra sozinho pela aba <b>Financeiro</b>. Digite aqui só o que <u>não</u> passa pelo Financeiro (capital inicial, depreciação, ajustes).</p>' +
+               '<div class="cu"><b>Errou?</b> Clique na lixeira do lançamento e refaça. Fica registrado no histórico. Mês <b>fechado</b> não aceita mudança (veja a aba Períodos).</div>' },
+        razao: { t: 'O que é o Razão?',
+            h: '<p>É o <b>extrato de uma conta só</b>. Escolha uma conta (ex.: Banco) e o período, e veja cada movimento com o saldo andando linha a linha.</p>' +
+               '<ul><li><b>Use quando:</b> o saldo de uma conta parece estranho e você quer saber "de onde veio esse valor?".</li><li><b>D</b> = saldo devedor · <b>C</b> = saldo credor. Para Caixa e Banco, o normal é <b>D</b>.</li></ul>' },
+        bal: { t: 'O que é o Balancete?',
+            h: '<p>É a <b>"prova dos nove" da contabilidade</b>: lista todas as contas com o saldo anterior, o que mexeu no período e o saldo atual.</p>' +
+               '<ul><li>Os <b>totais de débitos e créditos têm que ser iguais</b>. Se o sistema avisar que não fecha, existe algo errado nos lançamentos.</li><li>É a primeira tela que a contadora confere antes de montar os demais relatórios.</li></ul>' },
+        dre: { t: 'O que é a DRE?',
+            h: '<p>DRE = <b>Demonstração do Resultado do Exercício</b>. Responde: <b>a empresa teve lucro ou prejuízo</b> no período?</p>' +
+               '<div class="ex">Receitas − custos − despesas = <b>resultado</b>. Se for positivo é lucro; se for negativo, prejuízo.</div>' +
+               '<ul><li>A DRE <b>não mostra</b> saldo de banco nem dívidas. Para isso existe o Balanço.</li><li>Se aparecer "outras contas de resultado", são contas que ainda não estão encaixadas em nenhum grupo do relatório. O total continua correto.</li></ul>' },
+        bp: { t: 'O que é o Balanço Patrimonial?',
+            h: '<p>É a <b>fotografia da empresa em uma data</b>: o que ela <b>tem</b> (Ativo), o que ela <b>deve</b> (Passivo) e o que é <b>dos sócios</b> (Patrimônio Líquido).</p>' +
+               '<div class="ex"><b>Regra que sempre vale:</b> Ativo = Passivo + Patrimônio Líquido.</div>' +
+               '<ul><li>A linha <b>"Resultado do período ainda não apurado"</b> é o lucro/prejuízo do ano que ainda não foi transferido ao Patrimônio Líquido. É normal durante o ano.</li></ul>' },
+        fin: { t: 'Como o Financeiro vira contabilidade?',
+            h: '<p>Esta aba é a <b>ponte</b>: o que a empresa já pagou, recebeu e transferiu no módulo Financeiro vira lançamento contábil, <b>sem digitar duas vezes</b>.</p>' +
+               '<p><b>Faça sempre nesta ordem, uma vez por mês:</b></p><ul><li><b>1) Vínculos:</b> diga a qual conta do plano corresponde cada banco e cada categoria do Financeiro. Clique em <b>Sugerir vínculos</b> e confira. Isso só precisa ser feito uma vez; depois só aparecem os novos.</li><li><b>2) Movimentos a lançar:</b> confira a lista (data, valor, quem é débito e quem é crédito).</li><li>Clique em <b>Gerar lançamentos</b>.</li><li><b>3)</b> Se aparecer o aviso de lançamentos que mudaram, exclua o lançamento antigo; se o título ainda estiver pago, ele volta para a lista já corrigido.</li></ul>' +
+               '<div class="cu"><b>Importante:</b> só entram títulos já <b>pagos ou recebidos</b> (com data). Contas ainda pendentes <u>não</u> entram: a contabilidade registra quando o dinheiro de fato se move.</div>' },
+        per: { t: 'O que significa fechar um mês?',
+            h: '<p><b>Fechar</b> é "colocar o cadeado" no mês: depois disso ninguém lança nem exclui nada nele. Garante que os relatórios já entregues não mudem.</p>' +
+               '<ul><li><b>Feche</b> depois de conferir Balancete, DRE e Balanço do mês.</li><li>Precisa corrigir algo? <b>Reabra</b> o mês, corrija e feche de novo. Cada abertura e fechamento fica registrado.</li></ul>' }
+    };
+    function ajudaAbrirFechar(k) {
+        const c = document.getElementById('ajc-' + k); if (!c) return;
+        const abrir = c.style.display === 'none';
+        c.style.display = abrir ? '' : 'none';
+        document.getElementById('ajs-' + k).className = abrir ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        try { localStorage.setItem('ctbAjuda_' + k, abrir ? '1' : '0'); } catch (e) {}
+    }
+    function renderAjudas() {
+        Object.keys(AJUDA).forEach(function (k) {
+            const aba = document.getElementById('aba-' + k); if (!aba || document.getElementById('aj-' + k)) return;
+            let aberto = true; try { aberto = localStorage.getItem('ctbAjuda_' + k) !== '0'; } catch (e) {}
+            aba.insertAdjacentHTML('afterbegin',
+                '<div class="ajuda-aba no-print" id="aj-' + k + '"><div class="ah" onclick="ajudaAbrirFechar(\'' + k + '\')"><span><i class="fas fa-circle-question"></i> ' + AJUDA[k].t + '</span><i id="ajs-' + k + '" class="fas fa-chevron-' + (aberto ? 'up' : 'down') + '"></i></div>' +
+                '<div class="ac" id="ajc-' + k + '"' + (aberto ? '' : ' style="display:none;"') + '>' + AJUDA[k].h + '</div></div>');
+        });
+    }
+
+    const DICIONARIO = [
+        ['Contabilidade', 'É o registro organizado de tudo o que acontece com o dinheiro e os bens da empresa. Serve para saber se a empresa está ganhando ou perdendo, quanto deve, quanto tem a receber, e para calcular impostos corretamente.'],
+        ['Plano de contas', 'A lista de "gavetas" em que cada movimento é classificado (Caixa, Banco, Aluguel, Receita de Serviços...). Cada gaveta tem um código, como 1.1.1.01.'],
+        ['Conta analítica', 'Gaveta de verdade: é nela que se faz o lançamento. Ex.: "Caixa", "Aluguel".'],
+        ['Conta sintética', 'Título de grupo que soma as contas filhas. Ex.: "ATIVO CIRCULANTE". Não recebe lançamento direto.'],
+        ['Código reduzido (Red.)', 'Número curto de cada conta, só para digitar mais rápido. Você pode usar o reduzido, o código ou o nome.'],
+        ['Débito e crédito', 'São os dois lados de todo lançamento. Não significam "ruim" e "bom". Débito é <b>para onde o valor foi</b> (ou onde foi aplicado); crédito é <b>de onde ele veio</b>. Dinheiro entrando no banco = débito no banco; saindo = crédito no banco.'],
+        ['Partidas dobradas', 'A regra de ouro: todo lançamento mexe em pelo menos duas contas, e a soma dos débitos é igual à soma dos créditos. É por isso que o sistema não salva lançamento que "não fecha".'],
+        ['Lançamento', 'O registro de um fato (um pagamento, um recebimento, um ajuste), com data, histórico e as partidas de débito e crédito.'],
+        ['Histórico', 'A frase que explica o lançamento. Ex.: "Pgto aluguel de outubro".'],
+        ['Livro Diário', 'A lista de todos os lançamentos em ordem de data. É o que aparece em Lançamentos > Diário do mês.'],
+        ['Razão', 'O extrato de uma conta específica: todos os débitos e créditos dela, com o saldo depois de cada movimento.'],
+        ['Balancete', 'Lista de todas as contas com saldo anterior, movimento e saldo atual. A soma dos débitos deve ser igual à dos créditos. É a "prova dos nove".'],
+        ['DRE', 'Demonstração do Resultado do Exercício: receitas menos custos e despesas, para mostrar se houve lucro ou prejuízo no período.'],
+        ['Balanço Patrimonial', 'Fotografia da empresa numa data: Ativo (o que tem) = Passivo (o que deve) + Patrimônio Líquido (o que é dos sócios).'],
+        ['Ativo', 'Tudo o que a empresa tem e vai trazer benefício: dinheiro em caixa e banco, valores a receber de clientes, estoque, equipamentos, imóveis.'],
+        ['Passivo', 'Tudo o que a empresa deve: fornecedores, impostos a pagar, salários a pagar, empréstimos.'],
+        ['Patrimônio Líquido (PL)', 'O que sobra para os sócios: capital investido mais lucros acumulados, menos prejuízos.'],
+        ['Receita', 'O que a empresa ganha com sua atividade (venda de produtos e serviços). Aumenta o resultado.'],
+        ['Custo', 'Gastos diretamente ligados ao que a empresa vende (ex.: material usado no serviço prestado).'],
+        ['Despesa', 'Gastos para manter a empresa funcionando (aluguel, internet, salários administrativos, tarifas).'],
+        ['Resultado (lucro/prejuízo)', 'Receitas menos custos e despesas. Positivo é lucro; negativo é prejuízo.'],
+        ['Natureza da conta (devedora/credora)', 'O lado em que a conta normalmente aumenta. Ativo, custo e despesa são devedoras; passivo, patrimônio líquido e receita são credoras.'],
+        ['Saldo (D ou C)', 'O que sobra numa conta depois dos débitos e créditos. "D" significa saldo devedor; "C", credor.'],
+        ['Regime de caixa', 'Registrar quando o dinheiro de fato entra ou sai. É o que a integração com o Financeiro faz: lança na data do pagamento ou recebimento.'],
+        ['Regime de competência', 'Registrar quando o fato acontece (venda feita, serviço prestado), mesmo que o dinheiro entre ou saia depois. Ainda não é usado na integração automática.'],
+        ['Competência', 'O mês a que um fato pertence. Ex.: a conta de luz de outubro, paga em novembro, tem competência outubro.'],
+        ['Período / fechamento', 'Cada mês é um período. Fechar o mês trava os lançamentos, para os relatórios entregues não mudarem. Dá para reabrir se necessário (fica registrado).'],
+        ['Vínculo (de-para)', 'A ligação entre o que existe no Financeiro (banco, categoria) e a conta correspondente do plano de contas. Feito uma vez, serve para sempre.'],
+        ['Apuração do resultado', 'Transferir o lucro ou prejuízo do ano para o Patrimônio Líquido. Normalmente é feito no encerramento do exercício.'],
+        ['Depreciação', 'O desgaste de equipamentos ao longo do tempo, registrado como despesa todo mês, mesmo sem sair dinheiro.'],
+        ['Conciliação', 'Conferir se o saldo contábil de uma conta (ex.: Banco) bate com o extrato real do banco.']
+    ];
+    function abrirDicionario() { document.getElementById('dicBusca').value = ''; renderDicionario(); document.getElementById('modalDic').style.display = 'flex'; }
+    function renderDicionario() {
+        const q = finNorm(document.getElementById('dicBusca').value);
+        const l = DICIONARIO.filter(function (d) { return !q || finNorm(d[0] + ' ' + d[1]).indexOf(q) > -1; });
+        document.getElementById('dicLista').innerHTML = l.length ? l.map(function (d) { return '<div class="dic-item"><b>' + d[0] + '</b><div>' + d[1] + '</div></div>'; }).join('') : '<div class="dica" style="padding:20px;">Nenhum termo encontrado.</div>';
+    }
+
+    // guia "Comece por aqui" com acompanhamento automático
+    async function guiaAtualizar() {
+        const box = document.getElementById('guiaInicio'); if (!box) return;
+        let aberto = true; try { aberto = localStorage.getItem('ctbGuia') !== '0'; } catch (e) {}
+        if (!podeEditar) {
+            box.innerHTML = '<div class="guia no-print"><h3 onclick="guiaAlternar()"><span><i class="fas fa-eye" style="color:var(--primary);"></i> Você está em modo de consulta</span><i id="guiaSeta" class="fas fa-chevron-' + (aberto ? 'up' : 'down') + '"></i></h3>' +
+                '<div id="guiaCorpo"' + (aberto ? '' : ' style="display:none;"') + '><div class="guia-intro">Aqui você acompanha a contabilidade feita pelo seu escritório. Você <b>não altera</b> nada. Para entender se a empresa está bem, veja primeiro a <b>DRE</b> (lucro ou prejuízo), depois o <b>Balanço</b> (o que a empresa tem e deve). Dúvida em algum termo? Clique em <b>Dicionário contábil</b>. Dúvida sobre os números? Fale com a contabilidade pelo <b>Canal com Clientes</b>.</div></div></div>';
+            return;
+        }
+        let nLotes = 0, nDep = 0;
+        try { const r = await sb.from('contab_lotes').select('id').eq('cliente_id', emp).limit(1); nLotes = ((r && r.data) || []).length; } catch (e) {}
+        try { const r = await sb.from('contab_depara').select('id').eq('cliente_id', emp).limit(1); nDep = ((r && r.data) || []).length; } catch (e) {}
+        const fechados = Object.keys(periodosFechados).length;
+        const passos = [
+            { ok: contas.length > 0, t: '1. Montar o plano de contas', d: 'As "gavetas" onde tudo é classificado. Clique em Importar plano padrão: já vem pronto.', ir: 'plano', bt: 'Ir para Plano de Contas' },
+            { ok: nDep > 0, t: '2. Ligar o Financeiro à contabilidade', d: 'Diga qual conta contábil corresponde a cada banco e categoria. O botão "Sugerir vínculos" faz quase tudo.', ir: 'fin', bt: 'Ir para Financeiro' },
+            { ok: nLotes > 0, t: '3. Gerar os lançamentos', d: 'O que foi pago, recebido e transferido vira contabilidade com um clique.', ir: 'fin', bt: 'Gerar lançamentos' },
+            { ok: false, t: '4. Conferir os números', d: 'Veja o Balancete (tem que fechar), a DRE (lucro ou prejuízo) e o Balanço.', ir: 'bal', bt: 'Ver Balancete' },
+            { ok: fechados > 0, t: '5. Fechar o mês', d: 'Com tudo conferido, feche o mês para ninguém mexer mais nele.', ir: 'per', bt: 'Ir para Períodos' }
+        ];
+        const feitos = passos.filter(function (x) { return x.ok; }).length, auto = passos.filter(function (x) { return x.t.indexOf('4.') !== 0; }).length;
+        box.innerHTML = '<div class="guia no-print"><h3 onclick="guiaAlternar()"><span><i class="fas fa-route" style="color:var(--primary);"></i> Comece por aqui: passo a passo do mês <small style="font-weight:600; color:var(--text-light);">(' + feitos + ' de ' + auto + ' etapas concluídas)</small></span><i id="guiaSeta" class="fas fa-chevron-' + (aberto ? 'up' : 'down') + '"></i></h3>' +
+            '<div id="guiaCorpo"' + (aberto ? '' : ' style="display:none;"') + '>' +
+            '<div class="guia-intro"><b>Não precisa ser contador.</b> A contabilidade aqui funciona como o "prontuário" da empresa: todo dinheiro que entra ou sai deixa duas marcas, <b>de onde veio</b> e <b>para onde foi</b>. O sistema confere sozinho se as contas fecham. Siga as etapas abaixo na ordem; cada aba também tem uma caixa amarela explicando o que fazer. Qualquer palavra estranha está no <b>Dicionário contábil</b> (botão no topo da página).</div>' +
+            '<div class="guia-passos">' + passos.map(function (x) {
+                return '<div class="gp' + (x.ok ? ' ok' : '') + '"><div class="gp-t"><i class="fas ' + (x.ok ? 'fa-circle-check" style="color:var(--success);' : 'fa-circle" style="color:#cbd5e1;') + '"></i> ' + x.t + '</div><div class="gp-d">' + x.d + '</div><button class="btn-acao btn-mini cinza" type="button" onclick="mudarAba(\'' + x.ir + '\')">' + x.bt + '</button></div>';
+            }).join('') + '</div>' +
+            '<div class="dica" style="margin-top:12px;">Do mês seguinte em diante, o ciclo é curto: <b>Financeiro → Gerar lançamentos → conferir → fechar o mês</b>. A etapa 4 nunca fica verde sozinha: só você sabe se já conferiu.</div></div></div>';
+    }
+    function guiaAlternar() {
+        const c = document.getElementById('guiaCorpo'); if (!c) return;
+        const abrir = c.style.display === 'none';
+        c.style.display = abrir ? '' : 'none';
+        document.getElementById('guiaSeta').className = abrir ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+        try { localStorage.setItem('ctbGuia', abrir ? '1' : '0'); } catch (e) {}
+    }
+
     async function iniciar() {
-        try { await descobrirContexto(); await carregarTudo(); }
+        try { renderAjudas(); await descobrirContexto(); await carregarTudo(); }
         catch (err) { toast('Erro ao iniciar: ' + (err.message || err), 'error'); }
     }
     window.onload = iniciar;
