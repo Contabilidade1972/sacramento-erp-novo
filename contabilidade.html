@@ -332,12 +332,12 @@
                 <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-flag-checkered" style="color:var(--primary);"></i> 2) Saldos de abertura dos bancos</span>
                     <button class="btn-acao sucesso btn-mini" type="button" id="btnFinAbertura" onclick="finLancarAbertura()" style="display:none;"><i class="fas fa-bolt"></i> Lançar saldos de abertura</button>
                 </div>
-                <div class="dica" style="margin:0 0 8px;">Antes do primeiro mês contabilizado, os bancos já tinham dinheiro. Sem esse <b>saldo de abertura</b>, o banco aparece negativo na contabilidade. O sistema usa o <b>saldo inicial</b> cadastrado em Contas Bancárias. Faça isso <b>uma vez só</b>, na data de início da contabilidade. Contas particulares (PF) e limites de cheque especial/cartão não entram: não são dinheiro da empresa.</div>
+                <div class="dica" style="margin:0 0 8px;">Antes do primeiro mês contabilizado, os bancos já tinham dinheiro. Sem esse <b>saldo de abertura</b>, o banco aparece negativo na contabilidade. <b>Digite o saldo que o banco tinha no dia anterior ao início da contabilidade</b> (veja no extrato do banco: é o saldo do último dia antes da data de abertura). O saldo do cadastro de Contas Bancárias <u>não</u> é usado, porque ele guarda o saldo mais recente do extrato importado. Faça isso <b>uma vez só</b>, na data de início da contabilidade. Contas particulares (PF) e limites de cheque especial/cartão não entram: não são dinheiro da empresa.</div>
                 <div style="display:grid; grid-template-columns: 200px 1fr; gap:12px; margin-bottom:10px; align-items:end;">
                     <div><label for="finAbData">Data de abertura</label><input type="date" id="finAbData" class="form-control"></div>
                     <div><label for="finAbContra">Contrapartida (de onde veio esse dinheiro)</label><input type="text" id="finAbContra" class="form-control" list="listaContas" placeholder="Ex.: 2.3.1.01 Capital Subscrito ou 2.3.3.01 Lucros Acumulados"></div>
                 </div>
-                <div class="table-wrap"><table class="tabela"><thead><tr><th>Conta bancária</th><th>Tipo</th><th class="num">Saldo inicial</th><th>Conta contábil</th><th>Situação</th></tr></thead><tbody id="finTbAbertura"><tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
+                <div class="table-wrap"><table class="tabela"><thead><tr><th>Conta bancária</th><th>Tipo</th><th class="num" style="min-width:170px;">Saldo do banco na abertura</th><th>Conta contábil</th><th>Situação</th></tr></thead><tbody id="finTbAbertura"><tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
 
                 <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-list-check" style="color:var(--primary);"></i> 3) Movimentos a lançar</span>
                     <span style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
@@ -1038,6 +1038,13 @@
         try {
             const r = await sb.from('contab_lotes').select('id, origem, data').eq('cliente_id', emp).like('origem', 'fin:abertura:%');
             ((r && r.data) || []).forEach(function (l) { finAbertos[l.origem] = l; });
+            const ids = Object.keys(finAbertos).map(function (k) { return finAbertos[k].id; });
+            if (ids.length) {
+                const pr = await sb.from('contab_partidas').select('lote_id, tipo, valor').in('lote_id', ids);
+                ((pr && pr.data) || []).forEach(function (x) {
+                    Object.keys(finAbertos).forEach(function (k) { if (finAbertos[k].id === x.lote_id && x.tipo === 'D') finAbertos[k].valor = (finAbertos[k].valor || 0) + Number(x.valor); });
+                });
+            }
         } catch (e) {}
         if (!document.getElementById('finAbData').value) document.getElementById('finAbData').value = document.getElementById('finIni').value;
     }
@@ -1147,43 +1154,70 @@
         toast(msg + ' Confira antes de gerar.', (ignorados || semCadastro) ? 'error' : 'success');
         await finCarregar();
     }
+    function finLerValorAb(txt) {
+        let t = String(txt || '').trim().replace(/[R$\s]/g, '');
+        if (!t) return 0;
+        if (t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+        const n = parseFloat(t);
+        return isNaN(n) ? 0 : Math.round(n * 100) / 100;
+    }
     function finRenderAbertura() {
         const tb = document.getElementById('finTbAbertura');
         const vinc = {}; (finDados.mapas || []).forEach(function (m) { if (m.tipo === 'banco') vinc[m.chave] = m.conta_id; });
-        let pend = 0;
         if (!finBancos.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">Nenhuma conta bancária cadastrada no Financeiro.</td></tr>'; document.getElementById('btnFinAbertura').style.display = 'none'; return; }
         tb.innerHTML = finBancos.map(function (b) {
-            const k = finChave(b.nome), saldo = Number(b.saldo_inicial || 0), cid = vinc[k], feito = finAbertos['fin:abertura:' + b.id];
-            let sit;
-            if (feito) sit = '<span style="color:var(--success); font-weight:700;"><i class="fas fa-circle-check"></i> lançado em ' + dataBR(feito.data) + '</span>';
-            else if (finNaoEhEmpresa(b)) sit = '<span style="color:#64748b;">não entra (particular/limite)</span>';
-            else if (!saldo) sit = '<span style="color:#64748b;">sem saldo inicial</span>';
-            else if (!cid) sit = '<span style="color:#b45309; font-weight:700;">falta vincular</span>';
-            else { sit = '<span style="color:#1e40af; font-weight:700;">pronto para lançar</span>'; pend++; }
-            return '<tr><td><b>' + esc(b.nome) + '</b></td><td>' + esc(b.tipo || '—') + '</td><td class="num">' + brl(saldo) + '</td><td>' + (cid ? finNomeConta(cid) : '—') + '</td><td>' + sit + '</td></tr>';
+            const k = finChave(b.nome), cid = vinc[k], feito = finAbertos['fin:abertura:' + b.id];
+            let sit, campo;
+            if (feito) {
+                campo = '<b>' + brl(feito.valor || 0) + '</b>';
+                sit = '<span style="color:var(--success); font-weight:700;"><i class="fas fa-circle-check"></i> lançado em ' + dataBR(feito.data) + '</span> <button type="button" class="btn-acao cinza btn-mini" onclick="finRefazerAbertura(' + b.id + ')" title="Exclui este saldo de abertura para você digitar o valor certo"><i class="fas fa-rotate-left"></i> Corrigir</button>';
+            } else if (finNaoEhEmpresa(b)) { campo = '—'; sit = '<span style="color:#64748b;">não entra (particular/limite)</span>'; }
+            else if (!cid) { campo = '<input type="text" inputmode="decimal" class="form-control" style="text-align:right; max-width:150px; margin-left:auto;" id="finAb_' + b.id + '" placeholder="0,00">'; sit = '<span style="color:#b45309; font-weight:700;">falta vincular</span>'; }
+            else { campo = '<input type="text" inputmode="decimal" class="form-control" style="text-align:right; max-width:150px; margin-left:auto;" id="finAb_' + b.id + '" placeholder="0,00" oninput="finAtualizarBtnAb()">'; sit = '<span style="color:#1e40af; font-weight:700;">digite o saldo e lance</span>'; }
+            return '<tr><td><b>' + esc(b.nome) + '</b></td><td>' + esc(b.tipo || '—') + '</td><td class="num">' + campo + '</td><td>' + (cid ? finNomeConta(cid) : '—') + '</td><td>' + sit + '</td></tr>';
         }).join('');
-        const bt = document.getElementById('btnFinAbertura');
-        bt.style.display = pend ? '' : 'none';
-        bt.innerHTML = '<i class="fas fa-bolt"></i> Lançar ' + pend + ' saldo(s) de abertura';
+        finAtualizarBtnAb();
+    }
+    function finItensAb() {
+        const vinc = {}; (finDados.mapas || []).forEach(function (m) { if (m.tipo === 'banco') vinc[m.chave] = m.conta_id; });
+        const out = [];
+        finBancos.forEach(function (b) {
+            if (finAbertos['fin:abertura:' + b.id] || finNaoEhEmpresa(b) || !vinc[finChave(b.nome)]) return;
+            const el = document.getElementById('finAb_' + b.id); if (!el) return;
+            const v = finLerValorAb(el.value);
+            if (v) out.push({ b: b, v: v, conta: vinc[finChave(b.nome)] });
+        });
+        return out;
+    }
+    function finAtualizarBtnAb() {
+        const n = finItensAb().length, bt = document.getElementById('btnFinAbertura');
+        bt.style.display = n ? '' : 'none';
+        bt.innerHTML = '<i class="fas fa-bolt"></i> Lançar ' + n + ' saldo(s) de abertura';
+    }
+    async function finRefazerAbertura(bancoId) {
+        const l = finAbertos['fin:abertura:' + bancoId]; if (!l) return;
+        if (!confirm('Excluir este saldo de abertura (' + brl(l.valor || 0) + ') para digitar o valor certo?\n\nO lançamento excluído fica registrado no histórico.')) return;
+        try { await rpc('contab_excluir_lote', { p_cliente: emp, p_lote: l.id }); toast('Saldo de abertura excluído. Digite o valor certo e lance de novo.'); }
+        catch (e) { toast('Não foi possível excluir: ' + (e.message || e), 'error'); return; }
+        await finCarregar(); try { await carregarDiario(); } catch (e) {} guiaAtualizar();
     }
     async function finLancarAbertura() {
         const data = document.getElementById('finAbData').value;
         const contra = resolverConta(document.getElementById('finAbContra').value);
         if (!data) { toast('Informe a data de abertura.', 'error'); return; }
         if (!contra || !contra.analitica || !contra.ativa) { toast('Escolha a conta de contrapartida (ex.: 2.3.1.01 Capital Subscrito).', 'error'); return; }
-        const vinc = {}; (finDados.mapas || []).forEach(function (m) { if (m.tipo === 'banco') vinc[m.chave] = m.conta_id; });
-        const itens = finBancos.filter(function (b) { return !finAbertos['fin:abertura:' + b.id] && !finNaoEhEmpresa(b) && Number(b.saldo_inicial || 0) && vinc[finChave(b.nome)]; });
-        if (!itens.length) return;
-        if (!confirm('Lançar ' + itens.length + ' saldo(s) de abertura em ' + dataBR(data) + ', tendo "' + contra.descricao + '" como contrapartida?\n\nFaça isso apenas uma vez, na data de início da contabilidade.')) return;
+        const itens = finItensAb();
+        if (!itens.length) { toast('Digite o saldo de pelo menos um banco.', 'error'); return; }
+        if (!confirm('Lançar ' + itens.length + ' saldo(s) de abertura em ' + dataBR(data) + ', tendo "' + contra.descricao + '" como contrapartida?\n\n' + itens.map(function (x) { return x.b.nome + ': R$ ' + brl(x.v); }).join('\n') + '\n\nFaça isso apenas uma vez, na data de início da contabilidade.')) return;
         const bt = document.getElementById('btnFinAbertura'); bt.disabled = true;
         let ok = 0; const erros = [];
-        for (const b of itens) {
-            const v = Math.round(Number(b.saldo_inicial) * 100) / 100, pos = v > 0, val = Math.abs(v);
+        for (const x of itens) {
+            const pos = x.v > 0, val = Math.abs(x.v);
             try {
-                await rpc('contab_lancar', { p_cliente: emp, p_data: data, p_historico: 'Saldo de abertura - ' + b.nome, p_origem: 'fin:abertura:' + b.id,
-                    p_partidas: [{ conta_id: vinc[finChave(b.nome)], tipo: pos ? 'D' : 'C', valor: val }, { conta_id: contra.id, tipo: pos ? 'C' : 'D', valor: val }] });
+                await rpc('contab_lancar', { p_cliente: emp, p_data: data, p_historico: 'Saldo de abertura - ' + x.b.nome, p_origem: 'fin:abertura:' + x.b.id,
+                    p_partidas: [{ conta_id: x.conta, tipo: pos ? 'D' : 'C', valor: val }, { conta_id: contra.id, tipo: pos ? 'C' : 'D', valor: val }] });
                 ok++;
-            } catch (e) { erros.push(b.nome + ': ' + (e.message || e)); }
+            } catch (e) { erros.push(x.b.nome + ': ' + (e.message || e)); }
         }
         bt.disabled = false;
         toast(ok + ' saldo(s) de abertura lançado(s).' + (erros.length ? ' Erros: ' + erros.join(' | ') : ''), erros.length ? 'error' : 'success');
