@@ -1052,7 +1052,7 @@
             const m = x.m, ok = !!m.conta_id;
             const val = ok && mapaId[m.conta_id] ? rotuloConta(mapaId[m.conta_id]) : '';
             const bi = m.tipo === 'banco' ? finBancoInfo(m.chave) : null;
-            const aviso = finNaoEhEmpresa(bi) ? '<div class="dica" style="color:#b45309; font-weight:700;">Conta ' + (bi.classificacao_saldo === 'pessoal' ? 'particular (PF)' : 'de limite/cartão') + ': não é dinheiro da empresa. Vincule a uma conta de <u>passivo</u> (ex.: Adiantamentos de Sócios), não a um banco.</div>' : '';
+            const aviso = finNaoEhEmpresa(bi) ? '<div class="dica" style="color:#b45309; font-weight:700;">Conta ' + (bi.classificacao_saldo === 'pessoal' ? 'particular (PF)' : 'de limite/cartão') + ': não é dinheiro da empresa. O botão Sugerir vínculos liga a uma conta de <u>passivo</u> (Adiantamentos de Sócios); a contabilidade pode trocar por Capital, se o aporte for aumento de capital.</div>' : '';
             return '<tr><td><span class="badge-st" style="background:' + (ok ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e') + ';">' + FIN_TIPOS[m.tipo] + '</span></td>' +
                 '<td><b>' + esc(m.rotulo || m.chave) + '</b>' + aviso + '</td><td class="num">' + (m.qtd || 0) + '</td>' +
                 '<td><input type="text" class="form-control" list="listaContas" value="' + esc(val) + '" placeholder="Digite o código, o nome ou escolha..." onchange="finSalvarMapa(' + x.i + ', this)"></td></tr>';
@@ -1085,16 +1085,22 @@
         ['produto|venda', 'Receita de Venda de Produtos'], ['financeir|rendimento|juros', 'Receitas Financeiras'], ['outras|diversas', 'Outras Receitas Operacionais']
     ];
     function finSemCodigo(t) { return finNorm(String(t || '').replace(/^[\d.\s]+[-–]\s*/, '')); }
-    function finProximoCodigoBanco() {
-        if (!mapaCod['1.1.1']) return null;
+    function finProximoCodigo(pai) {
+        const pc = mapaCod[pai]; if (!pc || pc.analitica) return null;
         let max = 0;
-        contas.forEach(function (c) { if (c.pai_codigo === '1.1.1') { const n = parseInt(String(c.codigo).split('.').pop(), 10); if (n > max) max = n; } });
-        return '1.1.1.' + String(max + 1).padStart(2, '0');
+        contas.forEach(function (c) { if (c.pai_codigo === pai) { const n = parseInt(String(c.codigo).split('.').pop(), 10); if (n > max) max = n; } });
+        return pai + '.' + String(max + 1).padStart(2, '0');
+    }
+    async function finCriarConta(pai, descricao) {
+        const cod = finProximoCodigo(pai); if (!cod) return null;
+        const id = await rpc('contab_salvar_conta', { p_cliente: emp, p_id: null, p_codigo: cod, p_descricao: String(descricao).slice(0, 120), p_analitica: true, p_natureza: null });
+        await carregarContas();
+        return mapaId[id] || mapaCod[cod];
     }
     async function finSugerir() {
         const btn = document.getElementById('btnFinSugerir'); btn.disabled = true;
         const analit = function () { return contas.filter(function (c) { return c.analitica && c.ativa; }); };
-        let ligados = 0, criadas = 0, ignorados = 0, particulares = 0;
+        let ligados = 0, criadas = 0, ignorados = 0, passivos = 0, semCadastro = 0;
         try {
             const compart = {};
             (finDados.mapas || []).forEach(function (x) { if (x.tipo === 'banco' && x.conta_id) compart[x.conta_id] = (compart[x.conta_id] || 0) + 1; });
@@ -1103,15 +1109,20 @@
                 if (m.conta_id && !(m.tipo === 'banco' && compart[m.conta_id] > 1)) continue;
                 const nome = finSemCodigo(m.rotulo || m.chave); let alvo = null;
                 if (m.tipo === 'banco') {
-                    if (finNaoEhEmpresa(finBancoInfo(m.chave))) { particulares++; continue; }
-                    alvo = analit().find(function (c) { return c.grupo === 'ativo' && finNorm(c.descricao) === nome; });
-                    if (!alvo) {
-                        const cod = finProximoCodigoBanco();
-                        if (cod) {
-                            try {
-                                const id = await rpc('contab_salvar_conta', { p_cliente: emp, p_id: null, p_codigo: cod, p_descricao: String(m.rotulo || m.chave).slice(0, 120), p_analitica: true, p_natureza: null });
-                                await carregarContas(); alvo = mapaId[id] || mapaCod[cod]; criadas++;
-                            } catch (e) { alvo = null; }
+                    const bi = finBancoInfo(m.chave);
+                    if (!bi) { semCadastro++; continue; }
+                    if (finNaoEhEmpresa(bi)) {
+                        // conta particular / limite: não é dinheiro da empresa -> conta de PASSIVO própria
+                        const pessoal = bi.classificacao_saldo === 'pessoal';
+                        const desc = (pessoal ? 'Adiantamentos de Sócios - ' : 'Cartão/Limite a Pagar - ') + String(bi.nome || m.rotulo);
+                        alvo = analit().find(function (c) { return c.grupo === 'passivo' && finNorm(c.descricao) === finNorm(desc); });
+                        if (!alvo) {
+                            try { alvo = await finCriarConta('2.1.4', desc); if (alvo) { criadas++; passivos++; } } catch (e) { alvo = null; }
+                        }
+                    } else {
+                        alvo = analit().find(function (c) { return c.grupo === 'ativo' && finNorm(c.descricao) === nome; });
+                        if (!alvo) {
+                            try { alvo = await finCriarConta('1.1.1', String(m.rotulo || m.chave)); if (alvo) criadas++; } catch (e) { alvo = null; }
                         }
                     }
                 } else {
@@ -1130,9 +1141,10 @@
             }
         } finally { btn.disabled = false; }
         let msg = ligados + ' vínculo(s) sugerido(s)' + (criadas ? ' (' + criadas + ' conta(s) de banco criada(s) no plano)' : '') + '.';
-        if (particulares) msg += ' ' + particulares + ' conta(s) particular(es)/limite precisam de conta de passivo.';
+        if (passivos) msg += ' ' + passivos + ' conta(s) particular(es)/limite foram ligadas a contas de PASSIVO (a contabilidade pode trocar por Capital, se for o caso).';
+        if (semCadastro) msg += ' ' + semCadastro + ' nome(s) não cadastrado(s) em Contas Bancárias: vincule na mão.';
         if (ignorados) msg += ' ' + ignorados + ' sem correspondência: vincule na mão.';
-        toast(msg + ' Confira antes de gerar.', (ignorados || particulares) ? 'error' : 'success');
+        toast(msg + ' Confira antes de gerar.', (ignorados || semCadastro) ? 'error' : 'success');
         await finCarregar();
     }
     function finRenderAbertura() {
@@ -1214,7 +1226,7 @@
         }).join('');
     }
     function finRenderDiverg() {
-        const d = finDados.divergentes || [];
+        const d = (finDados.divergentes || []).filter(function (x) { return String(x.origem).indexOf('fin:abertura:') !== 0; });
         document.getElementById('finBoxDiverg').style.display = d.length ? '' : 'none';
         document.getElementById('finTbDiverg').innerHTML = d.map(function (x) {
             return '<tr><td>' + dataBR(x.data) + '</td><td>' + x.numero + '</td><td>' + esc(x.historico) + '</td><td class="num">' + brl(x.valor) + '</td>' +
