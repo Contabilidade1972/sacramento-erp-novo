@@ -97,13 +97,14 @@
 
     <div class="aviso-simulacao">
         <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
-        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula o <strong>INSS (progressivo por faixa)</strong> e o <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025) sobre o salário base. Ainda <strong>não calcula</strong> horas extras, adicional noturno, DSR, vale-transporte, plano de saúde, férias, 13º e FGTS sobre outras verbas, e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
+        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula o <strong>INSS (progressivo por faixa)</strong> e o <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025) sobre o salário base. Ainda <strong>não calcula</strong> horas extras, adicional noturno, DSR, vale-transporte, plano de saúde e FGTS sobre outras verbas (férias e 13º têm aba própria, com limites informados nela), e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
     </div>
 
     <!-- ABAS DE NAVEGAÇÃO COMPLETAS -->
     <div class="abas-container">
         <button class="aba-btn active" onclick="mudarAba('funcionarios')"><i class="fas fa-user-tie"></i> Funcionários &amp; Sócios</button>
         <button class="aba-btn" onclick="mudarAba('folha_clt')"><i class="fas fa-file-invoice"></i> Folha CLT</button>
+        <button class="aba-btn" onclick="mudarAba('ferias13')"><i class="fas fa-umbrella-beach"></i> Férias e 13º</button>
         <button class="aba-btn" onclick="mudarAba('pro_labore')"><i class="fas fa-hand-holding-usd"></i> Pró-labore</button>
         <button class="aba-btn" onclick="mudarAba('rubricas')"><i class="fas fa-list"></i> Rubricas (referência)</button>
         <button class="aba-btn" onclick="mudarAba('tabelas')"><i class="fas fa-calculator"></i> Tabelas (referência)</button>
@@ -285,10 +286,52 @@
                 </div>
             </div>
             <div style="background:#fefce8; border:1px solid #fde047; padding:12px; border-radius:8px; margin:16px 0; font-size:12px; color:#854d0e;">
-                <i class="fas fa-info-circle"></i> <strong>O que esta tela faz:</strong> INSS progressivo por faixa (tabela 2026, com teto), IRRF com dependentes cadastrados, escolha automática entre dedução legal e desconto simplificado, redução da Lei 15.270/2025 e FGTS de 8% (informativo, sem desconto do empregado). <strong>O que ainda não faz:</strong> horas extras, adicional noturno, DSR, vale-transporte, plano de saúde, férias e 13º. Não gera eventos do eSocial.
+                <i class="fas fa-info-circle"></i> <strong>O que esta tela faz:</strong> INSS progressivo por faixa (tabela 2026, com teto), IRRF com dependentes cadastrados, escolha automática entre dedução legal e desconto simplificado, redução da Lei 15.270/2025 e FGTS de 8% (informativo, sem desconto do empregado). <strong>O que ainda não faz:</strong> horas extras, adicional noturno, DSR, vale-transporte e plano de saúde (férias e 13º estão na aba própria). Não gera eventos do eSocial.
             </div>
             <div id="resultadoFolhaClt" style="margin-top:20px;">
                 <div style="text-align:center; padding:30px; color:var(--text-light);">Nenhum cálculo feito para esta competência.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA: FÉRIAS E 13º -->
+    <div id="aba-ferias13" class="aba-conteudo">
+        <div class="panel">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-gift"></i> 13º Salário</span> <span class="tag-sim">Cálculo 2026 · conferir com a contabilidade</span></div>
+            <div class="form-row">
+                <div><label>Funcionário (CLT)</label><select id="f13_func" class="form-control" onchange="escolherFuncF('f13')"></select></div>
+                <div><label>Ano do 13º *</label><select id="f13_ano" class="form-control" onchange="escolherFuncF('f13')"></select></div>
+                <div><label>Salário mensal (R$) *</label><input type="number" step="0.01" min="0" id="f13_sal" class="form-control" placeholder="0,00"></div>
+                <div><label>Média de variáveis (R$)</label><input type="number" step="0.01" min="0" id="f13_media" class="form-control" placeholder="Horas extras, comissões... (opcional)"></div>
+                <div><label>Dependentes (IRRF)</label><input type="number" min="0" id="f13_dep" class="form-control" value="0"></div>
+                <div><label>Meses trabalhados no ano (1 a 12) *</label><input type="number" min="1" max="12" id="f13_avos" class="form-control" value="12"></div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn-acao" onclick="calcular13()"><i class="fas fa-calculator"></i> Calcular 13º</button>
+                <button class="btn-acao cinza" onclick="imprimirDemo('13')"><i class="fas fa-print"></i> Imprimir demonstrativo</button>
+            </div>
+            <div id="resultado13" style="margin-top:16px;"></div>
+        </div>
+
+        <div class="panel" style="margin-top:20px;">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-umbrella-beach"></i> Férias</span> <span class="tag-sim">Cálculo 2026 · conferir com a contabilidade</span></div>
+            <div class="form-row">
+                <div><label>Funcionário (CLT)</label><select id="fer_func" class="form-control" onchange="escolherFuncF('fer')"></select></div>
+                <div><label>Início das férias *</label><input type="date" id="fer_inicio" class="form-control"></div>
+                <div><label>Dias de férias gozadas * (5 a 30)</label><input type="number" min="5" max="30" id="fer_dias" class="form-control" value="30"></div>
+                <div><label>Dias vendidos - abono (0 a 10)</label><input type="number" min="0" max="10" id="fer_abono" class="form-control" value="0"></div>
+                <div><label>Salário mensal (R$) *</label><input type="number" step="0.01" min="0" id="fer_sal" class="form-control" placeholder="0,00"></div>
+                <div><label>Média de variáveis (R$)</label><input type="number" step="0.01" min="0" id="fer_media" class="form-control" placeholder="Opcional"></div>
+                <div><label>Dependentes (IRRF)</label><input type="number" min="0" id="fer_dep" class="form-control" value="0"></div>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn-acao" onclick="calcularFerias()"><i class="fas fa-calculator"></i> Calcular férias</button>
+                <button class="btn-acao cinza" onclick="imprimirDemo('FER')"><i class="fas fa-print"></i> Imprimir demonstrativo</button>
+            </div>
+            <div id="resultadoFer" style="margin-top:16px;"></div>
+            <div style="background:#fefce8; border:1px solid #fde047; padding:12px; border-radius:8px; margin-top:16px; font-size:12px; color:#854d0e; line-height:1.6;">
+                <i class="fas fa-info-circle"></i> <strong>Regras usadas:</strong> 13º = remuneração ÷ 12 × meses trabalhados (mês com 15 dias ou mais conta). 1ª parcela: 50%, sem descontos, até 30/11. 2ª parcela: até 20/12, com INSS e IRRF calculados sobre o 13º inteiro, separados do salário. Férias: dias ÷ 30 da remuneração + 1/3; abono pecuniário (até 10 dias) com 1/3 não paga INSS nem IRRF; pagamento até 2 dias antes do início.
+                <br><strong>Limites desta tela:</strong> o INSS e o IRRF das férias são calculados isoladamente (sem somar o salário dos dias trabalhados no mesmo mês); não considera faltas, rescisão, médias detalhadas de variáveis, nem gera eventos do eSocial. A redução da Lei 15.270/2025 foi aplicada também ao 13º e às férias conforme orientações publicadas: confirme com a contabilidade antes de pagar.
             </div>
         </div>
     </div>
@@ -548,12 +591,13 @@ function mudarAba(nomeAba) {
     document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.aba-conteudo').forEach(c => c.classList.remove('active'));
     
-    let mapa = { 'funcionarios': 0, 'folha_clt': 1, 'pro_labore': 2, 'rubricas': 3, 'tabelas': 4 };
+    let mapa = { 'funcionarios': 0, 'folha_clt': 1, 'ferias13': 2, 'pro_labore': 3, 'rubricas': 4, 'tabelas': 5 };
     let idx = mapa[nomeAba] !== undefined ? mapa[nomeAba] : 0;
     
     document.querySelectorAll('.aba-btn')[idx].classList.add('active');
     document.getElementById(`aba-${nomeAba}`).classList.add('active');
 
+    if(nomeAba === 'ferias13') { prepararFerias13(); }
     if(nomeAba === 'pro_labore') {
         carregarSociosParaProLabore();
     }
@@ -1000,7 +1044,7 @@ function gerarFolhaClt() {
         html += `<tr><td><strong>${esc(c.nome)}</strong></td><td>${esc(c.cargo)}</td><td>R$ ${moedaBR(sal)}</td><td>${dep}</td><td style="color:var(--danger)">- R$ ${moedaBR(inss)}</td><td style="color:var(--danger)" title="${dica}">- R$ ${moedaBR(ir.irrf)}</td><td><strong style="color:var(--success)">R$ ${moedaBR(liq)}</strong></td><td>R$ ${moedaBR(fgts)}</td></tr>`;
     });
     html += `<tr style="font-weight:700;background:var(--bg);"><td colspan="2">TOTAL</td><td>R$ ${moedaBR(tSal)}</td><td></td><td>- R$ ${moedaBR(tInss)}</td><td>- R$ ${moedaBR(tIrrf)}</td><td>R$ ${moedaBR(tLiq)}</td><td>R$ ${moedaBR(tFgts)}</td></tr>`;
-    html += `</tbody></table><div style="margin-top:12px; font-size:12px; color:#92400e; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Cálculo sobre o salário base, com as regras de ${P26.ano}. Não inclui horas extras, DSR, adicionais, VT, plano de saúde, férias e 13º, e não gera eventos do eSocial. Conferir com a contabilidade antes de pagar ou recolher.</div>`;
+    html += `</tbody></table><div style="margin-top:12px; font-size:12px; color:#92400e; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Cálculo sobre o salário base, com as regras de ${P26.ano}. Não inclui horas extras, DSR, adicionais, VT e plano de saúde (férias e 13º estão na aba "Férias e 13º"), e não gera eventos do eSocial. Conferir com a contabilidade antes de pagar ou recolher.</div>`;
     document.getElementById('resultadoFolhaClt').innerHTML = html;
     toast(`Folha calculada para ${esc(comp)} (regras de ${P26.ano}).`, 'info');
 }
@@ -1034,6 +1078,130 @@ async function lancarProLabore() {
         <td style="text-align:right;"><span class="tag-sim">2026</span></td>
     </tr>`;
     toast(gravado ? "Pró-labore calculado (regras de 2026) e registrado. Conferir com a contabilidade." : "Pró-labore calculado, mas NÃO foi gravado no banco.", gravado ? 'info' : 'error');
+}
+
+// ===== FÉRIAS E 13º =====
+var ultimoDemo = { '13': null, 'FER': null };
+function dataBR(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function avosDoAno(admissao, ano){
+    if(!admissao) return 12;
+    var m = String(admissao).substring(0,10).split('-'); if(m.length!==3) return 12;
+    var y=+m[0], mes=+m[1], dia=+m[2];
+    if(y<ano) return 12; if(y>ano) return 0;
+    var trabalhados = new Date(ano, mes, 0).getDate() - dia + 1;
+    var primeiro = trabalhados >= 15 ? mes : mes + 1;
+    return Math.max(0, 13 - primeiro);
+}
+function funcionariosCltLista(){ return (funcionariosCache||[]).filter(function(c){ return !(c.vinculo||'').toLowerCase().includes('pro'); }); }
+function prepararFerias13(){
+    var lista = funcionariosCltLista();
+    ['f13_func','fer_func'].forEach(function(id){
+        var sel=document.getElementById(id); if(!sel) return; var atual=sel.value;
+        sel.innerHTML = '<option value="">Informar manualmente...</option>' + lista.map(function(c){ return '<option value="'+esc(String(c.id))+'">'+esc(c.nome)+'</option>'; }).join('');
+        sel.value = atual;
+    });
+    var sa=document.getElementById('f13_ano');
+    if(sa && !sa.options.length){ var h=new Date().getFullYear(); for(var a=h-1;a<=h+1;a++){ var o=document.createElement('option'); o.value=String(a); o.textContent=String(a); if(a===h) o.selected=true; sa.appendChild(o); } }
+}
+function escolherFuncF(p){
+    var id = document.getElementById(p+'_func').value;
+    var c = funcionariosCltLista().filter(function(x){ return String(x.id)===String(id); })[0];
+    if(!c) return;
+    document.getElementById(p+'_sal').value = Number(c.salario||0) || '';
+    document.getElementById(p+'_dep').value = Number(c.dependentes||0);
+    if(p==='f13'){ var ano=parseInt(document.getElementById('f13_ano').value,10); document.getElementById('f13_avos').value = avosDoAno(c.admissao, ano) || ''; }
+}
+function nomeFuncF(p){
+    var sel=document.getElementById(p+'_func'); var id=sel.value;
+    var c = funcionariosCltLista().filter(function(x){ return String(x.id)===String(id); })[0];
+    return c ? c.nome : 'Informado manualmente';
+}
+function fgtsOptanteF(p){
+    var id=document.getElementById(p+'_func').value;
+    var c = funcionariosCltLista().filter(function(x){ return String(x.id)===String(id); })[0];
+    return !(c && c.fgts_optante===false);
+}
+function tabelaDemo(linhas, destaque){
+    var h='<table class="analitica-table"><thead><tr><th>Descrição</th><th>Referência</th><th style="text-align:right;">Proventos</th><th style="text-align:right;">Descontos</th></tr></thead><tbody>';
+    linhas.forEach(function(l){
+        h+='<tr'+(l.neg?' style="font-weight:700;background:var(--bg);"':'')+'><td>'+esc(l.d)+'</td><td>'+esc(l.r||'')+'</td><td style="text-align:right;">'+(l.p!=null?'R$ '+moedaBR(l.p):'')+'</td><td style="text-align:right;color:var(--danger);">'+(l.x!=null?'- R$ '+moedaBR(l.x):'')+'</td></tr>';
+    });
+    return h+'</tbody></table>'+(destaque||'');
+}
+function calcular13(){
+    var ano=parseInt(document.getElementById('f13_ano').value,10);
+    if(ano!==P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Selecione o ano '+P26.ano+'.','error'); return; }
+    var sal=parseFloat(document.getElementById('f13_sal').value)||0, media=parseFloat(document.getElementById('f13_media').value)||0;
+    var dep=Math.max(0,parseInt(document.getElementById('f13_dep').value,10)||0), avos=parseInt(document.getElementById('f13_avos').value,10)||0;
+    if(sal<=0){ toast('Informe o salário mensal.','error'); return; }
+    if(media<0){ toast('A média de variáveis não pode ser negativa.','error'); return; }
+    if(avos<1||avos>12){ toast('Informe de 1 a 12 meses trabalhados.','error'); return; }
+    var rem=r2(sal+media), integral=r2(rem/12*avos), p1=r2(integral/2);
+    var inss=inssProgressivo(integral), ir=irrfMensal(integral,inss,dep);
+    var p2=r2(integral-p1-inss-ir.irrf), total=r2(p1+p2);
+    var fgts = fgtsOptanteF('f13') ? r2(integral*P26.fgts) : 0;
+    var linhas=[
+        {d:'13º salário', r:avos+'/12 avos', p:integral},
+        {d:'1ª parcela (50%, sem descontos) - pagar até 30/11', r:'', p:p1},
+        {d:'2ª parcela bruta (restante) - pagar até 20/12', r:'', p:r2(integral-p1)},
+        {d:'INSS sobre o 13º inteiro', r:'tabela 2026', x:inss},
+        {d:'IRRF sobre o 13º', r:(ir.simplificado?'desc. simplificado':'dedução legal')+(ir.reducao>0?' + redução Lei 15.270 R$ '+moedaBR(ir.reducao):''), x:ir.irrf},
+        {d:'Líquido da 2ª parcela', r:'', p:p2, neg:true},
+        {d:'Líquido total do 13º (1ª + 2ª)', r:'', p:total, neg:true}
+    ];
+    var aviso = (p2<0) ? '<div style="margin-top:10px;color:#b91c1c;font-weight:700;">Atenção: os descontos superam a 2ª parcela. Confira os dados com a contabilidade.</div>' : '';
+    document.getElementById('resultado13').innerHTML = tabelaDemo(linhas, '<div style="margin-top:10px;font-size:12px;color:var(--text-light);">FGTS de 8% sobre o 13º (encargo da empresa, informativo): <strong>R$ '+moedaBR(fgts)+'</strong>. Base de cálculo: R$ '+moedaBR(rem)+' (salário + variáveis).</div>'+aviso);
+    ultimoDemo['13'] = { nome: nomeFuncF('f13'), ano: ano, linhas: linhas, total: total, fgts: fgts, rem: rem, avos: avos };
+    toast('13º calculado (regras de '+P26.ano+'). Conferir com a contabilidade.','info');
+}
+function calcularFerias(){
+    var ini=document.getElementById('fer_inicio').value;
+    var dias=parseInt(document.getElementById('fer_dias').value,10)||0, ab=parseInt(document.getElementById('fer_abono').value,10)||0;
+    var sal=parseFloat(document.getElementById('fer_sal').value)||0, media=parseFloat(document.getElementById('fer_media').value)||0;
+    var dep=Math.max(0,parseInt(document.getElementById('fer_dep').value,10)||0);
+    if(!ini){ toast('Informe a data de início das férias.','error'); return; }
+    var pi=ini.split('-').map(Number);
+    if(pi[0]!==P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Informe férias que comecem em '+P26.ano+'.','error'); return; }
+    if(sal<=0){ toast('Informe o salário mensal.','error'); return; }
+    if(media<0){ toast('A média de variáveis não pode ser negativa.','error'); return; }
+    if(dias<5||dias>30){ toast('Os dias de férias gozadas devem ficar entre 5 e 30.','error'); return; }
+    if(ab<0||ab>10){ toast('O abono pecuniário permite vender no máximo 10 dias (1/3 de 30).','error'); return; }
+    if(dias+ab>30){ toast('Dias gozados + dias vendidos não podem passar de 30.','error'); return; }
+    var rem=r2(sal+media), vd=rem/30;
+    var ferias=r2(vd*dias), terco=r2(ferias/3), abono=r2(vd*ab), tercoAb=r2(abono/3);
+    var trib=r2(ferias+terco);
+    var inss=inssProgressivo(trib), ir=irrfMensal(trib,inss,dep);
+    var liq=r2(trib+abono+tercoAb-inss-ir.irrf);
+    var fgts = fgtsOptanteF('fer') ? r2(trib*P26.fgts) : 0;
+    var d0=new Date(pi[0],pi[1]-1,pi[2]), d1=new Date(pi[0],pi[1]-1,pi[2]+dias-1), dp=new Date(pi[0],pi[1]-1,pi[2]-2);
+    var linhas=[
+        {d:'Férias gozadas', r:dias+' dias ('+dataBR(d0)+' a '+dataBR(d1)+')', p:ferias},
+        {d:'1/3 constitucional sobre as férias', r:'', p:terco}
+    ];
+    if(ab>0){ linhas.push({d:'Abono pecuniário (dias vendidos)', r:ab+' dias - não paga INSS/IRRF', p:abono}); linhas.push({d:'1/3 sobre o abono', r:'não paga INSS/IRRF', p:tercoAb}); }
+    linhas.push({d:'INSS sobre férias + 1/3', r:'tabela 2026', x:inss});
+    linhas.push({d:'IRRF sobre férias + 1/3', r:(ir.simplificado?'desc. simplificado':'dedução legal')+(ir.reducao>0?' + redução Lei 15.270 R$ '+moedaBR(ir.reducao):''), x:ir.irrf});
+    linhas.push({d:'Líquido a receber', r:'', p:liq, neg:true});
+    document.getElementById('resultadoFer').innerHTML = tabelaDemo(linhas, '<div style="margin-top:10px;font-size:12px;color:var(--text-light);">Pagamento até <strong>'+dataBR(dp)+'</strong> (2 dias antes do início). FGTS de 8% sobre férias + 1/3 (encargo da empresa, informativo): <strong>R$ '+moedaBR(fgts)+'</strong>. Base: R$ '+moedaBR(rem)+' (salário + variáveis).</div>');
+    ultimoDemo['FER'] = { nome: nomeFuncF('fer'), ano: P26.ano, linhas: linhas, total: liq, fgts: fgts, rem: rem, periodo: dataBR(d0)+' a '+dataBR(d1), pagar: dataBR(dp) };
+    toast('Férias calculadas (regras de '+P26.ano+'). Conferir com a contabilidade.','info');
+}
+function imprimirDemo(tipo){
+    var d = ultimoDemo[tipo];
+    if(!d){ toast('Faça o cálculo antes de imprimir.','error'); return; }
+    if(typeof ERPPrint==='undefined'){ toast('O módulo de impressão não foi carregado. Recarregue a página.','error'); return; }
+    var ehFer = tipo==='FER';
+    ERPPrint.imprimir({
+        titulo: ehFer ? 'Demonstrativo de Férias' : 'Demonstrativo de 13º Salário',
+        subtitulo: d.nome+' - '+(ehFer ? 'período '+d.periodo : 'ano '+d.ano),
+        codigo: ehFer ? 'FER-DEM' : 'D13-DEM', orientacao: 'portrait',
+        filtros: [['Funcionário', d.nome], ['Base de cálculo', 'R$ '+moedaBR(d.rem)]],
+        resumo: [[ehFer?'Líquido a receber':'Líquido total do 13º','R$ '+moedaBR(d.total)],['FGTS (encargo da empresa)','R$ '+moedaBR(d.fgts)]],
+        colunas: [{t:'Descrição',w:5},{t:'Referência',w:3.2},{t:'Proventos',w:1.8,a:'right'},{t:'Descontos',w:1.8,a:'right'}],
+        linhas: d.linhas.map(function(l){ return {c:[l.d, l.r||'', l.p!=null?'R$ '+moedaBR(l.p):'', l.x!=null?'R$ '+moedaBR(l.x):''], cls: l.neg?'linha-total':''}; }),
+        observacao: 'Cálculo com as regras de 2026 (INSS progressivo, IRRF com redução da Lei 15.270/2025). Documento de conferência: validar com a contabilidade antes de pagar ou recolher.',
+        assinaturas: ['Empregador','Empregado']
+    });
 }
 
 function cadastrarRubrica() {
@@ -1083,6 +1251,7 @@ window.onload = function(){
 <button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
     <i class="fas fa-question"></i>
 </button>
+    <script src="erp-print.js"></script>
     <script src="erp-core.js"></script>
 </body>
 </html>
