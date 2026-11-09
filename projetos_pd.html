@@ -224,6 +224,27 @@
     </div>
 </div>
 
+<!-- MODAL: LUCRO DO PROJETO -> CONTAS A RECEBER -->
+<div id="modalLucro" class="ocultar-print" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:3000;align-items:center;justify-content:center;padding:16px;">
+    <div style="background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:92vh;overflow:auto;padding:22px;box-shadow:0 20px 50px rgba(0,0,0,.3);">
+        <h3 style="margin:0 0 4px;"><i class="fas fa-hand-holding-usd"></i> Lançar lucro do projeto no caixa</h3>
+        <div id="lucroProjeto" style="font-size:13px;color:var(--text-light);margin-bottom:12px;"></div>
+        <div id="lucroResumo" style="background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:12px;font-size:13px;margin-bottom:12px;"></div>
+        <div class="form-grid">
+            <div><label>Valor do lucro a receber (R$) *</label><input id="lucroValor" class="form-control" placeholder="0,00"></div>
+            <div><label>Previsão de recebimento *</label><input id="lucroVenc" class="form-control" type="date"></div>
+            <div><label>Centro de custo *</label><select id="lucroCentro" class="form-control"></select></div>
+            <div><label>Conta contábil (receita) *</label><select id="lucroConta" class="form-control"></select></div>
+        </div>
+        <div><label>Observação (opcional)</label><input id="lucroObs" class="form-control" placeholder="Ex.: Saldo final do projeto após prestação de contas"></div>
+        <div style="font-size:12px;color:var(--text-light);margin:6px 0 12px;">Será criado um lançamento <b>Pendente</b> no Contas a Receber. O dinheiro só entra no caixa quando você der a <b>baixa</b> (recebimento efetivo) por lá. O enquadramento contábil/fiscal desse valor deve ser confirmado com a contabilidade.</div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;">
+            <button class="btn-acao" style="background:#64748b;" onclick="fecharLucro()">Cancelar</button>
+            <button class="btn-acao sucesso" id="btnConfLucro" onclick="confirmarLucro()"><i class="fas fa-check"></i> Lançar no Contas a Receber</button>
+        </div>
+    </div>
+</div>
+
 <script>
 const sb = supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
 const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
@@ -315,6 +336,121 @@ function gerarProximoCodigo() {
     return 'PD-' + String(maxNum + 1).padStart(3, '0');
 }
 
+let recebStatus = {};   // id do contas_receber -> status
+let saldosProj = {};    // projeto_id -> {aportes, custos}
+let lucroAlvo = null;
+
+function fmtMoeda(n){ return (Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function lerMoeda(v){ v=String(v||'').trim(); if(!v) return 0; if(v.indexOf(',')>=0) v=v.replace(/\./g,'').replace(',','.'); var n=parseFloat(v); return isNaN(n)?0:n; }
+function r2(n){ return Math.round((n+Number.EPSILON)*100)/100; }
+function projetoEncerrado(p){ var t=calcularStatusExibicao(p).texto.toLowerCase(); return t==='encerrado'||t==='finalizado'; }
+function ehCentroPD(t){ return /p\s*&\s*d|pesquisa\s+e\s+desenvolvimento/i.test(String(t||'')); }
+
+async function carregarSaldosELucros(){
+    const cid = clienteIdAtual();
+    saldosProj = {}; recebStatus = {};
+    const [a,c] = await Promise.all([
+        sb.from('aportes_pd').select('projeto_id,valor').eq('cliente_id', cid),
+        sb.from('custos_pd').select('projeto_id,valor').eq('cliente_id', cid)
+    ]);
+    (a.data||[]).forEach(x=>{ var k=String(x.projeto_id); (saldosProj[k]=saldosProj[k]||{aportes:0,custos:0}).aportes += Number(x.valor||0); });
+    (c.data||[]).forEach(x=>{ var k=String(x.projeto_id); (saldosProj[k]=saldosProj[k]||{aportes:0,custos:0}).custos += Number(x.valor||0); });
+    var ids = projetosCache.filter(p=>p.lucro_receber_id).map(p=>p.lucro_receber_id);
+    if(ids.length){
+        const r = await sb.from('contas_receber').select('id,status').in('id', ids).eq('cliente_id', cid);
+        (r.data||[]).forEach(x=>{ recebStatus[String(x.id)] = x.status || 'Pendente'; });
+    }
+}
+function saldoDe(p){ var s=saldosProj[String(p.id)]||{aportes:0,custos:0}; return {aportes:r2(s.aportes), custos:r2(s.custos), saldo:r2(s.aportes-s.custos)}; }
+
+async function abrirLucro(id){
+    var p = projetosCache.find(x=>String(x.id)===String(id)); if(!p) return;
+    if(p.lucro_receber_id){ toast('Este projeto já teve o lucro lançado.','error'); return; }
+    var sd = saldoDe(p);
+    if(sd.saldo<=0){ toast('O projeto não tem lucro (aportes recebidos menos gastos é zero ou negativo).','error'); return; }
+    lucroAlvo = p;
+    document.getElementById('lucroProjeto').textContent = (p.codigo||'')+' — '+(p.nome||'');
+    document.getElementById('lucroResumo').innerHTML = 'Aportes recebidos: <b>R$ '+fmtMoeda(sd.aportes)+'</b><br>Gastos do projeto: <b>R$ '+fmtMoeda(sd.custos)+'</b><br>Lucro (saldo): <b style="color:var(--success)">R$ '+fmtMoeda(sd.saldo)+'</b>';
+    document.getElementById('lucroValor').value = fmtMoeda(sd.saldo);
+    document.getElementById('lucroVenc').value = hojeLocal();
+    document.getElementById('lucroObs').value = '';
+    const cid = clienteIdAtual();
+    const [cc, pc] = await Promise.all([
+        sb.from('centros_custo').select('*').eq('cliente_id', cid),
+        sb.from('plano_contas').select('*').eq('cliente_id', cid)
+    ]);
+    var selC = document.getElementById('lucroCentro'); selC.innerHTML='<option value="">Selecione...</option>';
+    var lista = (cc.data||[]).filter(x=>(x.status||'Ativo')==='Ativo').map(x=>(x.codigo||x.id||'')+' - '+(x.nome||x.descricao||'Centro de custo'));
+    var pd = lista.filter(ehCentroPD); (pd.length?pd:lista).forEach(t=>{ var o=document.createElement('option'); o.value=t; o.textContent=t; selC.appendChild(o); });
+    if(pd.length===1) selC.value = pd[0];
+    var selP = document.getElementById('lucroConta'); selP.innerHTML='<option value="">Selecione a conta de receita...</option>';
+    (pc.data||[]).forEach(x=>{ var t=(x.codigo_reduzido||x.reduzido||'')+' - '+(x.descricao||x.nome||''); var o=document.createElement('option'); o.value=t; o.textContent=t; selP.appendChild(o); });
+    document.getElementById('modalLucro').style.display='flex';
+}
+function fecharLucro(){ document.getElementById('modalLucro').style.display='none'; lucroAlvo=null; }
+
+async function confirmarLucro(){
+    if(!lucroAlvo) return;
+    const cid = clienteIdAtual();
+    var p = lucroAlvo;
+    var valor = r2(lerMoeda(document.getElementById('lucroValor').value));
+    var venc = document.getElementById('lucroVenc').value;
+    var centro = document.getElementById('lucroCentro').value;
+    var conta = document.getElementById('lucroConta').value;
+    var obs = document.getElementById('lucroObs').value.trim();
+    if(!(valor>0)){ toast('Informe o valor do lucro.','error'); return; }
+    if(!venc){ toast('Informe a previsão de recebimento.','error'); return; }
+    if(!centro){ toast('Selecione o centro de custo.','error'); return; }
+    if(!conta){ toast('Selecione a conta contábil de receita.','error'); return; }
+    var btn = document.getElementById('btnConfLucro'); btn.disabled = true;
+    try{
+        // confere de novo no banco (evita lançar duas vezes e usa o saldo atualizado)
+        const fresh = await sb.from('projetos_pd').select('lucro_receber_id').eq('id', p.id).eq('cliente_id', cid).single();
+        if(fresh.error){ toast('Erro ao conferir o projeto: '+fresh.error.message,'error'); return; }
+        if(fresh.data && fresh.data.lucro_receber_id){ toast('Este projeto já teve o lucro lançado.','error'); fecharLucro(); carregarProjetos(); return; }
+        await carregarSaldosELucros();
+        var sd = saldoDe(p);
+        if(valor > sd.saldo + 0.005){ toast('O valor não pode ser maior que o lucro do projeto (R$ '+fmtMoeda(sd.saldo)+').','error'); return; }
+        var agora = new Date().toISOString();
+        var ins = await sb.from('contas_receber').insert([{
+            cliente_id: cid,
+            cliente_nome: 'Projeto P&D '+(p.codigo||''),
+            cliente: 'Projeto P&D '+(p.codigo||''),
+            descricao: 'Lucro do projeto de P&D '+(p.codigo||'')+' - '+(p.nome||''),
+            valor: valor,
+            vencimento: venc,
+            centro_custo: centro,
+            conta_contabil: conta,
+            status: 'Pendente',
+            observacao: (obs?obs+' | ':'')+'Origem: Tecnologia e P&D (projeto '+p.id+')',
+            updated_at: agora
+        }]).select('id').single();
+        if(ins.error || !ins.data){ toast('Erro ao lançar no Contas a Receber: '+(ins.error?ins.error.message:''),'error'); return; }
+        var upd = await sb.from('projetos_pd').update({ lucro_receber_id: ins.data.id, lucro_valor: valor, lucro_lancado_em: agora }).eq('id', p.id).eq('cliente_id', cid);
+        if(upd.error){
+            await sb.from('contas_receber').delete().eq('id', ins.data.id).eq('cliente_id', cid);
+            toast('Erro ao vincular ao projeto (nada foi lançado): '+upd.error.message,'error'); return;
+        }
+        toast('Lucro lançado no Contas a Receber como Pendente.');
+        fecharLucro(); carregarProjetos();
+    } finally { btn.disabled = false; }
+}
+
+async function desfazerLucro(id){
+    var p = projetosCache.find(x=>String(x.id)===String(id)); if(!p || !p.lucro_receber_id) return;
+    const cid = clienteIdAtual();
+    var st = recebStatus[String(p.lucro_receber_id)];
+    if(st && String(st).toLowerCase()!=='pendente'){ toast('O lançamento já está "'+st+'" no Contas a Receber e não pode ser desfeito por aqui.','error'); return; }
+    if(!confirm('Desfazer o lançamento do lucro? O título pendente será removido do Contas a Receber.')) return;
+    if(st){
+        var d = await sb.from('contas_receber').delete().eq('id', p.lucro_receber_id).eq('cliente_id', cid);
+        if(d.error){ toast('Erro ao remover o título: '+d.error.message,'error'); return; }
+    }
+    var u = await sb.from('projetos_pd').update({ lucro_receber_id: null, lucro_valor: null, lucro_lancado_em: null }).eq('id', p.id).eq('cliente_id', cid);
+    if(u.error){ toast('Erro ao atualizar o projeto: '+u.error.message,'error'); return; }
+    toast('Lançamento desfeito.'); carregarProjetos();
+}
+
 async function carregarProjetos() {
     const cid = clienteIdAtual();
     const tbody = document.getElementById('tbodyProjetos');
@@ -331,6 +467,7 @@ async function carregarProjetos() {
     }
 
     projetosCache = data || [];
+    try { await carregarSaldosELucros(); } catch(e) { console.warn('saldos', e); }
     document.getElementById('codigo').value = gerarProximoCodigo();
     renderTabela();
 }
@@ -359,6 +496,23 @@ function obterFiltrados() {
     return dadosFiltrados;
 }
 
+function infoLucro(p){
+    if(p.lucro_receber_id){
+        var st = recebStatus[String(p.lucro_receber_id)] || 'Pendente';
+        var ok = String(st).toLowerCase().indexOf('receb')===0 || String(st).toLowerCase()==='pago' || String(st).toLowerCase()==='baixado';
+        return '<br><small style="color:'+(ok?'#047857':'#92400e')+'">Lucro R$ '+fmtMoeda(p.lucro_valor)+' — '+(ok?'recebido (no caixa)':'a receber ('+esc(st)+')')+'</small>';
+    }
+    return '';
+}
+function botoesLucro(p){
+    if(p.lucro_receber_id){
+        var st = String(recebStatus[String(p.lucro_receber_id)]||'Pendente').toLowerCase();
+        return st==='pendente' ? '<button class="btn-icon btn-desfaz" title="Desfazer lançamento do lucro"><i class="fas fa-undo"></i></button> ' : '';
+    }
+    if(projetoEncerrado(p) && saldoDe(p).saldo>0) return '<button class="btn-icon btn-lucro" title="Lançar lucro no caixa (Contas a Receber)"><i class="fas fa-hand-holding-usd"></i></button> ';
+    return '';
+}
+
 function renderTabela() {
     const tbody = document.getElementById('tbodyProjetos');
     const dadosFiltrados = obterFiltrados();
@@ -378,14 +532,17 @@ function renderTabela() {
             <td>${esc(p.nome) || '—'}${p.descricao ? '<br><small style="color:var(--text-light)">' + esc(p.descricao) + '</small>' : ''}</td>
             <td>${formatDataBR(dataInicioDe(p))}</td>
             <td>${formatDataBR(dataFimDe(p))}</td>
-            <td><span class="badge ${infoStatus.classe}">${esc(infoStatus.texto)}</span></td>
+            <td><span class="badge ${infoStatus.classe}">${esc(infoStatus.texto)}</span>${infoLucro(p)}</td>
             <td style="text-align:right; white-space:nowrap;" class="ocultar-print">
+                ${botoesLucro(p)}
                 <button class="btn-icon" title="Editar"><i class="fas fa-edit"></i></button>
                 <button class="btn-icon excluir" title="Excluir"><i class="fas fa-trash"></i></button>
             </td>
         `;
 
-        tr.querySelector('.btn-icon:not(.excluir)').onclick = function() { editarProjeto(p.id); };
+        var bl = tr.querySelector('.btn-lucro'); if(bl) bl.onclick = function(){ abrirLucro(p.id); };
+        var bd = tr.querySelector('.btn-desfaz'); if(bd) bd.onclick = function(){ desfazerLucro(p.id); };
+        tr.querySelector('.btn-icon[title="Editar"]').onclick = function() { editarProjeto(p.id); };
         tr.querySelector('.btn-icon.excluir').onclick = function() { excluirProjeto(p.id); };
 
         tbody.appendChild(tr);
