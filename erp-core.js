@@ -95,6 +95,7 @@
         { nome:"Gestão de Clientes (Master)", url:"clientes_contratantes.html", icon:"fa-building", keywords:["cliente","licenca","plano","master"] },
         { nome:"Usuários & Permissões", url:"usuarios.html", icon:"fa-user-shield", keywords:["usuario","permissao","senha"] },
         { nome:"Calendário Fiscal", url:"calendario_fiscal.html", icon:"fa-calendar-alt", keywords:["calendario","obrigacao","prazo","fiscal","vencimento"] },
+        { nome:"Escrituração Contábil (Plano de Contas e Lançamentos)", url:"contabilidade.html", icon:"fa-book", keywords:["escrituracao","contabil","plano de contas","lancamento","diario","razao","balancete","periodo","fechamento"] },
         { nome:"Canal com a Contabilidade", url:"canal_contabil.html", icon:"fa-comments", keywords:["canal","chat","mensagem","conversa","contador","contabilidade","solicitacao","duvida"] },
         { nome:"Documentos Contábeis", url:"documentos_contabeis.html", icon:"fa-folder-open", keywords:["documentos","contabeis","contabilidade","enviar","extrato","notas","troca"] },
         { nome:"Registro de Acessos (Contabilidade)", url:"acessos_contabilidade.html", icon:"fa-user-shield", keywords:["acessos","lgpd","contabilidade","quem acessou","registro","auditoria"] },
@@ -169,7 +170,7 @@
        empresa de origem fica guardada em contadorCtx. O BANCO só permite LEITURA
        das empresas vinculadas; esta camada apenas avisa e evita tentativas de gravar. */
     var arquivoAtualCore = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
-    var PAGINAS_LIVRES_CONSULTA = ['documentos_contabeis.html', 'acessos_contabilidade.html', 'canal_contabil.html'];
+    var PAGINAS_LIVRES_CONSULTA = ['documentos_contabeis.html', 'acessos_contabilidade.html', 'canal_contabil.html', 'contabilidade.html'];
 
     function escC(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function ctxContador() {
