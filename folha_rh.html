@@ -277,7 +277,7 @@
             <div class="form-row" style="align-items:flex-end;">
                 <div>
                     <label>Competência (Mês/Ano)</label>
-                    <input type="text" id="clt_competencia" class="form-control" value="setembro de 2026">
+                    <select id="clt_competencia" class="form-control"></select>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button class="btn-acao" onclick="gerarFolhaClt()"><i class="fas fa-cogs"></i> Calcular Folha</button>
@@ -300,7 +300,7 @@
             <div class="form-row">
                 <div>
                     <label>Competência</label>
-                    <input type="text" id="pro_competencia" class="form-control" value="setembro de 2026">
+                    <select id="pro_competencia" class="form-control"></select>
                 </div>
                 <div>
                     <label>Sócio (Página de Sócios)</label>
@@ -985,7 +985,7 @@ function gerarFolhaClt() {
         return;
     }
     let ano = anoDaCompetencia(comp);
-    if(ano !== P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Informe a competência com o ano de '+P26.ano+' (ex.: novembro de 2026).', 'error'); return; }
+    if(ano !== P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Selecione uma competência de '+P26.ano+'.', 'error'); return; }
     let html = `<table class="analitica-table"><thead><tr><th>Funcionário</th><th>Cargo</th><th>Salário Base</th><th>Dep.</th><th>INSS</th><th>IRRF</th><th>Líquido</th><th>FGTS (8%, empresa)</th></tr></thead><tbody>`;
     let tSal=0,tInss=0,tIrrf=0,tLiq=0,tFgts=0;
     clts.forEach(c => {
@@ -1013,7 +1013,7 @@ async function lancarProLabore() {
     if(valor < 0) { toast('Valor inválido.', 'error'); return; }
     if(!nome || !valor) { toast("Selecione um sócio e informe o valor bruto!", "error"); return; }
 
-    if(anoDaCompetencia(comp) !== P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Informe a competência com o ano de '+P26.ano+'.', 'error'); return; }
+    if(anoDaCompetencia(comp) !== P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Selecione uma competência de '+P26.ano+'.', 'error'); return; }
     let dep = Math.max(0, parseInt(document.getElementById('pro_dep').value, 10) || 0);
     let inss = Math.min(r2(valor * P26.inssSocio), P26.inssSocioMax);
     let irrf = irrfMensal(valor, inss, dep).irrf;
@@ -1055,7 +1055,25 @@ function cadastrarRubrica() {
     document.getElementById('rub_nome').value = '';
 }
 
+function montarCompetencias(){
+    var meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    var hoje=new Date(), anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth();
+    ['clt_competencia','pro_competencia'].forEach(function(id){
+        var sel=document.getElementById(id); if(!sel) return;
+        sel.innerHTML='';
+        for(var a=anoAtual-2;a<=anoAtual+2;a++){
+            for(var m=0;m<12;m++){
+                var t=meses[m]+' de '+a, o=document.createElement('option');
+                o.value=t; o.textContent=t.charAt(0).toUpperCase()+t.slice(1);
+                if(a===anoAtual && m===mesAtual) o.selected=true;
+                sel.appendChild(o);
+            }
+        }
+    });
+}
+
 window.onload = function(){
+    montarCompetencias();
     limparFormulario();
     carregarNomeEmpresa();
     carregarFuncionarios();
