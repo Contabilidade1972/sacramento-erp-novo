@@ -160,8 +160,8 @@
     </div>
 
     <div class="aviso-seg">
-        <i class="fas fa-shield-alt"></i> <strong>Seu certificado não sai do seu computador.</strong>
-        O arquivo do certificado (.pfx / .p12) e a senha são usados <u>somente aqui no seu navegador</u>, no momento da assinatura. Nada é enviado nem guardado pelo sistema. O sistema registra apenas quem assinou, o nome do arquivo e a impressão digital (hash) do documento.
+        <i class="fas fa-shield-alt"></i> <strong>Sua senha nunca é guardada.</strong>
+        A assinatura é feita <u>aqui no seu navegador</u>: o documento que você assina não é enviado a lugar nenhum. A <strong>senha do certificado nunca é guardada</strong> e é digitada a cada uso. O arquivo do certificado A1 pode ficar guardado no cofre protegido da sua empresa (veja <a href="certificados_digitais.html">Certificados Digitais</a>), ainda protegido pela senha dele. O sistema registra apenas quem assinou, o nome do arquivo e a impressão digital (hash) do documento.
     </div>
     <div class="aviso-seg aviso-a3">
         <i class="fas fa-circle-info"></i> <strong>Somente certificado A1 (arquivo).</strong> Certificados A3 (token ou cartão) não podem ser usados por uma página web sem um programa auxiliar instalado no computador, então não aparecem aqui.
@@ -172,8 +172,10 @@
         <div class="form-row">
             <div><label>1. Documento a assinar *</label>
                 <input type="file" id="arqDoc" class="form-control" onchange="aoEscolherDoc()"></div>
-            <div><label>2. Certificado A1 (.pfx ou .p12) *</label>
-                <input type="file" id="arqPfx" class="form-control" accept=".pfx,.p12" onchange="limparCert()"></div>
+            <div><label>2. Certificado A1 *</label>
+                <select id="selCert" class="form-control" onchange="aoEscolherCert()"></select>
+                <input type="file" id="arqPfx" class="form-control" accept=".pfx,.p12" onchange="limparCert()" style="display:none;">
+                <div id="dicaCofre" style="font-size:11px; color:var(--text-light); margin-top:-6px;"></div></div>
             <div><label>3. Senha do certificado *</label>
                 <input type="password" id="senhaPfx" class="form-control" autocomplete="new-password" placeholder="Digitada a cada uso, nunca guardada"></div>
         </div>
@@ -279,6 +281,52 @@ function dataPdf(d){
     var p = function(n){ return String(n).padStart(2, '0'); };
     var off = -d.getTimezoneOffset(), s = off >= 0 ? '+' : '-'; off = Math.abs(off);
     return 'D:' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + s + p(Math.floor(off/60)) + "'" + p(off%60) + "'";
+}
+
+// ---------- certificados guardados no cofre ----------
+const BUCKET_COFRE = 'cofre-certificados';
+let cofreLista = [];
+function fmtDataCurta(d){ var p = String(d || '').substring(0,10).split('-'); return p.length === 3 ? p[2]+'/'+p[1]+'/'+p[0] : '—'; }
+async function carregarCofre(){
+    var sel = document.getElementById('selCert'), dica = document.getElementById('dicaCofre');
+    var cid = window.clienteIdAtual();
+    cofreLista = [];
+    if (cid) {
+        try {
+            var r = await sb.from('certificados_digitais').select('*').eq('cliente_id', cid).eq('tipo', 'A1').eq('status', 'ativo').order('validade_fim', { ascending: false });
+            if (!r.error) cofreLista = (r.data || []).filter(function(c){ return c.pfx_path; });
+        } catch (e) {}
+    }
+    var hoje = new Date().toISOString().substring(0, 10);
+    var html = '';
+    cofreLista.forEach(function(c){
+        var vencido = String(c.validade_fim || '').substring(0,10) < hoje;
+        html += '<option value="' + esc(c.id) + '"' + (vencido ? ' disabled' : '') + '>' + esc(c.nome_titular) + ' — válido até ' + fmtDataCurta(c.validade_fim) + (vencido ? ' (VENCIDO)' : '') + '</option>';
+    });
+    html += '<option value="__arquivo">Outro certificado: escolher arquivo no computador…</option>';
+    sel.innerHTML = html;
+    var primeiro = cofreLista.filter(function(c){ return String(c.validade_fim || '').substring(0,10) >= hoje; })[0];
+    sel.value = primeiro ? String(primeiro.id) : '__arquivo';
+    dica.textContent = cofreLista.length ? '' : 'Dica: guarde o arquivo do seu A1 no cofre (tela Certificados Digitais) e ele passa a aparecer aqui, sem precisar procurar o arquivo.';
+    aoEscolherCert();
+}
+function aoEscolherCert(){
+    var usaArquivo = document.getElementById('selCert').value === '__arquivo';
+    document.getElementById('arqPfx').style.display = usaArquivo ? 'block' : 'none';
+    limparCert();
+}
+async function obterArquivoCert(){
+    var v = document.getElementById('selCert').value;
+    if (v === '__arquivo') {
+        var f = document.getElementById('arqPfx').files[0];
+        if (!f) throw new Error('Escolha o arquivo do certificado A1 (.pfx ou .p12).');
+        return f;
+    }
+    var c = cofreLista.filter(function(x){ return String(x.id) === String(v); })[0];
+    if (!c) throw new Error('Escolha o certificado.');
+    var d = await sb.storage.from(BUCKET_COFRE).download(c.pfx_path);
+    if (d.error || !d.data) throw new Error('Não consegui buscar o certificado no cofre. Tente novamente ou escolha o arquivo no computador.');
+    return d.data;
 }
 
 // ---------- certificado A1 ----------
@@ -402,16 +450,16 @@ function baixar(u8, nome, tipo){
 async function assinar(){
     var res = document.getElementById('resultado'); res.innerHTML = '';
     var fDoc = document.getElementById('arqDoc').files[0];
-    var fPfx = document.getElementById('arqPfx').files[0];
     var senha = document.getElementById('senhaPfx').value;
     if (!fDoc) { toast('Escolha o documento a assinar.', 'error'); return; }
-    if (!fPfx) { toast('Escolha o arquivo do certificado A1 (.pfx ou .p12).', 'error'); return; }
+    if (document.getElementById('selCert').value === '__arquivo' && !document.getElementById('arqPfx').files[0]) { toast('Escolha o arquivo do certificado A1 (.pfx ou .p12).', 'error'); return; }
     if (!senha) { toast('Digite a senha do certificado.', 'error'); return; }
     if (fDoc.size > LIMITE_ARQUIVO) { toast('Documento grande demais (máximo 40 MB).', 'error'); return; }
     if (typeof forge === 'undefined' || typeof PDFLib === 'undefined') { toast('Não foi possível carregar as bibliotecas de assinatura. Verifique a internet e recarregue.', 'error'); return; }
     var btn = document.getElementById('btnAssinar'); btn.disabled = true;
     var antes = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assinando...';
     try {
+        var fPfx = await obterArquivoCert();
         var c = await abrirPfx(fPfx, senha);
         document.getElementById('senhaPfx').value = '';
         var hoje = new Date();
@@ -485,6 +533,7 @@ async function inicializarPagina(){
     var u = window.obterUsuario();
     if (!u || !u.email) { location.href = 'login.html'; return; }
     if (window.ehMaster()) document.body.classList.add('usuario-master'); else document.body.classList.remove('usuario-master');
+    await carregarCofre();
     await carregarHistorico();
 }
 window.onload = inicializarPagina;
