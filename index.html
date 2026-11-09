@@ -126,6 +126,17 @@
         .faixa-cert.vermelha { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
         .faixa-cert.laranja { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
         .faixa-cert a { color:inherit; font-weight:800; }
+        .aviso-cert-fundo { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:9000; display:none; align-items:center; justify-content:center; padding:16px; }
+        .aviso-cert-caixa { background:#fff; border-radius:16px; max-width:560px; width:100%; padding:24px; box-shadow:0 20px 50px rgba(0,0,0,.3); max-height:88vh; overflow:auto; }
+        .aviso-cert-caixa h3 { font-size:18px; color:#0f172a; margin-bottom:6px; }
+        .aviso-cert-caixa p { font-size:13px; color:#64748b; margin-bottom:14px; line-height:1.6; }
+        .aviso-cert-bloco { border-radius:10px; padding:12px 14px; margin-bottom:10px; font-size:13px; line-height:1.7; }
+        .aviso-cert-bloco.venc { background:#fef2f2; color:#991b1b; border:1px solid #fecaca; }
+        .aviso-cert-bloco.prox { background:#fff7ed; color:#9a3412; border:1px solid #fed7aa; }
+        .aviso-cert-sub { font-size:11px; font-weight:800; text-transform:uppercase; margin-bottom:4px; }
+        .aviso-cert-acoes { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; margin-top:16px; }
+        .aviso-cert-acoes a, .aviso-cert-acoes button { padding:10px 18px; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; text-decoration:none; border:none; }
+        .aviso-cert-acoes a { background:#2563eb; color:#fff; } .aviso-cert-acoes button { background:#e2e8f0; color:#0f172a; }
         .banner-icone { position:absolute; top:50%; left:50%; transform:translate(-50%,-70%); z-index:1; font-size:46px; color:rgba(255,255,255,0.9); }
 
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
@@ -580,26 +591,67 @@
         } catch (e) { return false; }
     }
 
-    /* Aviso na tela inicial: certificado digital vencido ou que vence em até 30 dias */
+    /* Aviso na tela inicial (faixa + janela ao entrar): certificado digital vencido ou que vence em até 30 dias.
+       Cliente vê os seus; a contabilidade vê também os das empresas que a vincularam; o Master vê todos. */
+    function escCert(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function fecharAvisoCert() { const m = document.getElementById('modalAvisoCert'); if (m) m.style.display = 'none'; }
     async function verificarCertificadosIndex() {
         try {
+            const u = obterUsuarioAtual();
             const cid = clienteIdAtual();
-            const r = await sb.from('certificados_digitais').select('nome_titular,tipo,validade_fim,status').eq('cliente_id', cid).eq('status', 'ativo');
+            const todas = ehMasterGlobal();
+            let ids = [cid];
+            if (!todas && u && u.cliente_id) {
+                try {
+                    const rv = await sb.from('vinculos_contador').select('empresa_cliente_id,status,pode_visualizar').eq('contador_cliente_id', parseInt(u.cliente_id));
+                    (rv.data || []).forEach(v => { if (String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar) ids.push(parseInt(v.empresa_cliente_id)); });
+                } catch (e) {}
+            }
+            ids = ids.filter((x, i) => x && ids.indexOf(x) === i);
+            let q = sb.from('certificados_digitais').select('cliente_id,nome_titular,tipo,validade_fim,status').eq('status', 'ativo');
+            if (!todas) q = q.in('cliente_id', ids);
+            const r = await q;
             if (r.error || !r.data) return;
             const h = new Date(), hoje = Date.UTC(h.getFullYear(), h.getMonth(), h.getDate());
             const venc = [], prox = [];
             r.data.forEach(c => {
                 const p = String(c.validade_fim || '').substring(0, 10).split('-'); if (p.length !== 3) return;
                 const d = Math.round((Date.UTC(+p[0], +p[1] - 1, +p[2]) - hoje) / 86400000);
-                const nome = String(c.nome_titular || '').replace(/[<>&]/g, '') + ' (' + String(c.tipo || '').replace(/[<>&]/g, '') + ')';
-                if (d < 0) venc.push(nome + ' — vencido há ' + (-d) + (d === -1 ? ' dia' : ' dias'));
-                else if (d <= 30) prox.push(nome + ' — ' + (d === 0 ? 'vence hoje' : 'vence em ' + d + (d === 1 ? ' dia' : ' dias')));
+                if (d > 30) return;
+                const item = { cid: c.cliente_id, nome: String(c.nome_titular || '') + ' (' + String(c.tipo || '') + ')', d: d,
+                    txt: d < 0 ? 'vencido há ' + (-d) + (d === -1 ? ' dia' : ' dias') : (d === 0 ? 'vence hoje' : 'vence em ' + d + (d === 1 ? ' dia' : ' dias')) };
+                (d < 0 ? venc : prox).push(item);
             });
             if (!venc.length && !prox.length) return;
+            venc.sort((a, b) => a.d - b.d); prox.sort((a, b) => a.d - b.d);
+
+            const outras = new Set(venc.concat(prox).map(x => String(x.cid)));
+            const nomes = {};
+            if (outras.size > 1 || (outras.size === 1 && !outras.has(String(cid)))) {
+                try {
+                    const rn = await sb.from('clientes_contratantes').select('id,nome_fantasia,razao_social').in('id', Array.from(outras).map(x => parseInt(x)));
+                    (rn.data || []).forEach(e => { nomes[String(e.id)] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+                } catch (e) {}
+            }
+            const linha = x => (nomes[String(x.cid)] ? '<strong>' + escCert(nomes[String(x.cid)]) + '</strong> — ' : '') + escCert(x.nome) + ' — ' + x.txt;
+
             const f = document.getElementById('faixaCertIndex');
             f.className = 'faixa-cert ' + (venc.length ? 'vermelha' : 'laranja');
-            f.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>' + (venc.length ? 'Atenção: há certificado digital vencido.' : 'Certificado digital perto do vencimento.') + '</strong> Renove com antecedência. <a href="certificados_digitais.html">Ver certificados</a><br>' + venc.concat(prox).join('<br>');
+            f.innerHTML = '<i class="fas fa-triangle-exclamation"></i> <strong>' + (venc.length ? 'Atenção: há certificado digital vencido.' : 'Certificado digital perto do vencimento.') + '</strong> Renove com antecedência. <a href="certificados_digitais.html">Ver certificados</a><br>' + venc.concat(prox).map(linha).join('<br>');
             f.style.display = 'block';
+
+            /* janela de aviso: uma vez por sessão do navegador */
+            let jaViu = false; const chave = 'avisoCertModal:' + (u && u.email ? u.email : '');
+            try { jaViu = sessionStorage.getItem(chave) === '1'; } catch (e) {}
+            if (jaViu) return;
+            const m = document.getElementById('modalAvisoCert'); if (!m) return;
+            document.getElementById('avisoCertTitulo').innerHTML = venc.length ? '<i class="fas fa-circle-exclamation" style="color:#dc2626"></i> Certificado digital vencido' : '<i class="fas fa-triangle-exclamation" style="color:#ea580c"></i> Certificado digital perto do vencimento';
+            let html = '';
+            if (venc.length) html += '<div class="aviso-cert-bloco venc"><div class="aviso-cert-sub">Vencidos</div>' + venc.map(x => '<div>' + linha(x) + '</div>').join('') + '</div>';
+            if (prox.length) html += '<div class="aviso-cert-bloco prox"><div class="aviso-cert-sub">Vencem nos próximos 30 dias</div>' + prox.map(x => '<div>' + linha(x) + '</div>').join('') + '</div>';
+            document.getElementById('avisoCertLista').innerHTML = html;
+            m.style.display = 'flex';
+            try { sessionStorage.setItem(chave, '1'); } catch (e) {}
         } catch (e) {}
     }
 
@@ -727,5 +779,13 @@
 
     window.onload = inicializar;
 </script>
+<div class="aviso-cert-fundo" id="modalAvisoCert" onclick="if(event.target===this)fecharAvisoCert()">
+    <div class="aviso-cert-caixa">
+        <h3 id="avisoCertTitulo"></h3>
+        <p>Certificado vencido impede emitir notas, enviar obrigações e acessar serviços do governo. A renovação junto à certificadora pode levar alguns dias.</p>
+        <div id="avisoCertLista"></div>
+        <div class="aviso-cert-acoes"><button onclick="fecharAvisoCert()">Entendi</button><a href="certificados_digitais.html">Ver certificados</a></div>
+    </div>
+</div>
 </body>
 </html>
