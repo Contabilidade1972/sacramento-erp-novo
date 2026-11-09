@@ -245,7 +245,7 @@
         var c = ctxContador(), u = usuario();
         var nomeEmp = (c.nomes && c.nomes[u.cliente_id]) || ('Empresa ' + u.cliente_id);
         var h = '<div id="faixaConsultaCore" class="no-print"><span><i class="fas fa-eye"></i> <b>MODO CONSULTA</b> — você está vendo <b>' + escC(nomeEmp) +
-                '</b> como <b>' + escC(c.origemNome || 'Contabilidade') + '</b>. Somente leitura: ver, salvar PDF e imprimir. Os acessos ficam registrados.</span>' +
+                '</b> como <b>' + escC(c.origemNome || 'Contabilidade') + '</b>. ' + (arquivoAtualCore === 'contabilidade.html' ? 'Nas demais telas é somente leitura; aqui, na Escrituração, a contabilidade lança conforme a permissão do vínculo.' : 'Somente leitura: ver, salvar PDF e imprimir.') + ' Os acessos ficam registrados.</span>' +
                 '<button type="button" onclick="voltarMinhaEmpresaCore()"><i class="fas fa-undo"></i> Voltar para minha empresa</button></div>';
         var header = document.querySelector('.site-header');
         if (header) header.insertAdjacentHTML('afterend', h); else document.body.insertAdjacentHTML('afterbegin', h);
