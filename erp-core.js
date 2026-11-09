@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v7.0: AVISO DE CERTIFICADO DIGITAL VENCIDO / A VENCER no topo de todas as páginas (+ rota de busca)
     - v6.9: ASSISTENTE DE IA (chat de ajuda) — carrega assistente-ia.js
     - v6.8: GUARDA DE SESSÃO REAL (login do Supabase + código de 6 números para o Master) em todas as páginas
     - v6.7: APLICATIVO INSTALÁVEL (PWA) + AJUSTE PARA CELULAR — carrega pwa.js (manifesto, ícones, service worker, botão Instalar e CSS mobile)
@@ -104,7 +105,8 @@
         { nome:"Relatórios & BI", url:"relatorios.html", icon:"fa-chart-bar", keywords:["relatorio","bi","indicador"] },
         { nome:"Backup de Dados", url:"backup.html", icon:"fa-database", keywords:["backup","dados","exportar"] },
         { nome:"Produtos & Serviços", url:"produtos.html", icon:"fa-boxes", keywords:["produto","insumo","servico","estoque"] },
-        { nome:"Faturamento NFS-e (P&D)", url:"faturamento_pd.html", icon:"fa-file-invoice", keywords:["nfse","servico","faturamento"] }
+        { nome:"Faturamento NFS-e (P&D)", url:"faturamento_pd.html", icon:"fa-file-invoice", keywords:["nfse","servico","faturamento"] },
+        { nome:"Certificados Digitais", url:"certificados_digitais.html", icon:"fa-id-card-alt", keywords:["certificado","digital","a1","a3","ecnpj","ecpf","validade","vencimento","assinatura"] }
     ];
 
     function nomeModuloAtual() {
@@ -833,5 +835,66 @@ window.addEventListener('beforeprint', () => {
     if (document.querySelector('script[src*="assistente-ia.js"]') || window.__assistenteIaCarregado) return;
     var sc = document.createElement('script'); sc.src = '/assistente-ia.js'; sc.defer = true;
     document.head.appendChild(sc);
+  } catch (e) {}
+})();
+
+/* ===== AVISO DE CERTIFICADO DIGITAL (v7.0) =====
+   Mostra no topo de qualquer página um aviso quando há certificado vencido ou que vence em até 30 dias.
+   Lê só datas e nomes (tabela certificados_digitais); nunca chaves nem senhas. */
+(function () {
+  try {
+    var pagina = (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+    if (['login.html', 'cadastro.html', 'recuperar.html', 'certificados_digitais.html'].indexOf(pagina) > -1) return;
+    var tentativas = 0;
+    function cidAtual() {
+      try {
+        var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null');
+        if (!u || !u.email) return null;
+        if (String(u.email).toLowerCase().trim() === 'lucianojorgesacramento@gmail.com') {
+          var sel = localStorage.getItem('empresaSelecionada');
+          if (sel) return parseInt(sel, 10);
+          return u.cliente_id ? parseInt(u.cliente_id, 10) : 1;
+        }
+        return u.cliente_id ? parseInt(u.cliente_id, 10) : null;
+      } catch (e) { return null; }
+    }
+    function dias(fim) {
+      var p = String(fim || '').substring(0, 10).split('-'); if (p.length !== 3) return null;
+      var h = new Date();
+      return Math.round((Date.UTC(+p[0], +p[1] - 1, +p[2]) - Date.UTC(h.getFullYear(), h.getMonth(), h.getDate())) / 86400000);
+    }
+    function mostrar(venc, prox, detalhes) {
+      if (document.getElementById('avisoCertCore')) return;
+      var topo = document.querySelector('.site-nav-right'); if (!topo) return;
+      var vermelho = venc.length > 0;
+      var texto;
+      if (vermelho) texto = venc.length === 1 ? 'Certificado vencido' : venc.length + ' certificados vencidos';
+      else if (prox.length === 1) texto = prox[0].d === 0 ? 'Certificado vence hoje' : 'Certificado vence em ' + prox[0].d + (prox[0].d === 1 ? ' dia' : ' dias');
+      else texto = prox.length + ' certificados a vencer';
+      var a = document.createElement('a');
+      a.id = 'avisoCertCore'; a.href = 'certificados_digitais.html'; a.title = detalhes.join('\n');
+      a.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;color:#fff;background:' + (vermelho ? '#dc2626' : '#d97706') + ';';
+      a.innerHTML = '<i class="fas fa-id-card-alt"></i> ' + texto;
+      var ref = topo.querySelector('.empresa-selector');
+      if (ref) topo.insertBefore(a, ref); else topo.insertBefore(a, topo.firstChild);
+    }
+    function verificar() {
+      if (!window.sb && window.supabase && tentativas > 10) { try { window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'); } catch (e) {} }
+      if (!window.sb || !document.querySelector('.site-nav-right')) { if (++tentativas > 100) return; setTimeout(verificar, 150); return; }
+      var cid = cidAtual(); if (!cid) return;
+      window.sb.from('certificados_digitais').select('nome_titular,tipo,validade_fim,status').eq('cliente_id', cid).eq('status', 'ativo')
+        .then(function (r) {
+          if (!r || r.error || !r.data) return;
+          var venc = [], prox = [], det = [];
+          r.data.forEach(function (c) {
+            var d = dias(c.validade_fim); if (d === null) return;
+            if (d < 0) { venc.push(c); det.push(c.nome_titular + ' (' + c.tipo + '): vencido há ' + (-d) + ' dia(s)'); }
+            else if (d <= 30) { prox.push({ d: d }); det.push(c.nome_titular + ' (' + c.tipo + '): vence em ' + d + ' dia(s)'); }
+          });
+          if (venc.length || prox.length) mostrar(venc, prox, det);
+        }, function () {});
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(verificar, 300); });
+    else setTimeout(verificar, 300);
   } catch (e) {}
 })();
