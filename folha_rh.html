@@ -277,7 +277,7 @@
             <div class="form-row" style="align-items:flex-end;">
                 <div>
                     <label>Competência (Mês/Ano)</label>
-                    <select id="clt_competencia" class="form-control"></select>
+                    <div style="display:flex; gap:8px;"><select id="clt_mes" class="form-control" style="flex:2;" onchange="sincronizarCompetencia('clt')" aria-label="Mês"></select><select id="clt_ano" class="form-control" style="flex:1;" onchange="sincronizarCompetencia('clt')" aria-label="Ano"></select><input type="hidden" id="clt_competencia"></div>
                 </div>
                 <div style="display:flex; gap:10px;">
                     <button class="btn-acao" onclick="gerarFolhaClt()"><i class="fas fa-cogs"></i> Calcular Folha</button>
@@ -300,7 +300,7 @@
             <div class="form-row">
                 <div>
                     <label>Competência</label>
-                    <select id="pro_competencia" class="form-control"></select>
+                    <div style="display:flex; gap:8px;"><select id="pro_mes" class="form-control" style="flex:2;" onchange="sincronizarCompetencia('pro')" aria-label="Mês"></select><select id="pro_ano" class="form-control" style="flex:1;" onchange="sincronizarCompetencia('pro')" aria-label="Ano"></select><input type="hidden" id="pro_competencia"></div>
                 </div>
                 <div>
                     <label>Sócio (Página de Sócios)</label>
@@ -1055,20 +1055,19 @@ function cadastrarRubrica() {
     document.getElementById('rub_nome').value = '';
 }
 
+function sincronizarCompetencia(p){
+    var m=document.getElementById(p+'_mes'), a=document.getElementById(p+'_ano');
+    if(m && a) document.getElementById(p+'_competencia').value = m.value+' de '+a.value;
+}
 function montarCompetencias(){
     var meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
     var hoje=new Date(), anoAtual=hoje.getFullYear(), mesAtual=hoje.getMonth();
-    ['clt_competencia','pro_competencia'].forEach(function(id){
-        var sel=document.getElementById(id); if(!sel) return;
-        sel.innerHTML='';
-        for(var a=anoAtual-2;a<=anoAtual+2;a++){
-            for(var m=0;m<12;m++){
-                var t=meses[m]+' de '+a, o=document.createElement('option');
-                o.value=t; o.textContent=t.charAt(0).toUpperCase()+t.slice(1);
-                if(a===anoAtual && m===mesAtual) o.selected=true;
-                sel.appendChild(o);
-            }
-        }
+    ['clt','pro'].forEach(function(p){
+        var sm=document.getElementById(p+'_mes'), sa=document.getElementById(p+'_ano'); if(!sm||!sa) return;
+        sm.innerHTML=''; sa.innerHTML='';
+        meses.forEach(function(nome,i){ var o=document.createElement('option'); o.value=nome; o.textContent=nome.charAt(0).toUpperCase()+nome.slice(1); if(i===mesAtual) o.selected=true; sm.appendChild(o); });
+        for(var a=anoAtual-2;a<=anoAtual+2;a++){ var o=document.createElement('option'); o.value=String(a); o.textContent=String(a); if(a===anoAtual) o.selected=true; sa.appendChild(o); }
+        sincronizarCompetencia(p);
     });
 }
 
