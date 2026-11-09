@@ -329,9 +329,20 @@
                 <div class="dica" style="margin:0 0 8px;">Diga a qual conta do plano contábil corresponde cada <b>banco/caixa</b>, cada <b>categoria de despesa</b> e cada <b>categoria de receita</b> usada no Financeiro. Digite o código, o nome ou escolha na lista. Só contas analíticas.</div>
                 <div class="table-wrap"><table class="tabela"><thead><tr><th>Tipo</th><th>Nome no Financeiro</th><th class="num">Movimentos</th><th style="min-width:340px;">Conta contábil</th></tr></thead><tbody id="finTbMapas"><tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
 
-                <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-list-check" style="color:var(--primary);"></i> 2) Movimentos a lançar</span>
+                <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-flag-checkered" style="color:var(--primary);"></i> 2) Saldos de abertura dos bancos</span>
+                    <button class="btn-acao sucesso btn-mini" type="button" id="btnFinAbertura" onclick="finLancarAbertura()" style="display:none;"><i class="fas fa-bolt"></i> Lançar saldos de abertura</button>
+                </div>
+                <div class="dica" style="margin:0 0 8px;">Antes do primeiro mês contabilizado, os bancos já tinham dinheiro. Sem esse <b>saldo de abertura</b>, o banco aparece negativo na contabilidade. O sistema usa o <b>saldo inicial</b> cadastrado em Contas Bancárias. Faça isso <b>uma vez só</b>, na data de início da contabilidade. Contas particulares (PF) e limites de cheque especial/cartão não entram: não são dinheiro da empresa.</div>
+                <div style="display:grid; grid-template-columns: 200px 1fr; gap:12px; margin-bottom:10px; align-items:end;">
+                    <div><label for="finAbData">Data de abertura</label><input type="date" id="finAbData" class="form-control"></div>
+                    <div><label for="finAbContra">Contrapartida (de onde veio esse dinheiro)</label><input type="text" id="finAbContra" class="form-control" list="listaContas" placeholder="Ex.: 2.3.1.01 Capital Subscrito ou 2.3.3.01 Lucros Acumulados"></div>
+                </div>
+                <div class="table-wrap"><table class="tabela"><thead><tr><th>Conta bancária</th><th>Tipo</th><th class="num">Saldo inicial</th><th>Conta contábil</th><th>Situação</th></tr></thead><tbody id="finTbAbertura"><tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
+
+                <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-list-check" style="color:var(--primary);"></i> 3) Movimentos a lançar</span>
                     <span style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <span id="finResumo" class="dica" style="margin:0; font-weight:700;"></span>
+                        <button class="btn-acao cinza btn-mini" type="button" onclick="finDesfazer()" title="Exclui os lançamentos vindos do Financeiro neste período para refazer"><i class="fas fa-rotate-left"></i> Refazer o período</button>
                         <button class="btn-acao sucesso" type="button" id="btnFinGerar" onclick="finGerar()" style="display:none;"><i class="fas fa-bolt"></i> Gerar lançamentos</button>
                     </span>
                 </div>
@@ -339,7 +350,7 @@
                 <div class="table-wrap"><table class="tabela"><thead><tr><th>Data</th><th>Tipo</th><th>Histórico</th><th class="num">Valor</th><th>Débito</th><th>Crédito</th></tr></thead><tbody id="finTbItens"><tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
 
                 <div id="finBoxDiverg" style="display:none; margin-top:26px;">
-                    <div class="panel-title" style="margin-bottom:8px;"><span class="t"><i class="fas fa-triangle-exclamation" style="color:#b45309;"></i> 3) Lançamentos que mudaram no Financeiro</span></div>
+                    <div class="panel-title" style="margin-bottom:8px;"><span class="t"><i class="fas fa-triangle-exclamation" style="color:#b45309;"></i> 4) Lançamentos que mudaram no Financeiro</span></div>
                     <div class="dica" style="margin:0 0 8px;">Estes lançamentos vieram do Financeiro, mas o título foi alterado, desfeito ou excluído depois. Exclua o lançamento; se o título ainda estiver pago, ele volta para a lista acima já com o valor correto.</div>
                     <div class="table-wrap"><table class="tabela"><thead><tr><th>Data</th><th>Nº</th><th>Histórico</th><th class="num">Valor lançado</th><th></th></tr></thead><tbody id="finTbDiverg"></tbody></table></div>
                 </div>
@@ -1012,10 +1023,24 @@
         if (!ini || !fim || ini > fim) { toast('Confira as datas do período.', 'error'); return; }
         try {
             finDados = await rpc('contab_fin_pendentes', { p_cliente: emp, p_ini: ini, p_fim: fim });
+            await finCarregarBancos();
             finRender();
         } catch (err) { toast('Erro ao ler o Financeiro: ' + (err.message || err), 'error'); }
     }
-    function finRender() { finRenderMapas(); finRenderItens(); finRenderDiverg(); }
+    function finRender() { finRenderMapas(); finRenderAbertura(); finRenderItens(); finRenderDiverg(); }
+    let finBancos = [], finAbertos = {};
+    function finChave(t) { return String(t || '').toLowerCase().trim(); }
+    function finBancoInfo(chave) { return finBancos.find(function (b) { return finChave(b.nome) === chave; }); }
+    function finNaoEhEmpresa(b) { return b && (b.classificacao_saldo === 'pessoal' || b.classificacao_saldo === 'limite'); }
+    async function finCarregarBancos() {
+        finBancos = []; finAbertos = {};
+        try { const r = await sb.from('contas_bancarias').select('*').eq('cliente_id', emp); finBancos = (r && r.data) || []; } catch (e) {}
+        try {
+            const r = await sb.from('contab_lotes').select('id, origem, data').eq('cliente_id', emp).like('origem', 'fin:abertura:%');
+            ((r && r.data) || []).forEach(function (l) { finAbertos[l.origem] = l; });
+        } catch (e) {}
+        if (!document.getElementById('finAbData').value) document.getElementById('finAbData').value = document.getElementById('finIni').value;
+    }
     function finRenderMapas() {
         const todos = document.getElementById('finTodosVinc').checked;
         const mapas = (finDados.mapas || []);
@@ -1026,8 +1051,10 @@
         tb.innerHTML = lista.map(function (x) {
             const m = x.m, ok = !!m.conta_id;
             const val = ok && mapaId[m.conta_id] ? rotuloConta(mapaId[m.conta_id]) : '';
+            const bi = m.tipo === 'banco' ? finBancoInfo(m.chave) : null;
+            const aviso = finNaoEhEmpresa(bi) ? '<div class="dica" style="color:#b45309; font-weight:700;">Conta ' + (bi.classificacao_saldo === 'pessoal' ? 'particular (PF)' : 'de limite/cartão') + ': não é dinheiro da empresa. Vincule a uma conta de <u>passivo</u> (ex.: Adiantamentos de Sócios), não a um banco.</div>' : '';
             return '<tr><td><span class="badge-st" style="background:' + (ok ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e') + ';">' + FIN_TIPOS[m.tipo] + '</span></td>' +
-                '<td><b>' + esc(m.rotulo || m.chave) + '</b></td><td class="num">' + (m.qtd || 0) + '</td>' +
+                '<td><b>' + esc(m.rotulo || m.chave) + '</b>' + aviso + '</td><td class="num">' + (m.qtd || 0) + '</td>' +
                 '<td><input type="text" class="form-control" list="listaContas" value="' + esc(val) + '" placeholder="Digite o código, o nome ou escolha..." onchange="finSalvarMapa(' + x.i + ', this)"></td></tr>';
         }).join('');
     }
@@ -1046,25 +1073,126 @@
             await finCarregar();
         } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
     }
+    const REGRAS_DESP = [
+        ['energia|agua|luz|internet|utilidade|telefon', 'Energia, Água e Internet'], ['aluguel|condominio', 'Aluguéis e Condomínio'],
+        ['contab|honorario|profission|terceiro|juridic|advoc|consultoria', 'Serviços Contábeis e Profissionais'], ['material|escritorio|papelaria', 'Material de Escritório'],
+        ['tarifa|bancaria', 'Tarifas Bancárias'], ['imposto|tributo|taxa|\\bdas\\b|\\biss\\b', 'Tributos e Taxas Diversos'], ['marketing|publicidade|propaganda', 'Marketing e Publicidade'],
+        ['comiss', 'Comissões'], ['frete|entrega|transporte', 'Fretes e Entregas'], ['salario|ordenado|folha', 'Salários e Ordenados'], ['pro.?labore', 'Pró-labore'],
+        ['inss|fgts|encargo', 'Encargos Sociais (INSS/FGTS)'], ['ferias|13', 'Férias e 13º Salário'], ['juros|multa', 'Juros e Multas Pagos'], ['\\biof\\b', 'IOF'], ['deprecia', 'Depreciações e Amortizações']
+    ];
+    const REGRAS_REC = [
+        ['servico|prestacao|consultoria|projeto', 'Receita de Prestação de Serviços'], ['mercadoria|revenda', 'Receita de Venda de Mercadorias'],
+        ['produto|venda', 'Receita de Venda de Produtos'], ['financeir|rendimento|juros', 'Receitas Financeiras'], ['outras|diversas', 'Outras Receitas Operacionais']
+    ];
+    function finSemCodigo(t) { return finNorm(String(t || '').replace(/^[\d.\s]+[-–]\s*/, '')); }
+    function finProximoCodigoBanco() {
+        if (!mapaCod['1.1.1']) return null;
+        let max = 0;
+        contas.forEach(function (c) { if (c.pai_codigo === '1.1.1') { const n = parseInt(String(c.codigo).split('.').pop(), 10); if (n > max) max = n; } });
+        return '1.1.1.' + String(max + 1).padStart(2, '0');
+    }
     async function finSugerir() {
-        const analit = contas.filter(function (c) { return c.analitica && c.ativa; });
-        let feitos = 0;
-        for (const m of (finDados.mapas || [])) {
-            if (m.conta_id) continue;
-            const nome = finNorm(m.rotulo || m.chave); let alvo = null;
-            if (m.tipo === 'banco') {
-                const eh = /caixa/.test(nome);
-                alvo = analit.find(function (c) { return c.grupo === 'ativo' && finNorm(c.descricao) === nome; }) ||
-                       analit.find(function (c) { return c.grupo === 'ativo' && c.codigo.indexOf('1.1.1') === 0 && finNorm(c.descricao).indexOf(eh ? 'caixa' : 'banco') === 0; });
-            } else {
-                const gr = m.tipo === 'despesa' ? ['despesa', 'custo'] : ['receita'];
-                alvo = analit.find(function (c) { return gr.indexOf(c.grupo) > -1 && finNorm(c.descricao) === nome; });
+        const btn = document.getElementById('btnFinSugerir'); btn.disabled = true;
+        const analit = function () { return contas.filter(function (c) { return c.analitica && c.ativa; }); };
+        let ligados = 0, criadas = 0, ignorados = 0, particulares = 0;
+        try {
+            const compart = {};
+            (finDados.mapas || []).forEach(function (x) { if (x.tipo === 'banco' && x.conta_id) compart[x.conta_id] = (compart[x.conta_id] || 0) + 1; });
+            for (const m of (finDados.mapas || [])) {
+                // já vinculado: pula, exceto banco que divide a mesma conta com outro banco (aí cada banco ganha a sua)
+                if (m.conta_id && !(m.tipo === 'banco' && compart[m.conta_id] > 1)) continue;
+                const nome = finSemCodigo(m.rotulo || m.chave); let alvo = null;
+                if (m.tipo === 'banco') {
+                    if (finNaoEhEmpresa(finBancoInfo(m.chave))) { particulares++; continue; }
+                    alvo = analit().find(function (c) { return c.grupo === 'ativo' && finNorm(c.descricao) === nome; });
+                    if (!alvo) {
+                        const cod = finProximoCodigoBanco();
+                        if (cod) {
+                            try {
+                                const id = await rpc('contab_salvar_conta', { p_cliente: emp, p_id: null, p_codigo: cod, p_descricao: String(m.rotulo || m.chave).slice(0, 120), p_analitica: true, p_natureza: null });
+                                await carregarContas(); alvo = mapaId[id] || mapaCod[cod]; criadas++;
+                            } catch (e) { alvo = null; }
+                        }
+                    }
+                } else {
+                    const gr = m.tipo === 'despesa' ? ['despesa', 'custo'] : ['receita'];
+                    const cand = analit().filter(function (c) { return gr.indexOf(c.grupo) > -1; });
+                    alvo = cand.find(function (c) { return finNorm(c.descricao) === nome; });
+                    if (!alvo) {
+                        const regras = m.tipo === 'despesa' ? REGRAS_DESP : REGRAS_REC;
+                        for (const rg of regras) {
+                            if (new RegExp(rg[0]).test(nome)) { alvo = cand.find(function (c) { return finNorm(c.descricao) === finNorm(rg[1]); }); if (alvo) break; }
+                        }
+                    }
+                }
+                if (!alvo) { ignorados++; continue; }
+                try { await rpc('contab_depara_salvar', { p_cliente: emp, p_tipo: m.tipo, p_chave: m.chave, p_rotulo: m.rotulo, p_conta: alvo.id }); ligados++; } catch (e) { ignorados++; }
             }
-            if (!alvo) continue;
-            try { await rpc('contab_depara_salvar', { p_cliente: emp, p_tipo: m.tipo, p_chave: m.chave, p_rotulo: m.rotulo, p_conta: alvo.id }); feitos++; } catch (e) {}
-        }
-        toast(feitos ? (feitos + ' vínculo(s) sugerido(s). Confira e ajuste se precisar.') : 'Não achei correspondência automática. Vincule manualmente.', feitos ? 'success' : 'error');
+        } finally { btn.disabled = false; }
+        let msg = ligados + ' vínculo(s) sugerido(s)' + (criadas ? ' (' + criadas + ' conta(s) de banco criada(s) no plano)' : '') + '.';
+        if (particulares) msg += ' ' + particulares + ' conta(s) particular(es)/limite precisam de conta de passivo.';
+        if (ignorados) msg += ' ' + ignorados + ' sem correspondência: vincule na mão.';
+        toast(msg + ' Confira antes de gerar.', (ignorados || particulares) ? 'error' : 'success');
         await finCarregar();
+    }
+    function finRenderAbertura() {
+        const tb = document.getElementById('finTbAbertura');
+        const vinc = {}; (finDados.mapas || []).forEach(function (m) { if (m.tipo === 'banco') vinc[m.chave] = m.conta_id; });
+        let pend = 0;
+        if (!finBancos.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--text-light);">Nenhuma conta bancária cadastrada no Financeiro.</td></tr>'; document.getElementById('btnFinAbertura').style.display = 'none'; return; }
+        tb.innerHTML = finBancos.map(function (b) {
+            const k = finChave(b.nome), saldo = Number(b.saldo_inicial || 0), cid = vinc[k], feito = finAbertos['fin:abertura:' + b.id];
+            let sit;
+            if (feito) sit = '<span style="color:var(--success); font-weight:700;"><i class="fas fa-circle-check"></i> lançado em ' + dataBR(feito.data) + '</span>';
+            else if (finNaoEhEmpresa(b)) sit = '<span style="color:#64748b;">não entra (particular/limite)</span>';
+            else if (!saldo) sit = '<span style="color:#64748b;">sem saldo inicial</span>';
+            else if (!cid) sit = '<span style="color:#b45309; font-weight:700;">falta vincular</span>';
+            else { sit = '<span style="color:#1e40af; font-weight:700;">pronto para lançar</span>'; pend++; }
+            return '<tr><td><b>' + esc(b.nome) + '</b></td><td>' + esc(b.tipo || '—') + '</td><td class="num">' + brl(saldo) + '</td><td>' + (cid ? finNomeConta(cid) : '—') + '</td><td>' + sit + '</td></tr>';
+        }).join('');
+        const bt = document.getElementById('btnFinAbertura');
+        bt.style.display = pend ? '' : 'none';
+        bt.innerHTML = '<i class="fas fa-bolt"></i> Lançar ' + pend + ' saldo(s) de abertura';
+    }
+    async function finLancarAbertura() {
+        const data = document.getElementById('finAbData').value;
+        const contra = resolverConta(document.getElementById('finAbContra').value);
+        if (!data) { toast('Informe a data de abertura.', 'error'); return; }
+        if (!contra || !contra.analitica || !contra.ativa) { toast('Escolha a conta de contrapartida (ex.: 2.3.1.01 Capital Subscrito).', 'error'); return; }
+        const vinc = {}; (finDados.mapas || []).forEach(function (m) { if (m.tipo === 'banco') vinc[m.chave] = m.conta_id; });
+        const itens = finBancos.filter(function (b) { return !finAbertos['fin:abertura:' + b.id] && !finNaoEhEmpresa(b) && Number(b.saldo_inicial || 0) && vinc[finChave(b.nome)]; });
+        if (!itens.length) return;
+        if (!confirm('Lançar ' + itens.length + ' saldo(s) de abertura em ' + dataBR(data) + ', tendo "' + contra.descricao + '" como contrapartida?\n\nFaça isso apenas uma vez, na data de início da contabilidade.')) return;
+        const bt = document.getElementById('btnFinAbertura'); bt.disabled = true;
+        let ok = 0; const erros = [];
+        for (const b of itens) {
+            const v = Math.round(Number(b.saldo_inicial) * 100) / 100, pos = v > 0, val = Math.abs(v);
+            try {
+                await rpc('contab_lancar', { p_cliente: emp, p_data: data, p_historico: 'Saldo de abertura - ' + b.nome, p_origem: 'fin:abertura:' + b.id,
+                    p_partidas: [{ conta_id: vinc[finChave(b.nome)], tipo: pos ? 'D' : 'C', valor: val }, { conta_id: contra.id, tipo: pos ? 'C' : 'D', valor: val }] });
+                ok++;
+            } catch (e) { erros.push(b.nome + ': ' + (e.message || e)); }
+        }
+        bt.disabled = false;
+        toast(ok + ' saldo(s) de abertura lançado(s).' + (erros.length ? ' Erros: ' + erros.join(' | ') : ''), erros.length ? 'error' : 'success');
+        await finCarregar(); try { await carregarDiario(); } catch (e) {} guiaAtualizar();
+    }
+    async function finDesfazer() {
+        const ini = document.getElementById('finIni').value, fim = document.getElementById('finFim').value;
+        if (!ini || !fim) return;
+        let lotesFin = [];
+        try {
+            const r = await sb.from('contab_lotes').select('id, origem').eq('cliente_id', emp).gte('data', ini).lte('data', fim).like('origem', 'fin:%');
+            lotesFin = ((r && r.data) || []).filter(function (l) { return String(l.origem).indexOf('fin:abertura:') !== 0; });
+        } catch (e) { toast('Erro ao ler os lançamentos: ' + (e.message || e), 'error'); return; }
+        if (!lotesFin.length) { toast('Não há lançamentos do Financeiro neste período para refazer.', 'error'); return; }
+        if (!confirm('Excluir os ' + lotesFin.length + ' lançamento(s) vindos do Financeiro entre ' + dataBR(ini) + ' e ' + dataBR(fim) + '?\n\nDepois você ajusta os vínculos e clica em Gerar lançamentos de novo. Lançamentos digitados à mão e saldos de abertura NÃO são tocados. A exclusão fica registrada no histórico.')) return;
+        let ok = 0; const erros = [];
+        for (const l of lotesFin) {
+            try { await rpc('contab_excluir_lote', { p_cliente: emp, p_lote: l.id }); ok++; } catch (e) { erros.push(e.message || String(e)); }
+        }
+        toast(ok + ' lançamento(s) excluído(s).' + (erros.length ? ' ' + erros.length + ' não puderam ser excluídos (' + erros[0] + ')' : ''), erros.length ? 'error' : 'success');
+        await finCarregar(); try { await carregarDiario(); } catch (e) {} guiaAtualizar();
     }
     function finRenderItens() {
         const it = finDados.itens || [];
@@ -1151,8 +1279,8 @@
                '<ul><li>A linha <b>"Resultado do período ainda não apurado"</b> é o lucro/prejuízo do ano que ainda não foi transferido ao Patrimônio Líquido. É normal durante o ano.</li></ul>' },
         fin: { t: 'Como o Financeiro vira contabilidade?',
             h: '<p>Esta aba é a <b>ponte</b>: o que a empresa já pagou, recebeu e transferiu no módulo Financeiro vira lançamento contábil, <b>sem digitar duas vezes</b>.</p>' +
-               '<p><b>Faça sempre nesta ordem, uma vez por mês:</b></p><ul><li><b>1) Vínculos:</b> diga a qual conta do plano corresponde cada banco e cada categoria do Financeiro. Clique em <b>Sugerir vínculos</b> e confira. Isso só precisa ser feito uma vez; depois só aparecem os novos.</li><li><b>2) Movimentos a lançar:</b> confira a lista (data, valor, quem é débito e quem é crédito).</li><li>Clique em <b>Gerar lançamentos</b>.</li><li><b>3)</b> Se aparecer o aviso de lançamentos que mudaram, exclua o lançamento antigo; se o título ainda estiver pago, ele volta para a lista já corrigido.</li></ul>' +
-               '<div class="cu"><b>Importante:</b> só entram títulos já <b>pagos ou recebidos</b> (com data). Contas ainda pendentes <u>não</u> entram: a contabilidade registra quando o dinheiro de fato se move.</div>' },
+               '<p><b>Faça sempre nesta ordem, uma vez por mês:</b></p><ul><li><b>1) Vínculos:</b> diga a qual conta do plano corresponde cada banco e cada categoria do Financeiro. Clique em <b>Sugerir vínculos</b>: ele liga o que reconhece e cria uma conta própria para cada banco. Confira o resultado. Só precisa fazer uma vez; depois só aparecem os novos.</li><li><b>2) Saldos de abertura (uma única vez):</b> lance quanto cada banco tinha no início da contabilidade, para o saldo não ficar negativo. Escolha a data de abertura e a contrapartida (ex.: Capital ou Lucros Acumulados; a contadora define).</li><li><b>3) Movimentos a lançar:</b> confira a lista (data, valor, quem é débito e quem é crédito) e clique em <b>Gerar lançamentos</b>.</li><li><b>4)</b> Se aparecer o aviso de lançamentos que mudaram, exclua o lançamento antigo; se o título ainda estiver pago, ele volta para a lista já corrigido.</li><li>Errou algum vínculo depois de gerar? Use <b>Refazer o período</b>: apaga só o que veio do Financeiro, você corrige os vínculos e gera de novo.</li></ul>' +
+               '<div class="cu"><b>Importante:</b> só entram títulos já <b>pagos ou recebidos</b> (com data). Contas ainda pendentes <u>não</u> entram: a contabilidade registra quando o dinheiro de fato se move. Contas bancárias <b>particulares (PF)</b> ou de <b>limite/cartão</b> não são dinheiro da empresa: vincule-as a uma conta de <b>passivo</b>, como Adiantamentos de Sócios.</div>' },
         per: { t: 'O que significa fechar um mês?',
             h: '<p><b>Fechar</b> é "colocar o cadeado" no mês: depois disso ninguém lança nem exclui nada nele. Garante que os relatórios já entregues não mudem.</p>' +
                '<ul><li><b>Feche</b> depois de conferir Balancete, DRE e Balanço do mês.</li><li>Precisa corrigir algo? <b>Reabra</b> o mês, corrija e feche de novo. Cada abertura e fechamento fica registrado.</li></ul>' }
@@ -1202,6 +1330,7 @@
         ['Regime de competência', 'Registrar quando o fato acontece (venda feita, serviço prestado), mesmo que o dinheiro entre ou saia depois. Ainda não é usado na integração automática.'],
         ['Competência', 'O mês a que um fato pertence. Ex.: a conta de luz de outubro, paga em novembro, tem competência outubro.'],
         ['Período / fechamento', 'Cada mês é um período. Fechar o mês trava os lançamentos, para os relatórios entregues não mudarem. Dá para reabrir se necessário (fica registrado).'],
+        ['Saldo de abertura', 'O dinheiro que a empresa já tinha nos bancos quando a contabilidade começou. É lançado uma única vez, com uma contrapartida no Patrimônio Líquido (de onde veio esse dinheiro). Sem ele, o banco fica negativo.'],
         ['Vínculo (de-para)', 'A ligação entre o que existe no Financeiro (banco, categoria) e a conta correspondente do plano de contas. Feito uma vez, serve para sempre.'],
         ['Apuração do resultado', 'Transferir o lucro ou prejuízo do ano para o Patrimônio Líquido. Normalmente é feito no encerramento do exercício.'],
         ['Depreciação', 'O desgaste de equipamentos ao longo do tempo, registrado como despesa todo mês, mesmo sem sair dinheiro.'],
