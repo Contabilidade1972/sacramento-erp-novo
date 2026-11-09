@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assinatura Digital de Documentos — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/node-forge@1.3.1/dist/forge.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-print.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #1e3a8a;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text-main: #0f172a;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+        }
+
+        body:not(.usuario-master) .empresa-selector {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .site-header {
+            background: var(--secondary); color: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 1000;
+        }
+        .site-brand { display: flex; align-items: center; gap: 12px; text-decoration: none; color: #fff; }
+        .brand-logo-box { width: 38px; height: 38px; background: linear-gradient(135deg, #3b82f6, #2563eb); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; }
+        .brand-info h1 { font-size: 15px; font-weight: 800; letter-spacing: -0.5px; }
+        .brand-info span { font-size: 9px; color: #93c5fd; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+
+        .site-nav-right { display: flex; align-items: center; gap: 14px; }
+        .empresa-selector { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 10px; }
+        .empresa-selector select { border: none; background: transparent; font-size: 12px; font-weight: 600; color: #fff; cursor: pointer; outline: none; }
+        .empresa-selector select option { color: #000; }
+        .user-box { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: #fff; }
+        .btn-header-acao { background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2); padding: 8px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; transition: 0.2s; }
+        .btn-header-acao:hover { background: rgba(255,255,255,0.2); }
+        .page-toolbar { display: flex; justify-content: flex-start; align-items: center; margin-bottom: -10px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-sair { background: #dc2626; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-sair:hover { background: #b91c1c; }
+
+        /* MENU DE ABAS INTERNO DE CADASTROS & ESTRUTURA (GARANTIDO NO TOPO) */
+        .sub-nav-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 30px; display: flex; gap: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.01); position: sticky; top: 67px; z-index: 999; }
+        .sub-nav-item { padding: 12px 16px; font-size: 13px; font-weight: 700; color: var(--text-light); text-decoration: none; border-bottom: 3px solid transparent; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .sub-nav-item:hover { color: var(--primary); }
+        .sub-nav-item.ativo { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 24px; }
+
+        .page-title { font-size: 20px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 2px; }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-header { font-size: 15px; font-weight: 700; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; display: block; text-transform: uppercase; }
+        .form-control { width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; margin-bottom: 12px; background: var(--bg); color: var(--text-main); outline: none; }
+        .form-control:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.15); background: #fff; }
+
+        .btn-primary { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        
+        .btn-secondary { background: var(--bg); color: var(--text-main); border: 1.5px solid var(--border); padding: 9px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-secondary:hover { background: var(--card); border-color: var(--primary); }
+
+        .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; display: inline-block; }
+        .b-ativo { background: #dcfce7; color: #166534; }
+        .b-manutencao { background: #fef3c7; color: #92400e; }
+        .b-baixado { background: #fee2e2; color: #991b1b; }
+
+        .analitica-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .analitica-table th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); }
+        .analitica-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); color: var(--text-main); vertical-align: middle; }
+        .analitica-table tbody tr:hover { background: #f8fafc; }
+        .analitica-table tfoot td { background: #f1f5f9; padding: 12px 14px; font-weight: 800; border-top: 2px solid var(--border); color: var(--secondary); }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 13px; font-weight: 500; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08); display: flex; align-items: center; gap: 10px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .empty-state { font-size: 13px; color: var(--text-light); padding: 20px; text-align: center; }
+
+        footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
+
+    
+        .b-emitida { background: #dcfce7; color: #166534; }
+        .b-pendente { background: #fef3c7; color: #92400e; }
+        .b-cancelada { background: #fee2e2; color: #991b1b; }
+        .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: var(--bg); padding: 16px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .nota-cancelada td { color: var(--text-light); text-decoration: line-through; }
+        .nota-cancelada td:last-child, .nota-cancelada td:nth-child(5) { text-decoration: none; }
+    </style>
+<style>
+.cards-res { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; }
+.card-res { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:14px 16px; }
+.card-res .n { font-size:26px; font-weight:800; color:var(--secondary); line-height:1.1; }
+.card-res .t { font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light); margin-top:4px; }
+.card-res.venc .n { color:#b91c1c; } .card-res.crit .n { color:#c2410c; } .card-res.aten .n { color:#b45309; } .card-res.ok .n { color:#15803d; }
+.b-venc { background:#fee2e2; color:#991b1b; } .b-crit { background:#ffedd5; color:#9a3412; } .b-aten { background:#fef3c7; color:#92400e; } .b-ok { background:#dcfce7; color:#166534; } .b-inat { background:#e2e8f0; color:#475569; }
+.faixa-alerta { border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.6; border:1px solid; }
+.faixa-alerta.vermelha { background:#fef2f2; border-color:#fecaca; color:#991b1b; }
+.faixa-alerta.laranja { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+.import-box { background:#eff6ff; border:1px dashed #93c5fd; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:12px; color:#1e3a8a; }
+.form-row { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+</style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<header class="site-header">
+    <a href="index.html" class="site-brand">
+        <div class="brand-logo-box"><i class="fas fa-cube"></i></div>
+        <div class="brand-info">
+            <h1>Sacramento ERP</h1>
+            <span>Portal Corporativo</span>
+        </div>
+    </a>
+    <div class="site-nav-right">
+        <div class="empresa-selector" id="boxSeletorEmpresa">
+            <i class="fas fa-building" style="color: #93c5fd;"></i>
+            <select id="selectEmpresa" onchange="trocarEmpresa()"></select>
+        </div>
+        <a href="index.html" class="btn-header-acao"><i class="fas fa-home"></i> Início</a>
+        <div class="user-box">
+            <i class="fas fa-user-circle" style="font-size: 16px; color: #93c5fd;"></i>
+            <span id="userName">Usuário</span>
+        </div>
+        <button class="btn-sair" onclick="sair()"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+</header>
+
+<div class="container">
+    <div class="page-toolbar">
+        <button class="btn-acao" style="background:#64748b;" onclick="location.href='index.html'"><i class="fas fa-arrow-left"></i> Painel Principal</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-file-signature" style="color:var(--primary);"></i> Assinatura Digital de Documentos</div>
+        <div class="page-subtitle">Assine PDFs (ou outros arquivos) com certificado digital ICP-Brasil A1, direto no navegador</div>
+    </div>
+
+    <div class="aviso-seg">
+        <i class="fas fa-shield-alt"></i> <strong>Seu certificado não sai do seu computador.</strong>
+        O arquivo do certificado (.pfx / .p12) e a senha são usados <u>somente aqui no seu navegador</u>, no momento da assinatura. Nada é enviado nem guardado pelo sistema. O sistema registra apenas quem assinou, o nome do arquivo e a impressão digital (hash) do documento.
+    </div>
+    <div class="aviso-seg aviso-a3">
+        <i class="fas fa-circle-info"></i> <strong>Somente certificado A1 (arquivo).</strong> Certificados A3 (token ou cartão) não podem ser usados por uma página web sem um programa auxiliar instalado no computador, então não aparecem aqui.
+    </div>
+
+    <div class="panel">
+        <div class="panel-header"><span><i class="fas fa-pen-nib"></i> Nova assinatura</span></div>
+        <div class="form-row">
+            <div><label>1. Documento a assinar *</label>
+                <input type="file" id="arqDoc" class="form-control" onchange="aoEscolherDoc()"></div>
+            <div><label>2. Certificado A1 (.pfx ou .p12) *</label>
+                <input type="file" id="arqPfx" class="form-control" accept=".pfx,.p12" onchange="limparCert()"></div>
+            <div><label>3. Senha do certificado *</label>
+                <input type="password" id="senhaPfx" class="form-control" autocomplete="new-password" placeholder="Digitada a cada uso, nunca guardada"></div>
+        </div>
+        <div id="boxOpcoes" style="margin-bottom:12px; font-size:13px;">
+            <label style="display:flex; align-items:center; gap:8px; text-transform:none; font-size:13px; color:var(--text-main); cursor:pointer;">
+                <input type="checkbox" id="chkCarimbo" checked> Escrever uma linha de identificação ("Assinado digitalmente por ...") na última página do PDF
+            </label>
+            <div id="dicaFormato" style="color:var(--text-light); margin-top:6px;"></div>
+        </div>
+        <div id="infoCert" style="display:none;" class="info-cert"></div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-primary" id="btnAssinar" onclick="assinar()"><i class="fas fa-signature"></i> Assinar documento</button>
+        </div>
+        <div id="resultado" style="margin-top:14px;"></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <span><i class="fas fa-history"></i> Registro de assinaturas realizadas</span>
+            <button class="btn-primary" style="background:var(--success);" onclick="imprimirHistorico()"><i class="fas fa-print"></i> Imprimir relatório</button>
+        </div>
+        <div style="overflow-x:auto;">
+            <table class="analitica-table">
+                <thead><tr><th>Data / hora</th><th>Arquivo</th><th>Formato</th><th>Assinado por (certificado)</th><th>Usuário</th><th>Hash SHA-256</th></tr></thead>
+                <tbody id="tbodyHist"><tr><td colspan="6" class="empty-state">A carregar...</td></tr></tbody>
+            </table>
+        </div>
+        <div style="font-size:11px; color:var(--text-light); margin-top:10px;">Para conferir uma assinatura: abra o PDF no Adobe Reader ou envie o arquivo em <strong>validar.iti.gov.br</strong> (validador oficial do governo).</div>
+    </div>
+</div>
+
+<footer>Sacramento ERP — Sistema de Gestão Empresarial de Alta Performance © 2026</footer>
+
+<style>
+.aviso-seg { background:#ecfdf5; border:1px solid #a7f3d0; color:#065f46; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.6; }
+.aviso-seg.aviso-a3 { background:#eff6ff; border-color:#bfdbfe; color:#1e40af; }
+.info-cert { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:13px; line-height:1.7; }
+.res-ok { background:#dcfce7; color:#166534; border-radius:10px; padding:14px 16px; font-size:13px; line-height:1.7; }
+.res-erro { background:#fee2e2; color:#991b1b; border-radius:10px; padding:12px 14px; font-size:13px; font-weight:600; }
+.hash { font-family:monospace; font-size:11px; word-break:break-all; }
+</style>
+
+<script>
+const sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co','sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+const TAM_ASSINATURA = 20000;          // bytes reservados no PDF para a assinatura (cabe certificado + cadeia)
+const LIMITE_ARQUIVO = 40 * 1024 * 1024;
+let histCache = [];
+
+function esc(t){ return String(t == null ? '' : t).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+window.obterUsuario = function(){ try { const s = localStorage.getItem('usuarioLogado'); if (s) return JSON.parse(s); } catch(e) {} return null; };
+window.ehMaster = function(){ const u = window.obterUsuario(); return !!(u && u.email && u.email.toLowerCase().trim() === EMAIL_MASTER.toLowerCase().trim()); };
+window.clienteIdAtual = function(){
+    const u = window.obterUsuario(); if (!u) return null;
+    if (window.ehMaster()) { try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); } catch(e) {} return u.cliente_id ? parseInt(u.cliente_id) : 1; }
+    return u.cliente_id ? parseInt(u.cliente_id) : null;
+};
+window.trocarEmpresa = function(){ const s = document.getElementById('selectEmpresa'); if (!s) return; localStorage.setItem('empresaSelecionada', String(s.value)); location.reload(); };
+window.sair = function(){ if (confirm('Deseja realmente sair?')) { localStorage.removeItem('usuarioLogado'); localStorage.removeItem('empresaSelecionada'); location.href = 'login.html'; } };
+function toast(msg, type){
+    type = type || 'success';
+    var c = document.getElementById('toastContainer'), x = document.createElement('div');
+    if (!c) { c = document.createElement('div'); c.id = 'toastContainer'; c.style.cssText = 'position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px'; document.body.appendChild(c); }
+    x.className = 'toast ' + type; x.innerHTML = '<i class="fas fa-info-circle"></i> ' + esc(msg);
+    c.appendChild(x); setTimeout(function(){ x.remove(); }, 4000);
+}
+
+// ---------- utilidades binárias ----------
+function bytesParaBinStr(u8){
+    var out = '', passo = 0x8000;
+    for (var i = 0; i < u8.length; i += passo) out += String.fromCharCode.apply(null, u8.subarray(i, i + passo));
+    return out;
+}
+function lerArquivo(file){
+    return new Promise(function(ok, err){ var r = new FileReader(); r.onload = function(){ ok(new Uint8Array(r.result)); }; r.onerror = function(){ err(r.error); }; r.readAsArrayBuffer(file); });
+}
+function acharBytes(buf, texto, desde){
+    var p = []; for (var i = 0; i < texto.length; i++) p.push(texto.charCodeAt(i));
+    var n = buf.length - p.length;
+    for (var a = desde || 0; a <= n; a++) {
+        if (buf[a] !== p[0]) continue;
+        var ok = true;
+        for (var b = 1; b < p.length; b++) { if (buf[a + b] !== p[b]) { ok = false; break; } }
+        if (ok) return a;
+    }
+    return -1;
+}
+async function sha256Hex(u8){
+    var h = new Uint8Array(await crypto.subtle.digest('SHA-256', u8));
+    return Array.prototype.map.call(h, function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+}
+function fmtDoc(v){
+    var n = String(v || '').replace(/\D/g, '');
+    if (n.length === 14) return n.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    if (n.length === 11) return n.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    return v || '';
+}
+function fmtDataHora(d){
+    var x = new Date(d); if (isNaN(x)) return '—';
+    return x.toLocaleDateString('pt-BR') + ' ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+function dataPdf(d){
+    var p = function(n){ return String(n).padStart(2, '0'); };
+    var off = -d.getTimezoneOffset(), s = off >= 0 ? '+' : '-'; off = Math.abs(off);
+    return 'D:' + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()) + s + p(Math.floor(off/60)) + "'" + p(off%60) + "'";
+}
+
+// ---------- certificado A1 ----------
+async function abrirPfx(file, senha){
+    var bin = bytesParaBinStr(await lerArquivo(file));
+    var p12;
+    try { p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(bin), false, senha); }
+    catch (e) { throw new Error('Não foi possível abrir o certificado. Confira a senha e se o arquivo é um .pfx/.p12 válido.'); }
+    var chaves = [], certs = [];
+    var bags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || [];
+    bags = bags.concat(p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] || []);
+    bags.forEach(function(b){ if (b.key) chaves.push(b.key); });
+    (p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] || []).forEach(function(b){ if (b.cert) certs.push(b.cert); });
+    if (!chaves.length) throw new Error('Este arquivo não contém chave privada.');
+    if (!chaves[0].n) throw new Error('Este certificado não usa chave RSA, que é a única aceita nesta tela.');
+    var chave = chaves[0];
+    var meu = certs.filter(function(c){ return c.publicKey && c.publicKey.n && c.publicKey.n.compareTo(chave.n) === 0; })[0];
+    if (!meu) throw new Error('Não encontrei, dentro do arquivo, o certificado que corresponde à chave privada.');
+    var cadeia = certs.filter(function(c){ return c !== meu; });
+    var cn = '';
+    meu.subject.attributes.forEach(function(a){ if (a.shortName === 'CN') cn = a.value; });
+    var nome = cn, doc = '', m = cn.match(/^(.*):(\d{11}|\d{14})$/);
+    if (m) { nome = m[1].trim(); doc = m[2]; }
+    return { chave: chave, cert: meu, cadeia: cadeia, nome: nome, doc: doc, inicio: meu.validity.notBefore, fim: meu.validity.notAfter, serie: meu.serialNumber || '' };
+}
+function limparCert(){ document.getElementById('infoCert').style.display = 'none'; document.getElementById('resultado').innerHTML = ''; }
+function aoEscolherDoc(){
+    var f = document.getElementById('arqDoc').files[0];
+    var ehPdf = f && (/\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+    document.getElementById('dicaFormato').textContent = !f ? '' : (ehPdf
+        ? 'PDF: a assinatura fica dentro do próprio arquivo (um único PDF assinado).'
+        : 'Este não é um PDF: será gerado um arquivo de assinatura separado (.p7s), que deve ser guardado junto com o documento original.');
+    document.getElementById('chkCarimbo').parentElement.style.display = (!f || ehPdf) ? 'flex' : 'none';
+    document.getElementById('resultado').innerHTML = '';
+}
+
+// ---------- assinatura ----------
+function criarPkcs7(conteudoBin, c){
+    var p7 = forge.pkcs7.createSignedData();
+    p7.content = forge.util.createBuffer(conteudoBin);
+    p7.addCertificate(c.cert);
+    c.cadeia.forEach(function(x){ p7.addCertificate(x); });
+    p7.addSigner({
+        key: c.chave, certificate: c.cert, digestAlgorithm: forge.pki.oids.sha256,
+        authenticatedAttributes: [
+            { type: forge.pki.oids.contentType, value: forge.pki.oids.data },
+            { type: forge.pki.oids.messageDigest },
+            { type: forge.pki.oids.signingTime, value: new Date() }
+        ]
+    });
+    p7.sign({ detached: true });
+    return forge.asn1.toDer(p7.toAsn1()).getBytes();
+}
+
+async function assinarPdf(bytes, c, comCarimbo){
+    var L = PDFLib;
+    var pdf = await L.PDFDocument.load(bytes, { updateMetadata: false });
+    var paginas = pdf.getPages();
+    if (!paginas.length) throw new Error('O PDF não tem páginas.');
+    var ultima = paginas[paginas.length - 1];
+    var agora = new Date();
+    if (comCarimbo) {
+        var fonte = await pdf.embedFont(L.StandardFonts.Helvetica);
+        var texto = 'Assinado digitalmente por ' + c.nome + (c.doc ? ' - ' + fmtDoc(c.doc) : '') + ' em ' + fmtDataHora(agora) + ' (certificado ICP-Brasil)';
+        ultima.drawText(texto.replace(/[^\x20-\x7E\u00A0-\u00FF]/g, '?'), { x: 24, y: 14, size: 7, font: fonte, color: L.rgb(0.2, 0.2, 0.2) });
+    }
+    var ctx = pdf.context;
+    var HEX = TAM_ASSINATURA * 2;
+    var sig = ctx.obj({
+        Type: 'Sig', Filter: 'Adobe.PPKLite', SubFilter: 'adbe.pkcs7.detached',
+        ByteRange: [0, 1000000000, 1000000000, 1000000000],
+        Contents: L.PDFHexString.of('0'.repeat(HEX)),
+        Reason: L.PDFString.of('Assinatura digital'),
+        M: L.PDFString.of(dataPdf(agora)),
+        Name: L.PDFString.of(c.nome.replace(/[^\x20-\x7E]/g, '?'))
+    });
+    var sigRef = ctx.register(sig);
+    var widget = ctx.obj({ Type: 'Annot', Subtype: 'Widget', FT: 'Sig', Rect: [0, 0, 0, 0], V: sigRef, T: L.PDFString.of('Assinatura' + Date.now()), F: 132, P: ultima.ref });
+    var widgetRef = ctx.register(widget);
+    ultima.node.addAnnot(widgetRef);
+    var afRaw = pdf.catalog.get(L.PDFName.of('AcroForm'));
+    var af = afRaw ? ctx.lookup(afRaw, L.PDFDict) : null;
+    if (!af) { af = ctx.obj({ Fields: [], SigFlags: 3 }); pdf.catalog.set(L.PDFName.of('AcroForm'), ctx.register(af)); }
+    var campos = af.lookup(L.PDFName.of('Fields'));
+    if (!(campos instanceof L.PDFArray)) { campos = ctx.obj([]); af.set(L.PDFName.of('Fields'), campos); }
+    campos.push(widgetRef);
+    af.set(L.PDFName.of('SigFlags'), L.PDFNumber.of(3));
+
+    var salvo = await pdf.save({ useObjectStreams: false });
+    var iBR = acharBytes(salvo, '/ByteRange');
+    var iCo = acharBytes(salvo, '/Contents <' + '0'.repeat(32));
+    if (iBR < 0 || iCo < 0) throw new Error('Não consegui preparar o PDF para assinatura.');
+    var ini = iCo + '/Contents '.length;               // posição do "<"
+    var fim = ini + 1 + HEX + 1;                        // logo após o ">"
+    var abre = acharBytes(salvo, '[', iBR), fecha = acharBytes(salvo, ']', iBR);
+    var antigo = fecha - abre + 1;
+    var br = '[0 ' + ini + ' ' + fim + ' ' + (salvo.length - fim) + ']';
+    if (br.length > antigo) throw new Error('Arquivo grande demais para assinar.');
+    br = br + ' '.repeat(antigo - br.length);
+    for (var k = 0; k < antigo; k++) salvo[abre + k] = br.charCodeAt(k);
+
+    var parte = new Uint8Array(ini + (salvo.length - fim));
+    parte.set(salvo.subarray(0, ini), 0);
+    parte.set(salvo.subarray(fim), ini);
+    var der = criarPkcs7(bytesParaBinStr(parte), c);
+    var hex = '';
+    for (var i = 0; i < der.length; i++) hex += der.charCodeAt(i).toString(16).padStart(2, '0');
+    if (hex.length > HEX) throw new Error('A assinatura (com a cadeia do certificado) não coube no espaço reservado.');
+    hex = hex.toUpperCase() + '0'.repeat(HEX - hex.length);
+    for (var j = 0; j < hex.length; j++) salvo[ini + 1 + j] = hex.charCodeAt(j);
+    return salvo;
+}
+
+function baixar(u8, nome, tipo){
+    var url = URL.createObjectURL(new Blob([u8], { type: tipo }));
+    var a = document.createElement('a'); a.href = url; a.download = nome;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+}
+
+async function assinar(){
+    var res = document.getElementById('resultado'); res.innerHTML = '';
+    var fDoc = document.getElementById('arqDoc').files[0];
+    var fPfx = document.getElementById('arqPfx').files[0];
+    var senha = document.getElementById('senhaPfx').value;
+    if (!fDoc) { toast('Escolha o documento a assinar.', 'error'); return; }
+    if (!fPfx) { toast('Escolha o arquivo do certificado A1 (.pfx ou .p12).', 'error'); return; }
+    if (!senha) { toast('Digite a senha do certificado.', 'error'); return; }
+    if (fDoc.size > LIMITE_ARQUIVO) { toast('Documento grande demais (máximo 40 MB).', 'error'); return; }
+    if (typeof forge === 'undefined' || typeof PDFLib === 'undefined') { toast('Não foi possível carregar as bibliotecas de assinatura. Verifique a internet e recarregue.', 'error'); return; }
+    var btn = document.getElementById('btnAssinar'); btn.disabled = true;
+    var antes = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assinando...';
+    try {
+        var c = await abrirPfx(fPfx, senha);
+        document.getElementById('senhaPfx').value = '';
+        var hoje = new Date();
+        var info = document.getElementById('infoCert');
+        info.style.display = 'block';
+        info.innerHTML = '<strong>Certificado:</strong> ' + esc(c.nome) + (c.doc ? ' — ' + esc(fmtDoc(c.doc)) : '') + '<br><strong>Válido de</strong> ' + c.inicio.toLocaleDateString('pt-BR') + ' <strong>até</strong> ' + c.fim.toLocaleDateString('pt-BR');
+        if (hoje > c.fim) throw new Error('Este certificado está VENCIDO (' + c.fim.toLocaleDateString('pt-BR') + '). Não é possível assinar.');
+        if (hoje < c.inicio) throw new Error('Este certificado ainda não está válido (começa em ' + c.inicio.toLocaleDateString('pt-BR') + ').');
+        var bytes = await lerArquivo(fDoc);
+        var ehPdf = /\.pdf$/i.test(fDoc.name) || fDoc.type === 'application/pdf';
+        var saida, nomeSaida, tipo, formato, hash;
+        if (ehPdf) {
+            saida = await assinarPdf(bytes, c, document.getElementById('chkCarimbo').checked);
+            nomeSaida = fDoc.name.replace(/\.pdf$/i, '') + '_assinado.pdf'; tipo = 'application/pdf'; formato = 'PDF';
+            hash = await sha256Hex(saida);
+        } else {
+            var der = criarPkcs7(bytesParaBinStr(bytes), c);
+            saida = new Uint8Array(der.length); for (var i = 0; i < der.length; i++) saida[i] = der.charCodeAt(i);
+            nomeSaida = fDoc.name + '.p7s'; tipo = 'application/pkcs7-signature'; formato = 'P7S';
+            hash = await sha256Hex(bytes);
+        }
+        baixar(saida, nomeSaida, tipo);
+        var salvou = await registrar({ nome_arquivo: fDoc.name, formato: formato, hash_sha256: hash, titular: c.nome, cnpj_cpf: c.doc || null, validade_fim: c.fim.toISOString().substring(0, 10), numero_serie: c.serie || null });
+        res.innerHTML = '<div class="res-ok"><i class="fas fa-circle-check"></i> <strong>Documento assinado.</strong> O arquivo <strong>' + esc(nomeSaida) + '</strong> foi baixado.' +
+            (formato === 'P7S' ? '<br>Guarde o arquivo .p7s <u>junto</u> com o documento original: um não vale sem o outro.' : '') +
+            '<br>Hash SHA-256: <span class="hash">' + hash + '</span>' + (salvou ? '' : '<br><em>Atenção: a assinatura foi feita, mas não consegui gravar o registro no sistema.</em>') + '</div>';
+        carregarHistorico();
+    } catch (e) {
+        res.innerHTML = '<div class="res-erro"><i class="fas fa-triangle-exclamation"></i> ' + esc(e.message || e) + '</div>';
+    }
+    btn.disabled = false; btn.innerHTML = antes;
+}
+
+// ---------- registro ----------
+async function registrar(d){
+    var cid = window.clienteIdAtual(), u = window.obterUsuario();
+    if (!cid) return false;
+    try {
+        d.cliente_id = cid; d.usuario_email = u ? u.email : null;
+        var r = await sb.from('assinaturas_documentos').insert([d]);
+        return !r.error;
+    } catch (e) { return false; }
+}
+async function carregarHistorico(){
+    var cid = window.clienteIdAtual(), tb = document.getElementById('tbodyHist');
+    if (!cid) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">Empresa não identificada.</td></tr>'; return; }
+    var r = await sb.from('assinaturas_documentos').select('*').eq('cliente_id', cid).order('criado_em', { ascending: false }).limit(200);
+    if (r.error) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">Registro indisponível no momento.</td></tr>'; histCache = []; return; }
+    histCache = r.data || [];
+    if (!histCache.length) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">Nenhuma assinatura registrada ainda.</td></tr>'; return; }
+    tb.innerHTML = '';
+    histCache.forEach(function(h){
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + fmtDataHora(h.criado_em) + '</td><td>' + esc(h.nome_arquivo) + '</td><td>' + esc(h.formato) + '</td><td>' + esc(h.titular) + (h.cnpj_cpf ? '<br><small style="color:var(--text-light)">' + esc(fmtDoc(h.cnpj_cpf)) + '</small>' : '') + '</td><td>' + esc(h.usuario_email || '—') + '</td><td class="hash">' + esc(h.hash_sha256) + '</td>';
+        tb.appendChild(tr);
+    });
+}
+function imprimirHistorico(){
+    if (!histCache.length) { toast('Não há assinaturas registradas para imprimir.', 'error'); return; }
+    var linhas = histCache.map(function(h){ return [fmtDataHora(h.criado_em), h.nome_arquivo || '—', h.formato || '—', (h.titular || '—') + (h.cnpj_cpf ? ' (' + fmtDoc(h.cnpj_cpf) + ')' : ''), h.usuario_email || '—', (h.hash_sha256 || '').substring(0, 16) + '…']; });
+    ERPPrint.imprimir({
+        titulo: 'Registro de Assinaturas Digitais', subtitulo: 'Documentos assinados com certificado digital ICP-Brasil', codigo: 'ASS-LST', orientacao: 'landscape',
+        filtros: [], resumo: [['Assinaturas listadas', String(histCache.length)]],
+        colunas: [{ t: 'Data / hora', w: 1.6 }, { t: 'Arquivo', w: 3 }, { t: 'Formato', w: 0.9 }, { t: 'Assinado por (certificado)', w: 3 }, { t: 'Usuário', w: 2.2 }, { t: 'Hash SHA-256 (início)', w: 2 }],
+        linhas: linhas,
+        observacao: 'O hash completo de cada documento está registrado no sistema. Para conferir uma assinatura, use o Adobe Reader ou validar.iti.gov.br.'
+    });
+}
+
+async function inicializarPagina(){
+    var u = window.obterUsuario();
+    if (!u || !u.email) { location.href = 'login.html'; return; }
+    if (window.ehMaster()) document.body.classList.add('usuario-master'); else document.body.classList.remove('usuario-master');
+    await carregarHistorico();
+}
+window.onload = inicializarPagina;
+</script>
+<button class="ocultar-print" onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+<script src="erp-core.js"></script>
+</body>
+</html>
