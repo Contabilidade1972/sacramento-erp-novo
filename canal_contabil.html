@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canal com a Contabilidade — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: none; }
+        .btn-acao.perigo:hover { background: #dc2626; }
+        .btn-acao.alerta { background: #dc2626; box-shadow: none; }
+        .btn-acao.alerta:hover { background: #b91c1c; }
+        .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-mini { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
+
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .contexto { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+        .contexto.alerta { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        textarea.form-control { height: 74px; padding: 10px 14px; resize: vertical; }
+        input[type="file"].form-control { padding: 8px 10px; height: auto; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: flex-end; }
+        .form-grid .span2 { grid-column: span 2; } .form-grid .span4 { grid-column: span 4; }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr 1.4fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+        .dica { font-size: 11.5px; color: var(--text-light); margin-top: 6px; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
+        .st-enviado { background: #dbeafe; color: #1e40af; } .st-recebido { background: #fef3c7; color: #92400e; }
+        .st-contabilizado { background: #dcfce7; color: #166534; } .st-pendente_correcao { background: #fee2e2; color: #991b1b; }
+        .sentido { font-size: 11.5px; font-weight: 700; color: var(--secondary); white-space: nowrap; }
+        .acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px; }
+        .modal-box { background: #fff; width: 100%; max-width: 480px; border-radius: 14px; padding: 22px; box-shadow: 0 20px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 14px; }
+        .modal-box h3 { font-size: 16px; font-weight: 800; color: var(--secondary); }
+
+        .pend-nota { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; font-size: 13.5px; color: #7f1d1d; white-space: pre-line; line-height: 1.5; }
+        .pend-quem { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px; }
+        .pend-hist { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--text-light); white-space: pre-line; max-height: 140px; overflow: auto; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr 1fr; } .form-grid .span4 { grid-column: span 2; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box, .form-grid { grid-template-columns: 1fr; } .form-grid .span2, .form-grid .span4 { grid-column: span 1; } }
+    
+        .chat-grid { display: grid; grid-template-columns: 360px 1fr; gap: 18px; align-items: stretch; min-height: 560px; }
+        .lista-conv { background: var(--card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; max-height: 72vh; }
+        .lista-topo { padding: 14px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+        .lista-corpo { overflow-y: auto; flex: 1; }
+        .conv { padding: 13px 16px; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+        .conv:hover { background: #f8fafc; }
+        .conv.ativa { background: #eff6ff; border-left: 4px solid var(--primary); padding-left: 12px; }
+        .conv-assunto { font-size: 13.5px; font-weight: 700; color: var(--text-main); display: flex; justify-content: space-between; gap: 8px; }
+        .conv-meta { font-size: 11px; color: var(--text-light); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+        .conv-previa { font-size: 12px; color: var(--text-light); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bolha-nao-lida { background: var(--danger); color: #fff; border-radius: 999px; font-size: 10.5px; font-weight: 800; padding: 2px 8px; flex-shrink: 0; }
+        .tag { display: inline-block; font-size: 9.5px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; letter-spacing: .3px; }
+        .tag.sol { background: #fef3c7; color: #92400e; } .tag.ok { background: #dcfce7; color: #166534; } .tag.conv { background: #dbeafe; color: #1e40af; }
+        .tag.atraso { background: #fee2e2; color: #991b1b; }
+        .painel-chat { background: var(--card); border: 1px solid var(--border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; max-height: 72vh; }
+        .chat-topo { padding: 14px 18px; border-bottom: 1px solid var(--border); background: var(--bg); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .chat-titulo { font-size: 15px; font-weight: 800; color: var(--secondary); }
+        .chat-sub { font-size: 11.5px; color: var(--text-light); margin-top: 2px; }
+        .chat-msgs { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 10px; background: #f1f5f9; min-height: 300px; }
+        .msg { max-width: 76%; padding: 10px 14px; border-radius: 14px; font-size: 13.5px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .msg.minha { align-self: flex-end; background: #dbeafe; border-bottom-right-radius: 4px; }
+        .msg.outra { align-self: flex-start; background: #fff; border-bottom-left-radius: 4px; }
+        .msg-quem { font-size: 10.5px; font-weight: 800; color: var(--text-light); margin-bottom: 3px; text-transform: uppercase; letter-spacing: .3px; }
+        .msg-hora { font-size: 10.5px; color: var(--text-light); margin-top: 4px; text-align: right; }
+        .dia-sep { align-self: center; font-size: 11px; font-weight: 700; color: var(--text-light); background: #e2e8f0; padding: 3px 12px; border-radius: 999px; }
+        .chat-rodape { padding: 12px 14px; border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; background: #fff; }
+        .chat-rodape textarea { flex: 1; height: 54px; min-height: 54px; max-height: 140px; }
+        .vazio { padding: 50px 20px; text-align: center; color: var(--text-light); font-size: 13.5px; }
+        .vazio i { font-size: 34px; color: #cbd5e1; display: block; margin-bottom: 12px; }
+        @media (max-width: 900px) { .chat-grid { grid-template-columns: 1fr; } .lista-conv, .painel-chat { max-height: none; } .msg { max-width: 92%; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar ao Portal</a>
+        <a href="documentos_contabeis.html" class="btn-acao cinza"><i class="fas fa-folder-open"></i> Documentos Contábeis</a>
+        <button class="btn-acao sucesso" type="button" id="btnNova" onclick="abrirNova()" style="display:none;"><i class="fas fa-plus"></i> Nova conversa</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-comments" style="color:var(--primary);"></i> Canal com a Contabilidade</div>
+        <div class="page-subtitle" id="subtitulo">Converse diretamente com a sua contabilidade, sem sair do sistema</div>
+    </div>
+
+    <div class="contexto" id="contexto"><i class="fas fa-circle-info"></i><span>Carregando...</span></div>
+
+    <div class="chat-grid" id="areaChat" style="display:none;">
+        <div class="lista-conv">
+            <div class="lista-topo">
+                <div id="boxFiltroEmpresa" style="display:none;"><select id="fEmpresa" class="form-control" onchange="renderLista()"></select></div>
+                <div class="atalhos" style="margin:0;">
+                    <button class="chip ativo" data-c="todas" type="button" onclick="setChip('todas')">Todas</button>
+                    <button class="chip" data-c="naolidas" type="button" onclick="setChip('naolidas')">Não lidas</button>
+                    <button class="chip" data-c="abertas" type="button" onclick="setChip('abertas')">Abertas</button>
+                    <button class="chip" data-c="solic" type="button" onclick="setChip('solic')">Solicitações</button>
+                </div>
+            </div>
+            <div class="lista-corpo" id="listaConv"></div>
+        </div>
+        <div class="painel-chat" id="painelChat">
+            <div class="vazio"><i class="fas fa-comments"></i>Escolha uma conversa ao lado ou clique em <b>Nova conversa</b>.</div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal nova conversa -->
+<div class="modal-overlay" id="modalNova">
+    <div class="modal-box" style="max-width:560px;">
+        <h3><i class="fas fa-message" style="color:var(--primary);"></i> Nova conversa</h3>
+        <div id="boxNovaEmpresa" style="display:none;"><label for="nvEmpresa">Empresa (cliente)</label><select id="nvEmpresa" class="form-control"></select></div>
+        <div id="boxNovaContab" style="display:none;"><label for="nvContab">Contabilidade</label><select id="nvContab" class="form-control"></select></div>
+        <div><label for="nvTipo">Tipo</label>
+            <select id="nvTipo" class="form-control" onchange="aoMudarTipo()">
+                <option value="conversa">Conversa / dúvida</option>
+                <option value="solicitacao">Solicitação com prazo (ex: enviar extrato, documento pendente)</option>
+            </select></div>
+        <div><label for="nvAssunto">Assunto</label><input type="text" id="nvAssunto" class="form-control" maxlength="160" placeholder="Ex: Falta o extrato de outubro"></div>
+        <div id="boxPrazo" style="display:none;"><label for="nvPrazo">Prazo</label><input type="date" id="nvPrazo" class="form-control"></div>
+        <div><label for="nvTexto">Mensagem</label><textarea id="nvTexto" class="form-control" maxlength="4000" placeholder="Escreva aqui..."></textarea></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-acao cinza" type="button" onclick="fecharNova()">Cancelar</button>
+            <button class="btn-acao sucesso" type="button" id="btnCriar" onclick="criarConversa()"><i class="fas fa-paper-plane"></i> Enviar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    let U = {}, ehMaster = false, ehContador = false;
+    let meuId = 0;                 // minha empresa (contabilidade ou cliente)
+    let meuLado = 'cliente';       // 'cliente' | 'contabilidade'
+    let pares = [];                // [{empresa, contador}] conversas permitidas
+    let nomes = {};
+    let conversas = [], naoLidasPorConv = {}, ultimaMsg = {};
+    let convAtual = null, chip = 'todas', timer = null;
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function toast(msg, type) {
+        type = type || 'success';
+        const c = document.getElementById('toastContainer');
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+    function hora(ts) { const d = new Date(ts); return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    function dataBR(ts) { return new Date(ts).toLocaleDateString('pt-BR'); }
+    function prazoBR(p) { return p ? p.split('-').reverse().join('/') : ''; }
+    function hojeISO() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+    function nome(id) { return nomes[id] || ('Empresa ' + id); }
+
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        let ativa = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) ativa = parseInt(sel); }
+        const origem = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : ativa;
+        const ok = function (v) { return String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_trocar_documentos; };
+
+        if (!ehMaster) {
+            const rv = await sb.from('vinculos_contador').select('empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos').eq('contador_cliente_id', origem);
+            const lista = ((rv && rv.data) || []).filter(ok);
+            if (lista.length) {
+                ehContador = true; meuId = origem; meuLado = 'contabilidade';
+                pares = lista.map(function (v) { return { empresa: parseInt(v.empresa_cliente_id), contador: origem }; });
+            }
+        }
+        if (!ehContador) {
+            meuId = ativa; meuLado = 'cliente';
+            const rf = await sb.rpc('app_minhas_contabilidades', { p_empresa_id: ativa });
+            const ativos = ((rf && rf.data) || []).filter(ok);
+            pares = ativos.map(function (v) { nomes[v.contador_cliente_id] = v.contador_nome; return { empresa: ativa, contador: parseInt(v.contador_cliente_id) }; });
+        }
+        const ids = {}; pares.forEach(function (p) { ids[p.empresa] = 1; ids[p.contador] = 1; }); ids[meuId] = 1;
+        const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').in('id', Object.keys(ids).map(Number));
+        ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
+    }
+
+    function montarTela() {
+        const ctx = document.getElementById('contexto');
+        if (!pares.length) {
+            ctx.className = 'contexto alerta';
+            ctx.innerHTML = '<i class="fas fa-triangle-exclamation"></i><span>Esta empresa ainda <b>não tem contabilidade vinculada</b> com troca de documentos habilitada. O canal usa o mesmo vínculo dos Documentos Contábeis. Peça ao administrador (Master) para ativar.</span>';
+            return false;
+        }
+        if (ehContador) {
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-briefcase"></i><span>Visão da contabilidade (<b>' + esc(nome(meuId)) + '</b>): conversas com <b>' + pares.length + ' cliente(s)</b>. Use <b>Solicitação com prazo</b> para cobrar documentos.</span>';
+            document.getElementById('boxFiltroEmpresa').style.display = 'block';
+            document.getElementById('fEmpresa').innerHTML = '<option value="todos">Todos os clientes</option>' + pares.map(function (p) { return '<option value="' + p.empresa + '">' + esc(nome(p.empresa)) + '</option>'; }).join('');
+        } else {
+            const cn = pares.map(function (p) { return nome(p.contador); }).join(', ');
+            ctx.className = 'contexto';
+            ctx.innerHTML = '<i class="fas fa-handshake"></i><span>Você está falando com sua contabilidade: <b>' + esc(cn) + '</b>. As mensagens ficam registradas e só você e a contabilidade conseguem ver.</span>';
+        }
+        document.getElementById('btnNova').style.display = '';
+        document.getElementById('areaChat').style.display = '';
+        return true;
+    }
+
+    async function carregar(manterAberta) {
+        const r = await sb.from('canal_conversas').select('*').order('atualizado_em', { ascending: false });
+        if (r.error) throw r.error;
+        conversas = r.data || [];
+        naoLidasPorConv = {}; ultimaMsg = {};
+        if (conversas.length) {
+            const ids = conversas.map(function (c) { return c.id; });
+            const rm = await sb.from('canal_mensagens').select('conversa_id, texto, remetente_lado, lida_em, criado_em').in('conversa_id', ids).order('criado_em', { ascending: false }).limit(2000);
+            ((rm && rm.data) || []).forEach(function (m) {
+                if (!ultimaMsg[m.conversa_id]) ultimaMsg[m.conversa_id] = m;
+                if (!m.lida_em && m.remetente_lado !== meuLado) naoLidasPorConv[m.conversa_id] = (naoLidasPorConv[m.conversa_id] || 0) + 1;
+            });
+        }
+        renderLista();
+        if (manterAberta && convAtual) await abrirConversa(convAtual, true);
+    }
+
+    function setChip(c) {
+        chip = c;
+        document.querySelectorAll('.chip').forEach(function (b) { b.classList.toggle('ativo', b.getAttribute('data-c') === c); });
+        renderLista();
+    }
+    function atrasada(c) { return c.tipo === 'solicitacao' && c.status === 'aberta' && c.prazo && c.prazo < hojeISO(); }
+
+    function renderLista() {
+        const emp = ehContador ? document.getElementById('fEmpresa').value : 'todos';
+        const lista = conversas.filter(function (c) {
+            if (emp !== 'todos' && String(c.empresa_cliente_id) !== emp) return false;
+            if (chip === 'naolidas' && !naoLidasPorConv[c.id]) return false;
+            if (chip === 'abertas' && c.status !== 'aberta') return false;
+            if (chip === 'solic' && c.tipo !== 'solicitacao') return false;
+            return true;
+        });
+        const el = document.getElementById('listaConv');
+        if (!lista.length) { el.innerHTML = '<div class="vazio"><i class="fas fa-inbox"></i>Nenhuma conversa aqui.</div>'; return; }
+        el.innerHTML = lista.map(function (c) {
+            const nl = naoLidasPorConv[c.id] || 0, um = ultimaMsg[c.id];
+            const outro = ehContador ? nome(c.empresa_cliente_id) : nome(c.contador_cliente_id);
+            let tag = c.tipo === 'solicitacao' ? '<span class="tag sol">Solicitação</span>' : '<span class="tag conv">Conversa</span>';
+            if (c.status === 'concluida') tag = '<span class="tag ok">Concluída</span>';
+            else if (atrasada(c)) tag += ' <span class="tag atraso">Atrasada</span>';
+            return '<div class="conv' + (convAtual === c.id ? ' ativa' : '') + '" onclick="abrirConversa(' + c.id + ')">' +
+                '<div class="conv-assunto"><span>' + esc(c.assunto) + '</span>' + (nl ? '<span class="bolha-nao-lida">' + nl + '</span>' : '') + '</div>' +
+                '<div class="conv-previa">' + (um ? esc(um.texto) : '') + '</div>' +
+                '<div class="conv-meta"><span>' + esc(outro) + ' · ' + tag + (c.prazo && c.status === 'aberta' ? ' · prazo ' + prazoBR(c.prazo) : '') + '</span><span>' + (um ? dataBR(um.criado_em) : '') + '</span></div></div>';
+        }).join('');
+    }
+
+    async function abrirConversa(id, silencioso) {
+        convAtual = id;
+        const c = conversas.find(function (x) { return x.id === id; });
+        if (!c) return;
+        const r = await sb.from('canal_mensagens').select('*').eq('conversa_id', id).order('criado_em', { ascending: true });
+        if (r.error) { toast('Não foi possível abrir a conversa.', 'error'); return; }
+        const msgs = r.data || [];
+        const outro = ehContador ? nome(c.empresa_cliente_id) : nome(c.contador_cliente_id);
+        let h = '<div class="chat-topo"><div><div class="chat-titulo">' + esc(c.assunto) + '</div><div class="chat-sub">' + esc(outro) +
+            (c.tipo === 'solicitacao' ? ' · Solicitação' + (c.prazo ? ' · prazo ' + prazoBR(c.prazo) : '') : ' · Conversa') +
+            (c.status === 'concluida' ? ' · <b style="color:#166534;">Concluída</b>' : '') + '</div></div>';
+        if (ehContador || c.tipo === 'solicitacao') {
+            h += '<button class="btn-acao btn-mini ' + (c.status === 'aberta' ? 'sucesso' : 'cinza') + '" type="button" onclick="alternarStatus(' + c.id + ')"><i class="fas fa-' + (c.status === 'aberta' ? 'check' : 'rotate-left') + '"></i> ' + (c.status === 'aberta' ? 'Marcar como concluída' : 'Reabrir') + '</button>';
+        }
+        h += '</div><div class="chat-msgs" id="chatMsgs">';
+        let diaAnt = '';
+        msgs.forEach(function (m) {
+            const d = dataBR(m.criado_em);
+            if (d !== diaAnt) { h += '<div class="dia-sep">' + d + '</div>'; diaAnt = d; }
+            const minha = m.remetente_lado === meuLado;
+            h += '<div class="msg ' + (minha ? 'minha' : 'outra') + '"><div class="msg-quem">' + esc(m.remetente_nome || m.remetente_email) + '</div>' + esc(m.texto) +
+                '<div class="msg-hora">' + hora(m.criado_em) + (minha && m.lida_em ? ' · lida ✓' : '') + '</div></div>';
+        });
+        h += '</div>';
+        if (c.status === 'aberta') {
+            h += '<div class="chat-rodape"><textarea id="txtResp" class="form-control" maxlength="4000" placeholder="Escreva sua mensagem... (Ctrl+Enter envia)" onkeydown="if(event.ctrlKey&&event.key===\'Enter\'){enviarResposta();}"></textarea>' +
+                '<button class="btn-acao sucesso" type="button" id="btnResp" onclick="enviarResposta()"><i class="fas fa-paper-plane"></i> Enviar</button></div>';
+        } else {
+            h += '<div class="chat-rodape"><span class="dica">Conversa concluída. Reabra para continuar.</span></div>';
+        }
+        const painel = document.getElementById('painelChat');
+        const rascunho = silencioso && document.getElementById('txtResp') ? document.getElementById('txtResp').value : '';
+        painel.innerHTML = h;
+        if (rascunho && document.getElementById('txtResp')) document.getElementById('txtResp').value = rascunho;
+        const box = document.getElementById('chatMsgs'); box.scrollTop = box.scrollHeight;
+        if (naoLidasPorConv[id]) {
+            await sb.rpc('canal_marcar_lidas', { p_conversa: id });
+            naoLidasPorConv[id] = 0; renderLista(); atualizarSino();
+        } else { renderLista(); }
+    }
+
+    async function enviarResposta() {
+        const t = document.getElementById('txtResp'); const txt = t.value.trim();
+        if (!txt) return;
+        const b = document.getElementById('btnResp'); b.disabled = true;
+        const r = await sb.from('canal_mensagens').insert({ conversa_id: convAtual, remetente_lado: meuLado, remetente_email: (U.email || '').toLowerCase(), remetente_nome: U.nome || U.email || '', texto: txt });
+        if (r.error) { toast('Não foi possível enviar: ' + r.error.message, 'error'); b.disabled = false; return; }
+        await sb.from('canal_conversas').update({ atualizado_em: new Date().toISOString() }).eq('id', convAtual);
+        await carregar(true);
+    }
+
+    async function alternarStatus(id) {
+        const c = conversas.find(function (x) { return x.id === id; });
+        const novo = c.status === 'aberta' ? 'concluida' : 'aberta';
+        const r = await sb.from('canal_conversas').update({ status: novo, atualizado_em: new Date().toISOString() }).eq('id', id);
+        if (r.error) { toast('Não foi possível alterar: ' + r.error.message, 'error'); return; }
+        toast(novo === 'concluida' ? 'Conversa concluída.' : 'Conversa reaberta.');
+        await carregar(true);
+    }
+
+    // ----- nova conversa -----
+    function aoMudarTipo() { document.getElementById('boxPrazo').style.display = document.getElementById('nvTipo').value === 'solicitacao' ? 'block' : 'none'; }
+    function abrirNova() {
+        document.getElementById('nvAssunto').value = ''; document.getElementById('nvTexto').value = ''; document.getElementById('nvPrazo').value = '';
+        document.getElementById('nvTipo').value = 'conversa'; aoMudarTipo();
+        if (ehContador) {
+            document.getElementById('boxNovaEmpresa').style.display = 'block';
+            document.getElementById('nvEmpresa').innerHTML = pares.map(function (p) { return '<option value="' + p.empresa + '">' + esc(nome(p.empresa)) + '</option>'; }).join('');
+            document.getElementById('boxNovaContab').style.display = 'none';
+        } else {
+            document.getElementById('boxNovaEmpresa').style.display = 'none';
+            const multi = pares.length > 1;
+            document.getElementById('boxNovaContab').style.display = multi ? 'block' : 'none';
+            document.getElementById('nvContab').innerHTML = pares.map(function (p) { return '<option value="' + p.contador + '">' + esc(nome(p.contador)) + '</option>'; }).join('');
+        }
+        document.getElementById('modalNova').style.display = 'flex';
+    }
+    function fecharNova() { document.getElementById('modalNova').style.display = 'none'; }
+    async function criarConversa() {
+        const assunto = document.getElementById('nvAssunto').value.trim();
+        const texto = document.getElementById('nvTexto').value.trim();
+        const tipo = document.getElementById('nvTipo').value;
+        const prazo = document.getElementById('nvPrazo').value || null;
+        if (!assunto) { toast('Informe o assunto.', 'error'); return; }
+        if (!texto) { toast('Escreva a mensagem.', 'error'); return; }
+        if (tipo === 'solicitacao' && !prazo) { toast('Informe o prazo da solicitação.', 'error'); return; }
+        let empresa, contador;
+        if (ehContador) { empresa = parseInt(document.getElementById('nvEmpresa').value); contador = meuId; }
+        else { empresa = meuId; contador = parseInt(document.getElementById('nvContab').value || pares[0].contador); }
+        const b = document.getElementById('btnCriar'); b.disabled = true;
+        const rc = await sb.from('canal_conversas').insert({ empresa_cliente_id: empresa, contador_cliente_id: contador, tipo: tipo, status: 'aberta', assunto: assunto, prazo: tipo === 'solicitacao' ? prazo : null, criado_por_email: (U.email || '').toLowerCase(), criado_por_lado: meuLado }).select().single();
+        if (rc.error) { toast('Não foi possível criar: ' + rc.error.message, 'error'); b.disabled = false; return; }
+        const rm = await sb.from('canal_mensagens').insert({ conversa_id: rc.data.id, remetente_lado: meuLado, remetente_email: (U.email || '').toLowerCase(), remetente_nome: U.nome || U.email || '', texto: texto });
+        b.disabled = false;
+        if (rm.error) { toast('Conversa criada, mas a mensagem falhou: ' + rm.error.message, 'error'); }
+        fecharNova(); toast('Mensagem enviada.');
+        await carregar(false); abrirConversa(rc.data.id);
+    }
+
+    function atualizarSino() {
+        try { sb.rpc('canal_nao_lidas').then(function (r) { if (!r.error && window.ERPCanal) window.ERPCanal.nao = r.data; }); } catch (e) {}
+    }
+
+    async function iniciar() {
+        try {
+            await descobrirContexto();
+            if (!montarTela()) return;
+            await carregar(false);
+            timer = setInterval(function () { if (!document.hidden) carregar(true).catch(function () {}); }, 20000);
+        } catch (err) {
+            document.getElementById('contexto').className = 'contexto alerta';
+            document.getElementById('contexto').innerHTML = '<i class="fas fa-triangle-exclamation"></i><span>Erro ao carregar o canal: ' + esc(err && err.message ? err.message : 'desconhecido') + '</span>';
+        }
+    }
+    window.onload = iniciar;
+</script>
+</body>
+</html>
