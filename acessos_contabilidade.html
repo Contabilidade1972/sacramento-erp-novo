@@ -53,6 +53,16 @@
         .perm i { width: 18px; text-align: center; }
         .perm .sim { color: var(--success); } .perm .nao { color: #cbd5e1; }
         .perm small { display: block; font-size: 11px; color: var(--text-light); }
+        .perm .p-txt { flex: 1; }
+        .perm .btn-mini { padding: 5px 11px; font-size: 11px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; color: #fff; background: var(--success); white-space: nowrap; }
+        .perm .btn-mini.retirar { background: #ef4444; }
+        .vinc .acoes-vinc { display: flex; gap: 8px; flex-wrap: wrap; border-top: 1px dashed var(--border); padding-top: 10px; }
+        .vinc.inativo { opacity: .75; background: #f8fafc; }
+        .guia-perm { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; font-size: 13px; line-height: 1.6; color: #451a03; }
+        .guia-perm ul { margin: 6px 0 0 18px; }
+        .novo-vinc { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px; display: grid; grid-template-columns: 1.4fr 1.4fr auto; gap: 12px; align-items: flex-end; }
+        @media (max-width: 700px) { .novo-vinc { grid-template-columns: 1fr; } }
+        @media print { .guia-perm, .novo-vinc, .perm .btn-mini, .acoes-vinc { display: none !important; } }
         .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
         .st-ativo { background: #dcfce7; color: #166534; } .st-inativo { background: #e2e8f0; color: #475569; }
 
@@ -118,6 +128,8 @@
 
     <div class="panel">
         <div class="panel-title"><span class="t"><i class="fas fa-handshake" style="color:var(--primary);"></i> <span id="tituloVinculos">Contabilidade vinculada e permissões</span></span></div>
+        <div id="boxGuiaPerm"></div>
+        <div id="boxNovoVinc"></div>
         <div class="vinc-grid" id="listaVinculos"><div style="padding:20px; color:var(--text-light);">Carregando...</div></div>
     </div>
 
@@ -199,7 +211,7 @@
         if (!ehMaster) {
             // é uma contabilidade com clientes vinculados?
             const rv = await sb.from('vinculos_contador')
-                .select('id, empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos, pode_emitir_nf, pode_usar_certificado, concedido_por, concedido_em, criado_em')
+                .select('id, empresa_cliente_id, status, pode_visualizar, pode_trocar_documentos, pode_emitir_nf, pode_usar_certificado, pode_contabilizar, concedido_por, concedido_em, criado_em')
                 .eq('contador_cliente_id', minhaEmpresaId);
             const lista = (rv && rv.data) || [];
             if (lista.length) {
@@ -216,20 +228,85 @@
         minhaEmpresaId = empresaAtivaId;
         const re = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').eq('id', empresaAtivaId);
         ((re && re.data) || []).forEach(function (e) { nomes[e.id] = e.nome_fantasia || e.razao_social || ('Empresa ' + e.id); });
-        const rf = await sb.rpc('app_minhas_contabilidades', { p_empresa_id: empresaAtivaId });
-        if (rf.error) throw new Error('Função do banco indisponível (aplique o pacote 2 de SQL): ' + rf.error.message);
+        await carregarVinculosEmpresa();
+    }
+    async function carregarVinculosEmpresa() {
+        const rf = await sb.rpc('vinculos_empresa', { p_empresa: empresaAtivaId });
+        if (rf.error) throw new Error('Função do banco indisponível (aplique o pacote de SQL "Gestão de vínculos"): ' + rf.error.message);
         vinculos = (rf.data || []).map(function (v) {
             nomes[v.contador_cliente_id] = v.contador_nome || ('Contabilidade ' + v.contador_cliente_id);
-            return { id: v.vinculo_id, contador_cliente_id: v.contador_cliente_id, status: v.status, pode_visualizar: v.pode_visualizar, pode_trocar_documentos: v.pode_trocar_documentos,
-                     pode_emitir_nf: v.pode_emitir_nf, pode_usar_certificado: v.pode_usar_certificado, concedido_por: v.concedido_por, concedido_em: v.concedido_em, criado_em: v.criado_em };
+            return { id: v.id, contador_cliente_id: v.contador_cliente_id, status: v.status, pode_visualizar: v.pode_visualizar, pode_trocar_documentos: v.pode_trocar_documentos,
+                     pode_emitir_nf: v.pode_emitir_nf, pode_usar_certificado: v.pode_usar_certificado, pode_contabilizar: v.pode_contabilizar, concedido_por: v.concedido_por, concedido_em: v.concedido_em, criado_em: v.criado_em };
         });
     }
 
-    function permLinha(ok, titulo, sub) {
-        return '<div class="perm"><i class="fas ' + (ok ? 'fa-circle-check sim' : 'fa-circle-xmark nao') + '"></i><div><b>' + titulo + '</b><small>' + sub + '</small></div></div>';
+    const PERMS = [
+        { c: 'pode_visualizar', t: 'Visualizar dados e relatórios', d: 'Somente leitura: ver, salvar PDF e imprimir' },
+        { c: 'pode_trocar_documentos', t: 'Trocar documentos', d: 'Enviar e receber documentos do mês' },
+        { c: 'pode_contabilizar', t: 'Escriturar a contabilidade', d: 'Lançar e fechar a contabilidade da empresa (Escrituração Contábil)' },
+        { c: 'pode_emitir_nf', t: 'Emitir notas fiscais', d: 'Em nome da empresa (quando o módulo fiscal estiver ativo)' },
+        { c: 'pode_usar_certificado', t: 'Usar certificado digital', d: 'Acesso a órgãos oficiais em nome da empresa' }
+    ];
+    function podeGerir() { return !ehContador; }
+    function permLinha(v, pr) {
+        const ok = !!v[pr.c];
+        const btn = podeGerir() ? '<button type="button" class="btn-mini ' + (ok ? 'retirar' : '') + '" onclick="alterarPerm(' + v.id + ',\'' + pr.c + '\',' + (!ok) + ')">' + (ok ? 'Retirar' : 'Conceder') + '</button>' : '';
+        return '<div class="perm"><i class="fas ' + (ok ? 'fa-circle-check sim' : 'fa-circle-xmark nao') + '"></i><div class="p-txt"><b>' + pr.t + '</b><small>' + pr.d + '</small></div>' + btn + '</div>';
+    }
+    async function alterarPerm(id, campo, valor) {
+        const v = vinculos.find(function (x) { return x.id === id; }); if (!v) return;
+        const pr = PERMS.find(function (x) { return x.c === campo; });
+        let msg = (valor ? 'Conceder' : 'Retirar') + ' a permissão "' + pr.t + '" para ' + nome(v.contador_cliente_id) + '?';
+        if (campo === 'pode_contabilizar' && valor) msg += '\n\nA contabilidade passará a LANÇAR a contabilidade da sua empresa, e você passará a só consultar a Escrituração Contábil. Ela continua sem poder alterar o Financeiro.';
+        if (campo === 'pode_visualizar' && !valor) msg += '\n\nAtenção: sem "Visualizar", TODAS as outras permissões também serão retiradas.';
+        if (campo === 'pode_contabilizar' && !valor) msg += '\n\nA contabilidade deixa de lançar. Os lançamentos já feitos continuam registrados.';
+        if (!confirm(msg)) return;
+        try {
+            const r = await sb.rpc('vinculo_alterar', { p_vinculo: id, p_campo: campo, p_valor: valor });
+            if (r.error) throw new Error(r.error.message);
+            toast(valor ? 'Permissão concedida.' : 'Permissão retirada.');
+            await carregarVinculosEmpresa(); montarVinculos();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    async function alterarStatus(id, ativar) {
+        const v = vinculos.find(function (x) { return x.id === id; }); if (!v) return;
+        if (!confirm((ativar ? 'Reativar' : 'Encerrar') + ' o vínculo com ' + nome(v.contador_cliente_id) + '?' + (ativar ? '' : '\n\nEla deixa de enxergar a sua empresa e de trocar documentos e mensagens. O histórico de acessos fica preservado.'))) return;
+        try {
+            const r = await sb.rpc('vinculo_status', { p_vinculo: id, p_ativo: ativar });
+            if (r.error) throw new Error(r.error.message);
+            toast(ativar ? 'Vínculo reativado.' : 'Vínculo encerrado.');
+            await carregarVinculosEmpresa(); montarVinculos();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    async function prepararNovoVinculo() {
+        const box = document.getElementById('boxNovoVinc');
+        if (!ehMaster || ehContador) { box.innerHTML = ''; return; }
+        const r = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia').order('id');
+        const lista = ((r && r.data) || []).filter(function (e) { return e.id !== empresaAtivaId; });
+        box.innerHTML = '<div class="novo-vinc"><div><label for="nvContador">Contabilidade a vincular a ' + esc(nome(empresaAtivaId)) + '</label><select id="nvContador" class="form-control">' +
+            lista.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nome_fantasia || e.razao_social || ('Empresa ' + e.id)) + '</option>'; }).join('') + '</select></div>' +
+            '<div class="dica" style="font-size:12px; color:var(--text-light);">Só o administrador Master cria vínculos. O vínculo nasce com <b>visualizar</b> e <b>trocar documentos</b>. As demais permissões (inclusive escriturar) são concedidas pela empresa.</div>' +
+            '<div><button class="btn-acao" type="button" onclick="criarVinculo()"><i class="fas fa-plus"></i> Criar vínculo</button></div></div>';
+    }
+    async function criarVinculo() {
+        const c = parseInt(document.getElementById('nvContador').value);
+        if (!c || !confirm('Vincular ' + nome(c) + ' à empresa ' + nome(empresaAtivaId) + '?')) return;
+        try {
+            const r = await sb.rpc('vinculo_criar', { p_contador: c, p_empresa: empresaAtivaId });
+            if (r.error) throw new Error(r.error.message);
+            toast('Vínculo criado.');
+            nomes[c] = nomes[c] || ('Contabilidade ' + c);
+            await carregarVinculosEmpresa(); montarVinculos();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
     }
     function montarVinculos() {
         const ctx = document.getElementById('contexto');
+        document.getElementById('boxGuiaPerm').innerHTML = podeGerir() ? '<div class="guia-perm"><b><i class="fas fa-circle-question"></i> O que cada permissão significa (em português simples)</b><ul>' +
+            '<li><b>Visualizar dados e relatórios:</b> a contabilidade enxerga os dados da sua empresa, só para ler, salvar PDF e imprimir.</li>' +
+            '<li><b>Trocar documentos:</b> vocês enviam e recebem extratos, notas e comprovantes pelo sistema, e conversam pelo Canal.</li>' +
+            '<li><b>Escriturar a contabilidade:</b> a contabilidade faz os lançamentos contábeis da sua empresa (balancete, DRE, balanço). Quando concedida, você passa a só consultar a Escrituração. Ela continua sem poder alterar o seu Financeiro.</li>' +
+            '<li><b>Emitir notas fiscais / Usar certificado digital:</b> só conceda se você quiser que a contabilidade atue em nome da empresa nos órgãos oficiais. Na dúvida, deixe desligado.</li></ul>' +
+            '<div style="margin-top:6px;">Você pode conceder ou retirar qualquer permissão quando quiser. Tudo fica registrado.</div></div>' : '';
         if (ehContador) {
             document.getElementById('titulo').textContent = 'Meus Acessos aos Clientes';
             document.getElementById('subtitulo').textContent = 'Registro dos acessos da sua contabilidade às empresas vinculadas e permissões concedidas por cada cliente';
@@ -241,7 +318,7 @@
                 vinculos.map(function (v) { return '<option value="' + v.empresa_cliente_id + '">' + esc(nome(v.empresa_cliente_id)) + '</option>'; }).join('');
         } else if (vinculos.length) {
             ctx.className = 'contexto';
-            ctx.innerHTML = '<i class="fas fa-shield-halved"></i><span>A contabilidade vinculada só consegue <b>visualizar, salvar PDF e imprimir</b> os dados da sua empresa. Ela <b>não altera nem apaga</b> nenhum lançamento. Todo acesso fica registrado abaixo e não pode ser editado nem excluído.</span>';
+            ctx.innerHTML = '<i class="fas fa-shield-halved"></i><span>Você controla o que a contabilidade vinculada pode fazer na sua empresa, e pode mudar isso quando quiser. Por padrão ela só <b>visualiza, salva PDF e imprime</b>; ela <b>não altera nem apaga</b> nada do seu Financeiro. Todo acesso fica registrado abaixo e não pode ser editado nem excluído.</span>';
         } else {
             ctx.className = 'contexto alerta';
             ctx.innerHTML = '<i class="fas fa-circle-info"></i><span>Esta empresa não tem contabilidade vinculada ao sistema. Nenhum acesso de terceiros é possível.</span>';
@@ -251,13 +328,11 @@
         el.innerHTML = vinculos.map(function (v) {
             const nomeAlvo = ehContador ? nome(v.empresa_cliente_id) : nome(v.contador_cliente_id);
             const ativo = String(v.status || '').toLowerCase() === 'ativo';
-            return '<div class="vinc"><h4><span><i class="fas ' + (ehContador ? 'fa-building' : 'fa-briefcase') + '" style="color:var(--primary);"></i> ' + esc(nomeAlvo) + '</span>' +
+            return '<div class="vinc' + (ativo ? '' : ' inativo') + '"><h4><span><i class="fas ' + (ehContador ? 'fa-building' : 'fa-briefcase') + '" style="color:var(--primary);"></i> ' + esc(nomeAlvo) + '</span>' +
                 '<span class="badge-st ' + (ativo ? 'st-ativo' : 'st-inativo') + '">' + esc(v.status || '—') + '</span></h4>' +
                 '<div class="meta">Vínculo desde ' + dataBR(v.criado_em) + (v.concedido_por ? ' · Concedido por: ' + esc(v.concedido_por) : '') + (v.concedido_em ? ' em ' + dataBR(v.concedido_em) : '') + '</div>' +
-                permLinha(!!v.pode_visualizar, 'Visualizar dados e relatórios', 'Somente leitura: ver, salvar PDF e imprimir') +
-                permLinha(!!v.pode_trocar_documentos, 'Trocar documentos', 'Enviar e receber documentos do mês') +
-                permLinha(!!v.pode_emitir_nf, 'Emitir notas fiscais', 'Em nome da empresa (quando o módulo fiscal estiver ativo)') +
-                permLinha(!!v.pode_usar_certificado, 'Usar certificado digital', 'Acesso a órgãos oficiais em nome da empresa') + '</div>';
+                PERMS.map(function (pr) { return permLinha(v, pr); }).join('') +
+                (podeGerir() ? '<div class="acoes-vinc"><button type="button" class="btn-acao ' + (ativo ? 'cinza' : 'sucesso') + '" style="padding:7px 14px; font-size:12px;" onclick="alterarStatus(' + v.id + ',' + (!ativo) + ')">' + (ativo ? '<i class="fas fa-link-slash"></i> Encerrar vínculo' : '<i class="fas fa-link"></i> Reativar vínculo') + '</button></div>' : '') + '</div>';
         }).join('');
     }
 
@@ -353,7 +428,7 @@
             colunas: [{ t: 'Data e hora', w: 1.6 }, { t: ehContador ? 'Empresa acessada' : 'Contabilidade', w: 2.2 }, { t: 'Usuário', w: 2.2 }, { t: 'Tipo de acesso', w: 1.6 }, { t: 'Tela', w: 2 }],
             linhas: linhas,
             totais: null,
-            observacao: 'A contabilidade vinculada tem acesso somente de leitura (visualizar, salvar PDF e imprimir). Este registro é gerado automaticamente pelo sistema e não pode ser alterado nem excluído por nenhum usuário.',
+            observacao: 'A contabilidade vinculada acessa os dados da empresa somente para consulta (visualizar, salvar PDF e imprimir) e, quando a empresa conceder a permissão de escriturar, lança a contabilidade; ela não altera o Financeiro. Este registro é gerado automaticamente pelo sistema e não pode ser alterado nem excluído por nenhum usuário.',
             assinaturas: ['Responsável pela empresa']
         });
     }
@@ -362,6 +437,7 @@
         try {
             await descobrirContexto();
             montarVinculos();
+            try { await prepararNovoVinculo(); } catch (e) {}
             await carregarLog();
             kpis();
             setPeriodo('30');
