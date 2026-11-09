@@ -281,6 +281,20 @@
             </div>
         </a>
 
+        <!-- 4b2. CANAL COM A CONTABILIDADE -->
+        <a href="canal_contabil.html" class="portal-card" style="border: 2px solid #2563eb; position: relative;" onclick="transicionarPagina(event, 'canal_contabil.html')">
+            <div class="card-banner" style="background: linear-gradient(135deg, #2563eb, #0d9488);">
+                <i class="fas fa-comments banner-icone"></i>
+                <span class="card-badge-cat" style="color: #2563eb;">Contabilidade & Cliente</span>
+                <span id="badgeCanal" style="display:none; position:absolute; top:12px; right:12px; background:#ef4444; color:#fff; font-weight:800; font-size:12px; padding:4px 10px; border-radius:999px;"></span>
+            </div>
+            <div class="card-body">
+                <div class="card-title"><h3>Canal com a Contabilidade</h3></div>
+                <div class="card-desc">Converse direto com a contabilidade (ou com seus clientes), faça solicitações com prazo e acompanhe as respostas sem sair do sistema.</div>
+                <div class="card-footer"><span>Abrir Canal</span> <i class="fas fa-arrow-right"></i></div>
+            </div>
+        </a>
+
         <!-- 4c. CERTIFICADOS DIGITAIS -->
         <a href="certificados_digitais.html" class="portal-card" style="border: 2px solid #0f766e;" onclick="transicionarPagina(event, 'certificados_digitais.html')">
             <div class="card-banner" style="background: linear-gradient(135deg, #0f766e, #1e3a8a);">
@@ -595,6 +609,17 @@
        Cliente vê os seus; a contabilidade vê também os das empresas que a vincularam; o Master vê todos. */
     function escCert(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
     function fecharAvisoCert() { const m = document.getElementById('modalAvisoCert'); if (m) m.style.display = 'none'; }
+    async function atualizarBadgeCanal() {
+        try {
+            const sbx = window.sb || (typeof sb !== 'undefined' ? sb : null);
+            if (!sbx) return;
+            const r = await sbx.rpc('canal_nao_lidas');
+            const n = (!r.error && r.data) ? Number(r.data) : 0;
+            const b = document.getElementById('badgeCanal');
+            if (b) { b.textContent = n + (n === 1 ? ' nova' : ' novas'); b.style.display = n > 0 ? 'inline-block' : 'none'; }
+        } catch (e) {}
+    }
+
     async function verificarCertificadosIndex() {
         try {
             const u = obterUsuarioAtual();
@@ -721,6 +746,7 @@
         await aplicarWhiteLabelLocal();
         await carregarSeletorEmpresa();
         verificarCertificadosIndex();
+        atualizarBadgeCanal();
     }
 
     async function carregarSeletorEmpresa() {
