@@ -106,7 +106,8 @@
         { nome:"Backup de Dados", url:"backup.html", icon:"fa-database", keywords:["backup","dados","exportar"] },
         { nome:"Produtos & Serviços", url:"produtos.html", icon:"fa-boxes", keywords:["produto","insumo","servico","estoque"] },
         { nome:"Faturamento NFS-e (P&D)", url:"faturamento_pd.html", icon:"fa-file-invoice", keywords:["nfse","servico","faturamento"] },
-        { nome:"Certificados Digitais", url:"certificados_digitais.html", icon:"fa-id-card-alt", keywords:["certificado","digital","a1","a3","ecnpj","ecpf","validade","vencimento","assinatura"] }
+        { nome:"Certificados Digitais", url:"certificados_digitais.html", icon:"fa-id-card-alt", keywords:["certificado","digital","a1","a3","ecnpj","ecpf","validade","vencimento","token"] },
+        { nome:"Assinatura Digital de Documentos", url:"assinar_documento.html", icon:"fa-file-signature", keywords:["assinar","assinatura","digital","certificado","pdf","p7s","pfx","documento"] }
     ];
 
     function nomeModuloAtual() {
