@@ -98,9 +98,9 @@
         '.titulo-rel { margin-top: 3.5mm; font-size: 12.5pt; font-weight: 800; color: #0f172a; text-transform: uppercase; letter-spacing: .4px; }',
         '.sub-rel { font-size: 8pt; color: #64748b; margin-top: .8mm; }',
         /* topo compacto (páginas seguintes) */
-        '.topo-mini { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.4px solid #1e3a8a; padding-bottom: 1.8mm; margin-bottom: 3mm; font-size: 8pt; }',
-        '.topo-mini .m1 { font-weight: 800; color: #1e3a8a; text-transform: uppercase; }',
-        '.topo-mini .m2 { color: #475569; }',
+        '.topo-mini { display: flex; justify-content: space-between; align-items: baseline; gap: 6mm; border-bottom: 1.4px solid #1e3a8a; padding-bottom: 1.8mm; margin-bottom: 3mm; font-size: 8pt; }',
+        '.topo-mini .m1 { font-weight: 800; color: #1e3a8a; text-transform: uppercase; flex: 1 1 auto; min-width: 0; }',
+        '.topo-mini .m2 { color: #475569; flex: 0 0 auto; white-space: nowrap; text-align: right; }',
         /* filtros */
         '.filtros { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 1.5mm; padding: 2mm 3mm; margin-bottom: 3mm; font-size: 8pt; line-height: 1.55; }',
         '.filtros .f-tit { font-size: 7pt; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .6px; margin-bottom: .6mm; }',
