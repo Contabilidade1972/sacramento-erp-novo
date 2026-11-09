@@ -118,6 +118,11 @@
         .mes-card.fechado { background: #f8fafc; border-left: 4px solid var(--danger); }
         .mes-card.aberto { border-left: 4px solid var(--success); }
         .bloqueado { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+        .rep-sint td { font-weight: 800; background: #f8fafc; }
+        .rep-total td { font-weight: 800; background: #eef2ff; border-top: 2px solid var(--secondary); }
+        .rep-sub td { font-weight: 800; background: #f1f5f9; }
+        .rep-ok { color: var(--success); font-weight: 800; } .rep-erro { color: var(--danger); font-weight: 800; }
+        .neg { color: #b91c1c; }
         @media (max-width: 900px) { .linha-part { grid-template-columns: 1fr 1fr; } }
     </style>
 </head>
@@ -132,7 +137,7 @@
 
     <div>
         <div class="page-title"><i class="fas fa-book" style="color:var(--primary);"></i> Escrituração Contábil</div>
-        <div class="page-subtitle">Plano de contas, lançamentos em partidas dobradas e fechamento de períodos</div>
+        <div class="page-subtitle">Plano de contas, lançamentos em partidas dobradas, razão, balancete, DRE, balanço e fechamento de períodos</div>
     </div>
 
     <div class="barra-emp">
@@ -143,6 +148,10 @@
     <div class="abas">
         <button class="aba ativa" data-aba="plano" type="button" onclick="mudarAba('plano')"><i class="fas fa-sitemap"></i> Plano de Contas</button>
         <button class="aba" data-aba="lanc" type="button" onclick="mudarAba('lanc')"><i class="fas fa-pen-to-square"></i> Lançamentos</button>
+        <button class="aba" data-aba="razao" type="button" onclick="mudarAba('razao')"><i class="fas fa-list-ol"></i> Razão</button>
+        <button class="aba" data-aba="bal" type="button" onclick="mudarAba('bal')"><i class="fas fa-scale-balanced"></i> Balancete</button>
+        <button class="aba" data-aba="dre" type="button" onclick="mudarAba('dre')"><i class="fas fa-chart-line"></i> DRE</button>
+        <button class="aba" data-aba="bp" type="button" onclick="mudarAba('bp')"><i class="fas fa-building-columns"></i> Balanço</button>
         <button class="aba" data-aba="per" type="button" onclick="mudarAba('per')"><i class="fas fa-lock"></i> Períodos</button>
     </div>
 
@@ -199,6 +208,70 @@
             </div>
             <div id="resumoDiario" class="dica" style="margin-bottom:10px;"></div>
             <div id="listaLotes"><div class="vazio" style="padding:30px;text-align:center;color:var(--text-light);">Carregando...</div></div>
+        </div>
+    </div>
+
+    <!-- RAZÃO -->
+    <div class="painel-aba" id="aba-razao">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-list-ol" style="color:var(--primary);"></i> Razão analítico</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirRazao()"><i class="fas fa-print"></i> Imprimir</button></div>
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div class="span2" style="grid-column: span 2;"><label for="rConta">Conta</label><input type="text" id="rConta" class="form-control" list="listaTodasContas" placeholder="Código, reduzido ou nome (aceita contas sintéticas)"></div>
+                <div><label for="rIni">De</label><input type="date" id="rIni" class="form-control"></div>
+                <div><label for="rFim">Até</label><input type="date" id="rFim" class="form-control"></div>
+            </div>
+            <datalist id="listaTodasContas"></datalist>
+            <button class="btn-acao" type="button" onclick="gerarRazao()"><i class="fas fa-magnifying-glass"></i> Gerar razão</button>
+            <div id="resRazao" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- BALANCETE -->
+    <div class="painel-aba" id="aba-bal">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-scale-balanced" style="color:var(--primary);"></i> Balancete de verificação</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirBalancete()"><i class="fas fa-print"></i> Imprimir</button></div>
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div><label for="bIni">De</label><input type="date" id="bIni" class="form-control"></div>
+                <div><label for="bFim">Até</label><input type="date" id="bFim" class="form-control"></div>
+                <div><label for="bNivel">Detalhar até</label><select id="bNivel" class="form-control"><option value="2">Grupos (nível 2)</option><option value="3">Subgrupos (nível 3)</option><option value="9" selected>Todas as contas</option></select></div>
+                <div><label for="bZeradas">Contas sem saldo/movimento</label><select id="bZeradas" class="form-control"><option value="0">Ocultar</option><option value="1">Mostrar</option></select></div>
+            </div>
+            <button class="btn-acao" type="button" onclick="gerarBalancete()"><i class="fas fa-magnifying-glass"></i> Gerar balancete</button>
+            <div id="resBal" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- DRE -->
+    <div class="painel-aba" id="aba-dre">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-chart-line" style="color:var(--primary);"></i> Demonstração do Resultado do Exercício (DRE)</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirDre()"><i class="fas fa-print"></i> Imprimir</button></div>
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div><label for="dIni">De</label><input type="date" id="dIni" class="form-control"></div>
+                <div><label for="dFim">Até</label><input type="date" id="dFim" class="form-control"></div>
+                <div style="grid-column: span 2; display:flex; gap:8px;">
+                    <button class="chip" type="button" onclick="periodoDre('mes')">Mês atual</button>
+                    <button class="chip" type="button" onclick="periodoDre('ano')">Ano atual</button>
+                </div>
+            </div>
+            <button class="btn-acao" type="button" onclick="gerarDre()"><i class="fas fa-magnifying-glass"></i> Gerar DRE</button>
+            <div id="resDre" style="margin-top:16px;"></div>
+        </div>
+    </div>
+
+    <!-- BALANÇO -->
+    <div class="painel-aba" id="aba-bp">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-building-columns" style="color:var(--primary);"></i> Balanço Patrimonial</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirBp()"><i class="fas fa-print"></i> Imprimir</button></div>
+            <div class="form-grid" style="margin-bottom:14px;">
+                <div><label for="pData">Posição em</label><input type="date" id="pData" class="form-control"></div>
+                <div><label for="pNivel">Detalhar até</label><select id="pNivel" class="form-control"><option value="3">Subgrupos (nível 3)</option><option value="9" selected>Todas as contas</option></select></div>
+            </div>
+            <button class="btn-acao" type="button" onclick="gerarBp()"><i class="fas fa-magnifying-glass"></i> Gerar balanço</button>
+            <div id="resBp" style="margin-top:16px;"></div>
         </div>
     </div>
 
@@ -263,6 +336,7 @@
         document.querySelectorAll('.aba').forEach(function (b) { b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
         document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
         if (a === 'per') renderMeses();
+        if (['razao','bal','dre','bp'].indexOf(a) > -1) padroesRelatorios();
     }
     async function rpc(fn, args) {
         const r = await sb.rpc(fn, args);
@@ -302,7 +376,13 @@
         sel.value = String(emp);
         if (empresas.length === 1) sel.disabled = true;
     }
-    async function trocarEmpresa() { emp = parseInt(document.getElementById('selEmpresa').value); await carregarTudo(); }
+    async function trocarEmpresa() {
+        emp = parseInt(document.getElementById('selEmpresa').value);
+        ultRazao = ultBal = ultDre = ultBp = null;
+        ['resRazao','resBal','resDre','resBp'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
+        const dl = document.getElementById('listaTodasContas'); if (dl) dl.innerHTML = '';
+        await carregarTudo();
+    }
 
     async function carregarTudo() {
         try {
@@ -576,6 +656,249 @@
     async function reabrirMes(m) {
         if (!confirm('Reabrir ' + m.split('-').reverse().join('/') + '? A reabertura fica registrada no histórico.')) return;
         try { await rpc('contab_reabrir_periodo', { p_cliente: emp, p_competencia: m }); await carregarPeriodos(); renderMeses(); renderDiario(); toast('Mês reaberto.'); } catch (e) { toast(e.message, 'error'); }
+    }
+
+    // ---------- relatórios ----------
+    function primeiroDiaMes() { return mesAtual() + '-01'; }
+    function primeiroDiaAno() { return hojeISO().slice(0, 4) + '-01-01'; }
+    function padroesRelatorios() {
+        [['rIni', primeiroDiaMes()], ['rFim', hojeISO()], ['bIni', primeiroDiaMes()], ['bFim', hojeISO()], ['dIni', primeiroDiaAno()], ['dFim', hojeISO()], ['pData', hojeISO()]]
+            .forEach(function (x) { const el = document.getElementById(x[0]); if (el && !el.value) el.value = x[1]; });
+        const dl = document.getElementById('listaTodasContas');
+        if (dl && !dl.childElementCount) dl.innerHTML = contas.map(function (c) { return '<option value="' + esc(rotuloConta(c)) + '"></option>'; }).join('');
+    }
+    function periodoDre(t) { document.getElementById('dIni').value = t === 'mes' ? primeiroDiaMes() : primeiroDiaAno(); document.getElementById('dFim').value = hojeISO(); gerarDre(); }
+    function n2(v) { return Math.round(Number(v || 0) * 100) / 100; }
+    function sd(v) { v = n2(v); if (v === 0) return '0,00'; return brl(Math.abs(v)) + (v > 0 ? ' D' : ' C'); }   // saldo devedor / credor
+    function vv(v) { v = n2(v); return (v < 0 ? '<span class="neg">(' + brl(Math.abs(v)) + ')</span>' : brl(v)); }
+    function vt(v) { v = n2(v); return v < 0 ? '(' + brl(Math.abs(v)) + ')' : brl(v); }
+    function dataOk(i, f) { if (!i || !f) { toast('Informe as datas.', 'error'); return false; } if (i > f) { toast('A data inicial não pode ser maior que a final.', 'error'); return false; } return true; }
+    function semContas() { if (!contas.length) { toast('Esta empresa ainda não tem plano de contas contábil.', 'info'); return true; } return false; }
+    function perFmt(i, f) { return dataBR(i) + ' a ' + dataBR(f); }
+
+    // --- Razão ---
+    let ultRazao = null;
+    async function gerarRazao() {
+        if (semContas()) return;
+        const c = resolverConta(document.getElementById('rConta').value);
+        if (!c) { toast('Escolha uma conta da lista.', 'error'); return; }
+        const ini = document.getElementById('rIni').value, fim = document.getElementById('rFim').value;
+        if (!dataOk(ini, fim)) return;
+        try {
+            const dados = await rpc('contab_razao', { p_cliente: emp, p_conta: c.id, p_ini: ini, p_fim: fim });
+            ultRazao = { conta: c, ini: ini, fim: fim, linhas: dados || [] };
+            const ls = ultRazao.linhas;
+            const mov = ls.filter(function (l) { return l.ordem > 0; });
+            const td = mov.reduce(function (s, l) { return s + Number(l.debito || 0); }, 0), tc = mov.reduce(function (s, l) { return s + Number(l.credito || 0); }, 0);
+            const saldoFim = ls.length ? Number(ls[ls.length - 1].saldo) : 0;
+            ultRazao.td = td; ultRazao.tc = tc; ultRazao.saldoFim = saldoFim;
+            document.getElementById('resRazao').innerHTML = '<div class="dica" style="margin-bottom:8px;"><b>' + esc(c.codigo + ' - ' + c.descricao) + '</b> · ' + perFmt(ini, fim) + (c.analitica ? '' : ' · conta sintética (soma das filhas)') + '</div>' +
+                '<div class="table-wrap"><table class="tabela"><thead><tr><th>Data</th><th>Nº</th><th>Histórico</th><th class="num">Débito</th><th class="num">Crédito</th><th class="num">Saldo</th></tr></thead><tbody>' +
+                ls.map(function (l) {
+                    return '<tr' + (l.ordem === 0 ? ' class="rep-sub"' : '') + '><td>' + (l.ordem === 0 ? '' : dataBR(l.data)) + '</td><td>' + (l.numero || '') + '</td><td>' + esc(l.historico || '') + (l.complemento ? '<span class="sub">' + esc(l.complemento) + '</span>' : '') + '</td>' +
+                        '<td class="num">' + (l.debito ? brl(l.debito) : '') + '</td><td class="num">' + (l.credito ? brl(l.credito) : '') + '</td><td class="num">' + sd(l.saldo) + '</td></tr>';
+                }).join('') +
+                '<tr class="rep-total"><td colspan="3">TOTAIS DO PERÍODO · saldo final</td><td class="num">' + brl(td) + '</td><td class="num">' + brl(tc) + '</td><td class="num">' + sd(saldoFim) + '</td></tr></tbody></table></div>' +
+                (mov.length ? '' : '<div class="dica" style="margin-top:8px;">Nenhum movimento nesta conta no período.</div>');
+        } catch (e) { toast(e.message, 'error'); }
+    }
+    function imprimirRazao() {
+        if (!ultRazao) { toast('Gere o razão antes de imprimir.', 'info'); return; }
+        const r = ultRazao;
+        ERPPrint.imprimir({
+            titulo: 'Razão Analítico', subtitulo: r.conta.codigo + ' - ' + r.conta.descricao, codigo: 'CTB-RZ', orientacao: 'portrait', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Conta', r.conta.codigo + ' - ' + r.conta.descricao], ['Período', perFmt(r.ini, r.fim)]],
+            resumo: [['Débitos', 'R$ ' + brl(r.td)], ['Créditos', 'R$ ' + brl(r.tc)], ['Saldo final', 'R$ ' + sd(r.saldoFim)]],
+            colunas: [{ t: 'Data', w: 1.1 }, { t: 'Nº', w: .6 }, { t: 'Histórico', w: 4 }, { t: 'Débito', w: 1.5, a: 'right' }, { t: 'Crédito', w: 1.5, a: 'right' }, { t: 'Saldo', w: 1.7, a: 'right' }],
+            linhas: r.linhas.map(function (l) { return { c: [l.ordem === 0 ? '' : dataBR(l.data), l.numero ? String(l.numero) : '', (l.historico || '') + (l.complemento ? ' — ' + l.complemento : ''), l.debito ? brl(l.debito) : '', l.credito ? brl(l.credito) : '', sd(l.saldo)], cls: l.ordem === 0 ? 'destaque' : '' }; }),
+            totais: ['TOTAIS', '', '', brl(r.td), brl(r.tc), sd(r.saldoFim)],
+            observacao: 'Saldo: D = devedor, C = credor.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+
+    // --- Balancete ---
+    let ultBal = null;
+    async function gerarBalancete() {
+        if (semContas()) return;
+        const ini = document.getElementById('bIni').value, fim = document.getElementById('bFim').value;
+        if (!dataOk(ini, fim)) return;
+        const nivel = parseInt(document.getElementById('bNivel').value), zer = document.getElementById('bZeradas').value === '1';
+        try {
+            const dados = (await rpc('contab_balancete', { p_cliente: emp, p_ini: ini, p_fim: fim })) || [];
+            const linhas = dados.filter(function (r) {
+                if (r.nivel > nivel) return false;
+                if (!zer && n2(r.saldo_inicial) === 0 && n2(r.debitos) === 0 && n2(r.creditos) === 0 && n2(r.saldo_final) === 0) return false;
+                return true;
+            });
+            const raiz = dados.filter(function (r) { return r.nivel === 1; });
+            const T = { si: 0, d: 0, c: 0, sf: 0 };
+            raiz.forEach(function (r) { T.si += Number(r.saldo_inicial); T.d += Number(r.debitos); T.c += Number(r.creditos); T.sf += Number(r.saldo_final); });
+            T.si = n2(T.si); T.d = n2(T.d); T.c = n2(T.c); T.sf = n2(T.sf);
+            ultBal = { ini: ini, fim: fim, linhas: linhas, T: T, fecha: T.d === T.c && T.sf === 0 };
+            document.getElementById('resBal').innerHTML = '<div class="dica" style="margin-bottom:8px;">' + perFmt(ini, fim) + ' · ' + linhas.length + ' conta(s) · ' +
+                (ultBal.fecha ? '<span class="rep-ok"><i class="fas fa-circle-check"></i> Balancete fecha: débitos = créditos</span>' : '<span class="rep-erro"><i class="fas fa-triangle-exclamation"></i> Atenção: débitos e créditos não conferem</span>') + '</div>' +
+                '<div class="table-wrap"><table class="tabela"><thead><tr><th>Código</th><th>Conta</th><th class="num">Saldo anterior</th><th class="num">Débitos</th><th class="num">Créditos</th><th class="num">Saldo atual</th></tr></thead><tbody>' +
+                linhas.map(function (r) {
+                    return '<tr class="' + (r.analitica ? '' : 'rep-sint') + '"><td class="cod">' + esc(r.codigo) + '</td><td style="padding-left:' + (14 + (r.nivel - 1) * 16) + 'px;">' + esc(r.descricao) + '</td>' +
+                        '<td class="num">' + sd(r.saldo_inicial) + '</td><td class="num">' + (n2(r.debitos) ? brl(r.debitos) : '') + '</td><td class="num">' + (n2(r.creditos) ? brl(r.creditos) : '') + '</td><td class="num">' + sd(r.saldo_final) + '</td></tr>';
+                }).join('') +
+                '<tr class="rep-total"><td colspan="2">TOTAIS (grupos principais)</td><td class="num">' + sd(T.si) + '</td><td class="num">' + brl(T.d) + '</td><td class="num">' + brl(T.c) + '</td><td class="num">' + sd(T.sf) + '</td></tr></tbody></table></div>';
+        } catch (e) { toast(e.message, 'error'); }
+    }
+    function imprimirBalancete() {
+        if (!ultBal) { toast('Gere o balancete antes de imprimir.', 'info'); return; }
+        const b = ultBal;
+        ERPPrint.imprimir({
+            titulo: 'Balancete de Verificação', subtitulo: perFmt(b.ini, b.fim), codigo: 'CTB-BV', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Período', perFmt(b.ini, b.fim)], ['Detalhe', document.getElementById('bNivel').selectedOptions[0].textContent]],
+            resumo: [['Débitos', 'R$ ' + brl(b.T.d)], ['Créditos', 'R$ ' + brl(b.T.c)], ['Situação', b.fecha ? 'Fecha (D = C)' : 'NÃO CONFERE']],
+            colunas: [{ t: 'Código', w: 1.3 }, { t: 'Conta', w: 5 }, { t: 'Saldo anterior', w: 1.8, a: 'right' }, { t: 'Débitos', w: 1.6, a: 'right' }, { t: 'Créditos', w: 1.6, a: 'right' }, { t: 'Saldo atual', w: 1.8, a: 'right' }],
+            linhas: b.linhas.map(function (r) { return { c: [r.codigo, ' '.repeat((r.nivel - 1) * 3) + r.descricao, sd(r.saldo_inicial), n2(r.debitos) ? brl(r.debitos) : '', n2(r.creditos) ? brl(r.creditos) : '', sd(r.saldo_final)], cls: r.analitica ? '' : 'destaque' }; }),
+            totais: ['TOTAIS', '', sd(b.T.si), brl(b.T.d), brl(b.T.c), sd(b.T.sf)],
+            observacao: 'Saldos: D = devedor, C = credor. Contas sintéticas somam as analíticas.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+
+    // --- DRE ---
+    let ultDre = null;
+    const SECOES_DRE = [
+        { k: 'rb', t: '(+) RECEITA BRUTA', pref: ['3.1'], sinal: 'C' },
+        { k: 'ded', t: '(-) DEDUÇÕES DA RECEITA', pref: ['3.2'], sinal: 'D' },
+        { k: 'rl', t: '(=) RECEITA LÍQUIDA', calc: ['rb', '-ded'] },
+        { k: 'cus', t: '(-) CUSTOS (CSP / CMV)', pref: ['4'], sinal: 'D' },
+        { k: 'lb', t: '(=) LUCRO BRUTO', calc: ['rl', '-cus'] },
+        { k: 'adm', t: '(-) DESPESAS ADMINISTRATIVAS', pref: ['5.1'], sinal: 'D' },
+        { k: 'com', t: '(-) DESPESAS COMERCIAIS', pref: ['5.2'], sinal: 'D' },
+        { k: 'orc', t: '(+) OUTRAS RECEITAS (financeiras e diversas)', pref: ['3.3'], sinal: 'C' },
+        { k: 'fin', t: '(-) DESPESAS FINANCEIRAS', pref: ['5.3'], sinal: 'D' },
+        { k: 'out', t: '(+/-) OUTRAS CONTAS DE RESULTADO (não classificadas acima)', resto: true },
+        { k: 'res', t: '(=) RESULTADO DO PERÍODO', calc: ['lb', '-adm', '-com', 'orc', '-fin', 'out'] }
+    ];
+    function sobPref(cod, prefs) { return prefs.some(function (p) { return cod === p || cod.indexOf(p + '.') === 0; }); }
+    async function gerarDre() {
+        if (semContas()) return;
+        const ini = document.getElementById('dIni').value, fim = document.getElementById('dFim').value;
+        if (!dataOk(ini, fim)) return;
+        try {
+            const dados = (await rpc('contab_balancete', { p_cliente: emp, p_ini: ini, p_fim: fim })) || [];
+            const an = dados.filter(function (r) { return r.analitica && ['receita', 'custo', 'despesa'].indexOf(r.grupo) > -1 && (n2(r.debitos) || n2(r.creditos)); });
+            const usados = {}; const val = {}; const det = {};
+            const todosPref = [];
+            SECOES_DRE.forEach(function (sc) { if (sc.pref) sc.pref.forEach(function (p) { todosPref.push(p); }); });
+            SECOES_DRE.forEach(function (sc) {
+                if (sc.calc) return;
+                let lista;
+                if (sc.resto) lista = an.filter(function (r) { return !sobPref(r.codigo, todosPref); });
+                else lista = an.filter(function (r) { return sobPref(r.codigo, sc.pref); });
+                // valor da conta no resultado: receita (C-D) / despesa (D-C), conforme a natureza da seção
+                det[sc.k] = lista.map(function (r) {
+                    const c = n2(r.creditos) - n2(r.debitos);
+                    let v;
+                    if (sc.resto) v = c;                                    // contribuição já com sinal (receita +, custo/despesa -)
+                    else v = (sc.sinal === 'C') ? c : -c;                   // C: receita (C-D); D: valor positivo (D-C)
+                    return { cod: r.codigo, desc: r.descricao, v: n2(v) };
+                });
+                val[sc.k] = n2(det[sc.k].reduce(function (s, x) { return s + x.v; }, 0));
+            });
+            SECOES_DRE.forEach(function (sc) {
+                if (!sc.calc) return;
+                let t = 0; sc.calc.forEach(function (p) { const neg = p[0] === '-'; const k = neg ? p.slice(1) : p; t += (neg ? -1 : 1) * (val[k] || 0); });
+                val[sc.k] = n2(t);
+            });
+            // conferência: resultado = soma(receitas) - soma(custos+despesas) direto das contas
+            const conf = n2(an.reduce(function (s, r) { return s + (n2(r.creditos) - n2(r.debitos)); }, 0));   // C - D de todas as contas de resultado
+            ultDre = { ini: ini, fim: fim, det: det, val: val, ok: n2(val.res) === conf };
+            const rb = val.rb || 0;
+            const pct = function (v) { return rb ? (n2(v) / rb * 100).toFixed(1).replace('.', ',') + '%' : ''; };
+            let h = '<div class="dica" style="margin-bottom:8px;">' + perFmt(ini, fim) + ' · ' + (ultDre.ok ? '<span class="rep-ok"><i class="fas fa-circle-check"></i> Resultado confere com os lançamentos</span>' : '<span class="rep-erro">Resultado não confere com os lançamentos</span>') + '</div>' +
+                '<div class="table-wrap"><table class="tabela"><thead><tr><th>Descrição</th><th class="num">Valor (R$)</th><th class="num">% da receita bruta</th></tr></thead><tbody>';
+            SECOES_DRE.forEach(function (sc) {
+                if (sc.resto && !(det[sc.k] || []).length) return;
+                const calc = !!sc.calc;
+                h += '<tr class="' + (calc ? 'rep-total' : 'rep-sint') + '"><td>' + esc(sc.t) + '</td><td class="num">' + vv(val[sc.k]) + '</td><td class="num">' + pct(val[sc.k]) + '</td></tr>';
+                (det[sc.k] || []).forEach(function (x) { h += '<tr><td style="padding-left:34px;"><span class="cod">' + esc(x.cod) + '</span> ' + esc(x.desc) + '</td><td class="num">' + vv(x.v) + '</td><td class="num">' + pct(x.v) + '</td></tr>'; });
+            });
+            h += '</tbody></table></div><div class="dica" style="margin-top:8px;">Valores entre parênteses são negativos. A DRE usa apenas o movimento do período informado.</div>';
+            document.getElementById('resDre').innerHTML = h;
+        } catch (e) { toast(e.message, 'error'); }
+    }
+    function imprimirDre() {
+        if (!ultDre) { toast('Gere a DRE antes de imprimir.', 'info'); return; }
+        const d = ultDre, rb = d.val.rb || 0;
+        const pct = function (v) { return rb ? (n2(v) / rb * 100).toFixed(1).replace('.', ',') + '%' : ''; };
+        const linhas = [];
+        SECOES_DRE.forEach(function (sc) {
+            if (sc.resto && !(d.det[sc.k] || []).length) return;
+            linhas.push({ c: [sc.t, vt(d.val[sc.k]), pct(d.val[sc.k])], cls: 'destaque' });
+            (d.det[sc.k] || []).forEach(function (x) { linhas.push(['    ' + x.cod + ' ' + x.desc, vt(x.v), pct(x.v)]); });
+        });
+        ERPPrint.imprimir({
+            titulo: 'Demonstração do Resultado do Exercício', subtitulo: perFmt(d.ini, d.fim), codigo: 'CTB-DRE', orientacao: 'portrait', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Período', perFmt(d.ini, d.fim)]],
+            resumo: [['Receita bruta', 'R$ ' + vt(d.val.rb)], ['Lucro bruto', 'R$ ' + vt(d.val.lb)], ['Resultado do período', 'R$ ' + vt(d.val.res)]],
+            colunas: [{ t: 'Descrição', w: 6 }, { t: 'Valor (R$)', w: 2, a: 'right' }, { t: '% receita bruta', w: 1.5, a: 'right' }],
+            linhas: linhas, totais: null,
+            observacao: 'Valores entre parênteses são negativos. Demonstração gerencial elaborada a partir dos lançamentos contábeis do período.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+
+    // --- Balanço ---
+    let ultBp = null;
+    async function gerarBp() {
+        if (semContas()) return;
+        const data = document.getElementById('pData').value; if (!data) { toast('Informe a data.', 'error'); return; }
+        const nivel = parseInt(document.getElementById('pNivel').value);
+        try {
+            const ini = data.slice(0, 4) + '-01-01';
+            const dados = (await rpc('contab_balancete', { p_cliente: emp, p_ini: ini, p_fim: data })) || [];
+            const sf = function (r) { return n2(r.saldo_final); };
+            const ativo = dados.filter(function (r) { return r.grupo === 'ativo'; });
+            const pas = dados.filter(function (r) { return r.grupo === 'passivo' && r.nivel > 1; });   // a conta raiz "2" soma também o PL; por isso não é exibida aqui
+            const pasTodas = dados.filter(function (r) { return r.grupo === 'passivo'; });
+            const pl = dados.filter(function (r) { return r.grupo === 'patrimonio_liquido'; });
+            const resAn = dados.filter(function (r) { return r.analitica && ['receita', 'custo', 'despesa'].indexOf(r.grupo) > -1; });
+            const resultado = n2(-resAn.reduce(function (s, r) { return s + sf(r); }, 0));     // lucro (+) / prejuízo (-) ainda não apurado
+            const totAtivo = n2(ativo.filter(function (r) { return r.analitica; }).reduce(function (s, r) { return s + sf(r); }, 0));
+            const totPas = n2(-pas.filter(function (r) { return r.analitica; }).reduce(function (s, r) { return s + sf(r); }, 0));
+            const totPl = n2(-pl.filter(function (r) { return r.analitica; }).reduce(function (s, r) { return s + sf(r); }, 0));
+            const totPP = n2(totPas + totPl + resultado);
+            const vis = function (r) { return r.nivel <= nivel && (n2(r.saldo_final) !== 0 || n2(r.debitos) !== 0 || n2(r.creditos) !== 0 || n2(r.saldo_inicial) !== 0); };
+            const sec = function (lista, inv) { return lista.filter(vis).map(function (r) { return { cod: r.codigo, desc: r.descricao, nivel: r.nivel, analitica: r.analitica, v: n2(inv ? -sf(r) : sf(r)) }; }); };
+            ultBp = { data: data, ativo: sec(ativo, false), pas: sec(pas, true), pl: sec(pl, true), resultado: resultado, totAtivo: totAtivo, totPas: totPas, totPl: totPl, totPP: totPP, fecha: totAtivo === totPP };
+            const tabela = function (titulo, linhas, extra, total, rotuloTotal) {
+                let h = '<div class="table-wrap" style="margin-bottom:14px;"><table class="tabela"><thead><tr><th colspan="2">' + titulo + '</th><th class="num">Saldo (R$)</th></tr></thead><tbody>';
+                linhas.forEach(function (x) { h += '<tr class="' + (x.analitica ? '' : 'rep-sint') + '"><td class="cod">' + esc(x.cod) + '</td><td style="padding-left:' + (8 + (x.nivel - 1) * 16) + 'px;">' + esc(x.desc) + '</td><td class="num">' + vv(x.v) + '</td></tr>'; });
+                (extra || []).forEach(function (x) { h += '<tr class="rep-sint"><td></td><td>' + esc(x.desc) + '</td><td class="num">' + vv(x.v) + '</td></tr>'; });
+                return h + '<tr class="rep-total"><td colspan="2">' + rotuloTotal + '</td><td class="num">' + vv(total) + '</td></tr></tbody></table></div>';
+            };
+            document.getElementById('resBp').innerHTML = '<div class="dica" style="margin-bottom:8px;">Posição em ' + dataBR(data) + ' · ' +
+                (ultBp.fecha ? '<span class="rep-ok"><i class="fas fa-circle-check"></i> Balanço fecha: Ativo = Passivo + Patrimônio Líquido</span>' : '<span class="rep-erro"><i class="fas fa-triangle-exclamation"></i> Não fecha: diferença de R$ ' + brl(Math.abs(totAtivo - totPP)) + '</span>') + '</div>' +
+                tabela('ATIVO', ultBp.ativo, null, totAtivo, 'TOTAL DO ATIVO') +
+                tabela('PASSIVO', ultBp.pas, null, totPas, 'TOTAL DO PASSIVO') +
+                tabela('PATRIMÔNIO LÍQUIDO', ultBp.pl, [{ desc: 'Resultado do período ainda não apurado (receitas - custos - despesas)', v: resultado }], n2(totPl + resultado), 'TOTAL DO PATRIMÔNIO LÍQUIDO') +
+                '<div class="table-wrap"><table class="tabela"><tbody><tr class="rep-total"><td>TOTAL DO PASSIVO + PATRIMÔNIO LÍQUIDO</td><td class="num">' + vv(totPP) + '</td></tr></tbody></table></div>';
+        } catch (e) { toast(e.message, 'error'); }
+    }
+    function imprimirBp() {
+        if (!ultBp) { toast('Gere o balanço antes de imprimir.', 'info'); return; }
+        const b = ultBp, linhas = [];
+        const bloco = function (titulo, lista, extra, total) {
+            linhas.push({ c: [titulo, '', ''], cls: 'destaque' });
+            lista.forEach(function (x) { linhas.push({ c: [x.cod, ' '.repeat((x.nivel - 1) * 3) + x.desc, vt(x.v)], cls: x.analitica ? '' : 'destaque' }); });
+            (extra || []).forEach(function (x) { linhas.push(['', x.desc, vt(x.v)]); });
+            linhas.push({ c: ['', 'TOTAL — ' + titulo, vt(total)], cls: 'destaque' });
+        };
+        bloco('ATIVO', b.ativo, null, b.totAtivo);
+        bloco('PASSIVO', b.pas, null, b.totPas);
+        bloco('PATRIMÔNIO LÍQUIDO', b.pl, [{ desc: 'Resultado do período ainda não apurado', v: b.resultado }], n2(b.totPl + b.resultado));
+        ERPPrint.imprimir({
+            titulo: 'Balanço Patrimonial', subtitulo: 'Posição em ' + dataBR(b.data), codigo: 'CTB-BP', orientacao: 'portrait', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Posição em', dataBR(b.data)]],
+            resumo: [['Total do ativo', 'R$ ' + vt(b.totAtivo)], ['Passivo + PL', 'R$ ' + vt(b.totPP)], ['Situação', b.fecha ? 'Fecha' : 'NÃO FECHA']],
+            colunas: [{ t: 'Código', w: 1.4 }, { t: 'Conta', w: 6 }, { t: 'Saldo (R$)', w: 2, a: 'right' }],
+            linhas: linhas, totais: ['TOTAL DO PASSIVO + PL', '', vt(b.totPP)],
+            observacao: 'Valores entre parênteses são negativos (contas redutoras ou prejuízo). Inclui o resultado do período ainda não apurado.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
     }
 
     async function iniciar() {
