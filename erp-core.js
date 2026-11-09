@@ -968,8 +968,31 @@ window.addEventListener('beforeprint', () => {
         document.addEventListener('visibilitychange', function () { if (!document.hidden) checar(); });
     }
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+    function msgAvisos(txt, ok) {
+        var el = document.getElementById('erpMsgAvisos');
+        if (!el) {
+            el = document.createElement('div'); el.id = 'erpMsgAvisos';
+            el.style.cssText = 'position:fixed;top:90px;left:50%;transform:translateX(-50%);z-index:2147483001;color:#fff;border-radius:12px;padding:14px 20px;box-shadow:0 12px 30px rgba(0,0,0,.35);font-family:Inter,Arial,sans-serif;font-size:14px;max-width:560px;line-height:1.5;cursor:pointer;';
+            el.onclick = function () { el.style.display = 'none'; };
+            document.body.appendChild(el);
+        }
+        el.style.background = ok ? '#059669' : '#b45309';
+        el.innerHTML = txt + '<div style="font-size:11.5px;opacity:.85;margin-top:6px;">(clique aqui para fechar)</div>';
+        el.style.display = 'block';
+        clearTimeout(el.__t); el.__t = setTimeout(function () { el.style.display = 'none'; }, 15000);
+    }
     window.erpAtivarAvisosCanal = function () {
-        if (!('Notification' in window)) { alert('Este navegador não suporta notificações.'); return; }
-        Notification.requestPermission().then(function (p) { if (p === 'granted') { try { new Notification('Avisos ativados', { body: 'Você será avisado quando chegar mensagem nova.' }); } catch (e) {} } });
+        if (!('Notification' in window)) { msgAvisos('<b>Este navegador não permite notificações.</b><br>Mesmo assim você continua vendo a janelinha azul e o número no título da aba quando o sistema estiver aberto.', false); return; }
+        var ajuda = '<b>As notificações do navegador estão bloqueadas.</b><br>Para liberar: clique no <b>cadeado</b> ao lado do endereço do site, em <b>Notificações</b> escolha <b>Permitir</b> e recarregue a página (F5).' +
+            '<br><i>Obs.: em janela anônima o Chrome costuma bloquear; use uma janela normal.</i>';
+        if (Notification.permission === 'granted') { try { new Notification('Avisos já estão ativos', { body: 'Você será avisado quando chegar mensagem nova.' }); } catch (e) {} msgAvisos('<b>Avisos já estão ativados</b> neste navegador. Se não viu a notificação de teste, verifique as configurações de notificação do seu sistema.', true); return; }
+        if (Notification.permission === 'denied') { msgAvisos(ajuda, false); return; }
+        var r = Notification.requestPermission(function (p) { fim(p); });
+        if (r && r.then) r.then(fim);
+        function fim(p) {
+            if (p === 'granted') { try { new Notification('Avisos ativados', { body: 'Você será avisado quando chegar mensagem nova.' }); } catch (e) {} msgAvisos('<b>Avisos ativados!</b> Você será notificado quando chegar mensagem nova.', true); }
+            else if (p === 'denied') msgAvisos(ajuda, false);
+            else msgAvisos('Você fechou o pedido sem escolher. Clique em <b>Ativar avisos</b> de novo e depois em <b>Permitir</b>.', false);
+        }
     };
 })();
