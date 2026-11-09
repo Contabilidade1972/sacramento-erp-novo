@@ -900,3 +900,76 @@ window.addEventListener('beforeprint', () => {
     else setTimeout(verificar, 300);
   } catch (e) {}
 })();
+
+/* ===== AVISO DE NOVAS MENSAGENS DO CANAL (contabilidade <-> cliente) =====
+   Em qualquer tela: consulta a cada 30 s quantas mensagens não lidas existem e,
+   se chegou mensagem nova, mostra um aviso flutuante (com som discreto), o contador
+   no título da aba e, se o usuário permitiu, uma notificação do navegador/celular. */
+(function () {
+    var arq = (location.pathname.split('/').pop() || '').toLowerCase();
+    if (arq === 'login.html') return;
+    var u = null;
+    try { u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); } catch (e) {}
+    if (!u) return;
+    var tituloOriginal = document.title, ultimo = null, timer = null;
+
+    function cliente() {
+        if (window.sb) return window.sb;
+        try { if (window.supabase) window.sb = window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'); } catch (e) {}
+        return window.sb || null;
+    }
+    function bip() {
+        try {
+            var A = window.AudioContext || window.webkitAudioContext; if (!A) return;
+            var c = new A(), o = c.createOscillator(), g = c.createGain();
+            o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.08;
+            o.connect(g); g.connect(c.destination); o.start();
+            setTimeout(function () { o.frequency.value = 1175; }, 130);
+            setTimeout(function () { o.stop(); c.close(); }, 300);
+        } catch (e) {}
+    }
+    function mostrar(n, novas) {
+        var el = document.getElementById('erpAvisoCanal');
+        if (!el) {
+            el = document.createElement('div'); el.id = 'erpAvisoCanal';
+            el.style.cssText = 'position:fixed;right:20px;bottom:90px;z-index:2147483000;background:#1e3a8a;color:#fff;border-radius:14px;padding:14px 18px;box-shadow:0 12px 30px rgba(0,0,0,.35);font-family:Inter,Arial,sans-serif;font-size:14px;max-width:340px;cursor:pointer;display:flex;gap:12px;align-items:center;border-left:5px solid #10b981;';
+            el.onclick = function (ev) { if (ev.target && ev.target.id === 'erpAvisoX') { el.style.display = 'none'; return; } location.href = 'canal_contabil.html'; };
+            document.body.appendChild(el);
+        }
+        el.innerHTML = '<i class="fas fa-comments" style="font-size:22px;color:#34d399;"></i><div style="flex:1;"><b>Nova mensagem</b><br><span style="font-size:12.5px;opacity:.9;">' +
+            (n === 1 ? 'Você tem 1 mensagem não lida' : 'Você tem ' + n + ' mensagens não lidas') + ' no canal da contabilidade. Clique para abrir.</span></div>' +
+            '<span id="erpAvisoX" style="font-size:20px;opacity:.7;padding:0 4px;">×</span>';
+        el.style.display = 'flex';
+    }
+    function notificar(n) {
+        try {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            var x = new Notification('Nova mensagem no canal', { body: n === 1 ? 'Você tem 1 mensagem não lida.' : 'Você tem ' + n + ' mensagens não lidas.', tag: 'canal-erp' });
+            x.onclick = function () { window.focus(); location.href = 'canal_contabil.html'; };
+        } catch (e) {}
+    }
+    function checar() {
+        var c = cliente(); if (!c || !c.rpc) return;
+        c.rpc('canal_nao_lidas').then(function (r) {
+            if (!r || r.error) return;
+            var n = Number(r.data) || 0;
+            document.title = n > 0 ? '(' + n + ') ' + tituloOriginal : tituloOriginal;
+            var guardado = parseInt(sessionStorage.getItem('canalUlt') || '0') || 0;
+            var base = ultimo === null ? guardado : ultimo;
+            if (n > base && arq !== 'canal_contabil.html') { mostrar(n); bip(); notificar(n); }
+            try { sessionStorage.setItem('canalUlt', String(n)); } catch (e2) {}
+            if (n === 0) { var e = document.getElementById('erpAvisoCanal'); if (e) e.style.display = 'none'; }
+            ultimo = n;
+        }).catch(function () {});
+    }
+    function iniciar() {
+        setTimeout(checar, 2500);
+        timer = setInterval(function () { if (!document.hidden) checar(); }, 30000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) checar(); });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+    window.erpAtivarAvisosCanal = function () {
+        if (!('Notification' in window)) { alert('Este navegador não suporta notificações.'); return; }
+        Notification.requestPermission().then(function (p) { if (p === 'granted') { try { new Notification('Avisos ativados', { body: 'Você será avisado quando chegar mensagem nova.' }); } catch (e) {} } });
+    };
+})();
