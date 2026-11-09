@@ -121,6 +121,12 @@
 .faixa-alerta.laranja { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
 .import-box { background:#eff6ff; border:1px dashed #93c5fd; border-radius:10px; padding:12px 14px; margin-bottom:16px; font-size:12px; color:#1e3a8a; }
 .form-row { grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+.b-cofre { background:#dbeafe; color:#1e40af; margin-left:6px; }
+.modal-fundo { position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:5000; display:none; align-items:center; justify-content:center; padding:16px; }
+.modal-caixa { background:#fff; border-radius:16px; padding:24px; max-width:520px; width:100%; box-shadow:0 20px 50px rgba(0,0,0,.25); }
+.modal-caixa h3 { color:var(--secondary); font-size:16px; margin-bottom:6px; }
+.modal-caixa p { font-size:12px; color:var(--text-light); line-height:1.6; margin-bottom:14px; }
+.modal-msg { font-size:13px; font-weight:600; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -216,7 +222,24 @@
                 <tbody id="tbodyCert"><tr><td colspan="7" class="empty-state">A carregar...</td></tr></tbody>
             </table>
         </div>
-        <div style="font-size:11px; color:var(--text-light); margin-top:10px;">Esta tela só controla datas e dados públicos do certificado. A senha e a chave privada nunca são guardadas pelo sistema.</div>
+        <div style="font-size:11px; color:var(--text-light); margin-top:10px;">A senha do certificado nunca é guardada pelo sistema. Para certificados A1 você pode guardar o arquivo no cofre (protegido pela senha do próprio certificado) e assinar documentos sem procurar o arquivo a cada vez.</div>
+    </div>
+</div>
+
+<div class="modal-fundo" id="modalCofre">
+    <div class="modal-caixa">
+        <h3><i class="fas fa-key"></i> Guardar certificado A1 no cofre</h3>
+        <p id="cofreTitulo"></p>
+        <p>O arquivo continua protegido pela <strong>senha do próprio certificado</strong>, que o sistema <u>nunca</u> guarda. Aqui ela serve só para conferir, agora, que o arquivo abre e é o certificado certo. Depois, para assinar, basta escolher o certificado na lista e digitar a senha.</p>
+        <label>Arquivo do certificado (.pfx ou .p12) *</label>
+        <input type="file" id="cofreArq" class="form-control" accept=".pfx,.p12">
+        <label>Senha do certificado *</label>
+        <input type="password" id="cofreSenha" class="form-control" autocomplete="new-password" placeholder="Usada apenas para conferir; não é guardada">
+        <div class="modal-msg" id="cofreMsg"></div>
+        <div style="display:flex; gap:10px; justify-content:flex-end;">
+            <button class="btn-secondary" onclick="fecharCofre()">Cancelar</button>
+            <button class="btn-primary" id="btnCofre" onclick="confirmarCofre()"><i class="fas fa-lock"></i> Conferir e guardar</button>
+        </div>
     </div>
 </div>
 
@@ -388,13 +411,23 @@ function renderTabela(){
         var s = situacaoDe(c);
         var tr = document.createElement('tr');
         tr.innerHTML = '<td><strong>' + esc(c.nome_titular) + '</strong><br><small style="color:var(--text-light)">' + esc(c.titular_tipo) + (c.emissor ? ' · ' + esc(c.emissor) : '') + '</small></td>' +
-            '<td>' + esc(fmtDoc(c.cnpj_cpf_titular)) + '</td><td>' + esc(c.tipo) + '</td><td>' + fmtData(c.validade_fim) + '</td>' +
+            '<td>' + esc(fmtDoc(c.cnpj_cpf_titular)) + '</td><td>' + esc(c.tipo) + (c.pfx_path ? '<span class="badge b-cofre" title="Arquivo guardado no cofre"><i class="fas fa-lock"></i> No cofre</span>' : '') + '</td><td>' + fmtData(c.validade_fim) + '</td>' +
             '<td><span class="badge ' + s.classe + '">' + esc(s.rotulo) + '</span></td><td>' + esc(c.local_guarda || '—') + '</td>' +
-            '<td style="text-align:right; white-space:nowrap;"><button class="btn-secondary" style="padding:6px 10px;" title="Editar"><i class="fas fa-edit"></i></button> ' +
-            '<button class="btn-secondary" style="padding:6px 10px; color:var(--danger);" title="Excluir"><i class="fas fa-trash"></i></button></td>';
-        var bts = tr.querySelectorAll('button');
-        bts[0].onclick = function(){ editarCertificado(c.id); };
-        bts[1].onclick = function(){ excluirCertificado(c.id); };
+            '<td style="text-align:right; white-space:nowrap;">' +
+            (c.tipo === 'A1' ? (c.pfx_path
+                ? '<button class="btn-secondary" data-a="tirar" style="padding:6px 10px;" title="Remover o arquivo do cofre"><i class="fas fa-unlock"></i></button> '
+                : '<button class="btn-secondary" data-a="cofre" style="padding:6px 10px; color:var(--primary);" title="Guardar o arquivo .pfx no cofre"><i class="fas fa-key"></i></button> ') : '') +
+            '<button class="btn-secondary" data-a="edit" style="padding:6px 10px;" title="Editar"><i class="fas fa-edit"></i></button> ' +
+            '<button class="btn-secondary" data-a="del" style="padding:6px 10px; color:var(--danger);" title="Excluir"><i class="fas fa-trash"></i></button></td>';
+        tr.querySelectorAll('button').forEach(function(b){
+            var a = b.getAttribute('data-a');
+            b.onclick = function(){
+                if (a === 'edit') editarCertificado(c.id);
+                else if (a === 'del') excluirCertificado(c.id);
+                else if (a === 'cofre') abrirCofre(c.id);
+                else if (a === 'tirar') removerDoCofre(c.id);
+            };
+        });
         tb.appendChild(tr);
     });
 }
@@ -470,9 +503,80 @@ async function salvarCertificado(){
 async function excluirCertificado(id){
     if (!confirm('Excluir este certificado do controle? (Isso não afeta o certificado em si, apenas o cadastro aqui.)')) return;
     var cid = window.clienteIdAtual();
+    var atual = certCache.filter(function(x){ return String(x.id) === String(id); })[0];
     var r = await sb.from('certificados_digitais').delete().eq('id', id).eq('cliente_id', cid);
     if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
+    if (atual && atual.pfx_path) { try { await sb.storage.from(BUCKET_COFRE).remove([atual.pfx_path]); } catch (e) {} }
     toast('Certificado excluído do controle.');
+    carregarCertificados();
+}
+
+// ---------- cofre do certificado A1 ----------
+const BUCKET_COFRE = 'cofre-certificados';
+let cofreId = null;
+function normSerie(v){ return String(v || '').toLowerCase().replace(/[^0-9a-f]/g, '').replace(/^0+/, ''); }
+function lerBinario(file){
+    return new Promise(function(ok, err){ var r = new FileReader(); r.onload = function(){ ok(r.result); }; r.onerror = function(){ err(r.error); }; r.readAsBinaryString(file); });
+}
+function abrirCofre(id){
+    var c = certCache.filter(function(x){ return String(x.id) === String(id); })[0]; if (!c) return;
+    cofreId = c.id;
+    document.getElementById('cofreTitulo').textContent = c.nome_titular + (c.cnpj_cpf_titular ? ' — ' + fmtDoc(c.cnpj_cpf_titular) : '') + ' (válido até ' + fmtData(c.validade_fim) + ')';
+    document.getElementById('cofreArq').value = ''; document.getElementById('cofreSenha').value = '';
+    document.getElementById('cofreMsg').textContent = '';
+    document.getElementById('modalCofre').style.display = 'flex';
+}
+function fecharCofre(){ document.getElementById('modalCofre').style.display = 'none'; document.getElementById('cofreSenha').value = ''; cofreId = null; }
+async function confirmarCofre(){
+    var msg = document.getElementById('cofreMsg'); msg.style.color = '#b91c1c'; msg.textContent = '';
+    var c = certCache.filter(function(x){ return String(x.id) === String(cofreId); })[0]; if (!c) return;
+    var f = document.getElementById('cofreArq').files[0], senha = document.getElementById('cofreSenha').value;
+    if (!f) { msg.textContent = 'Escolha o arquivo .pfx ou .p12.'; return; }
+    if (!/\.(pfx|p12)$/i.test(f.name)) { msg.textContent = 'O arquivo precisa ser .pfx ou .p12.'; return; }
+    if (f.size > 1024 * 1024) { msg.textContent = 'Arquivo grande demais para ser um certificado (máximo 1 MB).'; return; }
+    if (!senha) { msg.textContent = 'Digite a senha do certificado para conferir o arquivo.'; return; }
+    if (typeof forge === 'undefined') { msg.textContent = 'Não foi possível carregar o leitor de certificados. Recarregue a página.'; return; }
+    var cid = window.clienteIdAtual(); if (!cid) { msg.textContent = 'Empresa não identificada. Saia e entre novamente.'; return; }
+    var btn = document.getElementById('btnCofre'); btn.disabled = true;
+    try {
+        var p12;
+        try { p12 = forge.pkcs12.pkcs12FromAsn1(forge.asn1.fromDer(await lerBinario(f)), false, senha); }
+        catch (e) { throw new Error('Não consegui abrir o arquivo. Confira a senha e se é um .pfx/.p12 válido.'); }
+        var chaves = [], certs = [];
+        var k1 = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag })[forge.pki.oids.pkcs8ShroudedKeyBag] || [];
+        k1.concat(p12.getBags({ bagType: forge.pki.oids.keyBag })[forge.pki.oids.keyBag] || []).forEach(function(b){ if (b.key) chaves.push(b.key); });
+        (p12.getBags({ bagType: forge.pki.oids.certBag })[forge.pki.oids.certBag] || []).forEach(function(b){ if (b.cert) certs.push(b.cert); });
+        if (!chaves.length || !chaves[0].n) throw new Error('Este arquivo não contém uma chave privada RSA utilizável.');
+        var meu = certs.filter(function(x){ return x.publicKey && x.publicKey.n && x.publicKey.n.compareTo(chaves[0].n) === 0; })[0];
+        if (!meu) throw new Error('Não encontrei, dentro do arquivo, o certificado que corresponde à chave privada.');
+        if (new Date() > meu.validity.notAfter) throw new Error('Este certificado está vencido (' + meu.validity.notAfter.toLocaleDateString('pt-BR') + '). Não faz sentido guardá-lo.');
+        var cn = nomeCampo(meu.subject.attributes, ['CN']), m = cn.match(/:(\d{11}|\d{14})$/), doc = m ? m[1] : '';
+        var serieCad = normSerie(c.numero_serie), docCad = String(c.cnpj_cpf_titular || '').replace(/\D/g, '');
+        if (serieCad && normSerie(meu.serialNumber) !== serieCad) throw new Error('Este arquivo é de outro certificado: o número de série não confere com o cadastro.');
+        if (!serieCad && docCad && doc && docCad !== doc) throw new Error('Este arquivo é de outro titular: o CNPJ/CPF não confere com o cadastro.');
+        var caminho = cid + '/' + c.id + '.pfx';
+        var up = await sb.storage.from(BUCKET_COFRE).upload(caminho, f, { upsert: true, contentType: 'application/octet-stream' });
+        if (up.error) throw new Error('Não consegui guardar o arquivo: ' + up.error.message);
+        var at = await sb.from('certificados_digitais').update({ pfx_path: caminho, pfx_enviado_em: new Date().toISOString(), atualizado_em: new Date().toISOString() }).eq('id', c.id).eq('cliente_id', cid);
+        if (at.error) { try { await sb.storage.from(BUCKET_COFRE).remove([caminho]); } catch (e2) {} throw new Error('Não consegui registrar o arquivo no cadastro: ' + at.error.message); }
+        fecharCofre();
+        toast('Certificado guardado no cofre. Agora ele aparece na tela de assinatura.');
+        carregarCertificados();
+    } catch (e) {
+        msg.textContent = e.message || String(e);
+        document.getElementById('cofreSenha').value = '';
+    }
+    btn.disabled = false;
+}
+async function removerDoCofre(id){
+    var c = certCache.filter(function(x){ return String(x.id) === String(id); })[0]; if (!c || !c.pfx_path) return;
+    if (!confirm('Remover o arquivo deste certificado do cofre? O cadastro e as datas continuam; para assinar de novo será preciso guardar o arquivo outra vez (ou escolhê-lo no computador).')) return;
+    var cid = window.clienteIdAtual();
+    var rm = await sb.storage.from(BUCKET_COFRE).remove([c.pfx_path]);
+    if (rm.error) { toast('Erro ao remover do cofre: ' + rm.error.message, 'error'); return; }
+    var at = await sb.from('certificados_digitais').update({ pfx_path: null, pfx_enviado_em: null, atualizado_em: new Date().toISOString() }).eq('id', id).eq('cliente_id', cid);
+    if (at.error) { toast('Arquivo removido, mas houve erro ao atualizar o cadastro: ' + at.error.message, 'error'); return; }
+    toast('Arquivo removido do cofre.');
     carregarCertificados();
 }
 
