@@ -85,8 +85,9 @@
         '* { box-sizing: border-box; margin: 0; padding: 0; }',
         'html, body { background: #fff; }',
         'body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; color: #0f172a; font-size: 8.5pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }',
-        '.pagina { position: relative; width: __W__mm; height: __H__mm; padding: 10mm 12mm 0 12mm; overflow: hidden; page-break-after: always; break-after: page; background: #fff; }',
-        '.pagina:last-child { page-break-after: auto; break-after: auto; }',
+        '.pagina { position: relative; width: __W__mm; height: calc(__H__mm - 1mm); padding: 10mm 12mm 0 12mm; overflow: hidden; background: #fff; page-break-inside: avoid; break-inside: avoid; }',
+        '.pagina + .pagina { page-break-before: always; break-before: page; }',
+        'html, body { height: auto; overflow: visible; }',
         /* topo completo (1ª página) */
         '.topo-cheio { border-bottom: 2.2px solid #1e3a8a; padding-bottom: 3.5mm; margin-bottom: 3.5mm; }',
         '.topo-linha { display: flex; justify-content: space-between; align-items: flex-start; gap: 8mm; }',
@@ -124,7 +125,7 @@
         '.obs { margin-top: 3mm; font-size: 7.5pt; color: #475569; border-left: 3px solid #cbd5e1; padding-left: 2.5mm; line-height: 1.5; }',
         '.fim { margin-top: 3mm; text-align: center; font-size: 7pt; color: #94a3b8; letter-spacing: 1.2px; text-transform: uppercase; }',
         /* rodapé */
-        '.rodape { position: absolute; left: 12mm; right: 12mm; bottom: 7mm; border-top: 1px solid #94a3b8; padding-top: 1.6mm; display: flex; justify-content: space-between; gap: 6mm; font-size: 7pt; color: #64748b; }',
+        '.rodape { position: absolute; left: 12mm; right: 12mm; bottom: 6mm; border-top: 1px solid #94a3b8; padding-top: 1.6mm; display: flex; justify-content: space-between; gap: 6mm; font-size: 7pt; color: #64748b; }',
         '.rodape .r-meio { flex: 1; text-align: center; }',
         '.rodape .r-pag { font-weight: 800; color: #0f172a; white-space: nowrap; }',
         '.assin { display: flex; gap: 14mm; margin-top: 16mm; padding: 0 6mm; }',
