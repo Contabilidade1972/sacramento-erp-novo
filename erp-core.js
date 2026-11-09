@@ -997,3 +997,23 @@ window.addEventListener('beforeprint', () => {
         }
     };
 })();
+
+
+/* BOTÃO FLUTUANTE "MÓDULO CONTÁBIL" NAS TELAS DO MÓDULO */
+(function () {
+    var arq = (location.pathname.split('/').pop() || '').toLowerCase();
+    var telas = ['documentos_contabeis.html', 'calendario_fiscal.html', 'acessos_contabilidade.html'];
+    if (telas.indexOf(arq) < 0 && arq.indexOf('apuracao') < 0) return;
+    function criar() {
+        if (document.getElementById('erpVoltarModContabil')) return;
+        var st = document.createElement('style');
+        st.textContent = '#erpVoltarModContabil{position:fixed;left:20px;bottom:24px;z-index:900;background:#1e3a8a;color:#fff;border-radius:999px;padding:12px 20px;font:700 13px Inter,Arial,sans-serif;text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 22px rgba(30,58,138,.4);}#erpVoltarModContabil:hover{background:#172554;}@media print{#erpVoltarModContabil{display:none;}}';
+        document.head.appendChild(st);
+        var a = document.createElement('a');
+        a.id = 'erpVoltarModContabil'; a.href = 'modulo_contabil.html'; a.title = 'Voltar ao Módulo Contábil';
+        a.className = 'no-print';
+        a.innerHTML = '<i class="fas fa-arrow-left"></i> Módulo Contábil';
+        document.body.appendChild(a);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', criar); else criar();
+})();
