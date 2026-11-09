@@ -156,6 +156,7 @@
         <button class="aba" data-aba="bal" type="button" onclick="mudarAba('bal')"><i class="fas fa-scale-balanced"></i> Balancete</button>
         <button class="aba" data-aba="dre" type="button" onclick="mudarAba('dre')"><i class="fas fa-chart-line"></i> DRE</button>
         <button class="aba" data-aba="bp" type="button" onclick="mudarAba('bp')"><i class="fas fa-building-columns"></i> Balanço</button>
+        <button class="aba" data-aba="fin" type="button" onclick="mudarAba('fin')"><i class="fas fa-link"></i> Financeiro</button>
         <button class="aba" data-aba="per" type="button" onclick="mudarAba('per')"><i class="fas fa-lock"></i> Períodos</button>
     </div>
 
@@ -279,6 +280,48 @@
         </div>
     </div>
 
+    <!-- FINANCEIRO → CONTABILIDADE -->
+    <div class="painel-aba" id="aba-fin">
+        <div class="panel">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-link" style="color:var(--primary);"></i> Integração com o Financeiro</span>
+            </div>
+            <div class="dica" style="margin:0 0 14px; font-size:12.5px;">Transforma o que foi <b>pago</b>, <b>recebido</b> e <b>transferido</b> no Financeiro em lançamentos contábeis, na data do pagamento/recebimento. Conta paga: <b>D</b> despesa / <b>C</b> banco. Conta recebida: <b>D</b> banco / <b>C</b> receita. Transferência: <b>D</b> banco destino / <b>C</b> banco origem. Cada título só é lançado uma vez.</div>
+            <div id="finAvisoSemPermissao" class="dica" style="display:none; color:#b45309; font-weight:700; font-size:13px;">Somente quem escritura a contabilidade desta empresa usa esta aba.</div>
+            <div id="finCorpo">
+                <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; margin-bottom:18px;">
+                    <div><label for="finIni">De</label><input type="date" id="finIni" class="form-control" style="width:170px;" onchange="finCarregar()"></div>
+                    <div><label for="finFim">Até</label><input type="date" id="finFim" class="form-control" style="width:170px;" onchange="finCarregar()"></div>
+                    <button class="btn-acao cinza" type="button" onclick="finCarregar()"><i class="fas fa-rotate"></i> Atualizar</button>
+                </div>
+
+                <div class="panel-title" style="margin-bottom:8px;"><span class="t"><i class="fas fa-diagram-project" style="color:var(--primary);"></i> 1) Vínculos (de-para)</span>
+                    <span style="display:flex; gap:8px; flex-wrap:wrap;">
+                        <label style="display:flex; gap:6px; align-items:center; font-size:12px; margin:0; font-weight:600;"><input type="checkbox" id="finTodosVinc" onchange="finRenderMapas()"> mostrar também os já vinculados</label>
+                        <button class="btn-acao btn-mini" type="button" id="btnFinSugerir" onclick="finSugerir()"><i class="fas fa-wand-magic-sparkles"></i> Sugerir vínculos</button>
+                    </span>
+                </div>
+                <div class="dica" style="margin:0 0 8px;">Diga a qual conta do plano contábil corresponde cada <b>banco/caixa</b>, cada <b>categoria de despesa</b> e cada <b>categoria de receita</b> usada no Financeiro. Digite o código, o nome ou escolha na lista. Só contas analíticas.</div>
+                <div class="table-wrap"><table class="tabela"><thead><tr><th>Tipo</th><th>Nome no Financeiro</th><th class="num">Movimentos</th><th style="min-width:340px;">Conta contábil</th></tr></thead><tbody id="finTbMapas"><tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
+
+                <div class="panel-title" style="margin:26px 0 8px;"><span class="t"><i class="fas fa-list-check" style="color:var(--primary);"></i> 2) Movimentos a lançar</span>
+                    <span style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <span id="finResumo" class="dica" style="margin:0; font-weight:700;"></span>
+                        <button class="btn-acao sucesso" type="button" id="btnFinGerar" onclick="finGerar()" style="display:none;"><i class="fas fa-bolt"></i> Gerar lançamentos</button>
+                    </span>
+                </div>
+                <div id="finErros" style="display:none; margin-bottom:10px; background:#fef2f2; border:1px solid #fecaca; color:#991b1b; padding:12px 16px; border-radius:12px; font-size:12.5px;"></div>
+                <div class="table-wrap"><table class="tabela"><thead><tr><th>Data</th><th>Tipo</th><th>Histórico</th><th class="num">Valor</th><th>Débito</th><th>Crédito</th></tr></thead><tbody id="finTbItens"><tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Carregando...</td></tr></tbody></table></div>
+
+                <div id="finBoxDiverg" style="display:none; margin-top:26px;">
+                    <div class="panel-title" style="margin-bottom:8px;"><span class="t"><i class="fas fa-triangle-exclamation" style="color:#b45309;"></i> 3) Lançamentos que mudaram no Financeiro</span></div>
+                    <div class="dica" style="margin:0 0 8px;">Estes lançamentos vieram do Financeiro, mas o título foi alterado, desfeito ou excluído depois. Exclua o lançamento; se o título ainda estiver pago, ele volta para a lista acima já com o valor correto.</div>
+                    <div class="table-wrap"><table class="tabela"><thead><tr><th>Data</th><th>Nº</th><th>Histórico</th><th class="num">Valor lançado</th><th></th></tr></thead><tbody id="finTbDiverg"></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- PERÍODOS -->
     <div class="painel-aba" id="aba-per">
         <div class="panel">
@@ -340,6 +383,7 @@
         document.querySelectorAll('.aba').forEach(function (b) { b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
         document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
         if (a === 'per') renderMeses();
+        if (a === 'fin') finIniciar();
         if (['razao','bal','dre','bp'].indexOf(a) > -1) padroesRelatorios();
     }
     async function rpc(fn, args) {
@@ -384,6 +428,7 @@
         emp = parseInt(document.getElementById('selEmpresa').value);
         ultRazao = ultBal = ultDre = ultBp = null;
         ['resRazao','resBal','resDre','resBp'].forEach(function (id) { document.getElementById(id).innerHTML = ''; });
+        finDados = null;
         const dl = document.getElementById('listaTodasContas'); if (dl) dl.innerHTML = '';
         await carregarTudo();
     }
@@ -903,6 +948,135 @@
             linhas: linhas, totais: ['TOTAL DO PASSIVO + PL', '', vt(b.totPP)],
             observacao: 'Valores entre parênteses são negativos (contas redutoras ou prejuízo). Inclui o resultado do período ainda não apurado.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
         });
+    }
+
+
+    // ---------- integração com o financeiro ----------
+    let finDados = null;
+    const FIN_TIPOS = { banco: 'Banco / Caixa', despesa: 'Despesa', receita: 'Receita' };
+    const FIN_MOV = { pagar: 'Conta paga', receber: 'Conta recebida', transf: 'Transferência' };
+    function finNorm(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim(); }
+    function finNomeConta(id) { const c = mapaId[id]; return c ? (c.codigo + ' - ' + c.descricao) : '—'; }
+    function finIniciar() {
+        if (!document.getElementById('finIni').value) {
+            const d = new Date(), a = d.getFullYear(), m = d.getMonth();
+            document.getElementById('finIni').value = a + '-' + String(m + 1).padStart(2, '0') + '-01';
+            document.getElementById('finFim').value = a + '-' + String(m + 1).padStart(2, '0') + '-' + String(new Date(a, m + 1, 0).getDate()).padStart(2, '0');
+        }
+        finCarregar();
+    }
+    async function finCarregar() {
+        document.getElementById('finAvisoSemPermissao').style.display = podeEditar ? 'none' : 'block';
+        document.getElementById('finCorpo').style.display = podeEditar ? '' : 'none';
+        if (!podeEditar) return;
+        const ini = document.getElementById('finIni').value, fim = document.getElementById('finFim').value;
+        if (!ini || !fim || ini > fim) { toast('Confira as datas do período.', 'error'); return; }
+        try {
+            finDados = await rpc('contab_fin_pendentes', { p_cliente: emp, p_ini: ini, p_fim: fim });
+            finRender();
+        } catch (err) { toast('Erro ao ler o Financeiro: ' + (err.message || err), 'error'); }
+    }
+    function finRender() { finRenderMapas(); finRenderItens(); finRenderDiverg(); }
+    function finRenderMapas() {
+        const todos = document.getElementById('finTodosVinc').checked;
+        const mapas = (finDados.mapas || []);
+        const lista = mapas.map(function (m, i) { return { m: m, i: i }; }).filter(function (x) { return todos || !x.m.conta_id; });
+        const tb = document.getElementById('finTbMapas');
+        if (!mapas.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-light);">Nenhum banco ou categoria encontrado no Financeiro desta empresa.</td></tr>'; return; }
+        if (!lista.length) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--success); font-weight:700;"><i class="fas fa-circle-check"></i> Todos os bancos e categorias deste período já estão vinculados.</td></tr>'; return; }
+        tb.innerHTML = lista.map(function (x) {
+            const m = x.m, ok = !!m.conta_id;
+            const val = ok && mapaId[m.conta_id] ? rotuloConta(mapaId[m.conta_id]) : '';
+            return '<tr><td><span class="badge-st" style="background:' + (ok ? '#dcfce7;color:#166534' : '#fef3c7;color:#92400e') + ';">' + FIN_TIPOS[m.tipo] + '</span></td>' +
+                '<td><b>' + esc(m.rotulo || m.chave) + '</b></td><td class="num">' + (m.qtd || 0) + '</td>' +
+                '<td><input type="text" class="form-control" list="listaContas" value="' + esc(val) + '" placeholder="Digite o código, o nome ou escolha..." onchange="finSalvarMapa(' + x.i + ', this)"></td></tr>';
+        }).join('');
+    }
+    async function finSalvarMapa(i, el) {
+        const m = finDados.mapas[i]; if (!m) return;
+        const txt = el.value.trim();
+        let conta = null;
+        if (txt) {
+            conta = resolverConta(txt);
+            if (!conta) { toast('Conta não encontrada. Escolha uma conta da lista.', 'error'); el.value = m.conta_id && mapaId[m.conta_id] ? rotuloConta(mapaId[m.conta_id]) : ''; return; }
+            if (!conta.analitica || !conta.ativa) { toast('Escolha uma conta analítica e ativa.', 'error'); el.value = ''; return; }
+        }
+        try {
+            await rpc('contab_depara_salvar', { p_cliente: emp, p_tipo: m.tipo, p_chave: m.chave, p_rotulo: m.rotulo, p_conta: conta ? conta.id : null });
+            toast(conta ? 'Vínculo salvo.' : 'Vínculo removido.');
+            await finCarregar();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    async function finSugerir() {
+        const analit = contas.filter(function (c) { return c.analitica && c.ativa; });
+        let feitos = 0;
+        for (const m of (finDados.mapas || [])) {
+            if (m.conta_id) continue;
+            const nome = finNorm(m.rotulo || m.chave); let alvo = null;
+            if (m.tipo === 'banco') {
+                const eh = /caixa/.test(nome);
+                alvo = analit.find(function (c) { return c.grupo === 'ativo' && finNorm(c.descricao) === nome; }) ||
+                       analit.find(function (c) { return c.grupo === 'ativo' && c.codigo.indexOf('1.1.1') === 0 && finNorm(c.descricao).indexOf(eh ? 'caixa' : 'banco') === 0; });
+            } else {
+                const gr = m.tipo === 'despesa' ? ['despesa', 'custo'] : ['receita'];
+                alvo = analit.find(function (c) { return gr.indexOf(c.grupo) > -1 && finNorm(c.descricao) === nome; });
+            }
+            if (!alvo) continue;
+            try { await rpc('contab_depara_salvar', { p_cliente: emp, p_tipo: m.tipo, p_chave: m.chave, p_rotulo: m.rotulo, p_conta: alvo.id }); feitos++; } catch (e) {}
+        }
+        toast(feitos ? (feitos + ' vínculo(s) sugerido(s). Confira e ajuste se precisar.') : 'Não achei correspondência automática. Vincule manualmente.', feitos ? 'success' : 'error');
+        await finCarregar();
+    }
+    function finRenderItens() {
+        const it = finDados.itens || [];
+        const prontos = it.filter(function (x) { return x.pronto; });
+        const total = prontos.reduce(function (s, x) { return s + Number(x.valor || 0); }, 0);
+        document.getElementById('finResumo').innerHTML = prontos.length + ' pronto(s) para lançar (R$ ' + brl(total) + ') · ' + (it.length - prontos.length) + ' aguardando vínculo · ' + (finDados.lancados || 0) + ' já lançado(s)';
+        const bt = document.getElementById('btnFinGerar');
+        bt.style.display = prontos.length ? '' : 'none';
+        bt.innerHTML = '<i class="fas fa-bolt"></i> Gerar ' + prontos.length + ' lançamento(s)';
+        const tb = document.getElementById('finTbItens');
+        if (!it.length) { tb.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-light);">Nada novo do Financeiro neste período (tudo já lançado ou sem movimento pago/recebido).</td></tr>'; return; }
+        tb.innerHTML = it.map(function (x) {
+            const falta = '<span style="color:#b45309; font-weight:700;">falta vincular</span>';
+            let deb, cre;
+            if (x.tipo === 'receber') { deb = x.conta_banco ? finNomeConta(x.conta_banco) : falta + ' (' + esc(x.banco || 'sem conta') + ')'; cre = x.conta_outra ? finNomeConta(x.conta_outra) : falta + ' (' + esc(x.outra || 'sem categoria') + ')'; }
+            else if (x.tipo === 'pagar') { deb = x.conta_outra ? finNomeConta(x.conta_outra) : falta + ' (' + esc(x.outra || 'sem categoria') + ')'; cre = x.conta_banco ? finNomeConta(x.conta_banco) : falta + ' (' + esc(x.banco || 'sem conta') + ')'; }
+            else { deb = x.conta_outra ? finNomeConta(x.conta_outra) : falta + ' (' + esc(x.outra) + ')'; cre = x.conta_banco ? finNomeConta(x.conta_banco) : falta + ' (' + esc(x.banco) + ')'; }
+            return '<tr><td>' + dataBR(x.data) + '</td><td>' + FIN_MOV[x.tipo] + '</td><td>' + esc(x.historico) + '</td><td class="num">' + brl(x.valor) + '</td><td>' + deb + '</td><td>' + cre + '</td></tr>';
+        }).join('');
+    }
+    function finRenderDiverg() {
+        const d = finDados.divergentes || [];
+        document.getElementById('finBoxDiverg').style.display = d.length ? '' : 'none';
+        document.getElementById('finTbDiverg').innerHTML = d.map(function (x) {
+            return '<tr><td>' + dataBR(x.data) + '</td><td>' + x.numero + '</td><td>' + esc(x.historico) + '</td><td class="num">' + brl(x.valor) + '</td>' +
+                '<td style="text-align:right;"><button class="btn-acao btn-mini perigo" type="button" onclick="finExcluirDiverg(' + x.lote_id + ')"><i class="fas fa-trash"></i> Excluir lançamento</button></td></tr>';
+        }).join('');
+    }
+    async function finExcluirDiverg(id) {
+        if (!confirm('Excluir este lançamento? Se o título ainda estiver pago no Financeiro, ele volta para a lista de "Movimentos a lançar".')) return;
+        try { await rpc('contab_excluir_lote', { p_cliente: emp, p_lote: id }); toast('Lançamento excluído.'); await finCarregar(); try { await carregarDiario(); } catch (e) {} }
+        catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    async function finGerar() {
+        const n = (finDados.itens || []).filter(function (x) { return x.pronto; }).length;
+        if (!n) return;
+        const ini = document.getElementById('finIni').value, fim = document.getElementById('finFim').value;
+        if (!confirm('Gerar ' + n + ' lançamento(s) contábil(eis) do Financeiro, de ' + dataBR(ini) + ' a ' + dataBR(fim) + '?')) return;
+        const bt = document.getElementById('btnFinGerar'); bt.disabled = true;
+        try {
+            const r = await rpc('contab_fin_contabilizar', { p_cliente: emp, p_ini: ini, p_fim: fim });
+            const er = document.getElementById('finErros');
+            if (r.erros && r.erros.length) {
+                er.style.display = 'block';
+                er.innerHTML = '<b>' + r.erros.length + ' item(ns) não foram lançados:</b><br>' + r.erros.map(function (e) { return '• ' + esc(e.historico) + ' — ' + esc(e.erro); }).join('<br>');
+            } else er.style.display = 'none';
+            toast(r.gerados + ' lançamento(s) gerado(s).' + ((r.erros && r.erros.length) ? ' Alguns não foram lançados (veja o aviso).' : ''), (r.erros && r.erros.length) ? 'error' : 'success');
+            await finCarregar();
+            try { await carregarDiario(); } catch (e) {}
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+        finally { bt.disabled = false; }
     }
 
     async function iniciar() {
