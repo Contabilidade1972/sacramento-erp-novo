@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v7.1: campos de busca/filtro não são mais preenchidos com o e-mail do login (autocomplete off + limpeza contínua)
     - v7.0: AVISO DE CERTIFICADO DIGITAL VENCIDO / A VENCER no topo de todas as páginas (+ rota de busca)
     - v6.9: ASSISTENTE DE IA (chat de ajuda) — carrega assistente-ia.js
     - v6.8: GUARDA DE SESSÃO REAL (login do Supabase + código de 6 números para o Master) em todas as páginas
@@ -373,15 +374,16 @@
 
     var filtroLimpo = false;
     function limparFiltroEmail(forcar) {
-        if (filtroLimpo && !forcar) return;
         var u = usuario();
-        if (!u || !u.email) return;
-        var email = String(u.email).toLowerCase().trim();
+        var email = (u && u.email) ? String(u.email).toLowerCase().trim() : '';
         var campos = document.querySelectorAll('input[type="text"], input[type="search"], input:not([type])');
         var limpou = false;
         for (var i = 0; i < campos.length; i++) {
             var inp = campos[i];
+            // v7.1: impede o navegador (Chrome) de preencher campos de busca/filtro com o e-mail do login
+            if (inp.getAttribute('autocomplete') !== 'off') inp.setAttribute('autocomplete', 'off');
             if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue;
+            if (!email || inp === document.activeElement) continue; // nunca apaga o que a pessoa está digitando
             var val = (inp.value || '').toLowerCase().trim();
             if (val && val.indexOf(email) > -1) {
                 inp.value = '';
@@ -471,8 +473,10 @@
         var timerFiltro = setInterval(function () {
             limparFiltroEmail(false);
             tentFiltro++;
-            if (tentFiltro > 60) clearInterval(timerFiltro);
+            if (tentFiltro > 600) clearInterval(timerFiltro);
         }, 500);
+        window.addEventListener('pageshow', function () { limparFiltroEmail(true); });
+        window.addEventListener('focus', function () { limparFiltroEmail(true); });
 
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
