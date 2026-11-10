@@ -383,9 +383,13 @@
             // v7.1: impede o navegador (Chrome) de preencher campos de busca/filtro com o e-mail do login
             if (inp.getAttribute('autocomplete') !== 'off') inp.setAttribute('autocomplete', 'off');
             if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue;
-            if (!email || inp === document.activeElement) continue; // nunca apaga o que a pessoa está digitando
+            if (inp === document.activeElement) continue; // nunca apaga o que a pessoa está digitando
             var val = (inp.value || '').toLowerCase().trim();
-            if (val && val.indexOf(email) > -1) {
+            // v7.1: além do e-mail do login salvo, limpa qualquer e-mail que o navegador tenha colocado em CAMPO DE BUSCA/FILTRO
+            var pista = ((inp.id || '') + ' ' + (inp.name || '') + ' ' + (inp.placeholder || '') + ' ' + (inp.className || '')).toLowerCase();
+            var ehBusca = /busc|filtr|pesquis|search|procur/.test(pista) || !!(inp.closest && inp.closest('[class*="filtro"],[class*="filter"],[id*="filtro"],[id*="filter"]'));
+            var ehEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+            if (val && ((email && val.indexOf(email) > -1) || (ehBusca && ehEmail))) {
                 inp.value = '';
                 inp.dispatchEvent(new Event('input', { bubbles: true }));
                 inp.dispatchEvent(new Event('change', { bubbles: true }));
