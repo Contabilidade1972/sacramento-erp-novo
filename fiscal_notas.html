@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notas Fiscais (XML) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: none; }
+        .btn-acao.perigo:hover { background: #dc2626; }
+        .btn-acao.alerta { background: #dc2626; box-shadow: none; }
+        .btn-acao.alerta:hover { background: #b91c1c; }
+        .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-mini { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
+
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .contexto { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; padding: 12px 16px; border-radius: 12px; font-size: 13px; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+        .contexto.alerta { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        textarea.form-control { height: 74px; padding: 10px 14px; resize: vertical; }
+        input[type="file"].form-control { padding: 8px 10px; height: auto; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: flex-end; }
+        .form-grid .span2 { grid-column: span 2; } .form-grid .span4 { grid-column: span 4; }
+        .filtros-box { display: grid; grid-template-columns: 1fr 1.2fr 1.2fr 1.4fr 1.6fr auto; gap: 14px; align-items: flex-end; background: var(--bg); padding: 18px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 16px; }
+        .atalhos { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+        .chip { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 999px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .chip:hover { background: var(--bg); }
+        .chip.ativo { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+        .dica { font-size: 11.5px; color: var(--text-light); margin-top: 6px; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
+        .st-enviado { background: #dbeafe; color: #1e40af; } .st-recebido { background: #fef3c7; color: #92400e; }
+        .st-contabilizado { background: #dcfce7; color: #166534; } .st-pendente_correcao { background: #fee2e2; color: #991b1b; }
+        .sentido { font-size: 11.5px; font-weight: 700; color: var(--secondary); white-space: nowrap; }
+        .acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px; }
+        .modal-box { background: #fff; width: 100%; max-width: 480px; border-radius: 14px; padding: 22px; box-shadow: 0 20px 40px rgba(0,0,0,.25); display: flex; flex-direction: column; gap: 14px; }
+        .modal-box h3 { font-size: 16px; font-weight: 800; color: var(--secondary); }
+
+        .pend-nota { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; border-radius: 10px; padding: 12px 14px; font-size: 13.5px; color: #7f1d1d; white-space: pre-line; line-height: 1.5; }
+        .pend-quem { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 4px; text-transform: uppercase; letter-spacing: .3px; }
+        .pend-hist { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 12px; color: var(--text-light); white-space: pre-line; max-height: 140px; overflow: auto; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .filtros-box { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr 1fr; } .form-grid .span4 { grid-column: span 2; } }
+        @media (max-width: 600px) { .kpi-grid, .filtros-box, .form-grid { grid-template-columns: 1fr; } .form-grid .span2, .form-grid .span4 { grid-column: span 1; } }
+    
+        .abas { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 2px solid var(--border); }
+        .aba { background: none; border: none; padding: 11px 18px; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; display: flex; gap: 8px; align-items: center; }
+        .aba:hover { color: var(--primary); }
+        .aba.ativa { color: var(--primary); border-bottom-color: var(--primary); }
+        .painel-aba { display: none; flex-direction: column; gap: 18px; }
+        .painel-aba.ativa { display: flex; }
+        .barra-emp { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; }
+        .barra-emp .f { min-width: 260px; flex: 1; }
+        .t-sint td { font-weight: 800; background: #f8fafc; }
+        .t-inativa td { opacity: .5; }
+        .cod { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+        .tag { display: inline-block; font-size: 9.5px; font-weight: 800; text-transform: uppercase; padding: 2px 7px; border-radius: 5px; letter-spacing: .3px; }
+        .tag.s { background: #e0e7ff; color: #3730a3; } .tag.a { background: #dcfce7; color: #166534; } .tag.d { background: #fef3c7; color: #92400e; } .tag.c { background: #dbeafe; color: #1e40af; }
+        .tag.f { background: #fee2e2; color: #991b1b; } .tag.ab { background: #dcfce7; color: #166534; }
+        .linha-part { display: grid; grid-template-columns: 2.6fr 90px 1.1fr 1.6fr 40px; gap: 10px; align-items: center; margin-bottom: 8px; }
+        .tot-part { display: flex; gap: 22px; flex-wrap: wrap; font-size: 13px; font-weight: 700; padding: 10px 14px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); align-items: center; }
+        .tot-part .ok { color: var(--success); } .tot-part .erro { color: var(--danger); }
+        .lote { border: 1px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; background: #fff; }
+        .lote-topo { display: flex; justify-content: space-between; gap: 12px; padding: 11px 16px; background: var(--bg); cursor: pointer; flex-wrap: wrap; align-items: center; }
+        .lote-topo b { color: var(--secondary); }
+        .lote-corpo { display: none; padding: 4px 16px 12px; }
+        .lote.aberto .lote-corpo { display: block; }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .mes-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .mes-card.fechado { background: #f8fafc; border-left: 4px solid var(--danger); }
+        .mes-card.aberto { border-left: 4px solid var(--success); }
+        .bloqueado { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+        .btn-voltar-fixo { position: fixed; left: 20px; bottom: 24px; z-index: 900; background: var(--secondary); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 22px rgba(30,58,138,.4); }
+        .btn-voltar-fixo:hover { background: var(--primary-dark); }
+        @media print { .btn-voltar-fixo { display: none; } }
+        .guia { background: linear-gradient(135deg,#eff6ff,#f0fdf4); border: 1px solid #bfdbfe; border-radius: 16px; padding: 20px 22px; }
+        .guia h3 { font-size: 16px; color: var(--secondary); display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; margin: 0; }
+        .guia .guia-intro { font-size: 13.5px; line-height: 1.6; color: var(--text-main); margin: 12px 0 14px; }
+        .guia-passos { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+        .gp { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+        .gp.ok { border-color: #86efac; background: #f0fdf4; }
+        .gp .gp-t { font-weight: 800; font-size: 13px; color: var(--secondary); display: flex; gap: 8px; align-items: flex-start; }
+        .gp .gp-t i { margin-top: 2px; }
+        .gp .gp-d { font-size: 12.3px; color: var(--text-light); line-height: 1.5; flex: 1; }
+        .gp button { align-self: flex-start; }
+        .ajuda-aba { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; }
+        .ajuda-aba > .ah { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; font-weight: 800; font-size: 13.5px; color: #92400e; }
+        .ajuda-aba .ac { font-size: 13px; line-height: 1.6; color: #451a03; margin-top: 10px; }
+        .ajuda-aba .ac p { margin: 0 0 8px; }
+        .ajuda-aba .ac ul { margin: 4px 0 8px 18px; }
+        .ajuda-aba .ac li { margin-bottom: 4px; }
+        .ajuda-aba .ex { background: #fff; border: 1px dashed #f59e0b; border-radius: 10px; padding: 9px 12px; margin: 6px 0 8px; font-size: 12.5px; }
+        .ajuda-aba .cu { background: #fee2e2; color: #7f1d1d; border-radius: 10px; padding: 8px 12px; font-size: 12.5px; }
+        .dic-item { border-bottom: 1px solid var(--border); padding: 10px 2px; }
+        .dic-item b { color: var(--secondary); font-size: 13.5px; }
+        .dic-item div { font-size: 12.8px; color: var(--text-main); line-height: 1.55; margin-top: 3px; }
+        @media print { .guia, .ajuda-aba { display: none !important; } }
+        .rep-sint td { font-weight: 800; background: #f8fafc; }
+        .rep-total td { font-weight: 800; background: #eef2ff; border-top: 2px solid var(--secondary); }
+        .rep-sub td { font-weight: 800; background: #f1f5f9; }
+        .rep-ok { color: var(--success); font-weight: 800; } .rep-erro { color: var(--danger); font-weight: 800; }
+        .neg { color: #b91c1c; }
+        @media (max-width: 900px) { .linha-part { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<a href="modulo_contabil.html" class="btn-voltar-fixo no-print" title="Voltar ao Módulo Contábil"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+        <a href="contabilidade.html" class="btn-acao cinza"><i class="fas fa-book"></i> Escrituração Contábil</a>
+        <a href="canal_contabil.html" class="btn-acao cinza"><i class="fas fa-comments"></i> Canal com Clientes</a>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-file-invoice" style="color:var(--primary);"></i> Notas Fiscais (XML)</div>
+        <div class="page-subtitle">Importe os XML das notas de venda e de compra (NF-e e NFS-e), confira as notas do mês e veja o resumo para a apuração dos impostos</div>
+    </div>
+
+    <div class="barra-emp">
+        <div class="f"><label for="selEmpresa">Empresa</label><select id="selEmpresa" class="form-control" onchange="trocarEmpresa()"></select></div>
+        <div id="infoPerm" class="dica" style="flex:2; min-width:260px;"></div>
+    </div>
+
+    <div class="abas">
+        <button class="aba ativa" data-aba="imp" type="button" onclick="mudarAba('imp')"><i class="fas fa-file-import"></i> Importar XML</button>
+        <button class="aba" data-aba="notas" type="button" onclick="mudarAba('notas')"><i class="fas fa-list"></i> Notas</button>
+        <button class="aba" data-aba="res" type="button" onclick="mudarAba('res')"><i class="fas fa-chart-column"></i> Resumo mensal</button>
+    </div>
+
+    <!-- IMPORTAR -->
+    <div class="painel-aba ativa" id="aba-imp">
+        <div class="ajuda-aba no-print" id="ajImp">
+            <div class="ah" onclick="var c=document.getElementById('ajImpC');c.style.display=c.style.display==='none'?'':'none';"><span><i class="fas fa-circle-question"></i> Como importar as notas?</span><i class="fas fa-chevron-down"></i></div>
+            <div class="ac" id="ajImpC">
+                <p><b>XML</b> é o arquivo da nota fiscal eletrônica (o mesmo que o cliente ou o fornecedor envia por e-mail, ou que se baixa no portal da prefeitura/SEFAZ). O PDF (DANFE) <b>não</b> serve: é preciso o arquivo .xml.</p>
+                <ul>
+                    <li><b>1.</b> Confira a <b>empresa</b> no topo da tela.</li>
+                    <li><b>2.</b> Clique em <b>Escolher arquivos</b> e selecione vários XML de uma vez (NF-e, NFS-e, vendas e compras podem vir misturados).</li>
+                    <li><b>3.</b> O sistema lê cada arquivo e mostra uma prévia. Ele descobre sozinho se a nota é <b>de venda (saída)</b> ou <b>de compra (entrada)</b> pelo CNPJ da empresa. Se o CNPJ não bater, você escolhe.</li>
+                    <li><b>4.</b> Notas que já foram importadas aparecem como <b>Já importada</b> e não são repetidas.</li>
+                    <li><b>5.</b> Clique em <b>Importar notas selecionadas</b>. Depois veja a aba <b>Notas</b> e o <b>Resumo mensal</b>.</li>
+                </ul>
+                <p class="dica">Por enquanto o sistema só guarda e soma as notas. A apuração do imposto e o lançamento contábil vêm nas próximas etapas.</p>
+            </div>
+        </div>
+
+        <div class="panel" id="painelUpload">
+            <div class="panel-title"><span class="t"><i class="fas fa-file-code" style="color:var(--primary);"></i> Escolher os arquivos XML</span></div>
+            <div class="form-grid">
+                <div class="span2"><label for="arqXml">Arquivos XML (pode selecionar vários)</label><input type="file" id="arqXml" class="form-control" accept=".xml,text/xml,application/xml" multiple onchange="lerArquivos(this.files)"></div>
+                <div><label for="forcarDir">Quando o CNPJ não bater</label>
+                    <select id="forcarDir" class="form-control" onchange="aplicarForcado()">
+                        <option value="">Eu escolho em cada nota</option>
+                        <option value="saida">Tratar todas como VENDA (saída)</option>
+                        <option value="entrada">Tratar todas como COMPRA (entrada)</option>
+                    </select></div>
+                <div><button class="btn-acao cinza" type="button" onclick="limparPrevia()"><i class="fas fa-eraser"></i> Limpar prévia</button></div>
+            </div>
+        </div>
+
+        <div class="panel" id="painelPrevia" style="display:none;">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-eye" style="color:var(--primary);"></i> Prévia da importação</span>
+                <button class="btn-acao sucesso" type="button" id="btnImportar" onclick="importarSelecionadas()"><i class="fas fa-check"></i> Importar notas selecionadas</button>
+            </div>
+            <div id="resumoPrevia" class="dica" style="margin-bottom:10px;"></div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th></th><th>Arquivo</th><th>Tipo</th><th>Nº</th><th>Data</th><th>Quem emitiu</th><th>Para quem</th><th class="num">Valor</th><th>É uma…</th><th>Situação</th></tr></thead>
+                <tbody id="tbPrevia"></tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <!-- NOTAS -->
+    <div class="painel-aba" id="aba-notas">
+        <div class="kpi-grid">
+            <div class="kpi-card azul"><div class="kpi-title">Notas no filtro</div><div class="kpi-value" id="kNotas">0</div><div class="kpi-sub" id="kNotasSub"></div></div>
+            <div class="kpi-card verde"><div class="kpi-title">Vendas / serviços prestados</div><div class="kpi-value" id="kSaidas">R$ 0,00</div><div class="kpi-sub">notas de saída</div></div>
+            <div class="kpi-card amarelo"><div class="kpi-title">Compras / serviços tomados</div><div class="kpi-value" id="kEntradas">R$ 0,00</div><div class="kpi-sub">notas de entrada</div></div>
+            <div class="kpi-card vermelho"><div class="kpi-title">Impostos destacados</div><div class="kpi-value" id="kImp">R$ 0,00</div><div class="kpi-sub">ICMS + ISS nas notas</div></div>
+        </div>
+        <div class="panel">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Notas importadas</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirNotas()"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+            <div class="filtros-box" style="grid-template-columns: 1fr 1fr 1fr 2fr; margin-bottom:14px;">
+                <div><label for="fMesNota">Mês</label><input type="month" id="fMesNota" class="form-control" onchange="renderNotas()"></div>
+                <div><label for="fDirNota">Tipo</label><select id="fDirNota" class="form-control" onchange="renderNotas()"><option value="">Todas</option><option value="saida">Vendas / serviços prestados (saída)</option><option value="entrada">Compras / serviços tomados (entrada)</option></select></div>
+                <div><label for="fModNota">Modelo</label><select id="fModNota" class="form-control" onchange="renderNotas()"><option value="">Todos</option><option value="nfe">NF-e (produtos)</option><option value="nfse">NFS-e (serviços)</option></select></div>
+                <div><label for="fBuscaNota">Buscar nota</label><input type="text" id="fBuscaNota" class="form-control" autocomplete="off" placeholder="Número, nome ou CNPJ..." oninput="renderNotas()"></div>
+            </div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Data</th><th>Modelo</th><th>Tipo</th><th>Nº</th><th>Cliente / Fornecedor</th><th class="num">Valor</th><th class="num">Imposto</th><th>Situação</th><th></th></tr></thead>
+                <tbody id="tbNotas"></tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <!-- RESUMO -->
+    <div class="painel-aba" id="aba-res">
+        <div class="panel">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-chart-column" style="color:var(--primary);"></i> Resumo mensal das notas</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirResumo()"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+            <p class="dica" style="margin-bottom:12px;">Notas canceladas não entram na soma. As vendas somadas aqui são a base para o cálculo do Simples Nacional (próxima etapa).</p>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Mês</th><th class="num">Notas de saída</th><th class="num">Mercadorias</th><th class="num">Serviços</th><th class="num">Total vendido</th><th class="num">Notas de entrada</th><th class="num">Total comprado</th><th class="num">ICMS</th><th class="num">ISS</th></tr></thead>
+                <tbody id="tbResumo"></tbody>
+            </table></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modalItens"><div class="modal-box" style="max-width:760px;">
+    <h3 id="itensTitulo">Itens da nota</h3>
+    <div class="table-wrap"><table class="tabela"><thead><tr><th>#</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Total</th></tr></thead><tbody id="tbItens"></tbody></table></div>
+    <div style="display:flex; justify-content:flex-end;"><button class="btn-acao cinza" type="button" onclick="document.getElementById('modalItens').style.display='none'">Fechar</button></div>
+</div></div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    let U = {}, ehMaster = false, meuId = 0;
+    let empresas = [], emp = 0, podeEditar = false;
+    let notas = [];            // notas já importadas da empresa atual
+    let existentes = {};       // dedup -> true
+    let previa = [];           // arquivos lidos, aguardando importação
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function toast(msg, type) {
+        type = type || 'success';
+        const c = document.getElementById('toastContainer');
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 8000 : 3500);
+    }
+    function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function dataBR(d) { return d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'; }
+    function soDig(s) { return String(s || '').replace(/\D/g, ''); }
+    function fmtDoc(d) {
+        d = soDig(d);
+        if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+        if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+        return d;
+    }
+    function nomeEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? e.nome : ('Empresa ' + emp); }
+    function cnpjEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? (e.cnpj || '') : ''; }
+    async function rpc(fn, args) {
+        const r = await sb.rpc(fn, args);
+        if (r.error) throw new Error(r.error.message);
+        return r.data;
+    }
+    function mudarAba(a) {
+        document.querySelectorAll('.aba').forEach(function (b) { b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
+        document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
+        if (a === 'notas') renderNotas();
+        if (a === 'res') renderResumo();
+    }
+
+    // ---------- contexto (mesma regra da Escrituração) ----------
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        let ativa = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) ativa = parseInt(sel); }
+        meuId = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : ativa;
+        let ids = [];
+        if (ehMaster) {
+            const r = await sb.from('clientes_contratantes').select('id').order('id');
+            ids = ((r && r.data) || []).map(function (x) { return x.id; });
+            emp = ativa;
+        } else {
+            ids = [meuId];
+            const rv = await sb.from('vinculos_contador').select('empresa_cliente_id, status, pode_visualizar, pode_contabilizar').eq('contador_cliente_id', meuId);
+            ((rv && rv.data) || []).forEach(function (v) {
+                if (String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_contabilizar) ids.push(parseInt(v.empresa_cliente_id));
+            });
+            emp = meuId;
+        }
+        ids = ids.filter(function (v, i, a) { return a.indexOf(v) === i; });
+        const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia, cnpj').in('id', ids);
+        const nomes = {};
+        ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = { nome: e.nome_fantasia || e.razao_social || ('Empresa ' + e.id), cnpj: e.cnpj || '' }; });
+        empresas = ids.map(function (id) { return { id: id, nome: (nomes[id] && nomes[id].nome) || ('Empresa ' + id), cnpj: (nomes[id] && nomes[id].cnpj) || '' }; });
+        if (!ehMaster && ativa !== meuId && ids.indexOf(ativa) > -1) emp = ativa;
+        if (!empresas.some(function (e) { return e.id === emp; })) emp = empresas[0].id;
+        const sel = document.getElementById('selEmpresa');
+        sel.innerHTML = empresas.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nome) + (e.id === meuId ? ' (minha empresa)' : '') + '</option>'; }).join('');
+        sel.value = String(emp);
+        if (empresas.length === 1) sel.disabled = true;
+    }
+    async function trocarEmpresa() {
+        emp = parseInt(document.getElementById('selEmpresa').value);
+        limparPrevia();
+        await carregarTudo();
+    }
+    async function carregarTudo() {
+        try {
+            try { podeEditar = !!(await rpc('contab_pode', { p_cliente: emp })); } catch (e) { podeEditar = false; }
+            document.getElementById('infoPerm').innerHTML = podeEditar
+                ? '<i class="fas fa-circle-check" style="color:var(--success);"></i> Você pode <b>importar e excluir</b> notas desta empresa. CNPJ: <b>' + esc(fmtDoc(cnpjEmp()) || 'não cadastrado') + '</b>'
+                : '<i class="fas fa-eye" style="color:var(--warning);"></i> Somente <b>consulta</b>: a importação é feita pela contabilidade.';
+            document.getElementById('painelUpload').style.display = podeEditar ? '' : 'none';
+            await carregarNotas();
+            renderNotas(); renderResumo();
+            if (previa.length) renderPrevia();
+        } catch (err) { toast('Erro ao carregar: ' + (err.message || err), 'error'); }
+    }
+    async function carregarNotas() {
+        const cols = 'id,modelo,direcao,dedup,numero,serie,data_emissao,competencia,emitente_cnpj,emitente_nome,parceiro_cnpj,parceiro_nome,natureza,valor_total,valor_produtos,valor_servicos,valor_icms,valor_iss,iss_retido,situacao,arquivo';
+        let out = [];
+        for (let ini = 0; ini < 100000; ini += 1000) {
+            const r = await sb.from('fiscal_notas').select(cols).eq('cliente_id', emp).order('data_emissao', { ascending: false }).range(ini, ini + 999);
+            if (r.error) throw r.error;
+            out = out.concat(r.data || []);
+            if (!r.data || r.data.length < 1000) break;
+        }
+        notas = out; existentes = {};
+        notas.forEach(function (n) { existentes[n.dedup] = true; });
+    }
+
+    // ---------- leitura do XML ----------
+    function eAll(root, nome) { return root ? Array.prototype.slice.call(root.getElementsByTagNameNS('*', nome)) : []; }
+    function eFirst(root, nome) { const l = root ? root.getElementsByTagNameNS('*', nome) : []; return l.length ? l[0] : null; }
+    function eTxt(root, nome) { const e = eFirst(root, nome); return e ? String(e.textContent || '').trim() : ''; }
+    function num(v) { const n = parseFloat(String(v || '').replace(',', '.')); return isNaN(n) ? 0 : n; }
+    function docDe(root) { return soDig(eTxt(root, 'CNPJ') || eTxt(root, 'Cnpj') || eTxt(root, 'CPF') || eTxt(root, 'Cpf')); }
+
+    // Lê UM arquivo e devolve { erro } ou { notas: [ {...} ] } (um arquivo pode trazer várias notas)
+    function lerXml(texto, nomeArq) {
+        const doc = new DOMParser().parseFromString(texto, 'application/xml');
+        if (doc.getElementsByTagName('parsererror').length) return { erro: 'Arquivo não é um XML válido.' };
+        const lista = [];
+
+        const infNFe = eAll(doc, 'infNFe');
+        const infNacional = eAll(doc, 'infNFSe');
+        const infAbrasf = eAll(doc, 'InfNfse');
+
+        if (infNFe.length) {
+            infNFe.forEach(function (inf) {
+                const ide = eFirst(inf, 'ide'), emit = eFirst(inf, 'emit'), dest = eFirst(inf, 'dest'), tot = eFirst(inf, 'ICMSTot');
+                let chave = String(inf.getAttribute('Id') || '').replace(/^NFe/i, '');
+                if (!chave) chave = eTxt(doc, 'chNFe');
+                const dh = eTxt(ide, 'dhEmi') || eTxt(ide, 'dEmi');
+                const cStat = eTxt(doc, 'cStat');
+                const itens = eAll(inf, 'det').map(function (d, i) {
+                    const p = eFirst(d, 'prod');
+                    return { descricao: eTxt(p, 'xProd'), ncm: eTxt(p, 'NCM'), cfop: eTxt(p, 'CFOP'), quantidade: num(eTxt(p, 'qCom')), valor_unitario: num(eTxt(p, 'vUnCom')), valor_total: num(eTxt(p, 'vProd')) };
+                });
+                lista.push({
+                    modelo: 'nfe', dedup: chave || ('nfe:' + docDe(emit) + ':' + eTxt(ide, 'nNF') + ':' + eTxt(ide, 'serie')), chave: chave,
+                    numero: eTxt(ide, 'nNF'), serie: eTxt(ide, 'serie'), data_emissao: dh.slice(0, 10),
+                    emit: { doc: docDe(emit), nome: eTxt(emit, 'xNome') }, outro: { doc: docDe(dest), nome: eTxt(dest, 'xNome') || (dest ? '' : 'Consumidor final') },
+                    natureza: eTxt(ide, 'natOp'), cfop: itens.length ? itens[0].cfop : '',
+                    valor_total: num(eTxt(tot, 'vNF')), valor_produtos: num(eTxt(tot, 'vProd')), valor_servicos: 0,
+                    valor_icms: num(eTxt(tot, 'vICMS')), valor_ipi: num(eTxt(tot, 'vIPI')), valor_pis: num(eTxt(tot, 'vPIS')), valor_cofins: num(eTxt(tot, 'vCOFINS')), valor_iss: 0, iss_retido: false,
+                    situacao: (cStat && ['101', '135', '151', '155'].indexOf(cStat) > -1) ? 'cancelada' : 'autorizada', itens: itens
+                });
+            });
+        } else if (infNacional.length) {
+            infNacional.forEach(function (inf) {
+                const emit = eFirst(inf, 'emit'), dps = eFirst(inf, 'infDPS') || inf, toma = eFirst(dps, 'toma');
+                const num_ = eTxt(inf, 'nNFSe') || eTxt(dps, 'nDPS');
+                const dh = eTxt(dps, 'dhEmi') || eTxt(inf, 'dhProc') || eTxt(dps, 'dCompet');
+                const vserv = num(eTxt(dps, 'vServ')) || num(eTxt(inf, 'vLiq'));
+                const ret = eTxt(dps, 'tpRetISSQN');
+                lista.push({
+                    modelo: 'nfse', dedup: 'nfse:' + docDe(emit) + ':' + num_, chave: '', numero: num_, serie: eTxt(dps, 'serie'), data_emissao: dh.slice(0, 10),
+                    emit: { doc: docDe(emit), nome: eTxt(emit, 'xNome') }, outro: { doc: docDe(toma), nome: eTxt(toma, 'xNome') },
+                    natureza: eTxt(dps, 'xDescServ'), cfop: '',
+                    valor_total: vserv, valor_produtos: 0, valor_servicos: vserv, valor_icms: 0, valor_ipi: 0, valor_pis: 0, valor_cofins: 0,
+                    valor_iss: num(eTxt(inf, 'vISSQN')), iss_retido: ret === '2' || ret === '3', situacao: 'autorizada',
+                    itens: [{ descricao: eTxt(dps, 'xDescServ'), ncm: '', cfop: '', quantidade: 1, valor_unitario: vserv, valor_total: vserv }]
+                });
+            });
+        } else if (infAbrasf.length) {
+            infAbrasf.forEach(function (inf) {
+                const prest = eFirst(inf, 'PrestadorServico') || eFirst(inf, 'Prestador');
+                const toma = eFirst(inf, 'TomadorServico') || eFirst(inf, 'Tomador');
+                const serv = eFirst(inf, 'Servico');
+                const num_ = eTxt(inf, 'Numero');
+                const vserv = num(eTxt(serv, 'ValorServicos')) || num(eTxt(inf, 'ValorServicos')) || num(eTxt(inf, 'ValorLiquidoNfse'));
+                const iss = num(eTxt(serv, 'ValorIss')) || num(eTxt(inf, 'ValorIss'));
+                const desc = eTxt(serv, 'Discriminacao') || eTxt(inf, 'Discriminacao');
+                lista.push({
+                    modelo: 'nfse', dedup: 'nfse:' + docDe(prest) + ':' + num_, chave: '', numero: num_, serie: '', data_emissao: eTxt(inf, 'DataEmissao').slice(0, 10),
+                    emit: { doc: docDe(prest), nome: eTxt(prest, 'RazaoSocial') || eTxt(prest, 'NomeFantasia') }, outro: { doc: docDe(toma), nome: eTxt(toma, 'RazaoSocial') },
+                    natureza: desc, cfop: '', valor_total: vserv, valor_produtos: 0, valor_servicos: vserv, valor_icms: 0, valor_ipi: 0, valor_pis: 0, valor_cofins: 0,
+                    valor_iss: iss, iss_retido: (eTxt(serv, 'IssRetido') || eTxt(inf, 'IssRetido')) === '1', situacao: 'autorizada',
+                    itens: [{ descricao: desc, ncm: '', cfop: '', quantidade: 1, valor_unitario: vserv, valor_total: vserv }]
+                });
+            });
+        } else if (eFirst(doc, 'procEventoNFe') || eFirst(doc, 'evento') || eFirst(doc, 'retEvento')) {
+            return { erro: 'Este arquivo é um evento (ex.: cancelamento), não uma nota. Importe o XML da própria nota.' };
+        } else {
+            return { erro: 'Formato não reconhecido. Use o XML da NF-e ou da NFS-e.' };
+        }
+        for (let i = 0; i < lista.length; i++) {
+            const n = lista[i];
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(n.data_emissao)) return { erro: 'Não encontrei a data de emissão da nota ' + (n.numero || '') + '.' };
+        }
+        return { notas: lista };
+    }
+
+    // ---------- prévia ----------
+    function detectarDir(n) {
+        const e = soDig(cnpjEmp());
+        if (!e) return '';
+        if (n.emit.doc === e) return 'saida';
+        if (n.outro.doc === e) return 'entrada';
+        return '';
+    }
+    async function lerArquivos(files) {
+        if (!files || !files.length) return;
+        const novos = [];
+        for (let i = 0; i < files.length; i++) {
+            const f = files[i];
+            let texto = '';
+            try { texto = await f.text(); } catch (e) { novos.push({ arquivo: f.name, erro: 'Não consegui ler o arquivo.' }); continue; }
+            const r = lerXml(texto, f.name);
+            if (r.erro) { novos.push({ arquivo: f.name, erro: r.erro }); continue; }
+            r.notas.forEach(function (n) {
+                n.arquivo = f.name; n.xml = texto;
+                const auto = detectarDir(n);
+                novos.push({ arquivo: f.name, nota: n, dir: auto, auto: !!auto });
+            });
+        }
+        // evita a mesma nota duas vezes na prévia
+        const vistos = {}; previa.forEach(function (p) { if (p.nota) vistos[p.nota.dedup] = true; });
+        novos.forEach(function (p) {
+            if (p.nota) { if (vistos[p.nota.dedup]) { p.repetidaNaPrevia = true; } vistos[p.nota.dedup] = true; }
+            p.incluir = !!p.nota && !p.repetidaNaPrevia && !existentes[p.nota.dedup];
+        });
+        previa = previa.concat(novos);
+        document.getElementById('arqXml').value = '';
+        aplicarForcado(true);
+        renderPrevia();
+    }
+    function aplicarForcado(silencioso) {
+        const f = document.getElementById('forcarDir').value;
+        if (f) previa.forEach(function (p) { if (p.nota && !p.auto) p.dir = f; });
+        if (!silencioso) renderPrevia();
+    }
+    function limparPrevia() { previa = []; document.getElementById('painelPrevia').style.display = 'none'; const a = document.getElementById('arqXml'); if (a) a.value = ''; }
+    function situacaoPrevia(p) {
+        if (!p.nota) return '<span class="badge-st st-pendente_correcao">' + esc(p.erro) + '</span>';
+        if (p.repetidaNaPrevia) return '<span class="badge-st st-recebido">Repetida na prévia</span>';
+        if (existentes[p.nota.dedup]) return '<span class="badge-st st-recebido">Já importada</span>';
+        if (!p.dir) return '<span class="badge-st st-pendente_correcao">Escolha: venda ou compra</span>';
+        if (p.nota.situacao === 'cancelada') return '<span class="badge-st st-recebido">Cancelada</span>';
+        return '<span class="badge-st st-contabilizado">Nova</span>';
+    }
+    function renderPrevia() {
+        document.getElementById('painelPrevia').style.display = previa.length ? '' : 'none';
+        const tb = document.getElementById('tbPrevia');
+        tb.innerHTML = previa.map(function (p, i) {
+            if (!p.nota) return '<tr><td></td><td>' + esc(p.arquivo) + '</td><td colspan="8">' + situacaoPrevia(p) + '</td></tr>';
+            const n = p.nota, dup = !!existentes[n.dedup] || p.repetidaNaPrevia;
+            return '<tr' + (dup ? ' style="opacity:.6;"' : '') + '>' +
+                '<td><input type="checkbox" ' + (p.incluir ? 'checked ' : '') + (dup ? 'disabled ' : '') + 'onchange="previa[' + i + '].incluir=this.checked;resumoPrevia()"></td>' +
+                '<td>' + esc(p.arquivo) + '</td><td>' + (n.modelo === 'nfe' ? 'NF-e' : 'NFS-e') + '</td><td>' + esc(n.numero) + '</td><td>' + dataBR(n.data_emissao) + '</td>' +
+                '<td>' + esc(n.emit.nome) + '<span class="sub">' + esc(fmtDoc(n.emit.doc)) + '</span></td>' +
+                '<td>' + esc(n.outro.nome) + '<span class="sub">' + esc(fmtDoc(n.outro.doc)) + '</span></td>' +
+                '<td class="num">' + brl(n.valor_total) + '</td>' +
+                '<td><select class="form-control" style="height:34px;min-width:150px;" ' + (dup ? 'disabled ' : '') + 'onchange="previa[' + i + '].dir=this.value;previa[' + i + '].auto=true;renderPrevia()">' +
+                    '<option value=""' + (!p.dir ? ' selected' : '') + '>— escolher —</option>' +
+                    '<option value="saida"' + (p.dir === 'saida' ? ' selected' : '') + '>Venda (saída)</option>' +
+                    '<option value="entrada"' + (p.dir === 'entrada' ? ' selected' : '') + '>Compra (entrada)</option></select>' +
+                    (!p.auto && p.dir ? '<span class="sub" style="color:#b45309;">CNPJ não bate com a empresa</span>' : '') + '</td>' +
+                '<td>' + situacaoPrevia(p) + '</td></tr>';
+        }).join('');
+        resumoPrevia();
+    }
+    function resumoPrevia() {
+        const sel = previa.filter(function (p) { return p.nota && p.incluir; });
+        const semDir = sel.filter(function (p) { return !p.dir; }).length;
+        const erros = previa.filter(function (p) { return !p.nota; }).length;
+        const jaTem = previa.filter(function (p) { return p.nota && (existentes[p.nota.dedup] || p.repetidaNaPrevia); }).length;
+        document.getElementById('resumoPrevia').innerHTML = '<b>' + previa.filter(function (p) { return p.nota; }).length + '</b> nota(s) lida(s) · <b>' + sel.length + '</b> selecionada(s) · ' + jaTem + ' já importada(s) · ' + erros + ' arquivo(s) com problema' +
+            (semDir ? ' · <b style="color:#b91c1c;">' + semDir + ' sem tipo escolhido (venda ou compra)</b>' : '');
+        document.getElementById('btnImportar').disabled = !sel.length || semDir > 0;
+    }
+    async function importarSelecionadas() {
+        const sel = previa.filter(function (p) { return p.nota && p.incluir && p.dir && !existentes[p.nota.dedup]; });
+        if (!sel.length) { toast('Nenhuma nota selecionada.', 'info'); return; }
+        const btn = document.getElementById('btnImportar'); btn.disabled = true;
+        try {
+            let ok = 0, rep = 0;
+            for (let i = 0; i < sel.length; i += 50) {
+                const lote = sel.slice(i, i + 50).map(function (p) {
+                    const n = p.nota, saida = p.dir === 'saida', outro = saida ? n.outro : n.emit;
+                    return { modelo: n.modelo, direcao: p.dir, dedup: n.dedup, chave: n.chave, numero: n.numero, serie: n.serie, data_emissao: n.data_emissao,
+                        emitente_cnpj: n.emit.doc, emitente_nome: n.emit.nome, parceiro_cnpj: outro.doc, parceiro_nome: outro.nome, natureza: n.natureza, cfop: n.cfop,
+                        valor_total: n.valor_total, valor_produtos: n.valor_produtos, valor_servicos: n.valor_servicos, valor_icms: n.valor_icms, valor_ipi: n.valor_ipi,
+                        valor_pis: n.valor_pis, valor_cofins: n.valor_cofins, valor_iss: n.valor_iss, iss_retido: n.iss_retido, situacao: n.situacao,
+                        arquivo: n.arquivo, xml: n.xml, itens: n.itens };
+                });
+                const r = await rpc('fiscal_importar_notas', { p_cliente: emp, p_notas: lote });
+                ok += (r && r.importadas) || 0; rep += (r && r.repetidas) || 0;
+            }
+            toast(ok + ' nota(s) importada(s)' + (rep ? ' · ' + rep + ' já existiam' : '') + '.');
+            limparPrevia();
+            await carregarNotas(); renderNotas(); renderResumo();
+            mudarAba('notas');
+        } catch (err) { toast('Erro ao importar: ' + (err.message || err), 'error'); }
+        finally { btn.disabled = false; }
+    }
+
+    // ---------- lista de notas ----------
+    function notasFiltradas() {
+        const mes = document.getElementById('fMesNota').value, dir = document.getElementById('fDirNota').value, mod = document.getElementById('fModNota').value;
+        const q = document.getElementById('fBuscaNota').value.toLowerCase().trim(), qd = soDig(q);
+        return notas.filter(function (n) {
+            if (mes && n.competencia !== mes) return false;
+            if (dir && n.direcao !== dir) return false;
+            if (mod && n.modelo !== mod) return false;
+            if (q) {
+                const t = ((n.numero || '') + ' ' + (n.parceiro_nome || '') + ' ' + (n.emitente_nome || '')).toLowerCase();
+                if (t.indexOf(q) < 0 && !(qd && (soDig(n.parceiro_cnpj).indexOf(qd) > -1 || soDig(n.emitente_cnpj).indexOf(qd) > -1))) return false;
+            }
+            return true;
+        });
+    }
+    function impostoNota(n) { return Number(n.valor_icms || 0) + Number(n.valor_iss || 0); }
+    function renderNotas() {
+        const l = notasFiltradas(), ativas = l.filter(function (n) { return n.situacao !== 'cancelada'; });
+        let s = 0, e = 0, imp = 0;
+        ativas.forEach(function (n) { if (n.direcao === 'saida') s += Number(n.valor_total); else e += Number(n.valor_total); imp += impostoNota(n); });
+        document.getElementById('kNotas').textContent = l.length;
+        document.getElementById('kNotasSub').textContent = (l.length - ativas.length) ? (l.length - ativas.length) + ' cancelada(s) fora das somas' : 'todas válidas';
+        document.getElementById('kSaidas').textContent = 'R$ ' + brl(s);
+        document.getElementById('kEntradas').textContent = 'R$ ' + brl(e);
+        document.getElementById('kImp').textContent = 'R$ ' + brl(imp);
+        document.getElementById('tbNotas').innerHTML = l.length ? l.map(function (n) {
+            return '<tr><td>' + dataBR(n.data_emissao) + '</td><td>' + (n.modelo === 'nfe' ? 'NF-e' : 'NFS-e') + '</td>' +
+                '<td><span class="sentido">' + (n.direcao === 'saida' ? '<i class="fas fa-arrow-up" style="color:#059669;"></i> Venda' : '<i class="fas fa-arrow-down" style="color:#d97706;"></i> Compra') + '</span></td>' +
+                '<td>' + esc(n.numero) + '</td><td>' + esc(n.parceiro_nome) + '<span class="sub">' + esc(fmtDoc(n.parceiro_cnpj)) + (n.natureza ? ' · ' + esc(String(n.natureza).slice(0, 60)) : '') + '</span></td>' +
+                '<td class="num">' + brl(n.valor_total) + '</td><td class="num">' + brl(impostoNota(n)) + '</td>' +
+                '<td>' + (n.situacao === 'cancelada' ? '<span class="badge-st st-pendente_correcao">Cancelada</span>' : '<span class="badge-st st-contabilizado">Autorizada</span>') + '</td>' +
+                '<td><div class="acoes"><button class="btn-acao btn-mini cinza" type="button" title="Ver itens" onclick="verItens(' + n.id + ')"><i class="fas fa-list-ul"></i></button>' +
+                '<button class="btn-acao btn-mini cinza" type="button" title="Baixar XML" onclick="baixarXml(' + n.id + ')"><i class="fas fa-download"></i></button>' +
+                (podeEditar ? '<button class="btn-acao btn-mini perigo" type="button" title="Excluir nota" onclick="excluirNota(' + n.id + ')"><i class="fas fa-trash"></i></button>' : '') + '</div></td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma nota. Use a aba <b>Importar XML</b>.</td></tr>';
+    }
+    async function verItens(id) {
+        const n = notas.find(function (x) { return x.id === id; });
+        const r = await sb.from('fiscal_itens').select('*').eq('nota_id', id).order('seq');
+        document.getElementById('itensTitulo').textContent = (n && n.modelo === 'nfe' ? 'NF-e ' : 'NFS-e ') + (n ? n.numero : '') + ' — itens';
+        document.getElementById('tbItens').innerHTML = ((r && r.data) || []).map(function (i) {
+            return '<tr><td>' + i.seq + '</td><td>' + esc(i.descricao) + '</td><td>' + esc(i.ncm) + '</td><td>' + esc(i.cfop) + '</td><td class="num">' + brl(i.quantidade) + '</td><td class="num">' + brl(i.valor_unitario) + '</td><td class="num">' + brl(i.valor_total) + '</td></tr>';
+        }).join('') || '<tr><td colspan="7">Sem itens.</td></tr>';
+        document.getElementById('modalItens').style.display = 'flex';
+    }
+    async function baixarXml(id) {
+        const r = await sb.from('fiscal_notas').select('xml, numero, modelo').eq('id', id).single();
+        if (r.error || !r.data || !r.data.xml) { toast('XML não disponível.', 'error'); return; }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([r.data.xml], { type: 'application/xml' }));
+        a.download = (r.data.modelo || 'nota') + '_' + (r.data.numero || id) + '.xml';
+        document.body.appendChild(a); a.click(); a.remove();
+    }
+    async function excluirNota(id) {
+        const n = notas.find(function (x) { return x.id === id; });
+        if (!confirm('Excluir a nota ' + (n ? n.numero : '') + ' desta empresa? Isso não apaga a nota na SEFAZ/prefeitura, só tira do sistema.')) return;
+        try { await rpc('fiscal_excluir_nota', { p_cliente: emp, p_id: id }); toast('Nota excluída.'); await carregarNotas(); renderNotas(); renderResumo(); }
+        catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+
+    // ---------- resumo mensal ----------
+    function resumoMeses() {
+        const m = {};
+        notas.forEach(function (n) {
+            if (n.situacao === 'cancelada') return;
+            const x = m[n.competencia] = m[n.competencia] || { mes: n.competencia, ns: 0, merc: 0, serv: 0, totS: 0, ne: 0, totE: 0, icms: 0, iss: 0 };
+            if (n.direcao === 'saida') { x.ns++; x.merc += Number(n.valor_produtos); x.serv += Number(n.valor_servicos); x.totS += Number(n.valor_total); }
+            else { x.ne++; x.totE += Number(n.valor_total); }
+            x.icms += Number(n.valor_icms); x.iss += Number(n.valor_iss);
+        });
+        return Object.keys(m).sort().reverse().map(function (k) { return m[k]; });
+    }
+    function mesBR(c) { return c ? c.split('-').reverse().join('/') : ''; }
+    function renderResumo() {
+        const l = resumoMeses();
+        document.getElementById('tbResumo').innerHTML = l.length ? l.map(function (x) {
+            return '<tr><td><b>' + mesBR(x.mes) + '</b></td><td class="num">' + x.ns + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num"><b>' + brl(x.totS) + '</b></td><td class="num">' + x.ne + '</td><td class="num">' + brl(x.totE) + '</td><td class="num">' + brl(x.icms) + '</td><td class="num">' + brl(x.iss) + '</td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Ainda não há notas importadas.</td></tr>';
+    }
+
+    // ---------- impressão (padrão dos relatórios) ----------
+    function imprimirNotas() {
+        const l = notasFiltradas();
+        if (!l.length) { toast('Não há notas para imprimir.', 'info'); return; }
+        const ativas = l.filter(function (n) { return n.situacao !== 'cancelada'; });
+        let s = 0, e = 0; ativas.forEach(function (n) { if (n.direcao === 'saida') s += Number(n.valor_total); else e += Number(n.valor_total); });
+        const mes = document.getElementById('fMesNota').value;
+        ERPPrint.imprimir({
+            titulo: 'Notas Fiscais', subtitulo: 'Notas fiscais importadas (XML)', codigo: 'FIS-NF', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Mês', mes ? mesBR(mes) : 'Todos']],
+            resumo: [['Notas', String(l.length)], ['Vendas', 'R$ ' + brl(s)], ['Compras', 'R$ ' + brl(e)]],
+            colunas: [{ t: 'Data', w: 1 }, { t: 'Modelo', w: .8 }, { t: 'Tipo', w: .9 }, { t: 'Nº', w: .9 }, { t: 'Cliente / Fornecedor', w: 4 }, { t: 'Valor', w: 1.2, a: 'r' }, { t: 'Imposto', w: 1.1, a: 'r' }, { t: 'Situação', w: 1 }],
+            linhas: l.map(function (n) { return { c: [dataBR(n.data_emissao), n.modelo === 'nfe' ? 'NF-e' : 'NFS-e', n.direcao === 'saida' ? 'Venda' : 'Compra', n.numero || '', n.parceiro_nome || '', brl(n.valor_total), brl(impostoNota(n)), n.situacao === 'cancelada' ? 'Cancelada' : 'Autorizada'] }; }),
+            totais: null, observacao: 'Notas canceladas não entram nas somas do resumo.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+    function imprimirResumo() {
+        const l = resumoMeses();
+        if (!l.length) { toast('Não há notas para imprimir.', 'info'); return; }
+        const t = l.reduce(function (a, x) { a.totS += x.totS; a.totE += x.totE; a.icms += x.icms; a.iss += x.iss; return a; }, { totS: 0, totE: 0, icms: 0, iss: 0 });
+        ERPPrint.imprimir({
+            titulo: 'Resumo Mensal das Notas', subtitulo: 'Vendas e compras por mês, a partir dos XML importados', codigo: 'FIS-RM', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()]], resumo: [['Total vendido', 'R$ ' + brl(t.totS)], ['Total comprado', 'R$ ' + brl(t.totE)]],
+            colunas: [{ t: 'Mês', w: 1 }, { t: 'Notas saída', w: 1, a: 'r' }, { t: 'Mercadorias', w: 1.4, a: 'r' }, { t: 'Serviços', w: 1.4, a: 'r' }, { t: 'Total vendido', w: 1.5, a: 'r' }, { t: 'Notas entrada', w: 1, a: 'r' }, { t: 'Total comprado', w: 1.5, a: 'r' }, { t: 'ICMS', w: 1.1, a: 'r' }, { t: 'ISS', w: 1.1, a: 'r' }],
+            linhas: l.map(function (x) { return { c: [mesBR(x.mes), String(x.ns), brl(x.merc), brl(x.serv), brl(x.totS), String(x.ne), brl(x.totE), brl(x.icms), brl(x.iss)] }; }),
+            totais: null, observacao: 'Notas canceladas não entram na soma.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+
+    async function iniciar() {
+        try { await descobrirContexto(); await carregarTudo(); }
+        catch (err) { toast('Erro ao iniciar: ' + (err.message || err), 'error'); }
+    }
+    window.onload = iniciar;
+</script>
+</body>
+</html>
