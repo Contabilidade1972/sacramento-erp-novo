@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apuração do Simples Nacional — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao.perigo { background: var(--danger); box-shadow: none; }
+        .btn-acao.perigo:hover { background: #dc2626; }
+        .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
+        .btn-mini { padding: 6px 10px; font-size: 11.5px; border-radius: 8px; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 26px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        textarea.form-control { height: 64px; padding: 10px 14px; resize: vertical; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-control:disabled { background: #f1f5f9; color: #64748b; }
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; align-items: flex-end; }
+        .form-grid .span2 { grid-column: span 2; } .form-grid .span4 { grid-column: span 4; }
+        .dica { font-size: 11.5px; color: var(--text-light); margin-top: 6px; line-height: 1.5; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela tfoot td { font-weight: 800; background: #eef2ff; border-top: 2px solid var(--secondary); }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; white-space: nowrap; }
+        .st-calculada { background: #fef3c7; color: #92400e; } .st-fechada { background: #dcfce7; color: #166534; }
+        .acoes { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+
+        .abas { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 2px solid var(--border); }
+        .aba { background: none; border: none; padding: 11px 18px; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; display: flex; gap: 8px; align-items: center; }
+        .aba:hover { color: var(--primary); }
+        .aba.ativa { color: var(--primary); border-bottom-color: var(--primary); }
+        .painel-aba { display: none; flex-direction: column; gap: 18px; }
+        .painel-aba.ativa { display: flex; }
+        .barra-emp { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; }
+        .barra-emp .f { min-width: 260px; flex: 1; }
+
+        .aviso { border-radius: 10px; padding: 10px 14px; font-size: 12.8px; line-height: 1.5; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+        .aviso.amarelo { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+        .aviso.vermelho { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+        .aviso.azul { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+        .ajuda-aba { background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; padding: 14px 18px; }
+        .ajuda-aba > .ah { display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer; font-weight: 800; font-size: 13.5px; color: #92400e; }
+        .ajuda-aba .ac { font-size: 13px; line-height: 1.6; color: #451a03; margin-top: 10px; }
+        .ajuda-aba .ac p { margin: 0 0 8px; }
+        .ajuda-aba .ac ul { margin: 4px 0 8px 18px; }
+        .ajuda-aba .ac li { margin-bottom: 4px; }
+
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: center; justify-content: center; z-index: 5000; padding: 16px; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .btn-voltar-fixo { position: fixed; left: 20px; bottom: 24px; z-index: 900; background: var(--secondary); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 22px rgba(30,58,138,.4); }
+        .btn-voltar-fixo:hover { background: var(--primary-dark); }
+        @media print { .btn-voltar-fixo, .ajuda-aba { display: none !important; } }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .form-grid { grid-template-columns: 1fr 1fr; } .form-grid .span4 { grid-column: span 2; } }
+        @media (max-width: 600px) { .kpi-grid, .form-grid { grid-template-columns: 1fr; } .form-grid .span2, .form-grid .span4 { grid-column: span 1; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<a href="modulo_contabil.html" class="btn-voltar-fixo no-print" title="Voltar ao Módulo Contábil"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+        <a href="fiscal_notas.html" class="btn-acao cinza"><i class="fas fa-file-invoice"></i> Notas Fiscais (XML)</a>
+        <a href="contabilidade.html" class="btn-acao cinza"><i class="fas fa-book"></i> Escrituração Contábil</a>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-calculator" style="color:var(--primary);"></i> Apuração do Simples Nacional</div>
+        <div class="page-subtitle">Calcula o DAS do mês a partir das notas fiscais importadas, com a memória de cálculo completa</div>
+    </div>
+
+    <div class="barra-emp">
+        <div class="f"><label for="selEmpresa">Empresa</label><select id="selEmpresa" class="form-control" onchange="trocarEmpresa()"></select></div>
+        <div id="infoPerm" class="dica" style="flex:2; min-width:260px;"></div>
+    </div>
+
+    <div class="abas">
+        <button class="aba ativa" data-aba="apurar" type="button" onclick="mudarAba('apurar')"><i class="fas fa-calculator"></i> Apurar o mês</button>
+        <button class="aba" data-aba="hist" type="button" onclick="mudarAba('hist')"><i class="fas fa-clock-rotate-left"></i> Apurações salvas</button>
+        <button class="aba" data-aba="cfg" type="button" onclick="mudarAba('cfg')"><i class="fas fa-sliders"></i> Enquadramento da empresa</button>
+    </div>
+
+    <!-- APURAR -->
+    <div class="painel-aba ativa" id="aba-apurar">
+        <div class="ajuda-aba no-print">
+            <div class="ah" onclick="var c=document.getElementById('ajApC');c.style.display=c.style.display==='none'?'':'none';"><span><i class="fas fa-circle-question"></i> Como funciona o cálculo?</span><i class="fas fa-chevron-down"></i></div>
+            <div class="ac" id="ajApC" style="display:none;">
+                <p>O Simples Nacional cobra um único boleto, o <b>DAS</b>, calculado assim:</p>
+                <ul>
+                    <li><b>1. Receita do mês:</b> soma das notas de <b>venda</b> importadas (mercadorias e serviços), sem as canceladas.</li>
+                    <li><b>2. RBT12:</b> a receita bruta dos <b>12 meses anteriores</b>. Ela define a faixa da tabela.</li>
+                    <li><b>3. Alíquota efetiva</b> = (RBT12 × alíquota da faixa − parcela a deduzir) ÷ RBT12.</li>
+                    <li><b>4. DAS</b> = receita do mês × alíquota efetiva. Vence no dia 20 do mês seguinte.</li>
+                </ul>
+                <p><b>Atenção:</b> se a empresa já existia antes das notas importadas, informe em <b>Receita de meses anteriores não importados</b> o que faltou, senão o RBT12 fica baixo demais e o imposto sai menor que o devido.</p>
+                <p>Esta tela ainda <b>não</b> separa ICMS-ST, PIS/COFINS monofásico, ISS retido pelo cliente nem isenções. Se a empresa tem essas situações, confira o valor com o PGDAS-D oficial antes de pagar.</p>
+            </div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-calendar-day" style="color:var(--primary);"></i> Dados do mês</span><span id="stApur"></span></div>
+            <div class="form-grid">
+                <div><label for="apMes">Mês da apuração</label><input type="month" id="apMes" class="form-control" onchange="mudouMes()"></div>
+                <div><label for="apDedM">Devoluções de mercadorias (R$)</label><input type="number" step="0.01" min="0" id="apDedM" class="form-control" value="0" oninput="calcular()"></div>
+                <div><label for="apDedS">Cancelamentos de serviços (R$)</label><input type="number" step="0.01" min="0" id="apDedS" class="form-control" value="0" oninput="calcular()"></div>
+                <div><label for="apCompl">Receita de meses anteriores não importados (R$)</label><input type="number" step="0.01" min="0" id="apCompl" class="form-control" value="0" oninput="calcular()"></div>
+                <div id="boxFolha" style="display:none;"><label for="apFolha">Folha de pagamento dos 12 meses (R$) — Fator R</label><input type="number" step="0.01" min="0" id="apFolha" class="form-control" value="0" oninput="calcular()"></div>
+                <div class="span4"><label for="apObs">Observação (opcional)</label><textarea id="apObs" class="form-control" maxlength="500" autocomplete="off"></textarea></div>
+            </div>
+            <div class="dica">Devoluções e cancelamentos são descontados da receita do mês. Se a empresa tem menos de 12 meses, informe a data de início no <b>Enquadramento</b> e o sistema usa a regra proporcional.</div>
+        </div>
+
+        <div id="avisosApur" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card azul"><div class="kpi-title">Receita do mês</div><div class="kpi-value" id="kReceita">R$ 0,00</div><div class="kpi-sub" id="kReceitaSub"></div></div>
+            <div class="kpi-card amarelo"><div class="kpi-title">RBT12 (12 meses anteriores)</div><div class="kpi-value" id="kRbt">R$ 0,00</div><div class="kpi-sub" id="kRbtSub"></div></div>
+            <div class="kpi-card vermelho"><div class="kpi-title">DAS a pagar</div><div class="kpi-value" id="kDas">R$ 0,00</div><div class="kpi-sub" id="kDasSub"></div></div>
+            <div class="kpi-card verde"><div class="kpi-title">Vencimento</div><div class="kpi-value" id="kVenc">—</div><div class="kpi-sub">dia 20 do mês seguinte (confira feriados)</div></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-table-list" style="color:var(--primary);"></i> Memória de cálculo</span>
+                <span class="acoes">
+                    <button class="btn-acao cinza" type="button" onclick="imprimirApuracao()"><i class="fas fa-print"></i> Imprimir</button>
+                    <button class="btn-acao sucesso" type="button" id="btnSalvar" onclick="salvarApuracao()"><i class="fas fa-floppy-disk"></i> Salvar apuração</button>
+                </span>
+            </div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Atividade / Anexo</th><th class="num">Receita</th><th class="num">RBT12</th><th>Faixa</th><th class="num">Alíq. nominal</th><th class="num">Parcela a deduzir</th><th class="num">Alíq. efetiva</th><th class="num">DAS</th></tr></thead>
+                <tbody id="tbCalc"></tbody>
+                <tfoot id="tfCalc"></tfoot>
+            </table></div>
+            <div class="dica" id="notaFatorR"></div>
+        </div>
+
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-calendar-days" style="color:var(--primary);"></i> Receita dos 12 meses anteriores (de onde vem o RBT12)</span></div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Mês</th><th class="num">Mercadorias</th><th class="num">Serviços</th><th class="num">Total</th></tr></thead>
+                <tbody id="tbJanela"></tbody>
+                <tfoot id="tfJanela"></tfoot>
+            </table></div>
+        </div>
+    </div>
+
+    <!-- HISTORICO -->
+    <div class="painel-aba" id="aba-hist">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-clock-rotate-left" style="color:var(--primary);"></i> Apurações salvas</span></div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Mês</th><th class="num">Receita do mês</th><th class="num">RBT12</th><th class="num">DAS</th><th>Vencimento</th><th>Situação</th><th>Salva por</th><th></th></tr></thead>
+                <tbody id="tbHist"></tbody>
+            </table></div>
+            <div class="dica">Fechar uma apuração trava a alteração. Para mudar, reabra primeiro.</div>
+        </div>
+    </div>
+
+    <!-- CONFIG -->
+    <div class="painel-aba" id="aba-cfg">
+        <div class="panel">
+            <div class="panel-title"><span class="t"><i class="fas fa-sliders" style="color:var(--primary);"></i> Enquadramento no Simples Nacional</span></div>
+            <div class="form-grid">
+                <div class="span2"><label for="cfgMerc">Venda de mercadorias</label>
+                    <select id="cfgMerc" class="form-control"><option value="I">Anexo I — Comércio</option><option value="II">Anexo II — Indústria</option></select></div>
+                <div class="span2"><label for="cfgServ">Prestação de serviços</label>
+                    <select id="cfgServ" class="form-control">
+                        <option value="III">Anexo III — Serviços em geral (contabilidade, TI, representação...)</option>
+                        <option value="IV">Anexo IV — Construção, vigilância, limpeza, advocacia</option>
+                        <option value="V">Anexo V — Serviços intelectuais (ex.: engenharia, publicidade)</option>
+                        <option value="FR">Fator R — Anexo III ou V conforme a folha de pagamento</option>
+                    </select></div>
+                <div><label for="cfgInicio">Início das atividades</label><input type="date" id="cfgInicio" class="form-control"></div>
+                <div style="grid-column: span 3;"><button class="btn-acao" type="button" id="btnCfg" onclick="salvarConfig()"><i class="fas fa-floppy-disk"></i> Salvar enquadramento</button></div>
+            </div>
+            <div class="dica" style="margin-top:12px;">A contabilidade define o anexo conforme a atividade (CNAE) de cada empresa. Se a empresa vende mercadorias e presta serviços, o sistema calcula cada receita no seu anexo. O Anexo IV não inclui a contribuição patronal (CPP), que é paga à parte.</div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    // Tabelas do Simples Nacional (LC 123/2006, Anexos I a V): [limite da faixa (RBT12), alíquota nominal %, parcela a deduzir R$]
+    const TAB = {
+        I:   [[180000, 4.00, 0], [360000, 7.30, 5940], [720000, 9.50, 13860], [1800000, 10.70, 22500], [3600000, 14.30, 87300], [4800000, 19.00, 378000]],
+        II:  [[180000, 4.50, 0], [360000, 7.80, 5940], [720000, 10.00, 13860], [1800000, 11.20, 22500], [3600000, 14.70, 85500], [4800000, 30.00, 720000]],
+        III: [[180000, 6.00, 0], [360000, 11.20, 9360], [720000, 13.50, 17640], [1800000, 16.00, 35640], [3600000, 21.00, 125640], [4800000, 33.00, 648000]],
+        IV:  [[180000, 4.50, 0], [360000, 9.00, 8100], [720000, 10.20, 12420], [1800000, 14.00, 39780], [3600000, 22.00, 183780], [4800000, 33.00, 828000]],
+        V:   [[180000, 15.50, 0], [360000, 18.00, 4500], [720000, 19.50, 9900], [1800000, 20.50, 17100], [3600000, 23.00, 62100], [4800000, 30.50, 540000]]
+    };
+    const NOME_ANEXO = { I: 'Anexo I — Comércio', II: 'Anexo II — Indústria', III: 'Anexo III — Serviços', IV: 'Anexo IV — Serviços', V: 'Anexo V — Serviços' };
+
+    let U = {}, ehMaster = false, meuId = 0;
+    let empresas = [], emp = 0, podeEditar = false;
+    let notas = [];             // notas da empresa atual
+    let cfg = { anexo_mercadorias: 'I', anexo_servicos: 'III', inicio_atividade: null };
+    let salvas = [];            // apurações salvas da empresa
+    let calc = null;            // último cálculo na tela
+    let apurAtual = null;       // apuração salva do mês selecionado (se houver)
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function toast(msg, type) {
+        type = type || 'success';
+        const c = document.getElementById('toastContainer');
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 8000 : 3500);
+    }
+    function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function r2(v) { return Math.round((Number(v) + Number.EPSILON) * 100) / 100; }
+    function dataBR(d) { return d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'; }
+    function mesBR(c) { return c ? c.split('-').reverse().join('/') : ''; }
+    function soDig(s) { return String(s || '').replace(/\D/g, ''); }
+    function fmtDoc(d) {
+        d = soDig(d);
+        if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+        if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+        return d;
+    }
+    function nomeEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? e.nome : ('Empresa ' + emp); }
+    function cnpjEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? (e.cnpj || '') : ''; }
+    async function rpc(fn, args) {
+        const r = await sb.rpc(fn, args);
+        if (r.error) throw new Error(r.error.message);
+        return r.data;
+    }
+    function mudarAba(a) {
+        document.querySelectorAll('.aba').forEach(function (b) { b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
+        document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
+        if (a === 'hist') renderHist();
+    }
+
+    // ---------- contexto (mesma regra das outras telas fiscais) ----------
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        let ativa = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) ativa = parseInt(sel); }
+        meuId = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : ativa;
+        let ids = [];
+        if (ehMaster) {
+            const r = await sb.from('clientes_contratantes').select('id').order('id');
+            ids = ((r && r.data) || []).map(function (x) { return x.id; });
+            emp = ativa;
+        } else {
+            ids = [meuId];
+            const rv = await sb.from('vinculos_contador').select('empresa_cliente_id, status, pode_visualizar, pode_contabilizar').eq('contador_cliente_id', meuId);
+            ((rv && rv.data) || []).forEach(function (v) {
+                if (String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar && v.pode_contabilizar) ids.push(parseInt(v.empresa_cliente_id));
+            });
+            emp = meuId;
+        }
+        ids = ids.filter(function (v, i, a) { return a.indexOf(v) === i; });
+        const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia, cnpj').in('id', ids);
+        const nomes = {};
+        ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = { nome: e.nome_fantasia || e.razao_social || ('Empresa ' + e.id), cnpj: e.cnpj || '' }; });
+        empresas = ids.map(function (id) { return { id: id, nome: (nomes[id] && nomes[id].nome) || ('Empresa ' + id), cnpj: (nomes[id] && nomes[id].cnpj) || '' }; });
+        if (!ehMaster && ativa !== meuId && ids.indexOf(ativa) > -1) emp = ativa;
+        if (!empresas.some(function (e) { return e.id === emp; })) emp = empresas[0].id;
+        const sel = document.getElementById('selEmpresa');
+        sel.innerHTML = empresas.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nome) + (e.id === meuId ? ' (minha empresa)' : '') + '</option>'; }).join('');
+        sel.value = String(emp);
+        if (empresas.length === 1) sel.disabled = true;
+    }
+    async function trocarEmpresa() {
+        emp = parseInt(document.getElementById('selEmpresa').value);
+        await carregarTudo();
+    }
+    async function carregarTudo() {
+        try {
+            try { podeEditar = !!(await rpc('contab_pode', { p_cliente: emp })); } catch (e) { podeEditar = false; }
+            document.getElementById('infoPerm').innerHTML = podeEditar
+                ? '<i class="fas fa-circle-check" style="color:var(--success);"></i> Você pode <b>apurar, salvar e fechar</b> para esta empresa. CNPJ: <b>' + esc(fmtDoc(cnpjEmp()) || 'não cadastrado') + '</b>'
+                : '<i class="fas fa-eye" style="color:var(--warning);"></i> Somente <b>consulta</b>: a apuração é feita pela contabilidade.';
+            document.getElementById('btnCfg').style.display = podeEditar ? '' : 'none';
+            await carregarConfig();
+            await carregarNotas();
+            await carregarSalvas();
+            mudouMes();
+            renderHist();
+        } catch (err) { toast('Erro ao carregar: ' + (err.message || err), 'error'); }
+    }
+    async function carregarConfig() {
+        const r = await sb.from('fiscal_config').select('*').eq('cliente_id', emp).maybeSingle();
+        cfg = (r && r.data) ? r.data : { anexo_mercadorias: 'I', anexo_servicos: 'III', inicio_atividade: null };
+        document.getElementById('cfgMerc').value = cfg.anexo_mercadorias || 'I';
+        document.getElementById('cfgServ').value = cfg.anexo_servicos || 'III';
+        document.getElementById('cfgInicio').value = cfg.inicio_atividade ? String(cfg.inicio_atividade).slice(0, 10) : '';
+        document.getElementById('boxFolha').style.display = cfg.anexo_servicos === 'FR' ? '' : 'none';
+    }
+    async function carregarNotas() {
+        const cols = 'id,modelo,direcao,competencia,valor_total,valor_produtos,valor_servicos,situacao';
+        let out = [];
+        for (let ini = 0; ini < 100000; ini += 1000) {
+            const r = await sb.from('fiscal_notas').select(cols).eq('cliente_id', emp).order('data_emissao', { ascending: false }).range(ini, ini + 999);
+            if (r.error) throw r.error;
+            out = out.concat(r.data || []);
+            if (!r.data || r.data.length < 1000) break;
+        }
+        notas = out;
+    }
+    async function carregarSalvas() {
+        const r = await sb.from('fiscal_apuracoes').select('*').eq('cliente_id', emp).order('competencia', { ascending: false });
+        if (r.error) throw r.error;
+        salvas = r.data || [];
+    }
+    async function salvarConfig() {
+        try {
+            const ini = document.getElementById('cfgInicio').value || null;
+            await rpc('fiscal_salvar_config', { p_cliente: emp, p_merc: document.getElementById('cfgMerc').value, p_serv: document.getElementById('cfgServ').value, p_inicio: ini });
+            toast('Enquadramento salvo.');
+            await carregarConfig(); calcular();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+
+    // ---------- receita por mês (a partir das notas) ----------
+    function receitaPorMes() {
+        const m = {};
+        notas.forEach(function (n) {
+            if (n.direcao !== 'saida' || n.situacao === 'cancelada') return;
+            const x = m[n.competencia] = m[n.competencia] || { merc: 0, serv: 0 };
+            x.merc += Number(n.valor_produtos || 0);
+            x.serv += Number(n.valor_servicos || 0);
+        });
+        return m;
+    }
+    function somaMes(comp, d) {           // devolve o AAAA-MM deslocado d meses
+        const p = comp.split('-'); let a = parseInt(p[0]), mm = parseInt(p[1]) - 1 + d;
+        a += Math.floor(mm / 12); mm = ((mm % 12) + 12) % 12;
+        return a + '-' + String(mm + 1).padStart(2, '0');
+    }
+    function difMeses(de, ate) { const a = de.split('-'), b = ate.split('-'); return (parseInt(b[0]) - parseInt(a[0])) * 12 + (parseInt(b[1]) - parseInt(a[1])); }
+
+    // ---------- cálculo ----------
+    function faixaDe(anexo, rbt) {
+        const t = TAB[anexo];
+        for (let i = 0; i < t.length; i++) if (rbt <= t[i][0]) return { n: i + 1, lim: t[i][0], aliq: t[i][1], pd: t[i][2] };
+        return null;
+    }
+    function aliqEfetiva(anexo, rbt) {
+        const f = faixaDe(anexo, rbt);
+        if (!f) return null;
+        let ef = f.aliq;
+        if (rbt > 0) ef = ((rbt * f.aliq / 100 - f.pd) / rbt) * 100;
+        ef = Math.round(ef * 10000) / 10000;
+        return { f: f, ef: ef };
+    }
+    function vencimentoDas(comp) {         // dia 20 do mês seguinte; se cair no fim de semana, vai para segunda
+        const p = somaMes(comp, 1).split('-');
+        const d = new Date(parseInt(p[0]), parseInt(p[1]) - 1, 20);
+        if (d.getDay() === 6) d.setDate(d.getDate() + 2); else if (d.getDay() === 0) d.setDate(d.getDate() + 1);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    function numIn(id) { const v = parseFloat(document.getElementById(id).value); return isNaN(v) || v < 0 ? 0 : v; }
+
+    // Faz toda a conta e devolve um objeto com tudo (também usado para salvar e imprimir)
+    function fazerCalculo(comp, ent) {
+        const rec = receitaPorMes(), avisos = [];
+        const mes = rec[comp] || { merc: 0, serv: 0 };
+        const baseM = Math.max(0, r2(mes.merc - ent.dedM)), baseS = Math.max(0, r2(mes.serv - ent.dedS));
+        const totalMes = r2(baseM + baseS);
+
+        // janela dos 12 meses anteriores
+        const janela = [];
+        for (let i = 12; i >= 1; i--) { const c = somaMes(comp, -i); const x = rec[c] || { merc: 0, serv: 0 }; janela.push({ mes: c, merc: r2(x.merc), serv: r2(x.serv), total: r2(x.merc + x.serv), tem: !!rec[c] }); }
+        const somaJanela = r2(janela.reduce(function (a, x) { return a + x.total; }, 0));
+
+        let rbt12 = 0, regra = 'normal', mesesAtiv = 12;
+        const ini = cfg.inicio_atividade ? String(cfg.inicio_atividade).slice(0, 7) : '';
+        if (ini && difMeses(ini, comp) >= 0 && difMeses(ini, comp) < 12) {
+            mesesAtiv = difMeses(ini, comp);                       // meses completos de atividade antes de comp
+            if (mesesAtiv === 0) { rbt12 = r2(totalMes * 12); regra = 'primeiro'; if (ent.compl > 0) { avisos.push({ t: 'amarelo', m: 'No primeiro mês de atividade não existe receita anterior: o valor digitado em "Receita de meses anteriores não importados" foi IGNORADO. Para usá-lo, apague o início das atividades no Enquadramento.' }); ent = Object.assign({}, ent, { compl: 0 }); } }
+            else {
+                const soma = janela.filter(function (x) { return difMeses(ini, x.mes) >= 0; }).reduce(function (a, x) { return a + x.total; }, 0) + ent.compl;
+                rbt12 = r2(soma / mesesAtiv * 12); regra = 'proporcional';
+            }
+        } else {
+            rbt12 = r2(somaJanela + ent.compl);
+            const comNotas = janela.filter(function (x) { return x.tem; }).length;
+            if (comNotas < 12 && ent.compl === 0) avisos.push({ t: 'amarelo', m: 'Há notas de venda em apenas ' + comNotas + ' dos 12 meses anteriores. Se a empresa já existia nos outros meses, informe a receita deles em "Receita de meses anteriores não importados"; senão o RBT12 fica baixo e o DAS sai menor que o devido. Se a empresa é nova, informe o início das atividades no Enquadramento.' });
+        }
+        if (regra === 'primeiro') avisos.push({ t: 'azul', m: 'Primeiro mês de atividade: o RBT12 é a receita do próprio mês × 12 (regra do Simples para empresas novas).' });
+        if (regra === 'proporcional') avisos.push({ t: 'azul', m: 'Empresa com menos de 12 meses: RBT12 = média dos ' + mesesAtiv + ' mês(es) de atividade × 12 (regra proporcional).' });
+        if (ini && difMeses(ini, comp) < 0) avisos.push({ t: 'amarelo', m: 'O mês escolhido é anterior ao início das atividades informado no Enquadramento.' });
+        if (totalMes === 0) avisos.push({ t: 'amarelo', m: 'Não há notas de venda importadas em ' + mesBR(comp) + '. Sem receita não há DAS, mas se a empresa vendeu, importe as notas primeiro.' });
+        if (rbt12 > 4800000) avisos.push({ t: 'vermelho', m: 'O RBT12 passou de R$ 4,8 milhões: a empresa ultrapassa o limite do Simples Nacional. O cálculo não é feito; fale com a contabilidade (exclusão/enquadramento).' });
+        else if (rbt12 > 3600000) avisos.push({ t: 'vermelho', m: 'O RBT12 passou de R$ 3,6 milhões (sublimite): ICMS e ISS passam a ser recolhidos fora do DAS. Este cálculo traz o valor cheio e precisa de conferência manual.' });
+
+        // linhas por anexo
+        const linhas = [];
+        let fatorR = null, anexoServ = cfg.anexo_servicos;
+        if (anexoServ === 'FR') {
+            if (rbt12 > 0 && ent.folha > 0) { fatorR = ent.folha / rbt12; anexoServ = fatorR >= 0.28 ? 'III' : 'V'; }
+            else { anexoServ = 'V'; avisos.push({ t: 'amarelo', m: 'Fator R: folha de pagamento dos 12 meses não informada, então foi usado o Anexo V (mais caro). Informe a folha para o sistema escolher entre III e V.' }); }
+        }
+        function addLinha(rotulo, anexo, base) {
+            if (base <= 0) return;
+            const a = rbt12 > 0 || regra !== 'normal' ? aliqEfetiva(anexo, rbt12) : aliqEfetiva(anexo, 0);
+            if (!a) { linhas.push({ rotulo: rotulo, anexo: anexo, receita: base, rbt12: rbt12, faixa: null, aliq: 0, pd: 0, ef: 0, das: 0, fora: true }); return; }
+            linhas.push({ rotulo: rotulo, anexo: anexo, receita: base, rbt12: rbt12, faixa: a.f.n, aliq: a.f.aliq, pd: a.f.pd, ef: a.ef, das: r2(base * a.ef / 100), fora: false });
+        }
+        addLinha('Venda de mercadorias', cfg.anexo_mercadorias, baseM);
+        addLinha('Prestação de serviços', anexoServ, baseS);
+        const das = r2(linhas.reduce(function (a, l) { return a + l.das; }, 0));
+        const aliqMedia = totalMes > 0 ? das / totalMes * 100 : 0;
+        return { comp: comp, entradas: ent, receita_mes: totalMes, receita_bruta: { merc: r2(mes.merc), serv: r2(mes.serv) }, rbt12: rbt12, regra: regra, janela: janela, linhas: linhas, das: das,
+                 aliq_media: aliqMedia, fatorR: fatorR, vencimento: vencimentoDas(comp), avisos: avisos, anexos_cfg: { merc: cfg.anexo_mercadorias, serv: cfg.anexo_servicos } };
+    }
+
+    function lerEntradas() {
+        return { dedM: numIn('apDedM'), dedS: numIn('apDedS'), compl: numIn('apCompl'), folha: numIn('apFolha') };
+    }
+    function mudouMes() {
+        const comp = document.getElementById('apMes').value;
+        if (!comp) { const h = new Date(); const ant = somaMes(h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'), -1); document.getElementById('apMes').value = ant; return mudouMes(); }
+        apurAtual = salvas.find(function (s) { return s.competencia === comp; }) || null;
+        const e = (apurAtual && apurAtual.detalhe && apurAtual.detalhe.entradas) || { dedM: 0, dedS: 0, compl: 0, folha: 0 };
+        document.getElementById('apDedM').value = e.dedM || 0; document.getElementById('apDedS').value = e.dedS || 0;
+        document.getElementById('apCompl').value = e.compl || 0; document.getElementById('apFolha').value = e.folha || 0;
+        document.getElementById('apObs').value = (apurAtual && apurAtual.observacao) || '';
+        calcular();
+    }
+    function calcular() {
+        const comp = document.getElementById('apMes').value;
+        if (!comp) return;
+        calc = fazerCalculo(comp, lerEntradas());
+        const fechada = !!(apurAtual && apurAtual.status === 'fechada');
+        ['apDedM', 'apDedS', 'apCompl', 'apFolha', 'apObs'].forEach(function (id) { document.getElementById(id).disabled = fechada || !podeEditar; });
+        document.getElementById('btnSalvar').style.display = (podeEditar && !fechada) ? '' : 'none';
+        document.getElementById('stApur').innerHTML = apurAtual ? '<span class="badge-st st-' + apurAtual.status + '">' + (apurAtual.status === 'fechada' ? 'Fechada' : 'Salva (em aberto)') + '</span>' : '<span class="badge-st st-calculada">Ainda não salva</span>';
+        document.getElementById('boxFolha').style.display = cfg.anexo_servicos === 'FR' ? '' : 'none';
+        renderCalc();
+    }
+    function renderCalc() {
+        const c = calc;
+        document.getElementById('avisosApur').innerHTML = c.avisos.map(function (a) { return '<div class="aviso ' + a.t + '"><i class="fas fa-' + (a.t === 'vermelho' ? 'triangle-exclamation' : a.t === 'azul' ? 'circle-info' : 'circle-exclamation') + '" style="margin-top:2px;"></i><span>' + esc(a.m) + '</span></div>'; }).join('');
+        document.getElementById('kReceita').textContent = 'R$ ' + brl(c.receita_mes);
+        document.getElementById('kReceitaSub').textContent = 'mercadorias R$ ' + brl(c.receita_bruta.merc) + ' · serviços R$ ' + brl(c.receita_bruta.serv);
+        document.getElementById('kRbt').textContent = 'R$ ' + brl(c.rbt12);
+        document.getElementById('kRbtSub').textContent = c.regra === 'normal' ? 'soma de ' + mesBR(c.janela[0].mes) + ' a ' + mesBR(c.janela[11].mes) : (c.regra === 'primeiro' ? 'primeiro mês: receita × 12' : 'regra proporcional (empresa nova)');
+        document.getElementById('kDas').textContent = 'R$ ' + brl(c.das);
+        document.getElementById('kDasSub').textContent = c.receita_mes > 0 ? 'alíquota média ' + c.aliq_media.toFixed(4).replace('.', ',') + '% da receita' : 'sem receita no mês';
+        document.getElementById('kVenc').textContent = c.das > 0 ? dataBR(c.vencimento) : '—';
+        document.getElementById('tbCalc').innerHTML = c.linhas.length ? c.linhas.map(function (l) {
+            if (l.fora) return '<tr><td><b>' + esc(l.rotulo) + '</b><span class="sub">' + esc(NOME_ANEXO[l.anexo]) + '</span></td><td class="num">' + brl(l.receita) + '</td><td class="num">' + brl(l.rbt12) + '</td><td colspan="5" style="color:var(--danger); font-weight:700;">RBT12 acima de R$ 4,8 milhões — fora do Simples</td></tr>';
+            return '<tr><td><b>' + esc(l.rotulo) + '</b><span class="sub">' + esc(NOME_ANEXO[l.anexo]) + '</span></td><td class="num">' + brl(l.receita) + '</td><td class="num">' + brl(l.rbt12) + '</td><td>' + l.faixa + 'ª faixa</td><td class="num">' + l.aliq.toFixed(2).replace('.', ',') + '%</td><td class="num">' + brl(l.pd) + '</td><td class="num">' + l.ef.toFixed(4).replace('.', ',') + '%</td><td class="num"><b>' + brl(l.das) + '</b></td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:24px;">Sem receita de vendas no mês escolhido.</td></tr>';
+        document.getElementById('tfCalc').innerHTML = '<tr><td>TOTAL DO DAS</td><td class="num">' + brl(c.receita_mes) + '</td><td></td><td></td><td></td><td></td><td></td><td class="num">' + brl(c.das) + '</td></tr>';
+        document.getElementById('notaFatorR').textContent = c.fatorR != null ? 'Fator R = folha dos 12 meses ÷ RBT12 = ' + (c.fatorR * 100).toFixed(2).replace('.', ',') + '%. A partir de 28% os serviços usam o Anexo III; abaixo disso, o Anexo V.' : '';
+        document.getElementById('tbJanela').innerHTML = c.janela.map(function (x) { return '<tr><td>' + mesBR(x.mes) + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num">' + brl(x.total) + '</td></tr>'; }).join('');
+        const compl = c.entradas.compl;
+        document.getElementById('tfJanela').innerHTML = (compl > 0 ? '<tr><td colspan="3" style="font-weight:600;">(+) Receita de meses anteriores não importados</td><td class="num" style="font-weight:600;">' + brl(compl) + '</td></tr>' : '') +
+            '<tr><td colspan="3">RBT12 usado no cálculo' + (c.regra !== 'normal' ? ' (regra de empresa nova)' : '') + '</td><td class="num">' + brl(c.rbt12) + '</td></tr>';
+    }
+
+    // ---------- salvar / fechar / excluir ----------
+    async function salvarApuracao() {
+        if (!calc) return;
+        if (calc.linhas.some(function (l) { return l.fora; })) { toast('Não dá para salvar: o RBT12 passou do limite do Simples.', 'error'); return; }
+        try {
+            const dados = { receita_mes: calc.receita_mes, rbt12: calc.rbt12, valor_das: calc.das, vencimento: calc.vencimento, observacao: document.getElementById('apObs').value.trim(),
+                detalhe: { entradas: calc.entradas, linhas: calc.linhas, regra: calc.regra, fatorR: calc.fatorR, anexos_cfg: calc.anexos_cfg, receita_bruta: calc.receita_bruta, avisos: calc.avisos.map(function (a) { return a.m; }) } };
+            await rpc('fiscal_salvar_apuracao', { p_cliente: emp, p_comp: calc.comp, p_dados: dados });
+            toast('Apuração de ' + mesBR(calc.comp) + ' salva.');
+            await carregarSalvas(); mudouMesSemReset(); renderHist();
+        } catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    function mudouMesSemReset() {
+        const comp = document.getElementById('apMes').value;
+        apurAtual = salvas.find(function (s) { return s.competencia === comp; }) || null;
+        calcular();
+    }
+    async function fecharReabrir(comp, fechar) {
+        const msg = fechar ? 'Fechar a apuração de ' + mesBR(comp) + '? Depois de fechada ela não pode ser alterada (só reaberta).' : 'Reabrir a apuração de ' + mesBR(comp) + ' para alteração?';
+        if (!confirm(msg)) return;
+        try { await rpc('fiscal_fechar_apuracao', { p_cliente: emp, p_comp: comp, p_fechar: fechar }); toast(fechar ? 'Apuração fechada.' : 'Apuração reaberta.'); await carregarSalvas(); renderHist(); mudouMesSemReset(); }
+        catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    async function excluirApuracao(comp) {
+        if (!confirm('Excluir a apuração salva de ' + mesBR(comp) + '? As notas fiscais não são afetadas.')) return;
+        try { await rpc('fiscal_excluir_apuracao', { p_cliente: emp, p_comp: comp }); toast('Apuração excluída.'); await carregarSalvas(); renderHist(); mudouMesSemReset(); }
+        catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
+    }
+    function abrirMes(comp) { document.getElementById('apMes').value = comp; mudarAba('apurar'); mudouMes(); }
+    function renderHist() {
+        document.getElementById('tbHist').innerHTML = salvas.length ? salvas.map(function (s) {
+            return '<tr><td><b>' + mesBR(s.competencia) + '</b></td><td class="num">' + brl(s.receita_mes) + '</td><td class="num">' + brl(s.rbt12) + '</td><td class="num"><b>' + brl(s.valor_das) + '</b></td><td>' + dataBR(s.vencimento) + '</td>' +
+                '<td><span class="badge-st st-' + s.status + '">' + (s.status === 'fechada' ? 'Fechada' : 'Em aberto') + '</span></td><td>' + esc(s.criado_por || '') + '</td>' +
+                '<td><div class="acoes"><button class="btn-acao btn-mini cinza" type="button" title="Abrir" onclick="abrirMes(\'' + s.competencia + '\')"><i class="fas fa-folder-open"></i></button>' +
+                '<button class="btn-acao btn-mini cinza" type="button" title="Imprimir" onclick="imprimirSalva(\'' + s.competencia + '\')"><i class="fas fa-print"></i></button>' +
+                (podeEditar ? (s.status === 'fechada' ? '<button class="btn-acao btn-mini" type="button" title="Reabrir" onclick="fecharReabrir(\'' + s.competencia + '\', false)"><i class="fas fa-lock-open"></i></button>'
+                    : '<button class="btn-acao btn-mini sucesso" type="button" title="Fechar" onclick="fecharReabrir(\'' + s.competencia + '\', true)"><i class="fas fa-lock"></i></button><button class="btn-acao btn-mini perigo" type="button" title="Excluir" onclick="excluirApuracao(\'' + s.competencia + '\')"><i class="fas fa-trash"></i></button>') : '') +
+                '</div></td></tr>';
+        }).join('') : '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma apuração salva ainda.</td></tr>';
+    }
+
+    // ---------- impressão (padrão dos relatórios) ----------
+    function imprimirDe(comp, linhas, receita, rbt12, das, venc, obs, regra) {
+        if (!linhas.length) { toast('Não há DAS para imprimir neste mês.', 'info'); return; }
+        ERPPrint.imprimir({
+            titulo: 'Apuração do Simples Nacional', subtitulo: 'Competência ' + mesBR(comp) + ' — memória de cálculo do DAS', codigo: 'FIS-SN', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Competência', mesBR(comp)], ['Vencimento', dataBR(venc)]],
+            resumo: [['Receita do mês', 'R$ ' + brl(receita)], ['RBT12', 'R$ ' + brl(rbt12)], ['DAS a pagar', 'R$ ' + brl(das)]],
+            colunas: [{ t: 'Atividade / Anexo', w: 3.2 }, { t: 'Receita', w: 1.4, a: 'r' }, { t: 'RBT12', w: 1.4, a: 'r' }, { t: 'Faixa', w: .9 }, { t: 'Alíq. nominal', w: 1.1, a: 'r' }, { t: 'Parc. a deduzir', w: 1.3, a: 'r' }, { t: 'Alíq. efetiva', w: 1.2, a: 'r' }, { t: 'DAS', w: 1.3, a: 'r' }],
+            linhas: linhas.map(function (l) { return { c: [l.rotulo + ' — ' + NOME_ANEXO[l.anexo], brl(l.receita), brl(l.rbt12), l.faixa ? l.faixa + 'ª' : '—', Number(l.aliq).toFixed(2).replace('.', ',') + '%', brl(l.pd), Number(l.ef).toFixed(4).replace('.', ',') + '%', brl(l.das)] }; }),
+            totais: ['TOTAL DO DAS', brl(receita), '', '', '', '', '', brl(das)],
+            observacao: (regra && regra !== 'normal' ? 'Empresa com menos de 12 meses: RBT12 calculado pela regra proporcional. ' : '') + (obs ? obs + ' ' : '') + 'Cálculo de apoio; confira com o PGDAS-D antes do pagamento.',
+            assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+    function imprimirApuracao() { if (calc) imprimirDe(calc.comp, calc.linhas, calc.receita_mes, calc.rbt12, calc.das, calc.vencimento, document.getElementById('apObs').value.trim(), calc.regra); }
+    function imprimirSalva(comp) {
+        const s = salvas.find(function (x) { return x.competencia === comp; });
+        if (!s) return;
+        const d = s.detalhe || {};
+        imprimirDe(comp, d.linhas || [], Number(s.receita_mes), Number(s.rbt12), Number(s.valor_das), s.vencimento, s.observacao || '', d.regra);
+    }
+
+    async function iniciar() {
+        try { await descobrirContexto(); await carregarTudo(); }
+        catch (err) { toast('Erro ao iniciar: ' + (err.message || err), 'error'); }
+    }
+    window.onload = iniciar;
+</script>
+</body>
+</html>
