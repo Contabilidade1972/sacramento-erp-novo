@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v7.1: causa real = campos type=password do modal "trocar senha" faziam o Chrome preencher o e-mail na busca; agora não há campo password na página.
     - v7.1: campos de busca/filtro não são mais preenchidos com o e-mail do login (autocomplete off + limpeza contínua)
     - v7.0: AVISO DE CERTIFICADO DIGITAL VENCIDO / A VENCER no topo de todas as páginas (+ rota de busca)
     - v6.9: ASSISTENTE DE IA (chat de ajuda) — carrega assistente-ia.js
@@ -460,9 +461,9 @@
                 '<button onclick="fecharModalSenhaCore()" style="background:none;border:none;font-size:16px;color:#64748b;cursor:pointer;"><i class="fas fa-times"></i></button></div>' +
                 '<div style="padding:24px;display:flex;flex-direction:column;gap:18px;">' +
                 '<div><label style="font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;display:block;margin-bottom:6px;">Nova Senha</label>' +
-                '<input type="password" id="novaSenhaInputCore" placeholder="Digite a nova senha" style="width:100%;height:42px;padding:0 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;color:#0f172a;"></div>' +
+                '<input type="text" autocomplete="off" data-lpignore="true" data-1p-ignore id="novaSenhaInputCore" placeholder="Digite a nova senha" style="width:100%;height:42px;padding:0 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;color:#0f172a;-webkit-text-security:disc;"></div>' +
                 '<div><label style="font-size:10.5px;font-weight:800;color:#64748b;text-transform:uppercase;display:block;margin-bottom:6px;">Confirmar Nova Senha</label>' +
-                '<input type="password" id="confirmaSenhaInputCore" placeholder="Confirme a nova senha" style="width:100%;height:42px;padding:0 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;color:#0f172a;"></div>' +
+                '<input type="text" autocomplete="off" data-lpignore="true" data-1p-ignore id="confirmaSenhaInputCore" placeholder="Confirme a nova senha" style="width:100%;height:42px;padding:0 14px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;outline:none;color:#0f172a;-webkit-text-security:disc;"></div>' +
                 '<button onclick="salvarNovaSenhaCore()" style="background:#2563eb;color:#fff;border:none;height:44px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"><i class="fas fa-lock"></i> Atualizar Senha</button>' +
                 '</div></div></div>';
             document.body.insertAdjacentHTML('beforeend', modalHtml);
