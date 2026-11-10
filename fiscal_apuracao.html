@@ -147,9 +147,12 @@
                 <div><label for="apDedS">Cancelamentos de serviços (R$)</label><input type="number" step="0.01" min="0" id="apDedS" class="form-control" value="0" oninput="calcular()"></div>
                 <div><label for="apCompl">Receita de meses anteriores não importados (R$)</label><input type="number" step="0.01" min="0" id="apCompl" class="form-control" value="0" oninput="calcular()"></div>
                 <div id="boxFolha" style="display:none;"><label for="apFolha">Folha de pagamento dos 12 meses (R$) — Fator R</label><input type="number" step="0.01" min="0" id="apFolha" class="form-control" value="0" oninput="calcular()"></div>
+                <div><label for="apRecibo">Nº do recibo da declaração (PGDAS-D)</label><input type="text" id="apRecibo" class="form-control" maxlength="40" autocomplete="off" oninput="calcular()" placeholder="Preencha depois de entregar"></div>
+                <div><label for="apDataDecl">Data da entrega da declaração</label><input type="date" id="apDataDecl" class="form-control" onchange="calcular()"></div>
+                <div class="span2"></div>
                 <div class="span4"><label for="apObs">Observação (opcional)</label><textarea id="apObs" class="form-control" maxlength="500" autocomplete="off"></textarea></div>
             </div>
-            <div class="dica">Devoluções e cancelamentos são descontados da receita do mês. Se a empresa tem menos de 12 meses, informe a data de início no <b>Enquadramento</b> e o sistema usa a regra proporcional.</div>
+            <div class="dica">A declaração (PGDAS-D) é entregue todo mês, <b>mesmo sem receita (declaração sem movimento)</b>. Depois de entregar no portal, registre aqui o número do recibo. Devoluções e cancelamentos são descontados da receita do mês. Se a empresa tem menos de 12 meses, informe a data de início no <b>Enquadramento</b> e o sistema usa a regra proporcional.</div>
         </div>
 
         <div id="avisosApur" style="display:flex; flex-direction:column; gap:8px;"></div>
@@ -191,8 +194,9 @@
     <div class="painel-aba" id="aba-hist">
         <div class="panel">
             <div class="panel-title"><span class="t"><i class="fas fa-clock-rotate-left" style="color:var(--primary);"></i> Apurações salvas</span></div>
+            <div id="boxPend" style="margin-bottom:14px;"></div>
             <div class="table-wrap"><table class="tabela">
-                <thead><tr><th>Mês</th><th class="num">Receita do mês</th><th class="num">RBT12</th><th class="num">DAS</th><th>Vencimento</th><th>Situação</th><th>Salva por</th><th></th></tr></thead>
+                <thead><tr><th>Mês</th><th class="num">Receita do mês</th><th class="num">RBT12</th><th class="num">DAS</th><th>Vencimento</th><th>Declaração PGDAS-D</th><th>Situação</th><th></th></tr></thead>
                 <tbody id="tbHist"></tbody>
             </table></div>
             <div class="dica">Fechar uma apuração trava a alteração. Para mudar, reabra primeiro.</div>
@@ -421,12 +425,12 @@
         } else {
             rbt12 = r2(somaJanela + ent.compl);
             const comNotas = janela.filter(function (x) { return x.tem; }).length;
-            if (comNotas < 12 && ent.compl === 0) avisos.push({ t: 'amarelo', m: 'Há notas de venda em apenas ' + comNotas + ' dos 12 meses anteriores. Se a empresa já existia nos outros meses, informe a receita deles em "Receita de meses anteriores não importados"; senão o RBT12 fica baixo e o DAS sai menor que o devido. Se a empresa é nova, informe o início das atividades no Enquadramento.' });
+            if (comNotas < 12 && ent.compl === 0 && (somaJanela > 0 || totalMes > 0)) avisos.push({ t: 'amarelo', m: 'Há notas de venda em apenas ' + comNotas + ' dos 12 meses anteriores. Se a empresa já existia nos outros meses, informe a receita deles em "Receita de meses anteriores não importados"; senão o RBT12 fica baixo e o DAS sai menor que o devido. Se a empresa é nova, informe o início das atividades no Enquadramento.' });
         }
         if (regra === 'primeiro') avisos.push({ t: 'azul', m: 'Primeiro mês de atividade: o RBT12 é a receita do próprio mês × 12 (regra do Simples para empresas novas).' });
         if (regra === 'proporcional') avisos.push({ t: 'azul', m: 'Empresa com menos de 12 meses: RBT12 = média dos ' + mesesAtiv + ' mês(es) de atividade × 12 (regra proporcional).' });
         if (ini && difMeses(ini, comp) < 0) avisos.push({ t: 'amarelo', m: 'O mês escolhido é anterior ao início das atividades informado no Enquadramento.' });
-        if (totalMes === 0) avisos.push({ t: 'amarelo', m: 'Não há notas de venda importadas em ' + mesBR(comp) + '. Sem receita não há DAS, mas se a empresa vendeu, importe as notas primeiro.' });
+        if (totalMes === 0) avisos.push({ t: 'azul', m: 'Sem receita de vendas em ' + mesBR(comp) + ': o DAS é zero e o mês fica SEM MOVIMENTO. Se a empresa vendeu, importe as notas antes. Se não vendeu, salve esta apuração, entregue a declaração sem movimento no PGDAS-D e registre o recibo acima.' });
         if (rbt12 > 4800000) avisos.push({ t: 'vermelho', m: 'O RBT12 passou de R$ 4,8 milhões: a empresa ultrapassa o limite do Simples Nacional. O cálculo não é feito; fale com a contabilidade (exclusão/enquadramento).' });
         else if (rbt12 > 3600000) avisos.push({ t: 'vermelho', m: 'O RBT12 passou de R$ 3,6 milhões (sublimite): ICMS e ISS passam a ser recolhidos fora do DAS. Este cálculo traz o valor cheio e precisa de conferência manual.' });
 
@@ -452,7 +456,7 @@
     }
 
     function lerEntradas() {
-        return { dedM: numIn('apDedM'), dedS: numIn('apDedS'), compl: numIn('apCompl'), folha: numIn('apFolha') };
+        return { dedM: numIn('apDedM'), dedS: numIn('apDedS'), compl: numIn('apCompl'), folha: numIn('apFolha'), recibo: document.getElementById('apRecibo').value.trim(), dataDecl: document.getElementById('apDataDecl').value || '' };
     }
     function mudouMes() {
         const comp = document.getElementById('apMes').value;
@@ -461,6 +465,7 @@
         const e = (apurAtual && apurAtual.detalhe && apurAtual.detalhe.entradas) || { dedM: 0, dedS: 0, compl: 0, folha: 0 };
         document.getElementById('apDedM').value = e.dedM || 0; document.getElementById('apDedS').value = e.dedS || 0;
         document.getElementById('apCompl').value = e.compl || 0; document.getElementById('apFolha').value = e.folha || 0;
+        document.getElementById('apRecibo').value = e.recibo || ''; document.getElementById('apDataDecl').value = e.dataDecl || '';
         document.getElementById('apObs').value = (apurAtual && apurAtual.observacao) || '';
         calcular();
     }
@@ -469,7 +474,7 @@
         if (!comp) return;
         calc = fazerCalculo(comp, lerEntradas());
         const fechada = !!(apurAtual && apurAtual.status === 'fechada');
-        ['apDedM', 'apDedS', 'apCompl', 'apFolha', 'apObs'].forEach(function (id) { document.getElementById(id).disabled = fechada || !podeEditar; });
+        ['apDedM', 'apDedS', 'apCompl', 'apFolha', 'apObs', 'apRecibo', 'apDataDecl'].forEach(function (id) { document.getElementById(id).disabled = fechada || !podeEditar; });
         document.getElementById('btnSalvar').style.display = (podeEditar && !fechada) ? '' : 'none';
         document.getElementById('stApur').innerHTML = apurAtual ? '<span class="badge-st st-' + apurAtual.status + '">' + (apurAtual.status === 'fechada' ? 'Fechada' : 'Salva (em aberto)') + '</span>' : '<span class="badge-st st-calculada">Ainda não salva</span>';
         document.getElementById('boxFolha').style.display = cfg.anexo_servicos === 'FR' ? '' : 'none';
@@ -503,7 +508,7 @@
         if (calc.linhas.some(function (l) { return l.fora; })) { toast('Não dá para salvar: o RBT12 passou do limite do Simples.', 'error'); return; }
         try {
             const dados = { receita_mes: calc.receita_mes, rbt12: calc.rbt12, valor_das: calc.das, vencimento: calc.vencimento, observacao: document.getElementById('apObs').value.trim(),
-                detalhe: { entradas: calc.entradas, linhas: calc.linhas, regra: calc.regra, fatorR: calc.fatorR, anexos_cfg: calc.anexos_cfg, receita_bruta: calc.receita_bruta, avisos: calc.avisos.map(function (a) { return a.m; }) } };
+                detalhe: { sem_movimento: calc.receita_mes === 0, entradas: calc.entradas, linhas: calc.linhas, regra: calc.regra, fatorR: calc.fatorR, anexos_cfg: calc.anexos_cfg, receita_bruta: calc.receita_bruta, avisos: calc.avisos.map(function (a) { return a.m; }) } };
             await rpc('fiscal_salvar_apuracao', { p_cliente: emp, p_comp: calc.comp, p_dados: dados });
             toast('Apuração de ' + mesBR(calc.comp) + ' salva.');
             await carregarSalvas(); mudouMesSemReset(); renderHist();
@@ -526,10 +531,28 @@
         catch (err) { toast('Erro: ' + (err.message || err), 'error'); }
     }
     function abrirMes(comp) { document.getElementById('apMes').value = comp; mudarAba('apurar'); mudouMes(); }
+    function declTxt(s) {
+        const e = (s.detalhe && s.detalhe.entradas) || {};
+        const sem = Number(s.receita_mes) === 0 ? ' <span class="sub">sem movimento</span>' : '';
+        if (e.recibo) return '<b>Recibo ' + esc(e.recibo) + '</b>' + (e.dataDecl ? '<span class="sub">entregue em ' + dataBR(e.dataDecl) + '</span>' : '') + sem;
+        return '<span style="color:#b45309; font-weight:700;">Recibo não informado</span>' + sem;
+    }
+    function renderPendentes() {
+        const box = document.getElementById('boxPend');
+        const ini = cfg.inicio_atividade ? String(cfg.inicio_atividade).slice(0, 7) : '';
+        if (!ini) { box.innerHTML = '<div class="aviso azul"><i class="fas fa-circle-info" style="margin-top:2px;"></i><span>Informe o <b>início das atividades</b> no Enquadramento para o sistema listar os meses que ainda não foram apurados.</span></div>'; return; }
+        const h = new Date(), atual = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'), ultimo = somaMes(atual, -1);
+        const feitos = {}; salvas.forEach(function (x) { feitos[x.competencia] = true; });
+        const pend = []; for (let c = ini; c <= ultimo; c = somaMes(c, 1)) if (!feitos[c]) pend.push(c);
+        box.innerHTML = pend.length
+            ? '<div class="aviso amarelo"><i class="fas fa-triangle-exclamation" style="margin-top:2px;"></i><span><b>' + pend.length + ' mês(es) ainda sem apuração registrada</b> desde o início das atividades. Clique no mês para abrir:</span></div><div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">' + pend.map(function (c) { return '<button type="button" class="btn-acao btn-mini cinza" onclick="abrirMes(\'' + c + '\')">' + mesBR(c) + '</button>'; }).join('') + '</div>'
+            : '<div class="aviso azul"><i class="fas fa-circle-check" style="margin-top:2px;"></i><span>Todos os meses desde o início das atividades têm apuração registrada.</span></div>';
+    }
     function renderHist() {
+        renderPendentes();
         document.getElementById('tbHist').innerHTML = salvas.length ? salvas.map(function (s) {
             return '<tr><td><b>' + mesBR(s.competencia) + '</b></td><td class="num">' + brl(s.receita_mes) + '</td><td class="num">' + brl(s.rbt12) + '</td><td class="num"><b>' + brl(s.valor_das) + '</b></td><td>' + dataBR(s.vencimento) + '</td>' +
-                '<td><span class="badge-st st-' + s.status + '">' + (s.status === 'fechada' ? 'Fechada' : 'Em aberto') + '</span></td><td>' + esc(s.criado_por || '') + '</td>' +
+                '<td>' + declTxt(s) + '</td><td><span class="badge-st st-' + s.status + '">' + (s.status === 'fechada' ? 'Fechada' : 'Em aberto') + '</span></td>' +
                 '<td><div class="acoes"><button class="btn-acao btn-mini cinza" type="button" title="Abrir" onclick="abrirMes(\'' + s.competencia + '\')"><i class="fas fa-folder-open"></i></button>' +
                 '<button class="btn-acao btn-mini cinza" type="button" title="Imprimir" onclick="imprimirSalva(\'' + s.competencia + '\')"><i class="fas fa-print"></i></button>' +
                 (podeEditar ? (s.status === 'fechada' ? '<button class="btn-acao btn-mini" type="button" title="Reabrir" onclick="fecharReabrir(\'' + s.competencia + '\', false)"><i class="fas fa-lock-open"></i></button>'
@@ -539,7 +562,7 @@
     }
 
     // ---------- impressão (padrão dos relatórios) ----------
-    function imprimirDe(comp, linhas, receita, rbt12, das, venc, obs, regra) {
+    function imprimirDe(comp, linhas, receita, rbt12, das, venc, obs, regra, recibo, dataDecl) {
         if (!linhas.length) { toast('Não há DAS para imprimir neste mês.', 'info'); return; }
         ERPPrint.imprimir({
             titulo: 'Apuração do Simples Nacional', subtitulo: 'Competência ' + mesBR(comp) + ' — memória de cálculo do DAS', codigo: 'FIS-SN', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
@@ -548,16 +571,16 @@
             colunas: [{ t: 'Atividade / Anexo', w: 3.2 }, { t: 'Receita', w: 1.4, a: 'r' }, { t: 'RBT12', w: 1.4, a: 'r' }, { t: 'Faixa', w: .9 }, { t: 'Alíq. nominal', w: 1.1, a: 'r' }, { t: 'Parc. a deduzir', w: 1.3, a: 'r' }, { t: 'Alíq. efetiva', w: 1.2, a: 'r' }, { t: 'DAS', w: 1.3, a: 'r' }],
             linhas: linhas.map(function (l) { return { c: [l.rotulo + ' — ' + NOME_ANEXO[l.anexo], brl(l.receita), brl(l.rbt12), l.faixa ? l.faixa + 'ª' : '—', Number(l.aliq).toFixed(2).replace('.', ',') + '%', brl(l.pd), Number(l.ef).toFixed(4).replace('.', ',') + '%', brl(l.das)] }; }),
             totais: ['TOTAL DO DAS', brl(receita), '', '', '', '', '', brl(das)],
-            observacao: (regra && regra !== 'normal' ? 'Empresa com menos de 12 meses: RBT12 calculado pela regra proporcional. ' : '') + (obs ? obs + ' ' : '') + 'Cálculo de apoio; confira com o PGDAS-D antes do pagamento.',
+            observacao: (recibo ? 'Declaração PGDAS-D: recibo ' + recibo + (dataDecl ? ' (entregue em ' + dataBR(dataDecl) + ')' : '') + '. ' : '') + (regra && regra !== 'normal' ? 'Empresa com menos de 12 meses: RBT12 calculado pela regra proporcional. ' : '') + (obs ? obs + ' ' : '') + 'Cálculo de apoio; confira com o PGDAS-D antes do pagamento.',
             assinaturas: ['Responsável pela empresa', 'Contador responsável']
         });
     }
-    function imprimirApuracao() { if (calc) imprimirDe(calc.comp, calc.linhas, calc.receita_mes, calc.rbt12, calc.das, calc.vencimento, document.getElementById('apObs').value.trim(), calc.regra); }
+    function imprimirApuracao() { if (calc) imprimirDe(calc.comp, calc.linhas, calc.receita_mes, calc.rbt12, calc.das, calc.vencimento, document.getElementById('apObs').value.trim(), calc.regra, calc.entradas.recibo, calc.entradas.dataDecl); }
     function imprimirSalva(comp) {
         const s = salvas.find(function (x) { return x.competencia === comp; });
         if (!s) return;
         const d = s.detalhe || {};
-        imprimirDe(comp, d.linhas || [], Number(s.receita_mes), Number(s.rbt12), Number(s.valor_das), s.vencimento, s.observacao || '', d.regra);
+        imprimirDe(comp, d.linhas || [], Number(s.receita_mes), Number(s.rbt12), Number(s.valor_das), s.vencimento, s.observacao || '', d.regra, (d.entradas || {}).recibo, (d.entradas || {}).dataDecl);
     }
 
     async function iniciar() {
