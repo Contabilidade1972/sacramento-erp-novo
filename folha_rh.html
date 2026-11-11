@@ -77,7 +77,7 @@
         .ficha-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px 16px; }
         .ficha-grid .item span { display:block; font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase; } .ficha-grid .item strong { font-size:13px; word-break:break-word; }
         @media (max-width:800px) { .dep-row { grid-template-columns:1fr 1fr; } .ficha-grid { grid-template-columns:1fr 1fr; } }
-        @media print { body * { visibility:hidden !important; } #fichaRH, #fichaRH * { visibility:visible !important; } #fichaRH { position:absolute; left:0; top:0; width:100%; padding:20px; } .modal-rh { background:#fff !important; padding:0 !important; display:block !important; } .modal-rh .caixa { box-shadow:none !important; } .sem-imprimir { display:none !important; } }
+        @media print { #modalRH { display:none !important; } }
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -536,7 +536,7 @@
 </div>
 
 <div class="modal-rh" id="modalRH"><div class="caixa">
-    <div class="topo sem-imprimir"><span>Ficha cadastral do colaborador</span><div style="display:flex; gap:8px;"><button class="btn-acao" type="button" style="padding:6px 12px;" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="document.getElementById('modalRH').style.display='none'"><i class="fas fa-times"></i> Fechar</button></div></div>
+    <div class="topo sem-imprimir"><span>Ficha cadastral do colaborador</span><div style="display:flex; gap:8px;"><button class="btn-acao" type="button" style="padding:6px 12px;" onclick="imprimirFicha()"><i class="fas fa-print"></i> Imprimir</button><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="document.getElementById('modalRH').style.display='none'"><i class="fas fa-times"></i> Fechar</button></div></div>
     <div class="corpo" id="fichaRH"></div>
 </div></div>
 
@@ -929,6 +929,47 @@ async function excluirFuncionario(id) {
     carregarFuncionarios();
 }
 
+var fichaNome='', empresaNomeSo='', empresaCnpjSo='';
+// Imprime a ficha no padrão único de relatórios (ERPPrint). Lê os dados da própria ficha aberta na tela.
+function imprimirFicha(){
+    var root=document.getElementById('fichaRH'); if(!root || !root.children.length) return;
+    if(!window.ERPPrint){ toast('Módulo de impressão não carregado.', 'error'); return; }
+    var txt=function(e){ return (e.textContent||'').replace(/\s+/g,' ').trim(); };
+    var kids=[].slice.call(root.children);
+    var sub=kids[1]?txt(kids[1]):'';
+    var mp=sub.match(/cadastro (\d+)% completo/); var mf=sub.match(/\(falta: (.*)\)/);
+    var rot={}, linhas=[];
+    var lab=function(t){ return { t:t, cls:'muted bold' }; };
+    for(var i=2;i<kids.length-1;i++){
+        var el=kids[i];
+        if(el.classList.contains('ficha-sec')){ linhas.push({secao:txt(el)}); continue; }
+        if(el.classList.contains('ficha-grid')){
+            var it=[].slice.call(el.querySelectorAll('.item')).map(function(x){ var v=txt(x.querySelector('strong')); if(v==='—') v=''; return [txt(x.querySelector('span')), v]; });
+            it.forEach(function(p){ rot[p[0]]=p[1]; });
+            for(var j=0;j<it.length;j+=2){ var q=it[j+1]||['','']; linhas.push([lab(it[j][0]),it[j][1],lab(q[0]),q[1]]); }
+            continue;
+        }
+        var tb=el.tagName==='TABLE'?el:null;
+        if(tb){
+            var trs=[].slice.call(tb.querySelectorAll('tbody tr'));
+            trs.forEach(function(tr,n){ var c=[].slice.call(tr.children).map(txt);
+                linhas.push([lab('Dependente '+(n+1)), c[0]+(c[1]?' — CPF '+c[1]:''), lab('Nasc. / Parentesco'), [c[2],c[3],'IRRF: '+c[4],'Sal.-família: '+c[5]].filter(Boolean).join(' · ')]); });
+            continue;
+        }
+        if(txt(el)) linhas.push([lab('Observações'), txt(el), '', '']);
+    }
+    var vinc=rot['Vínculo']||'', sal=rot['Salário / pró-labore']||'';
+    ERPPrint.imprimir({
+        titulo:'Ficha cadastral do colaborador', subtitulo:(fichaNome||'')+(vinc?' — '+vinc:''), codigo:'RH-FC', orientacao:'portrait',
+        empresa:empresaNomeSo||undefined, cnpj:empresaCnpjSo||undefined,
+        filtros:[['Colaborador',fichaNome||'—'],['CPF',rot['CPF']||'—']],
+        resumo:[['Vínculo',vinc||'—'],['Cargo',rot['Cargo']||'—'],['Admissão / início',rot['Admissão / início']||'—'],['Salário / pró-labore',sal||'—'],['Cadastro completo',(mp?mp[1]:'0')+'%']],
+        colunas:[{t:'Campo',w:1.35},{t:'Informação',w:2.2},{t:'Campo',w:1.35},{t:'Informação',w:2.2}],
+        linhas:linhas,
+        observacao:'Documento de uso interno, com dados pessoais protegidos pela LGPD. Não substitui o registro do empregado no eSocial.'+(mf?' Cadastro incompleto — falta: '+mf[1]+'.':''),
+        assinaturas:['Colaborador','Responsável pela empresa']
+    });
+}
 async function verFicha(id, imprimir){
     var c = funcionariosCache.find(function(x){ return x.id==id; }); if(!c) return;
     var { data: deps } = await sb.from('colaboradores_dependentes').select('*').eq('colaborador_id', id).order('id');
@@ -951,7 +992,8 @@ async function verFicha(id, imprimir){
       + '<div style="margin-top:24px; font-size:10px; color:var(--text-light);">Documento de uso interno, com dados pessoais protegidos pela LGPD. Não substitui o registro do empregado no eSocial.</div>';
     document.getElementById('fichaRH').innerHTML=h;
     document.getElementById('modalRH').style.display='flex';
-    if(imprimir) setTimeout(function(){ window.print(); },300);
+    fichaNome = c.nome || '';
+    if(imprimir) setTimeout(function(){ imprimirFicha(); },300);
 }
 var empresaNomeFicha='';
 async function editarSocio(id){
@@ -983,7 +1025,7 @@ async function salvarSocioTela(){
     carregarFuncionarios();
 }
 function nomeEmpresaFicha(){ return empresaNomeFicha || 'Empresa'; }
-async function carregarNomeEmpresa(){ try{ var r=await sb.from('clientes_contratantes').select('razao_social,nome_fantasia,cnpj').eq('id', clienteIdAtual()).maybeSingle(); if(r.data) empresaNomeFicha=(r.data.nome_fantasia||r.data.razao_social||'')+(r.data.cnpj?' (CNPJ '+r.data.cnpj+')':''); }catch(e){} }
+async function carregarNomeEmpresa(){ try{ var r=await sb.from('clientes_contratantes').select('razao_social,nome_fantasia,cnpj').eq('id', clienteIdAtual()).maybeSingle(); if(r.data){ empresaNomeFicha=(r.data.nome_fantasia||r.data.razao_social||'')+(r.data.cnpj?' (CNPJ '+r.data.cnpj+')':''); empresaNomeSo=(r.data.nome_fantasia||r.data.razao_social||''); empresaCnpjSo=r.data.cnpj||''; } }catch(e){} }
 
 // ===== MOTOR DE CÁLCULO INSS / IRRF — PARÂMETROS 2026 =====
 var P26 = {

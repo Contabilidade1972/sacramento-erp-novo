@@ -1,5 +1,5 @@
 /* ============================================================
-   Sacramento ERP — erp-print.js v1.1
+   Sacramento ERP — erp-print.js v1.2
    Padrão ÚNICO de impressão de relatórios.
    - Cabeçalho com empresa, CNPJ, título e identificação do relatório
    - Quadro "Filtros aplicados"
@@ -17,6 +17,7 @@
      colunas:  [{t:'Código', w:1}, {t:'Valor (R$)', w:2, a:'right'}],
      linhas:   [ ['CP-001','R$ 10,00'], {c:['CP-002',{t:'R$ 5,00',cls:'neg'}], cls:'destaque'} ],
      totais:   ['TOTAL','R$ 15,00'],           // opcional, alinhada às colunas
+     // linha de título de seção dentro de 'linhas':  { secao: 'Identificação' }
      observacao: 'Texto opcional no fim',
      assinaturas: ['Responsável pelo pagamento', 'Aprovação']   // opcional: bloco de assinaturas na última página
    });
@@ -118,6 +119,7 @@
         'table.rel tbody td { padding: 1.7mm 1.6mm; border-bottom: 1px solid #dbe3ee; vertical-align: top; word-wrap: break-word; overflow-wrap: anywhere; line-height: 1.3; }',
         'table.rel tbody tr:nth-child(even) td { background: #f6f8fc; }',
         'table.rel tbody tr.destaque td { background: #fffbeb; }',
+        'table.rel tbody tr.linha-secao td { background: #dbe5f5 !important; color: #1e3a8a; font-weight: 800; font-size: 7.4pt; text-transform: uppercase; letter-spacing: .4px; padding: 1.3mm 1.6mm; border-bottom: 1px solid #1e3a8a; }',
         'table.rel tr.linha-total td { border-top: 1.6px solid #1e3a8a; border-bottom: 0; background: #eef2ff !important; font-weight: 800; padding-top: 2mm; padding-bottom: 2mm; }',
         '.a-right { text-align: right !important; } .a-center { text-align: center !important; }',
         '.pos { color: #047857; font-weight: 700; } .neg { color: #b91c1c; font-weight: 700; } .warn { color: #b45309; font-weight: 700; } .muted { color: #64748b; } .bold { font-weight: 700; }',
@@ -181,6 +183,10 @@
     }
 
     function linhaHTML(l, cols) {
+        // linha de título de seção (ocupa a largura toda): { secao: 'Texto' }
+        if (!Array.isArray(l) && l && l.secao !== undefined) {
+            return '<tr class="linha-secao"><td colspan="' + cols.length + '">' + esc(l.secao) + '</td></tr>';
+        }
         var cels = Array.isArray(l) ? l : l.c;
         var cls = Array.isArray(l) ? '' : (l.cls || '');
         var h = '<tr' + (cls ? ' class="' + cls + '"' : '') + '>';
