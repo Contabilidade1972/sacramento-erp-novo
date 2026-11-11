@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Livros Fiscais — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-family: inherit; box-shadow: 0 2px 6px rgba(37,99,235,0.2); }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--border); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); } .kpi-card.azul { border-top-color: var(--primary); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .form-control:disabled { background: #f1f5f9; color: #64748b; }
+        .dica { font-size: 11.5px; color: var(--text-light); margin-top: 8px; line-height: 1.5; }
+
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela th.num { text-align: right; }
+        .tabela td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela tr.cancelada td { color: #94a3b8; text-decoration: line-through; background: #fafafa; }
+        .tabela tfoot td { font-weight: 800; background: #eef2ff; border-top: 2px solid var(--secondary); }
+        .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .sub { display: block; font-size: 11px; color: var(--text-light); margin-top: 2px; }
+
+        .abas { display: flex; gap: 6px; flex-wrap: wrap; border-bottom: 2px solid var(--border); }
+        .aba { background: none; border: none; padding: 11px 18px; font-size: 13px; font-weight: 700; color: var(--text-light); cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-family: inherit; display: flex; gap: 8px; align-items: center; }
+        .aba:hover { color: var(--primary); }
+        .aba.ativa { color: var(--primary); border-bottom-color: var(--primary); }
+        .barra-emp { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; }
+        .barra-emp .f { min-width: 200px; flex: 1; }
+        .barra-emp .f.big { min-width: 260px; flex: 2; }
+        .chk { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--text-main); height: 42px; cursor: pointer; }
+        .aviso { border-radius: 10px; padding: 10px 14px; font-size: 12.8px; line-height: 1.5; font-weight: 600; display: flex; gap: 10px; align-items: flex-start; }
+        .aviso.azul { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 6000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        .btn-voltar-fixo { position: fixed; left: 20px; bottom: 24px; z-index: 900; background: var(--secondary); color: #fff; border: none; border-radius: 999px; padding: 12px 20px; font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 8px 22px rgba(30,58,138,.4); }
+        .btn-voltar-fixo:hover { background: var(--primary-dark); }
+        @media print { .btn-voltar-fixo { display: none !important; } }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .kpi-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<a href="modulo_contabil.html" class="btn-voltar-fixo no-print" title="Voltar ao Módulo Contábil"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+        <a href="fiscal_notas.html" class="btn-acao cinza"><i class="fas fa-file-invoice"></i> Notas Fiscais (XML)</a>
+        <a href="fiscal_apuracao.html" class="btn-acao cinza"><i class="fas fa-calculator"></i> Apuração Simples Nacional</a>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-book-open" style="color:var(--primary);"></i> Livros Fiscais</div>
+        <div class="page-subtitle">Registro de Saídas, Registro de Entradas e resumos, montados a partir das notas fiscais importadas</div>
+    </div>
+
+    <div class="barra-emp">
+        <div class="f big"><label for="selEmpresa">Empresa</label><select id="selEmpresa" class="form-control" onchange="trocarEmpresa()"></select></div>
+        <div class="f"><label for="fDe">De (mês)</label><input type="month" id="fDe" class="form-control" onchange="renderTudo()"></div>
+        <div class="f"><label for="fAte">Até (mês)</label><input type="month" id="fAte" class="form-control" onchange="renderTudo()"></div>
+        <label class="chk"><input type="checkbox" id="fCanc" checked onchange="renderTudo()"> Mostrar notas canceladas</label>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><div class="kpi-title">Saídas (vendas)</div><div class="kpi-value" id="kSai">R$ 0,00</div><div class="kpi-sub" id="kSaiSub"></div></div>
+        <div class="kpi-card amarelo"><div class="kpi-title">Entradas (compras)</div><div class="kpi-value" id="kEnt">R$ 0,00</div><div class="kpi-sub" id="kEntSub"></div></div>
+        <div class="kpi-card verde"><div class="kpi-title">ICMS + ISS destacados nas saídas</div><div class="kpi-value" id="kImp">R$ 0,00</div><div class="kpi-sub">valores informados nos XML</div></div>
+        <div class="kpi-card vermelho"><div class="kpi-title">Notas canceladas no período</div><div class="kpi-value" id="kCanc">0</div><div class="kpi-sub">não entram nos totais</div></div>
+    </div>
+
+    <div class="abas">
+        <button class="aba ativa" data-aba="saidas" type="button" onclick="mudarAba('saidas')"><i class="fas fa-arrow-up-right-from-square"></i> Registro de Saídas</button>
+        <button class="aba" data-aba="entradas" type="button" onclick="mudarAba('entradas')"><i class="fas fa-arrow-down-to-bracket"></i> Registro de Entradas</button>
+        <button class="aba" data-aba="cfop" type="button" onclick="mudarAba('cfop')"><i class="fas fa-layer-group"></i> Resumo por CFOP</button>
+        <button class="aba" data-aba="mensal" type="button" onclick="mudarAba('mensal')"><i class="fas fa-calendar-days"></i> Resumo mensal</button>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title">
+            <span class="t"><i class="fas fa-table-list" style="color:var(--primary);"></i> <span id="tituloAba"></span></span>
+            <span style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn-acao cinza" type="button" onclick="exportarCsv()"><i class="fas fa-file-csv"></i> Exportar para Excel</button>
+                <button class="btn-acao sucesso" type="button" onclick="imprimirAba()"><i class="fas fa-print"></i> Imprimir</button>
+            </span>
+        </div>
+        <div class="table-wrap"><table class="tabela">
+            <thead id="thLivro"></thead>
+            <tbody id="tbLivro"></tbody>
+            <tfoot id="tfLivro"></tfoot>
+        </table></div>
+        <div class="dica" id="dicaAba"></div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+
+    let U = {}, ehMaster = false, meuId = 0;
+    let empresas = [], emp = 0;
+    let notas = [];
+    let aba = 'saidas';
+    let atual = null;          // dados da aba em exibição (usado por imprimir e exportar)
+
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function toast(msg, type) {
+        type = type || 'success';
+        const c = document.getElementById('toastContainer');
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 8000 : 3500);
+    }
+    function brl(v) { return Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function r2(v) { return Math.round((Number(v) + Number.EPSILON) * 100) / 100; }
+    function dataBR(d) { return d ? String(d).slice(0, 10).split('-').reverse().join('/') : '—'; }
+    function mesBR(c) { return c ? c.split('-').reverse().join('/') : ''; }
+    function soDig(s) { return String(s || '').replace(/\D/g, ''); }
+    function fmtDoc(d) {
+        d = soDig(d);
+        if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+        if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+        return d;
+    }
+    function somaMes(c, n) { const p = c.split('-'); const d = new Date(Number(p[0]), Number(p[1]) - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+    function nomeEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? e.nome : ('Empresa ' + emp); }
+    function cnpjEmp() { const e = empresas.find(function (x) { return x.id === emp; }); return e ? (e.cnpj || '') : ''; }
+    function ehCancelada(n) { return String(n.situacao || '').toLowerCase().indexOf('cancel') > -1; }
+
+    // ---------- contexto (mesma regra das outras telas fiscais) ----------
+    async function descobrirContexto() {
+        try { U = JSON.parse(localStorage.getItem('usuarioLogado') || '{}') || {}; } catch (e) { U = {}; }
+        ehMaster = (U.email || '').toLowerCase().trim() === EMAIL_MASTER || (U.perfil || '').toLowerCase().includes('master');
+        let ativa = U.cliente_id ? parseInt(U.cliente_id) : 1;
+        if (ehMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) ativa = parseInt(sel); }
+        meuId = U.cliente_id_origem ? parseInt(U.cliente_id_origem) : ativa;
+        let ids = [];
+        if (ehMaster) {
+            const r = await sb.from('clientes_contratantes').select('id').order('id');
+            ids = ((r && r.data) || []).map(function (x) { return x.id; });
+            emp = ativa;
+        } else {
+            ids = [meuId];
+            const rv = await sb.from('vinculos_contador').select('empresa_cliente_id, status, pode_visualizar').eq('contador_cliente_id', meuId);
+            ((rv && rv.data) || []).forEach(function (v) {
+                if (String(v.status || '').toLowerCase() === 'ativo' && v.pode_visualizar) ids.push(parseInt(v.empresa_cliente_id));
+            });
+            emp = meuId;
+        }
+        ids = ids.filter(function (v, i, a) { return a.indexOf(v) === i; });
+        const rn = await sb.from('clientes_contratantes').select('id, razao_social, nome_fantasia, cnpj').in('id', ids);
+        const nomes = {};
+        ((rn && rn.data) || []).forEach(function (e) { nomes[e.id] = { nome: e.nome_fantasia || e.razao_social || ('Empresa ' + e.id), cnpj: e.cnpj || '' }; });
+        empresas = ids.map(function (id) { return { id: id, nome: (nomes[id] && nomes[id].nome) || ('Empresa ' + id), cnpj: (nomes[id] && nomes[id].cnpj) || '' }; });
+        if (!ehMaster && ativa !== meuId && ids.indexOf(ativa) > -1) emp = ativa;
+        if (!empresas.some(function (e) { return e.id === emp; })) emp = empresas[0].id;
+        const sel = document.getElementById('selEmpresa');
+        sel.innerHTML = empresas.map(function (e) { return '<option value="' + e.id + '">' + esc(e.nome) + (e.id === meuId ? ' (minha empresa)' : '') + '</option>'; }).join('');
+        sel.value = String(emp);
+        if (empresas.length === 1) sel.disabled = true;
+    }
+    async function trocarEmpresa() {
+        emp = parseInt(document.getElementById('selEmpresa').value);
+        await carregarNotas();
+    }
+    async function carregarNotas() {
+        try {
+            const cols = 'id,modelo,direcao,numero,serie,data_emissao,competencia,parceiro_cnpj,parceiro_nome,natureza,cfop,valor_total,valor_produtos,valor_servicos,valor_icms,valor_ipi,valor_pis,valor_cofins,valor_iss,iss_retido,situacao';
+            let out = [];
+            for (let ini = 0; ini < 100000; ini += 1000) {
+                const r = await sb.from('fiscal_notas').select(cols).eq('cliente_id', emp).order('data_emissao', { ascending: true }).range(ini, ini + 999);
+                if (r.error) throw r.error;
+                out = out.concat(r.data || []);
+                if (!r.data || r.data.length < 1000) break;
+            }
+            notas = out;
+            // período padrão: últimos 12 meses com notas
+            let ate = '';
+            notas.forEach(function (n) { if (n.competencia > ate) ate = n.competencia; });
+            if (!ate) { const h = new Date(); ate = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); }
+            document.getElementById('fAte').value = ate;
+            document.getElementById('fDe').value = somaMes(ate, -11);
+            renderTudo();
+        } catch (err) { toast('Erro ao carregar notas: ' + (err.message || err), 'error'); }
+    }
+
+    // ---------- filtros e totais ----------
+    function filtradas() {
+        const de = document.getElementById('fDe').value || '0000-00', ate = document.getElementById('fAte').value || '9999-99';
+        const mostrarCanc = document.getElementById('fCanc').checked;
+        return notas.filter(function (n) { return n.competencia >= de && n.competencia <= ate && (mostrarCanc || !ehCancelada(n)); });
+    }
+    function somar(lista, campo) { return r2(lista.reduce(function (s, n) { return s + (ehCancelada(n) ? 0 : Number(n[campo] || 0)); }, 0)); }
+    function docTxt(n) { return (n.modelo === 'nfse' ? 'NFS-e ' : 'NF-e ') + (n.numero || '—') + (n.serie ? '/' + n.serie : ''); }
+
+    function mudarAba(a) {
+        aba = a;
+        document.querySelectorAll('.aba').forEach(function (b) { b.classList.toggle('ativa', b.getAttribute('data-aba') === a); });
+        renderTudo();
+    }
+
+    function renderKpis(lista) {
+        const sai = lista.filter(function (n) { return n.direcao === 'saida'; }), ent = lista.filter(function (n) { return n.direcao === 'entrada'; });
+        const nSai = sai.filter(function (n) { return !ehCancelada(n); }).length, nEnt = ent.filter(function (n) { return !ehCancelada(n); }).length;
+        document.getElementById('kSai').textContent = 'R$ ' + brl(somar(sai, 'valor_total'));
+        document.getElementById('kSaiSub').textContent = nSai + ' nota(s) de venda';
+        document.getElementById('kEnt').textContent = 'R$ ' + brl(somar(ent, 'valor_total'));
+        document.getElementById('kEntSub').textContent = nEnt + ' nota(s) de compra';
+        document.getElementById('kImp').textContent = 'R$ ' + brl(somar(sai, 'valor_icms') + somar(sai, 'valor_iss'));
+        document.getElementById('kCanc').textContent = String(lista.filter(ehCancelada).length);
+    }
+
+    // ---------- montagem de cada livro: { titulo, codigo, cols, rows, canc, totais, resumo, obs } ----------
+    function montarRegistro(lista, dir) {
+        const l = lista.filter(function (n) { return n.direcao === dir; });
+        const cols = [
+            { t: 'Data', w: 1.15 }, { t: 'Documento', w: 1.5 }, { t: dir === 'saida' ? 'Cliente' : 'Fornecedor', w: 3 }, { t: 'CFOP', w: .7 }, { t: 'Natureza / serviço', w: 2.6 },
+            { t: 'Valor total', w: 1.2, a: 'r' }, { t: 'Produtos', w: 1.1, a: 'r' }, { t: 'Serviços', w: 1.1, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }
+        ];
+        const rows = l.map(function (n) {
+            return [dataBR(n.data_emissao), docTxt(n) + (ehCancelada(n) ? ' (cancelada)' : ''), (n.parceiro_nome || '—') + (n.parceiro_cnpj ? ' — ' + fmtDoc(n.parceiro_cnpj) : ''), n.cfop || '—', n.natureza || '—',
+                brl(n.valor_total), brl(n.valor_produtos), brl(n.valor_servicos), brl(n.valor_icms), brl(n.valor_iss)];
+        });
+        const tot = ['TOTAL', '', '', '', '', brl(somar(l, 'valor_total')), brl(somar(l, 'valor_produtos')), brl(somar(l, 'valor_servicos')), brl(somar(l, 'valor_icms')), brl(somar(l, 'valor_iss'))];
+        const nv = l.filter(function (n) { return !ehCancelada(n); }).length;
+        return {
+            titulo: dir === 'saida' ? 'Registro de Saídas' : 'Registro de Entradas', codigo: dir === 'saida' ? 'FIS-RS' : 'FIS-RE', cols: cols, rows: rows, canc: l.map(ehCancelada), totais: tot,
+            resumo: [['Notas', String(nv)], ['Valor total', 'R$ ' + brl(somar(l, 'valor_total'))], ['ICMS', 'R$ ' + brl(somar(l, 'valor_icms'))], ['ISS', 'R$ ' + brl(somar(l, 'valor_iss'))]],
+            obs: 'Relação das notas fiscais ' + (dir === 'saida' ? 'de venda' : 'de compra') + ' importadas em XML. Notas canceladas aparecem riscadas e não entram nos totais. Cálculo e escrituração de apoio.',
+            dica: 'Montado a partir das notas importadas em Notas Fiscais (XML). Se faltar alguma nota, importe o XML dela lá. Notas canceladas aparecem riscadas e não somam.'
+        };
+    }
+    function montarCfop(lista) {
+        const g = {};
+        lista.forEach(function (n) {
+            if (ehCancelada(n)) return;
+            const k = n.direcao + '|' + (n.cfop || (n.modelo === 'nfse' ? 'Serviços' : '—'));
+            if (!g[k]) g[k] = { dir: n.direcao, cfop: n.cfop || (n.modelo === 'nfse' ? 'Serviços (NFS-e)' : '—'), nat: n.natureza || '', q: 0, t: 0, p: 0, s: 0, i: 0, iss: 0 };
+            g[k].q++; g[k].t += Number(n.valor_total || 0); g[k].p += Number(n.valor_produtos || 0); g[k].s += Number(n.valor_servicos || 0); g[k].i += Number(n.valor_icms || 0); g[k].iss += Number(n.valor_iss || 0);
+        });
+        const itens = Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return (a.dir === b.dir ? 0 : (a.dir === 'saida' ? -1 : 1)) || String(a.cfop).localeCompare(String(b.cfop)); });
+        const cols = [{ t: 'Operação', w: 1.1 }, { t: 'CFOP', w: 1.4 }, { t: 'Natureza (exemplo)', w: 3 }, { t: 'Notas', w: .7, a: 'r' }, { t: 'Valor total', w: 1.3, a: 'r' }, { t: 'Produtos', w: 1.2, a: 'r' }, { t: 'Serviços', w: 1.2, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }];
+        const rows = itens.map(function (x) { return [x.dir === 'saida' ? 'Saída' : 'Entrada', x.cfop, x.nat || '—', String(x.q), brl(x.t), brl(x.p), brl(x.s), brl(x.i), brl(x.iss)]; });
+        const tt = function (d) { return itens.filter(function (x) { return x.dir === d; }).reduce(function (s, x) { return s + x.t; }, 0); };
+        return {
+            titulo: 'Resumo por CFOP', codigo: 'FIS-CF', cols: cols, rows: rows, canc: rows.map(function () { return false; }),
+            totais: ['TOTAL', '', '', String(itens.reduce(function (s, x) { return s + x.q; }, 0)), brl(itens.reduce(function (s, x) { return s + x.t; }, 0)), brl(itens.reduce(function (s, x) { return s + x.p; }, 0)), brl(itens.reduce(function (s, x) { return s + x.s; }, 0)), brl(itens.reduce(function (s, x) { return s + x.i; }, 0)), brl(itens.reduce(function (s, x) { return s + x.iss; }, 0))],
+            resumo: [['Saídas', 'R$ ' + brl(tt('saida'))], ['Entradas', 'R$ ' + brl(tt('entrada'))]],
+            obs: 'Totais por tipo de operação (CFOP). Notas de serviço (NFS-e) não têm CFOP e ficam agrupadas como Serviços. Notas canceladas não entram.',
+            dica: 'CFOP é o código que identifica o tipo da operação (ex.: 5102 = venda de mercadoria dentro do estado). Notas de serviço não têm CFOP e ficam em "Serviços".'
+        };
+    }
+    function montarMensal(lista) {
+        const g = {};
+        lista.forEach(function (n) {
+            if (!g[n.competencia]) g[n.competencia] = { qs: 0, ts: 0, qe: 0, te: 0, icms: 0, iss: 0, canc: 0 };
+            const x = g[n.competencia];
+            if (ehCancelada(n)) { x.canc++; return; }
+            if (n.direcao === 'saida') { x.qs++; x.ts += Number(n.valor_total || 0); x.icms += Number(n.valor_icms || 0); x.iss += Number(n.valor_iss || 0); }
+            else { x.qe++; x.te += Number(n.valor_total || 0); }
+        });
+        const meses = Object.keys(g).sort();
+        const cols = [{ t: 'Mês', w: 1 }, { t: 'Notas de saída', w: 1.2, a: 'r' }, { t: 'Total saídas', w: 1.4, a: 'r' }, { t: 'Notas de entrada', w: 1.3, a: 'r' }, { t: 'Total entradas', w: 1.4, a: 'r' }, { t: 'ICMS nas saídas', w: 1.2, a: 'r' }, { t: 'ISS nas saídas', w: 1.2, a: 'r' }, { t: 'Canceladas', w: 1, a: 'r' }];
+        const rows = meses.map(function (m) { const x = g[m]; return [mesBR(m), String(x.qs), brl(x.ts), String(x.qe), brl(x.te), brl(x.icms), brl(x.iss), String(x.canc)]; });
+        const s = function (f) { return meses.reduce(function (a, m) { return a + g[m][f]; }, 0); };
+        return {
+            titulo: 'Resumo mensal', codigo: 'FIS-RM', cols: cols, rows: rows, canc: rows.map(function () { return false; }),
+            totais: ['TOTAL', String(s('qs')), brl(s('ts')), String(s('qe')), brl(s('te')), brl(s('icms')), brl(s('iss')), String(s('canc'))],
+            resumo: [['Saídas', 'R$ ' + brl(s('ts'))], ['Entradas', 'R$ ' + brl(s('te'))]],
+            obs: 'Movimento fiscal mês a mês, a partir das notas importadas. Notas canceladas contadas à parte e fora dos totais.',
+            dica: 'O total de saídas de cada mês é a base da apuração do Simples Nacional (receita bruta). Confira com a tela de Apuração.'
+        };
+    }
+
+    function renderTudo() {
+        const lista = filtradas();
+        renderKpis(lista);
+        atual = aba === 'saidas' ? montarRegistro(lista, 'saida') : aba === 'entradas' ? montarRegistro(lista, 'entrada') : aba === 'cfop' ? montarCfop(lista) : montarMensal(lista);
+        document.getElementById('tituloAba').textContent = atual.titulo;
+        document.getElementById('thLivro').innerHTML = '<tr>' + atual.cols.map(function (c) { return '<th' + (c.a === 'r' ? ' class="num"' : '') + '>' + esc(c.t) + '</th>'; }).join('') + '</tr>';
+        document.getElementById('tbLivro').innerHTML = atual.rows.length
+            ? atual.rows.map(function (r, i) { return '<tr' + (atual.canc[i] ? ' class="cancelada"' : '') + '>' + r.map(function (v, j) { return '<td' + (atual.cols[j].a === 'r' ? ' class="num"' : '') + '>' + esc(v) + '</td>'; }).join('') + '</tr>'; }).join('')
+            : '<tr><td colspan="' + atual.cols.length + '" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma nota neste período.</td></tr>';
+        document.getElementById('tfLivro').innerHTML = atual.rows.length ? '<tr>' + atual.totais.map(function (v, j) { return '<td' + (atual.cols[j].a === 'r' ? ' class="num"' : '') + '>' + esc(v) + '</td>'; }).join('') + '</tr>' : '';
+        document.getElementById('dicaAba').textContent = atual.dica;
+    }
+
+    // ---------- impressão (padrão dos relatórios) e exportação ----------
+    function periodoTxt() { return mesBR(document.getElementById('fDe').value) + ' a ' + mesBR(document.getElementById('fAte').value); }
+    function imprimirAba() {
+        if (!atual || !atual.rows.length) { toast('Não há notas neste período para imprimir.', 'info'); return; }
+        ERPPrint.imprimir({
+            titulo: atual.titulo, subtitulo: 'Período ' + periodoTxt(), codigo: atual.codigo, orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()], ['Período', periodoTxt()]],
+            resumo: atual.resumo,
+            colunas: atual.cols.map(function (c) { return c.a ? { t: c.t, w: c.w, a: c.a } : { t: c.t, w: c.w }; }),
+            linhas: atual.rows.map(function (r) { return { c: r }; }),
+            totais: atual.totais,
+            observacao: atual.obs,
+            assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
+    }
+    function exportarCsv() {
+        if (!atual || !atual.rows.length) { toast('Não há notas neste período para exportar.', 'info'); return; }
+        // mês no formato MM/AAAA seria convertido em data pelo Excel: forçamos como texto
+        const q = function (v) { v = String(v == null ? '' : v); if (/^\d{2}\/\d{4}$/.test(v)) return '="' + v + '"'; return '"' + v.replace(/"/g, '""') + '"'; };
+        const linhas = [atual.cols.map(function (c) { return q(c.t); }).join(';')].concat(atual.rows.map(function (r) { return r.map(q).join(';'); })).concat([atual.totais.map(q).join(';')]);
+        const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = atual.titulo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_').toLowerCase() + '_' + (document.getElementById('fDe').value || '') + '_' + (document.getElementById('fAte').value || '') + '.csv';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+    }
+
+    async function iniciar() {
+        try { await descobrirContexto(); await carregarNotas(); }
+        catch (err) { toast('Erro ao iniciar: ' + (err.message || err), 'error'); }
+    }
+    window.onload = iniciar;
+</script>
+</body>
+</html>
