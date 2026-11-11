@@ -338,7 +338,8 @@
     }
     function exportarCsv() {
         if (!atual || !atual.rows.length) { toast('Não há notas neste período para exportar.', 'info'); return; }
-        const q = function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+        // mês no formato MM/AAAA seria convertido em data pelo Excel: forçamos como texto
+        const q = function (v) { v = String(v == null ? '' : v); if (/^\d{2}\/\d{4}$/.test(v)) return '="' + v + '"'; return '"' + v.replace(/"/g, '""') + '"'; };
         const linhas = [atual.cols.map(function (c) { return q(c.t); }).join(';')].concat(atual.rows.map(function (r) { return r.map(q).join(';'); })).concat([atual.totais.map(q).join(';')]);
         const blob = new Blob(['﻿' + linhas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
         const a = document.createElement('a');
