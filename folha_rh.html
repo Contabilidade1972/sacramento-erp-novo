@@ -929,31 +929,46 @@ async function excluirFuncionario(id) {
     carregarFuncionarios();
 }
 
-var fichaNome='';
-var FICHA_CSS = ':root{--secondary:#1e3a8a;--text-light:#64748b;--border:#e2e8f0;--bg:#f8fafc;--text-main:#0f172a;}'
-  + '@page{size:A4 portrait;margin:10mm;}*{box-sizing:border-box;}'
-  + 'body{font-family:Inter,Arial,Helvetica,sans-serif;color:#0f172a;margin:0;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
-  + '.ficha-sec{font-size:12px;font-weight:800;color:#1e3a8a;text-transform:uppercase;margin:11px 0 6px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;break-after:avoid;}'
-  + '.ficha-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 16px;}'
-  + '.ficha-grid .item{break-inside:avoid;}.ficha-grid .item span{display:block;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;}.ficha-grid .item strong{font-size:13px;word-break:break-word;}'
-  + '.analitica-table{width:100%;border-collapse:collapse;font-size:12px;}.analitica-table th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;}'
-  + '.analitica-table td{padding:8px 10px;border-bottom:1px solid #e2e8f0;word-break:break-word;}.analitica-table tr{break-inside:avoid;}';
+var fichaNome='', empresaNomeSo='', empresaCnpjSo='';
+// Imprime a ficha no padrão único de relatórios (ERPPrint). Lê os dados da própria ficha aberta na tela.
 function imprimirFicha(){
-    var el=document.getElementById('fichaRH'); if(!el || !el.innerHTML.trim()) return;
-    var old=document.getElementById('fichaPrintFrame'); if(old && old.parentNode) old.parentNode.removeChild(old);
-    var fr=document.createElement('iframe'); fr.id='fichaPrintFrame'; fr.setAttribute('aria-hidden','true');
-    fr.style.cssText='position:fixed;left:-99999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden;';
-    document.body.appendChild(fr);
-    var doc=fr.contentWindow.document; doc.open();
-    doc.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Ficha cadastral do colaborador</title><style>'+FICHA_CSS+'</style></head><body>'+el.innerHTML+'</body></html>');
-    doc.close();
-    var tituloAntigo=document.title; document.title='Ficha cadastral - '+(fichaNome||'colaborador').replace(/[\\\/:*?"<>|]/g,'');
-    function restaurar(){ document.title=tituloAntigo; setTimeout(function(){ if(fr.parentNode) fr.parentNode.removeChild(fr); },500); }
-    setTimeout(function(){
-        try { fr.contentWindow.addEventListener('afterprint', restaurar); fr.contentWindow.focus(); fr.contentWindow.print(); }
-        catch(e){ restaurar(); toast('Não foi possível abrir a impressão: '+e.message, 'error'); }
-    },250);
-    setTimeout(restaurar,120000);
+    var root=document.getElementById('fichaRH'); if(!root || !root.children.length) return;
+    if(!window.ERPPrint){ toast('Módulo de impressão não carregado.', 'error'); return; }
+    var txt=function(e){ return (e.textContent||'').replace(/\s+/g,' ').trim(); };
+    var kids=[].slice.call(root.children);
+    var sub=kids[1]?txt(kids[1]):'';
+    var mp=sub.match(/cadastro (\d+)% completo/); var mf=sub.match(/\(falta: (.*)\)/);
+    var rot={}, linhas=[];
+    var lab=function(t){ return { t:t, cls:'muted bold' }; };
+    for(var i=2;i<kids.length-1;i++){
+        var el=kids[i];
+        if(el.classList.contains('ficha-sec')){ linhas.push({secao:txt(el)}); continue; }
+        if(el.classList.contains('ficha-grid')){
+            var it=[].slice.call(el.querySelectorAll('.item')).map(function(x){ var v=txt(x.querySelector('strong')); if(v==='—') v=''; return [txt(x.querySelector('span')), v]; });
+            it.forEach(function(p){ rot[p[0]]=p[1]; });
+            for(var j=0;j<it.length;j+=2){ var q=it[j+1]||['','']; linhas.push([lab(it[j][0]),it[j][1],lab(q[0]),q[1]]); }
+            continue;
+        }
+        var tb=el.tagName==='TABLE'?el:null;
+        if(tb){
+            var trs=[].slice.call(tb.querySelectorAll('tbody tr'));
+            trs.forEach(function(tr,n){ var c=[].slice.call(tr.children).map(txt);
+                linhas.push([lab('Dependente '+(n+1)), c[0]+(c[1]?' — CPF '+c[1]:''), lab('Nasc. / Parentesco'), [c[2],c[3],'IRRF: '+c[4],'Sal.-família: '+c[5]].filter(Boolean).join(' · ')]); });
+            continue;
+        }
+        if(txt(el)) linhas.push([lab('Observações'), txt(el), '', '']);
+    }
+    var vinc=rot['Vínculo']||'', sal=rot['Salário / pró-labore']||'';
+    ERPPrint.imprimir({
+        titulo:'Ficha cadastral do colaborador', subtitulo:(fichaNome||'')+(vinc?' — '+vinc:''), codigo:'RH-FC', orientacao:'portrait',
+        empresa:empresaNomeSo||undefined, cnpj:empresaCnpjSo||undefined,
+        filtros:[['Colaborador',fichaNome||'—'],['CPF',rot['CPF']||'—']],
+        resumo:[['Vínculo',vinc||'—'],['Cargo',rot['Cargo']||'—'],['Admissão / início',rot['Admissão / início']||'—'],['Salário / pró-labore',sal||'—'],['Cadastro completo',(mp?mp[1]:'0')+'%']],
+        colunas:[{t:'Campo',w:1.35},{t:'Informação',w:2.2},{t:'Campo',w:1.35},{t:'Informação',w:2.2}],
+        linhas:linhas,
+        observacao:'Documento de uso interno, com dados pessoais protegidos pela LGPD. Não substitui o registro do empregado no eSocial.'+(mf?' Cadastro incompleto — falta: '+mf[1]+'.':''),
+        assinaturas:['Colaborador','Responsável pela empresa']
+    });
 }
 async function verFicha(id, imprimir){
     var c = funcionariosCache.find(function(x){ return x.id==id; }); if(!c) return;
@@ -1010,7 +1025,7 @@ async function salvarSocioTela(){
     carregarFuncionarios();
 }
 function nomeEmpresaFicha(){ return empresaNomeFicha || 'Empresa'; }
-async function carregarNomeEmpresa(){ try{ var r=await sb.from('clientes_contratantes').select('razao_social,nome_fantasia,cnpj').eq('id', clienteIdAtual()).maybeSingle(); if(r.data) empresaNomeFicha=(r.data.nome_fantasia||r.data.razao_social||'')+(r.data.cnpj?' (CNPJ '+r.data.cnpj+')':''); }catch(e){} }
+async function carregarNomeEmpresa(){ try{ var r=await sb.from('clientes_contratantes').select('razao_social,nome_fantasia,cnpj').eq('id', clienteIdAtual()).maybeSingle(); if(r.data){ empresaNomeFicha=(r.data.nome_fantasia||r.data.razao_social||'')+(r.data.cnpj?' (CNPJ '+r.data.cnpj+')':''); empresaNomeSo=(r.data.nome_fantasia||r.data.razao_social||''); empresaCnpjSo=r.data.cnpj||''; } }catch(e){} }
 
 // ===== MOTOR DE CÁLCULO INSS / IRRF — PARÂMETROS 2026 =====
 var P26 = {
