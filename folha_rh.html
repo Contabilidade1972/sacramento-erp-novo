@@ -77,8 +77,7 @@
         .ficha-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px 16px; }
         .ficha-grid .item span { display:block; font-size:10px; font-weight:700; color:var(--text-light); text-transform:uppercase; } .ficha-grid .item strong { font-size:13px; word-break:break-word; }
         @media (max-width:800px) { .dep-row { grid-template-columns:1fr 1fr; } .ficha-grid { grid-template-columns:1fr 1fr; } }
-        /* Impressão da ficha: esconde o resto da tela e solta a janela (sem position:fixed, que repetia a 1ª tela em todas as páginas) */
-        @media print { body > *:not(#modalRH) { display:none !important; } body { background:#fff !important; min-height:0 !important; display:block !important; } #modalRH { position:static !important; display:block !important; overflow:visible !important; padding:0 !important; background:#fff !important; } #modalRH .caixa { box-shadow:none !important; max-width:none !important; border-radius:0 !important; } #fichaRH { padding:0 !important; } .sem-imprimir { display:none !important; } .ficha-sec { break-after:avoid; } .item { break-inside:avoid; } }
+        @media print { #modalRH { display:none !important; } }
         footer { text-align: center; padding: 24px; font-size: 12px; color: var(--text-light); border-top: 1px solid var(--border); background: var(--card); margin-top: auto; }
     </style>
 </head>
@@ -537,7 +536,7 @@
 </div>
 
 <div class="modal-rh" id="modalRH"><div class="caixa">
-    <div class="topo sem-imprimir"><span>Ficha cadastral do colaborador</span><div style="display:flex; gap:8px;"><button class="btn-acao" type="button" style="padding:6px 12px;" onclick="window.print()"><i class="fas fa-print"></i> Imprimir</button><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="document.getElementById('modalRH').style.display='none'"><i class="fas fa-times"></i> Fechar</button></div></div>
+    <div class="topo sem-imprimir"><span>Ficha cadastral do colaborador</span><div style="display:flex; gap:8px;"><button class="btn-acao" type="button" style="padding:6px 12px;" onclick="imprimirFicha()"><i class="fas fa-print"></i> Imprimir</button><button class="btn-acao cinza" type="button" style="padding:6px 12px;" onclick="document.getElementById('modalRH').style.display='none'"><i class="fas fa-times"></i> Fechar</button></div></div>
     <div class="corpo" id="fichaRH"></div>
 </div></div>
 
@@ -930,6 +929,32 @@ async function excluirFuncionario(id) {
     carregarFuncionarios();
 }
 
+var fichaNome='';
+var FICHA_CSS = ':root{--secondary:#1e3a8a;--text-light:#64748b;--border:#e2e8f0;--bg:#f8fafc;--text-main:#0f172a;}'
+  + '@page{size:A4 portrait;margin:10mm;}*{box-sizing:border-box;}'
+  + 'body{font-family:Inter,Arial,Helvetica,sans-serif;color:#0f172a;margin:0;font-size:12px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+  + '.ficha-sec{font-size:12px;font-weight:800;color:#1e3a8a;text-transform:uppercase;margin:11px 0 6px;border-bottom:1px solid #e2e8f0;padding-bottom:3px;break-after:avoid;}'
+  + '.ficha-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 16px;}'
+  + '.ficha-grid .item{break-inside:avoid;}.ficha-grid .item span{display:block;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;}.ficha-grid .item strong{font-size:13px;word-break:break-word;}'
+  + '.analitica-table{width:100%;border-collapse:collapse;font-size:12px;}.analitica-table th{background:#f1f5f9;padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;color:#64748b;border-bottom:2px solid #e2e8f0;}'
+  + '.analitica-table td{padding:8px 10px;border-bottom:1px solid #e2e8f0;word-break:break-word;}.analitica-table tr{break-inside:avoid;}';
+function imprimirFicha(){
+    var el=document.getElementById('fichaRH'); if(!el || !el.innerHTML.trim()) return;
+    var old=document.getElementById('fichaPrintFrame'); if(old && old.parentNode) old.parentNode.removeChild(old);
+    var fr=document.createElement('iframe'); fr.id='fichaPrintFrame'; fr.setAttribute('aria-hidden','true');
+    fr.style.cssText='position:fixed;left:-99999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden;';
+    document.body.appendChild(fr);
+    var doc=fr.contentWindow.document; doc.open();
+    doc.write('<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Ficha cadastral do colaborador</title><style>'+FICHA_CSS+'</style></head><body>'+el.innerHTML+'</body></html>');
+    doc.close();
+    var tituloAntigo=document.title; document.title='Ficha cadastral - '+(fichaNome||'colaborador').replace(/[\\\/:*?"<>|]/g,'');
+    function restaurar(){ document.title=tituloAntigo; setTimeout(function(){ if(fr.parentNode) fr.parentNode.removeChild(fr); },500); }
+    setTimeout(function(){
+        try { fr.contentWindow.addEventListener('afterprint', restaurar); fr.contentWindow.focus(); fr.contentWindow.print(); }
+        catch(e){ restaurar(); toast('Não foi possível abrir a impressão: '+e.message, 'error'); }
+    },250);
+    setTimeout(restaurar,120000);
+}
 async function verFicha(id, imprimir){
     var c = funcionariosCache.find(function(x){ return x.id==id; }); if(!c) return;
     var { data: deps } = await sb.from('colaboradores_dependentes').select('*').eq('colaborador_id', id).order('id');
@@ -952,7 +977,8 @@ async function verFicha(id, imprimir){
       + '<div style="margin-top:24px; font-size:10px; color:var(--text-light);">Documento de uso interno, com dados pessoais protegidos pela LGPD. Não substitui o registro do empregado no eSocial.</div>';
     document.getElementById('fichaRH').innerHTML=h;
     document.getElementById('modalRH').style.display='flex';
-    if(imprimir) setTimeout(function(){ window.print(); },300);
+    fichaNome = c.nome || '';
+    if(imprimir) setTimeout(function(){ imprimirFicha(); },300);
 }
 var empresaNomeFicha='';
 async function editarSocio(id){
