@@ -199,7 +199,7 @@
                 <thead><tr><th>Mês</th><th class="num">Receita do mês</th><th class="num">RBT12</th><th class="num">DAS</th><th>Vencimento</th><th>Declaração PGDAS-D</th><th>Situação</th><th>Contabilidade</th><th></th></tr></thead>
                 <tbody id="tbHist"></tbody>
             </table></div>
-            <div class="dica">Fechar uma apuração trava a alteração. Depois de fechada, o ícone do livro <b>contabiliza</b> o DAS (gera o lançamento na Escrituração Contábil). Para reabrir uma apuração contabilizada, desfaça a contabilização antes.</div>
+            <div class="dica">Fechar uma apuração trava a alteração. Depois de fechada, use <b>Contabilizar DAS</b> para gerar o lançamento na Escrituração Contábil. Para corrigir, use <b>Desfazer contabilização</b> aqui mesmo (é o caminho recomendado). Para reabrir uma apuração contabilizada, desfaça a contabilização antes.</div>
         </div>
     </div>
 
@@ -539,9 +539,13 @@
     }
     function abrirMes(comp) { document.getElementById('apMes').value = comp; mudarAba('apurar'); mudouMes(); }
     function contabTxt(s) {
-        if (s.lote_id) return '<span class="badge-st st-fechada">Contabilizada</span><span class="sub">lançamento nº ' + esc(loteNum[s.lote_id] || '') + '</span>';
+        const c = "'" + s.competencia + "'";
+        if (s.lote_id) return '<span class="badge-st st-fechada">Contabilizada</span><span class="sub">lançamento nº ' + esc(loteNum[s.lote_id] || '') + '</span>' +
+            (podeEditar ? '<button class="btn-acao btn-mini" type="button" style="margin-top:6px;" onclick="descontabilizar(' + c + ')"><i class="fas fa-rotate-left"></i> Desfazer contabilização</button>' : '');
         if (Number(s.valor_das) <= 0) return '<span class="sub">sem DAS a contabilizar</span>';
-        return s.status === 'fechada' ? '<span style="color:#b45309; font-weight:700;">Pendente</span>' : '<span class="sub">feche para contabilizar</span>';
+        if (s.status !== 'fechada') return '<span class="sub">feche para contabilizar</span>';
+        return '<span style="color:#b45309; font-weight:700;">Pendente</span>' +
+            (podeEditar ? '<button class="btn-acao btn-mini sucesso" type="button" style="margin-top:6px;" onclick="contabilizar(' + c + ')"><i class="fas fa-book"></i> Contabilizar DAS</button>' : '');
     }
     async function contabilizar(comp) {
         const s = salvas.find(function (x) { return x.competencia === comp; });
@@ -578,7 +582,7 @@
                 '<td>' + declTxt(s) + '</td><td><span class="badge-st st-' + s.status + '">' + (s.status === 'fechada' ? 'Fechada' : 'Em aberto') + '</span></td><td>' + contabTxt(s) + '</td>' +
                 '<td><div class="acoes"><button class="btn-acao btn-mini cinza" type="button" title="Abrir" onclick="abrirMes(\'' + s.competencia + '\')"><i class="fas fa-folder-open"></i></button>' +
                 '<button class="btn-acao btn-mini cinza" type="button" title="Imprimir" onclick="imprimirSalva(\'' + s.competencia + '\')"><i class="fas fa-print"></i></button>' +
-                (podeEditar ? (s.status === 'fechada' ? (s.lote_id ? '<button class="btn-acao btn-mini perigo" type="button" title="Desfazer contabilização" onclick="descontabilizar(\'' + s.competencia + '\')"><i class="fas fa-rotate-left"></i></button>' : (Number(s.valor_das) > 0 ? '<button class="btn-acao btn-mini sucesso" type="button" title="Contabilizar o DAS" onclick="contabilizar(\'' + s.competencia + '\')"><i class="fas fa-book"></i></button>' : '') + '<button class="btn-acao btn-mini" type="button" title="Reabrir" onclick="fecharReabrir(\'' + s.competencia + '\', false)"><i class="fas fa-lock-open"></i></button>')
+                (podeEditar ? (s.status === 'fechada' ? (s.lote_id ? '' : '<button class="btn-acao btn-mini" type="button" title="Reabrir" onclick="fecharReabrir(\'' + s.competencia + '\', false)"><i class="fas fa-lock-open"></i></button>')
                     : '<button class="btn-acao btn-mini sucesso" type="button" title="Fechar" onclick="fecharReabrir(\'' + s.competencia + '\', true)"><i class="fas fa-lock"></i></button><button class="btn-acao btn-mini perigo" type="button" title="Excluir" onclick="excluirApuracao(\'' + s.competencia + '\')"><i class="fas fa-trash"></i></button>') : '') +
                 '</div></td></tr>';
         }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma apuração salva ainda.</td></tr>';
