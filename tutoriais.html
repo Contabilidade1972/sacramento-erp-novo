@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutoriais em Vídeo — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1200px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; width:fit-content; }
+        .btn-acao:hover { background:var(--primary-dark); }
+        .btn-acao.cinza { background:#64748b; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; max-width:75ch; }
+        .abas { display:flex; gap:8px; flex-wrap:wrap; }
+        .aba { border:1.5px solid var(--border); background:#fff; color:var(--text-main); border-radius:999px; padding:8px 16px; font:600 13px 'Inter',sans-serif; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+        .aba:hover { border-color:var(--primary); }
+        .aba.on { background:var(--secondary); border-color:var(--secondary); color:#fff; }
+        .aba.breve { opacity:.55; cursor:default; }
+        .aba .tag { font-size:10px; font-weight:800; background:#e2e8f0; color:#475569; border-radius:20px; padding:1px 7px; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:16px; font-weight:800; color:var(--secondary); margin-bottom:6px; }
+        .panel-sub { font-size:13px; color:var(--text-light); margin-bottom:18px; line-height:1.5; }
+        .grade { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:18px; }
+        .video-card { border:1px solid var(--border); border-radius:14px; overflow:hidden; background:#fff; display:flex; flex-direction:column; }
+        .video-card video { width:100%; aspect-ratio:16/9; background:#0f172a; display:block; }
+        .video-info { padding:12px 14px 14px; display:flex; flex-direction:column; gap:3px; }
+        .video-info b { font-size:14px; color:var(--secondary); }
+        .video-info span { font-size:12px; color:var(--text-light); line-height:1.4; }
+        .ordem { font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase; letter-spacing:.05em; }
+        .dica { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; }
+        @media (max-width:700px) { .container { padding:0 14px; } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div><a href="javascript:history.back()" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar</a></div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-circle-play" style="color:var(--primary);"></i> Tutoriais em Vídeo</div>
+        <div class="page-subtitle">Aprenda a usar cada módulo do sistema em vídeos curtos, com demonstração passo a passo. As telas dos vídeos usam dados fictícios.</div>
+    </div>
+
+    <div class="abas" id="abas"></div>
+
+    <div class="panel" id="conteudo"></div>
+</div>
+
+<script>
+    /* Catálogo de tutoriais. Para incluir um módulo novo: acrescente um item aqui e envie os vídeos para a pasta "tutoriais".
+       Cada vídeo: arquivo (nome na pasta tutoriais), titulo, desc. Módulo sem vídeos aparece como "Em breve". */
+    var MODULOS = [
+        { id:'pd', nome:'Tecnologia & P&D', icone:'fa-flask',
+          intro:'Veja na ordem em que o módulo deve ser preenchido: Projetos → Contratos → Aportes → Gastos → Ativos → Faturamento → Relatórios.',
+          videos:[
+            { arquivo:'00_tutorial_completo.mp4', titulo:'Visão completa do módulo', desc:'Todas as telas em sequência, em cerca de 4 minutos.', destaque:true },
+            { arquivo:'01_projetos.mp4', titulo:'Projetos & P&D', desc:'Como cadastrar um projeto de pesquisa.' },
+            { arquivo:'02_contratos.mp4', titulo:'Contratos & Aportes', desc:'Cadastro do contrato de fomento e o tratamento contábil.' },
+            { arquivo:'03_aportes.mp4', titulo:'Aportes Recebidos', desc:'Como registrar o dinheiro recebido do contrato.' },
+            { arquivo:'04_gastos.mp4', titulo:'Gastos de P&D', desc:'A tela de uso diário: lançamento de cada gasto do projeto.' },
+            { arquivo:'05_ativos.mp4', titulo:'Ativos e Equipamentos', desc:'Registro de equipamentos duráveis da pesquisa.' },
+            { arquivo:'06_faturamento.mp4', titulo:'Faturamento NFS-e', desc:'Como lançar as notas de serviço do projeto.' },
+            { arquivo:'07_relatorios.mp4', titulo:'Relatórios e Saldos', desc:'Como filtrar e conferir o que foi lançado.' }
+          ] },
+        { id:'financeiro', nome:'Financeiro', icone:'fa-calculator', videos:[] },
+        { id:'contabil', nome:'Contabilidade & Fiscal', icone:'fa-scale-balanced', videos:[] },
+        { id:'documentos', nome:'Documentos Contábeis', icone:'fa-file-invoice', videos:[] },
+        { id:'canal', nome:'Canal com a Contabilidade', icone:'fa-comments', videos:[] },
+        { id:'certificados', nome:'Certificados Digitais', icone:'fa-shield-halved', videos:[] },
+        { id:'rh', nome:'RH & Folha', icone:'fa-users', videos:[] },
+        { id:'transporte', nome:'Transporte & Logística', icone:'fa-truck', videos:[] },
+        { id:'cadastros', nome:'Cadastros & Estoque', icone:'fa-boxes-stacked', videos:[] }
+    ];
+    var atual = 'pd';
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+
+    function desenharAbas() {
+        document.getElementById('abas').innerHTML = MODULOS.map(function (m) {
+            var breve = !m.videos.length;
+            return '<button class="aba' + (m.id === atual ? ' on' : '') + (breve ? ' breve' : '') + '" data-id="' + m.id + '"' + (breve ? ' title="Em breve"' : '') + '><i class="fas ' + m.icone + '"></i> ' + esc(m.nome) + (breve ? ' <span class="tag">EM BREVE</span>' : '') + '</button>';
+        }).join('');
+        Array.prototype.forEach.call(document.querySelectorAll('.aba'), function (b) {
+            b.onclick = function () {
+                var m = MODULOS.filter(function (x) { return x.id === b.dataset.id; })[0];
+                if (!m || !m.videos.length) return;
+                atual = m.id; location.hash = m.id; desenhar();
+            };
+        });
+    }
+
+    function desenhar() {
+        desenharAbas();
+        var m = MODULOS.filter(function (x) { return x.id === atual; })[0];
+        var h = '<div class="panel-title"><i class="fas ' + m.icone + '"></i> ' + esc(m.nome) + '</div>';
+        if (m.intro) h += '<div class="panel-sub">' + esc(m.intro) + '</div>';
+        h += '<div class="grade">';
+        m.videos.forEach(function (v, i) {
+            h += '<div class="video-card"><video controls preload="metadata" playsinline src="tutoriais/' + encodeURI(v.arquivo) + '#t=0.1"></video>' +
+                 '<div class="video-info"><span class="ordem">' + (v.destaque ? 'Comece por aqui' : 'Aula ' + i) + '</span><b>' + esc(v.titulo) + '</b><span>' + esc(v.desc) + '</span></div></div>';
+        });
+        h += '</div>';
+        document.getElementById('conteudo').innerHTML = h;
+    }
+
+    (function () {
+        var hsh = (location.hash || '').replace('#', '');
+        MODULOS.forEach(function (m) { if (m.id === hsh && m.videos.length) atual = m.id; });
+        desenhar();
+    })();
+    window.addEventListener('hashchange', function () {
+        var hsh = (location.hash || '').replace('#', '');
+        MODULOS.forEach(function (m) { if (m.id === hsh && m.videos.length) { atual = m.id; desenhar(); } });
+    });
+</script>
+</body>
+</html>
