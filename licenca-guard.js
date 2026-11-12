@@ -245,6 +245,13 @@
         var tent = 0;
         (function esperar() {
             if (window.sb && window.sb.rpc) { consultar(window.sb); return; }
+            /* algumas telas guardam a conexão em variável própria (não em window.sb): depois de ~1 s criamos a nossa, que compartilha o mesmo login */
+            if (tent >= 6 && window.supabase && window.supabase.createClient) {
+                try {
+                    consultar(window.supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei'));
+                    return;
+                } catch (e) {}
+            }
             if (++tent < 40) setTimeout(esperar, 150);
         })();
     }
