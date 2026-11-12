@@ -688,7 +688,8 @@
             }
 
             /* Card "Utilizadores & Acessos": só aparece para administradores */
-            if (await usuarioEhAdmin()) {
+            const ehAdminLogado = await usuarioEhAdmin();
+            if (ehAdminLogado) {
                 const containerUsuarios = document.getElementById('cardUsuariosContainer');
                 if (containerUsuarios) {
                     containerUsuarios.innerHTML = `
@@ -704,6 +705,28 @@
                         </a>
                     `;
                 }
+            }
+
+            /* Card "Meus Clientes Indicados": só para o administrador de uma contabilidade habilitada a indicar clientes */
+            if (ehAdminLogado) {
+                try {
+                    const ri = await sb.rpc('contab_meus_indicados');
+                    const ref = document.getElementById('cardUsuariosContainer');
+                    if (!ri.error && ref && !document.getElementById('cardIndicadosContainer')) {
+                        ref.insertAdjacentHTML('afterend', `
+                        <div id="cardIndicadosContainer">
+                        <a href="contab_indicados.html" class="portal-card" style="border: 2px solid #10b981;" onclick="transicionarPagina(event, 'contab_indicados.html')">
+                            <div class="card-banner" style="background-image: url('https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=600&q=80'); background-color: #064e3b;">
+                                <span class="card-badge-cat" style="color: #10b981;">Contabilidade</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="card-title"><h3>Meus Clientes Indicados</h3></div>
+                                <div class="card-desc">Cadastre clientes para testarem o sistema por 30 dias e acompanhe quem já decidiu contratar.</div>
+                                <div class="card-footer"><span>Gerir Indicações</span> <i class="fas fa-arrow-right"></i></div>
+                            </div>
+                        </a></div>`);
+                    }
+                } catch (e) { /* sem o recurso, o card simplesmente não aparece */ }
             }
 
             const ehMaster = ehMasterGlobal() || ((u.perfil || '').toLowerCase().includes('master'));
