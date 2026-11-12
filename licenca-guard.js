@@ -17,7 +17,9 @@
     var PUBLICAS = ['login.html', 'cadastro.html', 'recuperar.html', 'registro.html'];
     if (PUBLICAS.indexOf(pagina) > -1) return;
 
-    var FIXOS = ['dashboard', 'cadastros', 'comunicacao'];
+    var FIXOS = ['dashboard', 'cadastros', 'comunicacao'];              // acompanham toda licença
+    var LIVRES_USUARIO = ['cadastros', 'comunicacao'];                  // todo usuário da empresa usa (o Dashboard mostra números financeiros: depende da permissão)
+    var SO_ADMIN = ['backup_dados.html'];                               // telas que só o administrador da empresa abre
 
     /* Qual módulo é dono de cada tela. Tela que não está aqui fica livre (Início, Cadastros, Ajuda, Usuários...). */
     var MAPA = {
@@ -69,10 +71,13 @@
         if (!mod) return { ok: true };
         var lic = estado.lic, acc = estado.acc;
         if (estado.modulosLic.indexOf(mod) < 0) return { ok: false, motivo: 'licenca' };
-        if (FIXOS.indexOf(mod) < 0 && acc && !acc.acesso_total && (acc.modulos || []).indexOf(mod) < 0) return { ok: false, motivo: 'usuario' };
+        if (LIVRES_USUARIO.indexOf(mod) < 0 && acc && !acc.acesso_total && (acc.modulos || []).indexOf(mod) < 0) return { ok: false, motivo: 'usuario' };
         return { ok: true };
     }
-    function podePagina(pg) { return podeModulo(MAPA[pg]); }
+    function podePagina(pg) {
+        if (SO_ADMIN.indexOf(pg) > -1 && estado.acc && !estado.acc.is_admin) return { ok: false, motivo: 'admin' };
+        return podeModulo(MAPA[pg]);
+    }
     function contato() {
         return estado.lic && estado.lic.contabilidade_nome ? 'a contabilidade (' + estado.lic.contabilidade_nome + ')' : 'o suporte do Sacramento ERP';
     }
@@ -90,6 +95,7 @@
     }
     function msgBloqueioModulo(mod, motivo) {
         var n = NOMES[mod] || 'este módulo';
+        if (motivo === 'admin') return 'Esta tela é restrita ao administrador da empresa.';
         return motivo === 'usuario'
             ? 'Você não tem permissão para usar o módulo ' + n + '. Fale com o administrador da sua empresa.'
             : 'O módulo ' + n + ' não faz parte da licença da sua empresa. Fale com ' + contato() + ' para contratar.';
@@ -213,7 +219,7 @@
         var r = podePagina(pagina);
         if (!r.ok) {
             var mod = MAPA[pagina];
-            telaBloqueio(r.motivo === 'usuario' ? 'Sem permissão para este módulo' : 'Módulo não contratado', msgBloqueioModulo(mod, r.motivo), true);
+            telaBloqueio(r.motivo === 'licenca' ? 'Módulo não contratado' : 'Sem permissão para esta tela', msgBloqueioModulo(mod, r.motivo), true);
         }
         montarFaixa();
         marcarLinks();
