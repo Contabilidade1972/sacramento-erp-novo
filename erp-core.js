@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v7.2: TRAVA DE MÓDULOS POR LICENÇA — carrega licenca-guard.js (bloqueio, faixas de aviso, degustação) + rota de busca "Licenças"
     - v7.1: causa real = campos type=password do modal "trocar senha" faziam o Chrome preencher o e-mail na busca; agora não há campo password na página.
     - v7.1: campos de busca/filtro não são mais preenchidos com o e-mail do login (autocomplete off + limpeza contínua)
     - v7.0: AVISO DE CERTIFICADO DIGITAL VENCIDO / A VENCER no topo de todas as páginas (+ rota de busca)
@@ -95,6 +96,7 @@
         { nome:"Dados da Empresa", url:"dados_empresa.html", icon:"fa-building", keywords:["empresa","cnpj","receita","dados"] },
         { nome:"White-Label (Master)", url:"configuracoes_sistema.html", icon:"fa-cog", keywords:["white","label","marca","logo","configuracao"] },
         { nome:"Gestão de Clientes (Master)", url:"clientes_contratantes.html", icon:"fa-building", keywords:["cliente","licenca","plano","master"] },
+        { nome:"Licenças e Módulos (Master)", url:"licencas.html", icon:"fa-key", keywords:["licenca","licencas","modulo","modulos","degustacao","vencimento","pagamento","bloqueio","master"] },
         { nome:"Usuários & Permissões", url:"usuarios.html", icon:"fa-user-shield", keywords:["usuario","permissao","senha"] },
         { nome:"Calendário Fiscal", url:"calendario_fiscal.html", icon:"fa-calendar-alt", keywords:["calendario","obrigacao","prazo","fiscal","vencimento"] },
         { nome:"Escrituração Contábil (Plano de Contas e Lançamentos)", url:"contabilidade.html", icon:"fa-book", keywords:["escrituracao","contabil","plano de contas","lancamento","diario","razao","balancete","periodo","fechamento"] },
@@ -846,6 +848,16 @@ window.addEventListener('beforeprint', () => {
   try {
     if (document.querySelector('script[src*="assistente-ia.js"]') || window.__assistenteIaCarregado) return;
     var sc = document.createElement('script'); sc.src = '/assistente-ia.js'; sc.defer = true;
+    document.head.appendChild(sc);
+  } catch (e) {}
+})();
+
+/* ===== TRAVA DE MÓDULOS POR LICENÇA (v7.2) =====
+   A regra fica no arquivo licenca-guard.js; aqui só garantimos que ele seja carregado. */
+(function () {
+  try {
+    if (document.querySelector('script[src*="licenca-guard.js"]') || window.__licencaGuardCarregado) return;
+    var sc = document.createElement('script'); sc.src = '/licenca-guard.js'; sc.defer = true;
     document.head.appendChild(sc);
   } catch (e) {}
 })();
