@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Clientes Indicados — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1300px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; } .btn-acao.alerta { background:#d97706; }
+        .btn-mini { padding:6px 10px; font-size:11.5px; border-radius:8px; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        label { font-size:11px; font-weight:700; color:var(--text-light); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+        .form-control { width:100%; height:42px; padding:0 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; color:var(--text-main); outline:none; }
+        .form-control:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .dica { font-size:11.5px; color:var(--text-light); margin-top:8px; line-height:1.5; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.5; }
+        .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:12px 14px; text-align:left; font-weight:700; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); white-space:nowrap; }
+        .tabela td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .sub { display:block; font-size:11px; color:var(--text-light); margin-top:2px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; background:#e0e7ff; color:#3730a3; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.amarelo { background:#fef3c7; color:#92400e; } .chip.vermelho { background:#fee2e2; color:#991b1b; }
+        .contador { font-size:13px; color:var(--text-light); }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; box-shadow:0 10px 15px -3px rgba(0,0,0,.1); max-width:420px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        .modal-bg { display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); z-index:5000; align-items:center; justify-content:center; padding:20px; }
+        .modal-bg.on { display:flex; }
+        .modal { background:#fff; border-radius:16px; padding:26px; width:100%; max-width:640px; max-height:92vh; overflow:auto; }
+        .modal h3 { color:var(--secondary); font-size:17px; margin-bottom:16px; }
+        .modal-rodape { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+        @media (max-width:700px) { .grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="index.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar ao Dashboard</a>
+        <button class="btn-acao sucesso" id="btnNovo" onclick="abrirNovo()" style="display:none;"><i class="fas fa-user-plus"></i> Cadastrar cliente (30 dias grátis)</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-handshake" style="color:var(--primary);"></i> Meus Clientes Indicados</div>
+        <div class="page-subtitle">Cadastre seus clientes para testarem o sistema com todos os módulos por 30 dias. Terminado o prazo, o cliente contrata a licença ou você mantém só o módulo Comunicação (canal com a contabilidade).</div>
+    </div>
+
+    <div id="avisoBox"></div>
+
+    <div class="panel" id="painel" style="display:none;">
+        <div class="panel-title"><i class="fas fa-list"></i> Clientes indicados <span class="contador" id="contador" style="margin-left:auto;"></span></div>
+        <div class="table-wrap">
+            <table class="tabela">
+                <thead><tr><th>Cliente</th><th>CNPJ/CPF</th><th>Situação</th><th>Fim dos 30 dias</th><th style="text-align:right;">Ações</th></tr></thead>
+                <tbody id="lista"><tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light);">Carregando...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- NOVO CLIENTE -->
+<div class="modal-bg" id="mNovo">
+    <div class="modal">
+        <h3><i class="fas fa-user-plus"></i> Cadastrar cliente em degustação</h3>
+        <div class="grid">
+            <div><label>CNPJ ou CPF *</label><input class="form-control" id="nCnpj" placeholder="Somente números" inputmode="numeric"></div>
+            <div><label>Razão social / Nome *</label><input class="form-control" id="nRazao"></div>
+            <div><label>Nome fantasia</label><input class="form-control" id="nFant"></div>
+            <div><label>Telefone / WhatsApp</label><input class="form-control" id="nTel"></div>
+            <div><label>E-mail do administrador do cliente *</label><input class="form-control" id="nEmail" type="email" placeholder="cliente@empresa.com.br"></div>
+            <div><label>Senha provisória * (mín. 10, letras e números)</label><input class="form-control" id="nSenha" type="text" autocomplete="off"></div>
+        </div>
+        <div class="dica">O cliente entra com esse e-mail e essa senha (ele pode receber um e-mail de confirmação do sistema; peça para confirmar). Combine com ele de trocar a senha no primeiro acesso. A degustação começa agora e dura 30 dias.</div>
+        <div class="modal-rodape">
+            <button class="btn-acao cinza" onclick="fechar('mNovo')">Cancelar</button>
+            <button class="btn-acao sucesso" id="btnSalvarNovo" onclick="salvarNovo()"><i class="fas fa-save"></i> Cadastrar</button>
+        </div>
+    </div>
+</div>
+
+<!-- CRIAR ACESSO (cliente cadastrado sem login) -->
+<div class="modal-bg" id="mAcesso">
+    <div class="modal">
+        <h3><i class="fas fa-key"></i> Criar acesso do cliente</h3>
+        <div class="dica" style="margin:0 0 12px;" id="aNome"></div>
+        <div class="grid">
+            <div><label>E-mail do administrador *</label><input class="form-control" id="aEmail" type="email"></div>
+            <div><label>Senha provisória * (mín. 10, letras e números)</label><input class="form-control" id="aSenha" type="text" autocomplete="off"></div>
+        </div>
+        <div class="dica">Só funciona logo depois de criar a conta (até 15 minutos). Passado isso, fale com o suporte.</div>
+        <div class="modal-rodape">
+            <button class="btn-acao cinza" onclick="fechar('mAcesso')">Cancelar</button>
+            <button class="btn-acao sucesso" onclick="salvarAcesso()"><i class="fas fa-save"></i> Criar acesso</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let acessoCliente = null;
+    let linhas = [];
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function dataBR(d) { if (!d) return '—'; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function toast(msg, type) {
+        const c = document.getElementById('toastContainer'); const x = document.createElement('div');
+        x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 5000);
+    }
+    function abrir(id) { document.getElementById(id).classList.add('on'); }
+    function fechar(id) { document.getElementById(id).classList.remove('on'); }
+    function soDigitos(s) { return String(s || '').replace(/\D/g, ''); }
+    function senhaOk(s) { return s && s.length >= 10 && /[A-Za-z]/.test(s) && /[0-9]/.test(s); }
+
+    function rotulo(r) {
+        if (r.tipo === 'degustacao') {
+            if (r.situacao === 'degustacao') return '<span class="chip amarelo">Em degustação · faltam ' + r.dias_restantes + ' dia(s)</span>';
+            return '<span class="chip vermelho">Degustação encerrada · aguardando decisão</span>';
+        }
+        if (r.tipo === 'comunicacao') return '<span class="chip">Só Comunicação</span>';
+        return '<span class="chip verde">Licenciado</span>';
+    }
+
+    async function carregar() {
+        const painel = document.getElementById('painel');
+        const { data, error } = await sb.rpc('contab_meus_indicados');
+        if (error) {
+            painel.style.display = 'none';
+            document.getElementById('btnNovo').style.display = 'none';
+            const m = String(error.message || '');
+            document.getElementById('avisoBox').innerHTML = '<div class="aviso"><i class="fas fa-info-circle"></i> ' + esc(m.indexOf('Somente') >= 0 || m.indexOf('habilitada') >= 0 ? m : 'Não foi possível abrir esta tela: ' + m) + '</div>';
+            return;
+        }
+        document.getElementById('avisoBox').innerHTML = '';
+        painel.style.display = ''; document.getElementById('btnNovo').style.display = '';
+        linhas = data || [];
+        const lim = linhas.length ? linhas[0].limite : null, atv = linhas.length ? linhas[0].em_degustacao : 0;
+        document.getElementById('contador').textContent = lim != null ? ('Degustações em andamento: ' + atv + ' de ' + lim) : '';
+        const tb = document.getElementById('lista');
+        if (!linhas.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--text-light);">Você ainda não cadastrou clientes. Clique em "Cadastrar cliente (30 dias grátis)".</td></tr>'; return; }
+        tb.innerHTML = linhas.map(function (r) {
+            var acoes = '';
+            if (r.tipo === 'degustacao') {
+                acoes += '<button class="btn-acao btn-mini" onclick="abrirAcesso(' + r.cliente_id + ')"><i class="fas fa-key"></i> Criar acesso</button> ';
+                acoes += '<button class="btn-acao btn-mini alerta" onclick="manterComunicacao(' + r.cliente_id + ')"><i class="fas fa-comments"></i> Manter só Comunicação</button>';
+            }
+            return '<tr><td><b>' + esc(r.nome) + '</b></td><td>' + esc(r.cnpj || '—') + '</td><td>' + rotulo(r) + '</td><td>' + (r.tipo === 'degustacao' ? dataBR(r.fim_degustacao) : '—') + '</td><td style="text-align:right;">' + acoes + '</td></tr>';
+        }).join('');
+    }
+
+    function abrirNovo() {
+        ['nCnpj', 'nRazao', 'nFant', 'nTel', 'nEmail', 'nSenha'].forEach(function (i) { document.getElementById(i).value = ''; });
+        abrir('mNovo');
+    }
+
+    /* cria o login com uma conexão separada, para não derrubar o seu próprio login */
+    async function criarLogin(email, senha) {
+        const outro = supabase.createClient(URL_SB, KEY_SB, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'sb-cadastro-indicado' } });
+        const r = await outro.auth.signUp({ email: email, password: senha });
+        if (r.error) {
+            var m = r.error.message || '';
+            if (/already registered|already been registered/i.test(m)) throw new Error('Este e-mail já tem cadastro no sistema. Fale com o suporte.');
+            if (/invalid/i.test(m) && /email/i.test(m)) throw new Error('E-mail inválido. Confira o endereço.');
+            throw new Error(m);
+        }
+        return r.data;
+    }
+
+    async function vincular(email, cliente) {
+        const { data, error } = await sb.rpc('contab_vincular_usuario_indicado', { p_email: email, p_cliente: cliente });
+        if (error) throw new Error(error.message);
+        if (data !== 'OK') throw new Error(String(data).replace(/^ERRO:\s*/, ''));
+    }
+
+    async function salvarNovo() {
+        const cnpj = soDigitos(document.getElementById('nCnpj').value), razao = document.getElementById('nRazao').value.trim();
+        const fant = document.getElementById('nFant').value.trim(), tel = document.getElementById('nTel').value.trim();
+        const email = document.getElementById('nEmail').value.trim().toLowerCase(), senha = document.getElementById('nSenha').value;
+        if (cnpj.length !== 11 && cnpj.length !== 14) { toast('Informe um CNPJ (14 números) ou CPF (11 números).', 'error'); return; }
+        if (razao.length < 3) { toast('Informe a razão social.', 'error'); return; }
+        if (!email || email.indexOf('@') < 1) { toast('Informe o e-mail do administrador do cliente.', 'error'); return; }
+        if (!senhaOk(senha)) { toast('A senha precisa ter no mínimo 10 caracteres, com letras e números.', 'error'); return; }
+        const btn = document.getElementById('btnSalvarNovo'); btn.disabled = true;
+        let novo = null;
+        try {
+            const r = await sb.rpc('contab_indicar_cliente', { p_razao: razao, p_fantasia: fant, p_cnpj: cnpj, p_email: email, p_telefone: tel });
+            if (r.error) throw new Error(r.error.message);
+            novo = r.data;
+            await criarLogin(email, senha);
+            await vincular(email, novo);
+            fechar('mNovo'); toast('Cliente cadastrado! Degustação de 30 dias iniciada.');
+        } catch (e) {
+            fechar('mNovo');
+            toast(novo ? 'Cliente cadastrado, mas o acesso não foi criado: ' + e.message + ' Use "Criar acesso" na lista.' : 'Erro: ' + e.message, 'error');
+        }
+        btn.disabled = false; await carregar();
+    }
+
+    function abrirAcesso(id) {
+        acessoCliente = id; const r = linhas.find(function (x) { return x.cliente_id === id; });
+        document.getElementById('aNome').textContent = r ? r.nome : '';
+        document.getElementById('aEmail').value = ''; document.getElementById('aSenha').value = '';
+        abrir('mAcesso');
+    }
+
+    async function salvarAcesso() {
+        const email = document.getElementById('aEmail').value.trim().toLowerCase(), senha = document.getElementById('aSenha').value;
+        if (!email || email.indexOf('@') < 1) { toast('Informe o e-mail.', 'error'); return; }
+        if (!senhaOk(senha)) { toast('A senha precisa ter no mínimo 10 caracteres, com letras e números.', 'error'); return; }
+        try { await criarLogin(email, senha); await vincular(email, acessoCliente); fechar('mAcesso'); toast('Acesso criado.'); }
+        catch (e) { toast('Erro: ' + e.message, 'error'); }
+    }
+
+    async function manterComunicacao(id) {
+        if (!confirm('Manter apenas o módulo Comunicação para este cliente? Os demais módulos serão encerrados.')) return;
+        const { data, error } = await sb.rpc('contab_manter_comunicacao', { p_cliente: id });
+        if (error) { toast('Erro: ' + error.message, 'error'); return; }
+        if (data !== 'OK') { toast(String(data).replace(/^ERRO:\s*/, ''), 'error'); return; }
+        toast('Pronto: o cliente agora usa só a Comunicação.'); await carregar();
+    }
+
+    window.addEventListener('load', function () { carregar(); });
+</script>
+</body>
+</html>
