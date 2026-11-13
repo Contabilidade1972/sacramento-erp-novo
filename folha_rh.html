@@ -1437,7 +1437,7 @@ function vencimentoGuia(k){
   while(d.getDay()===0||d.getDay()===6||fer.indexOf(iso(d))>=0){ d.setDate(d.getDate()-1); }
   return iso(d);
 }
-function dataBR(s){ return String(s||'').slice(0,10).split('-').reverse().join('/'); }
+function dataGuiaBR(s){ return String(s||'').slice(0,10).split('-').reverse().join('/'); }
 var guiasEstado = { lista:[], existentes:{} };
 function guiasDaFolha(){
   var comp=folhaEstado.comp; if(!comp||comp.status!=='fechada'||!folhaEstado.itens.length) return [];
@@ -1471,7 +1471,7 @@ function renderGuias(){
     if(g.valor<=0) sit='<span style="color:var(--text-light);">Sem valor neste mês</span>';
     else if(ex){ var pago=String(ex.status||'').toLowerCase()==='pago'; sit=pago?'<span style="color:#166534; font-weight:700;"><i class="fas fa-circle-check"></i> Paga</span>':'<span style="color:#1d4ed8; font-weight:700;"><i class="fas fa-clock"></i> No Contas a Pagar (pendente)</span>'; }
     else { sit='<span style="color:#b45309; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Ainda não enviada</span>'; pend++; }
-    return '<tr><td><b>'+esc(g.nome)+'</b></td><td>'+esc(g.como)+'</td><td>'+dataBR(g.venc)+'</td><td style="text-align:right;">R$ '+moedaBR(g.valor)+'</td><td>'+sit+'</td></tr>';
+    return '<tr><td><b>'+esc(g.nome)+'</b></td><td>'+esc(g.como)+'</td><td>'+dataGuiaBR(g.venc)+'</td><td style="text-align:right;">R$ '+moedaBR(g.valor)+'</td><td>'+sit+'</td></tr>';
   }).join('');
   document.getElementById('btnGerarGuias').disabled = pend===0;
 }
@@ -1492,12 +1492,12 @@ function imprimirGuias(){
   var lista=guiasEstado.lista; if(!lista.length){ toast('Feche a competência para ver as guias.', 'error'); return; }
   if(typeof ERPPrint==='undefined'){ toast('O módulo de impressão não foi carregado. Recarregue a página.','error'); return; }
   var emp=dadosEmpresaPrint(), tot=0;
-  var linhas=lista.map(function(g){ tot+=g.valor; var ex=guiasEstado.existentes[g.tag]; return [g.nome, g.como, dataBR(g.venc), 'R$ '+moedaBR(g.valor), g.valor<=0?'Sem valor':(ex?(String(ex.status||'').toLowerCase()==='pago'?'Paga':'No Contas a Pagar'):'Não enviada')]; });
+  var linhas=lista.map(function(g){ tot+=g.valor; var ex=guiasEstado.existentes[g.tag]; return [g.nome, g.como, dataGuiaBR(g.venc), 'R$ '+moedaBR(g.valor), g.valor<=0?'Sem valor':(ex?(String(ex.status||'').toLowerCase()==='pago'?'Paga':'No Contas a Pagar'):'Não enviada')]; });
   ERPPrint.imprimir({
     titulo:'Quadro de guias e encargos da folha', subtitulo:'Competência '+compRotulo(folhaEstado.key), codigo:'RH-GUI', orientacao:'landscape',
     empresa:emp.empresa, cnpj:emp.cnpj,
     filtros:[['Competência',compRotulo(folhaEstado.key)]],
-    resumo:[['Total das guias','R$ '+moedaBR(tot)],['Vencimento',dataBR(lista[0].venc)]],
+    resumo:[['Total das guias','R$ '+moedaBR(tot)],['Vencimento',dataGuiaBR(lista[0].venc)]],
     colunas:[{t:'Guia',w:2.4},{t:'Como pagar',w:2.8},{t:'Vencimento',w:1.2},{t:'Valor',w:1.3,a:'right'},{t:'Situação',w:1.8}],
     linhas:linhas, totais:['TOTAL','','','R$ '+moedaBR(tot),''],
     observacao:'INSS: apenas a parte descontada dos funcionários (a parte patronal não está incluída). Valores oficiais conforme eSocial/DCTFWeb e FGTS Digital. Vencimento com antecipação para o dia útil anterior quando o dia 20 não é útil.',
