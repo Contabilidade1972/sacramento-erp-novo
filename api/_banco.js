@@ -108,17 +108,19 @@ async function interExtrato(cred, conta, dias) {
   const fim = new Date(); const ini = new Date(Date.now() - (dias - 1) * 86400000);
   const di = diaISO(ini), df = diaISO(fim);
   const tk = await interToken(cred, 'extrato.read');
-  const lista = []; let pagina = 0, total = 1;
+  const lista = []; let pagina = 0, total = 1, campos = '';
   while (pagina < total && pagina < 40) {
     const j = await interGet(cred, tk, '/banking/v2/extrato/completo?dataInicio=' + di + '&dataFim=' + df + '&pagina=' + pagina + '&tamanhoPagina=50', conta);
+    if (pagina === 0) campos = j && typeof j === 'object' ? Object.keys(j).slice(0, 12).join(', ') : String(typeof j);
     const ts = (j && (j.transacoes || j.lancamentos)) || [];
     ts.forEach(function (t) { lista.push(t); });
     total = (j && Number(j.totalPaginas)) || 1; pagina++;
   }
-  const out = [];
+  const out = []; let zeros = 0;
   lista.forEach(function (t) {
     const bruto = Number(String(t.valor == null ? '' : t.valor).replace(',', '.'));
-    if (!isFinite(bruto) || bruto === 0) return;
+    if (isFinite(bruto) && bruto === 0) { zeros++; return; }
+    if (!isFinite(bruto)) return;
     const op = String(t.tipoOperacao || '').toUpperCase();
     const entrada = op ? op === 'C' : bruto > 0;
     const dt = String(t.dataTransacao || t.dataEntrada || t.dataInclusao || '').slice(0, 10);
@@ -128,7 +130,7 @@ async function interExtrato(cred, conta, dias) {
     const fitid = 'inter:' + (idb ? String(idb) : crypto.createHash('sha1').update([dt, bruto, op, hist].join('|')).digest('hex').slice(0, 24));
     out.push({ fitid: fitid, data: dt, valor: Math.abs(bruto), tipo: entrada ? 'Entrada' : 'Saida', historico: hist });
   });
-  return { inicio: di, fim: df, lidas: lista.length, itens: out };
+  return { inicio: di, fim: df, brutas: lista.length, ignoradas: lista.length - out.length - zeros, campos: campos, itens: out };
 }
 
 module.exports = { cifrar, decifrar, sbFetch, podeGerir, emailDoToken, interSaldo, interExtrato, hojeISO };
