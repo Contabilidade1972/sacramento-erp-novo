@@ -192,7 +192,10 @@
         btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando';
         try {
             const r = await chamar({ acao: 'sincronizar', id: id, dias: dias });
-            if (r.ok) toast('Extrato de ' + dataBR(r.inicio) + ' a ' + dataBR(r.fim) + ': ' + r.novas + ' lançamento(s) novo(s), ' + r.ja_existiam + ' já existia(m). Veja em Conciliação.', 'success');
+            if (r.ok) {
+                var extra = r.ignoradas > 0 ? ' ATENÇÃO: ' + r.ignoradas + ' lançamento(s) do Inter não foram entendidos e foram ignorados.' : '';
+                toast('Extrato de ' + dataBR(r.inicio) + ' a ' + dataBR(r.fim) + ': o Inter devolveu ' + r.brutas + ' lançamento(s); ' + r.novas + ' novo(s), ' + r.ja_existiam + ' já existia(m).' + extra + (r.brutas === 0 ? ' (campos da resposta: ' + (r.campos || 'vazia') + ')' : ' Veja em Conciliação.'), r.ignoradas > 0 ? 'error' : 'success');
+            }
             else toast(r.erro || 'Não consegui buscar o extrato.', 'error');
         } catch (e) { toast(e.message || String(e), 'error'); }
         btn.disabled = false; btn.innerHTML = t; await carregar();
