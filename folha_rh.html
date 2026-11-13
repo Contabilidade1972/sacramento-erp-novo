@@ -291,11 +291,13 @@
                     <button class="btn-acao cinza" onclick="imprimirResumoFolha()"><i class="fas fa-print"></i> Resumo da folha</button>
                     <button class="btn-acao sucesso" id="btnFecharFolha" onclick="fecharFolha()"><i class="fas fa-lock"></i> Fechar competência</button>
                     <button class="btn-acao perigo" id="btnReabrirFolha" onclick="reabrirFolha()" style="display:none;"><i class="fas fa-lock-open"></i> Reabrir</button>
+                    <button class="btn-acao" id="btnContabFolha" onclick="contabilizarFolha()" style="display:none; background:#047857;"><i class="fas fa-book"></i> Contabilizar folha</button>
                 </div>
             </div>
             <div style="background:#fefce8; border:1px solid #fde047; padding:12px; border-radius:8px; margin:16px 0; font-size:12px; color:#854d0e;">
                 <i class="fas fa-info-circle"></i> <strong>Como usar:</strong> 1) escolha o mês; 2) em cada funcionário, clique em <strong>Eventos</strong> para lançar horas extras, faltas, adicionais e descontos do mês; 3) clique em <strong>Calcular e gravar folha</strong>; 4) imprima o <strong>holerite</strong> de cada um; 5) confira e clique em <strong>Fechar competência</strong>. Com o mês fechado, nada mais pode ser alterado (só o administrador reabre). <strong>Ainda não faz:</strong> rescisão, salário-família, pensão alimentícia, DSR automático e eSocial.
             </div>
+            <div id="avisoContabFolha" style="display:none; margin-top:14px; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:600;"></div>
             <div id="resultadoFolhaClt" style="margin-top:20px;">
                 <div style="text-align:center; padding:30px; color:var(--text-light);">Carregando competência...</div>
             </div>
@@ -1088,7 +1090,7 @@ function moedaBR(n){ return Number(n||0).toLocaleString('pt-BR',{minimumFraction
 
 // ===== FOLHA MENSAL GRAVADA (competência, eventos, cálculo, fechamento, holerite) =====
 var MESES_NOMES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-var folhaEstado = { comp: null, eventos: [], itens: [], key: '' };
+var folhaEstado = { comp: null, eventos: [], itens: [], key: '', lote: null };
 var evColab = null;
 
 /* Catálogo de eventos. modo: valor (digita o valor) | horas (qtd × valor-hora × fator) | dias (qtd × salário/30) | pct (% do salário base).
@@ -1145,7 +1147,7 @@ function diasTrabalhadosMes(c,k){
 async function carregarFolha(){
   var k = compKey(); if(!k) return;
   var cid = clienteIdAtual();
-  folhaEstado = { comp:null, eventos:[], itens:[], key:k };
+  folhaEstado = { comp:null, eventos:[], itens:[], key:k, lote:null };
   var box = document.getElementById('resultadoFolhaClt');
   if(!funcionariosCache.length){ try{ await carregarFuncionarios(); }catch(e){} }
   var r = await sb.from('folha_competencias').select('*').eq('cliente_id', cid).eq('competencia', k).maybeSingle();
@@ -1155,6 +1157,7 @@ async function carregarFolha(){
     var ev = await sb.from('folha_eventos').select('*').eq('competencia_id', r.data.id).order('id');
     var it = await sb.from('folha_itens').select('*').eq('competencia_id', r.data.id).order('nome');
     folhaEstado.eventos = ev.data||[]; folhaEstado.itens = it.data||[];
+    try { var lt = await sb.from('contab_lotes').select('id,numero,data').eq('cliente_id', cid).eq('origem', 'folha:'+r.data.id).maybeSingle(); folhaEstado.lote = lt.data || null; } catch(e){ folhaEstado.lote = null; }
   }
   renderFolha();
 }
@@ -1167,6 +1170,11 @@ function renderFolha(){
   document.getElementById('btnFecharFolha').style.display = fechada ? 'none' : '';
   document.getElementById('btnReabrirFolha').style.display = fechada ? '' : 'none';
   document.getElementById('btnCalcFolha').disabled = fechada;
+  var bc = document.getElementById('btnContabFolha'), av = document.getElementById('avisoContabFolha');
+  bc.style.display = (fechada && !folhaEstado.lote) ? '' : 'none';
+  if(fechada && folhaEstado.lote){ av.style.display=''; av.style.background='#dcfce7'; av.style.color='#166534'; av.innerHTML='<i class="fas fa-circle-check"></i> Folha contabilizada: lançamento nº '+folhaEstado.lote.numero+' em '+String(folhaEstado.lote.data).split('-').reverse().join('/')+' (veja em Contabilidade &gt; Lançamentos).'; }
+  else if(fechada){ av.style.display=''; av.style.background='#fef9c3'; av.style.color='#854d0e'; av.innerHTML='<i class="fas fa-triangle-exclamation"></i> Competência fechada, ainda não contabilizada. Clique em <strong>Contabilizar folha</strong>.'; }
+  else { av.style.display='none'; }
   var box = document.getElementById('resultadoFolhaClt');
   var lista = elegiveisFolha(k);
   if(!lista.length){ box.innerHTML='<div style="text-align:center; padding:20px; color:var(--text-light);">Nenhum funcionário CLT ativo em '+esc(compRotulo(k))+'. Cadastre na aba "Funcionários &amp; Sócios".</div>'; return; }
@@ -1282,10 +1290,49 @@ async function fecharFolha(){
 }
 async function reabrirFolha(){
   var k = folhaEstado.key || compKey();
-  if(!confirm('Reabrir a competência '+compRotulo(k)+'? Ela voltará a aceitar alterações.')) return;
+  var temLote = !!folhaEstado.lote;
+  if(!confirm('Reabrir a competência '+compRotulo(k)+'? Ela voltará a aceitar alterações.'+(temLote?'\n\nO lançamento contábil nº '+folhaEstado.lote.numero+' desta folha será EXCLUÍDO (você contabiliza de novo depois de fechar).':''))) return;
+  if(temLote){
+    var ex = await sb.rpc('contab_excluir_lote', { p_cliente: clienteIdAtual(), p_lote: folhaEstado.lote.id });
+    if(ex.error){ toast('Não foi possível excluir o lançamento contábil: '+ex.error.message, 'error'); return; }
+  }
   var r = await sb.from('folha_competencias').update({ status:'aberta', fechada_em:null, fechada_por:null }).eq('id', folhaEstado.comp.id);
   if(r.error){ toast('Não foi possível reabrir: '+r.error.message, 'error'); return; }
   toast('Competência reaberta.', 'info'); await carregarFolha();
+}
+
+// ----- contabilização da folha (lançamento automático na Contabilidade) -----
+var CONTAS_FOLHA = { desp_sal:'5.1.1.01', desp_enc:'5.1.1.03', pag_sal:'2.1.2.01', inss:'2.1.2.03', fgts:'2.1.2.04', irrf:'2.1.2.05', outros:'2.1.4.03' };
+async function contabilizarFolha(){
+  var comp = folhaEstado.comp, k = folhaEstado.key;
+  if(!comp || comp.status!=='fechada'){ toast('Feche a competência antes de contabilizar.', 'error'); return; }
+  if(folhaEstado.lote){ toast('Esta folha já foi contabilizada.', 'error'); return; }
+  if(!folhaEstado.itens.length){ toast('Não há folha calculada.', 'error'); return; }
+  var cid = clienteIdAtual(), btn = document.getElementById('btnContabFolha');
+  var t = {prov:0, desc:0, inss:0, irrf:0, liq:0, fgts:0, fa:0};
+  folhaEstado.itens.forEach(function(i){ t.prov+=Number(i.proventos); t.desc+=Number(i.descontos); t.inss+=Number(i.inss); t.irrf+=Number(i.irrf); t.liq+=Number(i.liquido); t.fgts+=Number(i.fgts); });
+  folhaEstado.eventos.forEach(function(e){ if(e.codigo==='FALTA' || e.codigo==='ATRASO') t.fa += Number(e.valor); });
+  var despSal = r2(t.prov - t.fa), outros = r2(t.desc - t.inss - t.irrf - t.fa), liq = r2(t.liq), inss = r2(t.inss), irrf = r2(t.irrf), fgts = r2(t.fgts);
+  if(despSal<=0){ toast('Total da folha zerado: nada a contabilizar.', 'error'); return; }
+  var codigos = Object.keys(CONTAS_FOLHA).map(function(x){ return CONTAS_FOLHA[x]; });
+  btn.disabled = true;
+  try {
+    var rc = await sb.from('contab_contas').select('id,codigo,analitica,ativa').eq('cliente_id', cid).in('codigo', codigos);
+    if(rc.error) throw new Error(rc.error.message);
+    var porCod = {}; (rc.data||[]).forEach(function(c){ porCod[c.codigo]=c; });
+    var falta = codigos.filter(function(c){ return !porCod[c] || !porCod[c].analitica || !porCod[c].ativa; });
+    if(falta.length) throw new Error('Faltam contas no plano de contas desta empresa: '+falta.join(', ')+'. Em Contabilidade, aba Plano de Contas, use "Importar plano padrão" (ou crie essas contas).');
+    var partidas = [];
+    function add(cod, tipo, v){ v=r2(v); if(v>0) partidas.push({ conta_id: porCod[cod].id, tipo: tipo, valor: v }); }
+    add(CONTAS_FOLHA.desp_sal,'D',despSal); add(CONTAS_FOLHA.desp_enc,'D',fgts);
+    add(CONTAS_FOLHA.pag_sal,'C',liq); add(CONTAS_FOLHA.inss,'C',inss); add(CONTAS_FOLHA.irrf,'C',irrf); add(CONTAS_FOLHA.fgts,'C',fgts); add(CONTAS_FOLHA.outros,'C',outros);
+    var dia = ultimoDiaMes(k), data = k+'-'+String(dia).padStart(2,'0');
+    var r = await sb.rpc('contab_lancar', { p_cliente: cid, p_data: data, p_historico: 'Folha de pagamento '+compRotulo(k)+' ('+folhaEstado.itens.length+' funcionário(s))', p_origem: 'folha:'+comp.id, p_partidas: partidas });
+    if(r.error) throw new Error(r.error.message);
+    toast('Folha contabilizada: salários, INSS, FGTS e IRRF lançados na Contabilidade.', 'success');
+    await carregarFolha();
+  } catch(e){ toast('Erro: '+e.message, 'error'); }
+  finally { btn.disabled = false; }
 }
 
 // ----- eventos do mês -----
