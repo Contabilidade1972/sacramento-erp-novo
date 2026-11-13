@@ -68,6 +68,47 @@ module.exports = async function (req, res) {
       return resp(res, 200, { ok: true });
     }
 
+    if (acao === 'vincular') {
+      const contaId = b.conta_id == null || b.conta_id === '' ? null : parseInt(b.conta_id, 10);
+      if (contaId !== null) {
+        if (!contaId) return resp(res, 400, { ok: false, erro: 'Conta inválida.' });
+        const cs = await B.sbFetch('/rest/v1/contas_bancarias?id=eq.' + contaId + '&cliente_id=eq.' + c.cliente_id + '&select=id', { service: true });
+        if (!Array.isArray(cs) || !cs.length) return resp(res, 400, { ok: false, erro: 'Esta conta bancária não pertence à empresa.' });
+      }
+      await B.sbFetch('/rest/v1/banco_conexoes?id=eq.' + id, { method: 'PATCH', service: true, body: { conta_id: contaId } });
+      return resp(res, 200, { ok: true });
+    }
+
+    if (acao === 'sincronizar') {
+      if (!c.conta_id) return resp(res, 400, { ok: false, erro: 'Escolha primeiro a conta bancária do Sacramento que recebe o extrato.' });
+      const aad = 'cli:' + c.cliente_id + ':' + c.banco + ':' + c.apelido;
+      let cred;
+      try { cred = { client_id: B.decifrar(c.client_id_enc, aad), client_secret: B.decifrar(c.client_secret_enc, aad), cert: B.decifrar(c.cert_enc, aad), key: B.decifrar(c.key_enc, aad) }; }
+      catch (e) { return resp(res, 500, { ok: false, erro: 'Não consegui abrir as credenciais guardadas. Cadastre-as de novo.' }); }
+      try {
+        const ex = await B.interExtrato(cred, c.conta_corrente, b.dias);
+        // evita duplicar: confere quais lancamentos ja existem nesta conta
+        const jaTem = {};
+        for (let i = 0; i < ex.itens.length; i += 80) {
+          const ids = ex.itens.slice(i, i + 80).map(function (x) { return '"' + x.fitid + '"'; }).join(',');
+          const ex1 = await B.sbFetch('/rest/v1/extrato_ofx_importado?cliente_id=eq.' + c.cliente_id + '&conta_id=eq.' + c.conta_id + '&fitid=in.(' + encodeURIComponent(ids) + ')&select=fitid', { service: true });
+          (ex1 || []).forEach(function (r) { jaTem[r.fitid] = true; });
+        }
+        const novos = [], vistos = {};
+        ex.itens.forEach(function (x) {
+          if (jaTem[x.fitid] || vistos[x.fitid]) return; vistos[x.fitid] = true;
+          novos.push({ cliente_id: c.cliente_id, conta_id: c.conta_id, fitid: x.fitid, data_transacao: x.data, valor: x.valor, tipo: x.tipo, historico: x.historico, status: 'Pendente' });
+        });
+        for (let i = 0; i < novos.length; i += 100) await B.sbFetch('/rest/v1/extrato_ofx_importado', { method: 'POST', service: true, prefer: 'return=minimal', body: novos.slice(i, i + 100) });
+        await B.sbFetch('/rest/v1/banco_conexoes?id=eq.' + id, { method: 'PATCH', service: true, body: { status: 'ativa', ultima_sync_em: new Date().toISOString(), ultimo_erro: null } });
+        return resp(res, 200, { ok: true, inicio: ex.inicio, fim: ex.fim, lidas: ex.itens.length, novas: novos.length, ja_existiam: ex.itens.length - novos.length });
+      } catch (e) {
+        const m = msgSegura(e);
+        try { await B.sbFetch('/rest/v1/banco_conexoes?id=eq.' + id, { method: 'PATCH', service: true, body: { status: 'erro', ultimo_erro: m } }); } catch (x) {}
+        return resp(res, 200, { ok: false, erro: m });
+      }
+    }
+
     if (acao === 'testar') {
       const aad = 'cli:' + c.cliente_id + ':' + c.banco + ':' + c.apelido;
       let cred;
