@@ -301,6 +301,24 @@
             <div id="resultadoFolhaClt" style="margin-top:20px;">
                 <div style="text-align:center; padding:30px; color:var(--text-light);">Carregando competência...</div>
             </div>
+            <div id="painelGuias" style="display:none; margin-top:22px; border-top:2px dashed #cbd5e1; padding-top:18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:10px;">
+                    <span style="font-weight:800; color:var(--primary);"><i class="fas fa-file-invoice-dollar"></i> Guias e encargos da folha</span>
+                    <span style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn-acao cinza" onclick="imprimirGuias()"><i class="fas fa-print"></i> Imprimir quadro</button>
+                        <button class="btn-acao sucesso" id="btnGerarGuias" onclick="gerarGuiasPagar()"><i class="fas fa-paper-plane"></i> Enviar guias ao Contas a Pagar</button>
+                    </span>
+                </div>
+                <div class="table-container">
+                    <table class="analitica-table">
+                        <thead><tr><th>Guia</th><th>Como pagar</th><th>Vencimento</th><th style="text-align:right;">Valor</th><th>Situação</th></tr></thead>
+                        <tbody id="tbodyGuias"></tbody>
+                    </table>
+                </div>
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:8px; margin-top:12px; font-size:12px; color:#1e3a8a;">
+                    <i class="fas fa-info-circle"></i> <strong>Importante:</strong> o INSS aqui é só a parte descontada dos funcionários. A parte da empresa (patronal, RAT e terceiros) depende do regime tributário e <strong>não é calculada nesta tela</strong>. O valor oficial de cada guia é o que o eSocial/DCTFWeb (INSS e IRRF) e o FGTS Digital emitem. Os vencimentos mostrados já consideram a antecipação para o dia útil anterior quando o dia 20 não é útil. Se o valor oficial for diferente, ajuste no Contas a Pagar.
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1177,7 +1195,7 @@ function renderFolha(){
   else { av.style.display='none'; }
   var box = document.getElementById('resultadoFolhaClt');
   var lista = elegiveisFolha(k);
-  if(!lista.length){ box.innerHTML='<div style="text-align:center; padding:20px; color:var(--text-light);">Nenhum funcionário CLT ativo em '+esc(compRotulo(k))+'. Cadastre na aba "Funcionários &amp; Sócios".</div>'; return; }
+  if(!lista.length){ box.innerHTML='<div style="text-align:center; padding:20px; color:var(--text-light);">Nenhum funcionário CLT ativo em '+esc(compRotulo(k))+'. Cadastre na aba "Funcionários &amp; Sócios".</div>'; carregarGuias(); return; }
   var itensPor = {}; folhaEstado.itens.forEach(function(i){ itensPor[i.colaborador_id]=i; });
   var evPor = {}; folhaEstado.eventos.forEach(function(e){ (evPor[e.colaborador_id]=evPor[e.colaborador_id]||[]).push(e); });
   var t = {sal:0,prov:0,desc:0,inss:0,irrf:0,liq:0,fgts:0}, algum=false;
@@ -1200,6 +1218,7 @@ function renderFolha(){
   h += '</tbody></table>';
   if(comp && comp.calculada_em && !fechada) h += '<div style="margin-top:10px;font-size:12px;color:#92400e;"><i class="fas fa-triangle-exclamation"></i> Se você mudou eventos ou o cadastro depois do último cálculo, clique de novo em <strong>Calcular e gravar folha</strong>.</div>';
   box.innerHTML = h;
+  carregarGuias();
 }
 
 async function garantirCompetencia(){
@@ -1398,6 +1417,92 @@ function renderEventos(){
     h+='<tr><td>'+esc(e.descricao)+'</td><td>'+(e.quantidade==null?'—':esc(String(e.quantidade)))+'</td><td>'+(e.tipo==='P'?'R$ '+moedaBR(v):'')+'</td><td>'+(e.tipo==='D'?'R$ '+moedaBR(v):'')+'</td><td style="text-align:right;">'+(fechada?'':'<button class="btn-mini-fl perigo" onclick="removerEvento('+e.id+')"><i class="fas fa-trash"></i></button>')+'</td></tr>'; });
   h+='<tr style="font-weight:700;background:var(--bg);"><td colspan="2">Total dos eventos</td><td>R$ '+moedaBR(tp)+'</td><td>R$ '+moedaBR(td)+'</td><td></td></tr></tbody></table>';
   box.innerHTML=h;
+}
+
+
+// ----- guias e encargos (INSS / FGTS / IRRF) -----
+function feriadosNacionais(ano){
+  var a=ano%19,b=Math.floor(ano/100),c=ano%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451);
+  var mes=Math.floor((h+l-7*m+114)/31), dia=((h+l-7*m+114)%31)+1;
+  var pascoa=new Date(ano,mes-1,dia);
+  function mais(n){ var x=new Date(pascoa.getTime()); x.setDate(x.getDate()+n); return x; }
+  var lista=[new Date(ano,0,1),new Date(ano,3,21),new Date(ano,4,1),new Date(ano,8,7),new Date(ano,9,12),new Date(ano,10,2),new Date(ano,10,15),new Date(ano,10,20),new Date(ano,11,25),mais(-48),mais(-47),mais(-2),mais(60)];
+  return lista.map(function(x){ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); });
+}
+function vencimentoGuia(k){
+  var p=k.split('-'), ano=parseInt(p[0],10), mes=parseInt(p[1],10);
+  var ay=mes===12?ano+1:ano, am=mes===12?1:mes+1;
+  var fer=feriadosNacionais(ay), d=new Date(ay,am-1,20);
+  function iso(x){ return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0'); }
+  while(d.getDay()===0||d.getDay()===6||fer.indexOf(iso(d))>=0){ d.setDate(d.getDate()-1); }
+  return iso(d);
+}
+function dataBR(s){ return String(s||'').slice(0,10).split('-').reverse().join('/'); }
+var guiasEstado = { lista:[], existentes:{} };
+function guiasDaFolha(){
+  var comp=folhaEstado.comp; if(!comp||comp.status!=='fechada'||!folhaEstado.itens.length) return [];
+  var t={inss:0,irrf:0,fgts:0};
+  folhaEstado.itens.forEach(function(i){ t.inss+=Number(i.inss); t.irrf+=Number(i.irrf); t.fgts+=Number(i.fgts); });
+  var venc=vencimentoGuia(folhaEstado.key), rot=compRotulo(folhaEstado.key), pre='folha:'+comp.id+':';
+  return [
+    { tag:pre+'inss', nome:'INSS dos funcionários', como:'Guia pela DCTFWeb (eSocial)', forn:'Receita Federal - INSS', cc:'INSS a Recolher (Folha)', desc:'INSS retido dos funcionários - folha '+rot, valor:r2(t.inss), venc:venc },
+    { tag:pre+'fgts', nome:'FGTS', como:'Guia no FGTS Digital', forn:'Caixa - FGTS Digital', cc:'FGTS a Recolher (Folha)', desc:'FGTS - folha '+rot, valor:r2(t.fgts), venc:venc },
+    { tag:pre+'irrf', nome:'IRRF sobre salários', como:'DARF (código 0561) pela DCTFWeb', forn:'Receita Federal - IRRF', cc:'IRRF a Recolher (Folha)', desc:'IRRF sobre salários - folha '+rot, valor:r2(t.irrf), venc:venc }
+  ];
+}
+async function carregarGuias(){
+  var comp=folhaEstado.comp; guiasEstado.existentes={};
+  if(comp && comp.status==='fechada'){
+    try {
+      var r=await sb.from('contas_pagar').select('id,descricao,status,vencimento,valor').eq('cliente_id', clienteIdAtual()).like('descricao','%[folha:'+comp.id+':%');
+      (r.data||[]).forEach(function(x){ var m=/\[(folha:\d+:[a-z]+)\]/.exec(x.descricao||''); if(m) guiasEstado.existentes[m[1]]=x; });
+    } catch(e){}
+  }
+  renderGuias();
+}
+function renderGuias(){
+  var box=document.getElementById('painelGuias'); if(!box) return;
+  var lista=guiasDaFolha(); guiasEstado.lista=lista;
+  if(!lista.length){ box.style.display='none'; return; }
+  box.style.display='';
+  var pend=0;
+  document.getElementById('tbodyGuias').innerHTML=lista.map(function(g){
+    var ex=guiasEstado.existentes[g.tag], sit;
+    if(g.valor<=0) sit='<span style="color:var(--text-light);">Sem valor neste mês</span>';
+    else if(ex){ var pago=String(ex.status||'').toLowerCase()==='pago'; sit=pago?'<span style="color:#166534; font-weight:700;"><i class="fas fa-circle-check"></i> Paga</span>':'<span style="color:#1d4ed8; font-weight:700;"><i class="fas fa-clock"></i> No Contas a Pagar (pendente)</span>'; }
+    else { sit='<span style="color:#b45309; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Ainda não enviada</span>'; pend++; }
+    return '<tr><td><b>'+esc(g.nome)+'</b></td><td>'+esc(g.como)+'</td><td>'+dataBR(g.venc)+'</td><td style="text-align:right;">R$ '+moedaBR(g.valor)+'</td><td>'+sit+'</td></tr>';
+  }).join('');
+  document.getElementById('btnGerarGuias').disabled = pend===0;
+}
+async function gerarGuiasPagar(){
+  var novas=guiasEstado.lista.filter(function(g){ return g.valor>0 && !guiasEstado.existentes[g.tag]; });
+  if(!novas.length){ toast('Todas as guias já estão no Contas a Pagar.', 'error'); return; }
+  var btn=document.getElementById('btnGerarGuias'); btn.disabled=true;
+  try {
+    var cid=clienteIdAtual();
+    var linhas=novas.map(function(g){ return { cliente_id:cid, fornecedor_nome:g.forn, valor:g.valor, vencimento:g.venc, descricao:g.desc+' ['+g.tag+']', status:'Pendente', centro_custo:'Não informado', conta_contabil:g.cc, recorrente:'Não', updated_at:new Date().toISOString() }; });
+    var r=await sb.from('contas_pagar').insert(linhas);
+    if(r.error) throw new Error(r.error.message);
+    toast(novas.length+' guia(s) enviada(s) ao Contas a Pagar. Escolha o banco ao dar baixa.', 'success');
+    await carregarGuias();
+  } catch(e){ toast('Erro: '+e.message, 'error'); btn.disabled=false; }
+}
+function imprimirGuias(){
+  var lista=guiasEstado.lista; if(!lista.length){ toast('Feche a competência para ver as guias.', 'error'); return; }
+  if(typeof ERPPrint==='undefined'){ toast('O módulo de impressão não foi carregado. Recarregue a página.','error'); return; }
+  var emp=dadosEmpresaPrint(), tot=0;
+  var linhas=lista.map(function(g){ tot+=g.valor; var ex=guiasEstado.existentes[g.tag]; return [g.nome, g.como, dataBR(g.venc), 'R$ '+moedaBR(g.valor), g.valor<=0?'Sem valor':(ex?(String(ex.status||'').toLowerCase()==='pago'?'Paga':'No Contas a Pagar'):'Não enviada')]; });
+  ERPPrint.imprimir({
+    titulo:'Quadro de guias e encargos da folha', subtitulo:'Competência '+compRotulo(folhaEstado.key), codigo:'RH-GUI', orientacao:'landscape',
+    empresa:emp.empresa, cnpj:emp.cnpj,
+    filtros:[['Competência',compRotulo(folhaEstado.key)]],
+    resumo:[['Total das guias','R$ '+moedaBR(tot)],['Vencimento',dataBR(lista[0].venc)]],
+    colunas:[{t:'Guia',w:2.4},{t:'Como pagar',w:2.8},{t:'Vencimento',w:1.2},{t:'Valor',w:1.3,a:'right'},{t:'Situação',w:1.8}],
+    linhas:linhas, totais:['TOTAL','','','R$ '+moedaBR(tot),''],
+    observacao:'INSS: apenas a parte descontada dos funcionários (a parte patronal não está incluída). Valores oficiais conforme eSocial/DCTFWeb e FGTS Digital. Vencimento com antecipação para o dia útil anterior quando o dia 20 não é útil.',
+    assinaturas:['Responsável pela folha','Aprovação']
+  });
 }
 
 // ----- impressões (padrão ERPPrint) -----
