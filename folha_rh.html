@@ -103,7 +103,7 @@
 
     <div class="aviso-simulacao">
         <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
-        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula <strong>INSS (progressivo por faixa)</strong>, <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025), <strong>FGTS</strong>, vale-transporte (6%) e os eventos lançados (horas extras, faltas, adicionais e descontos). Ainda <strong>não faz</strong> rescisão, salário-família, pensão alimentícia, DSR automático e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
+        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula <strong>INSS (progressivo por faixa)</strong>, <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025), <strong>FGTS</strong>, vale-transporte (6%) e os eventos lançados (horas extras, faltas, adicionais e descontos). Ainda <strong>não faz</strong> salário-família, pensão alimentícia, DSR automático e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
     </div>
 
     <!-- ABAS DE NAVEGAÇÃO COMPLETAS -->
@@ -111,6 +111,7 @@
         <button class="aba-btn active" onclick="mudarAba('funcionarios')"><i class="fas fa-user-tie"></i> Funcionários &amp; Sócios</button>
         <button class="aba-btn" onclick="mudarAba('folha_clt')"><i class="fas fa-file-invoice"></i> Folha CLT</button>
         <button class="aba-btn" onclick="mudarAba('ferias13')"><i class="fas fa-umbrella-beach"></i> Férias e 13º</button>
+        <button class="aba-btn" onclick="mudarAba('rescisao')"><i class="fas fa-user-minus"></i> Rescisão</button>
         <button class="aba-btn" onclick="mudarAba('pro_labore')"><i class="fas fa-hand-holding-usd"></i> Pró-labore</button>
         <button class="aba-btn" onclick="mudarAba('rubricas')"><i class="fas fa-list"></i> Rubricas (referência)</button>
         <button class="aba-btn" onclick="mudarAba('tabelas')"><i class="fas fa-calculator"></i> Tabelas (referência)</button>
@@ -295,7 +296,7 @@
                 </div>
             </div>
             <div style="background:#fefce8; border:1px solid #fde047; padding:12px; border-radius:8px; margin:16px 0; font-size:12px; color:#854d0e;">
-                <i class="fas fa-info-circle"></i> <strong>Como usar:</strong> 1) escolha o mês; 2) em cada funcionário, clique em <strong>Eventos</strong> para lançar horas extras, faltas, adicionais e descontos do mês; 3) clique em <strong>Calcular e gravar folha</strong>; 4) imprima o <strong>holerite</strong> de cada um; 5) confira e clique em <strong>Fechar competência</strong>. Com o mês fechado, nada mais pode ser alterado (só o administrador reabre). <strong>Ainda não faz:</strong> rescisão, salário-família, pensão alimentícia, DSR automático e eSocial.
+                <i class="fas fa-info-circle"></i> <strong>Como usar:</strong> 1) escolha o mês; 2) em cada funcionário, clique em <strong>Eventos</strong> para lançar horas extras, faltas, adicionais e descontos do mês; 3) clique em <strong>Calcular e gravar folha</strong>; 4) imprima o <strong>holerite</strong> de cada um; 5) confira e clique em <strong>Fechar competência</strong>. Com o mês fechado, nada mais pode ser alterado (só o administrador reabre). <strong>Ainda não faz:</strong> salário-família, pensão alimentícia, DSR automático e eSocial.
             </div>
             <div id="avisoContabFolha" style="display:none; margin-top:14px; padding:10px 14px; border-radius:8px; font-size:12.5px; font-weight:600;"></div>
             <div id="resultadoFolhaClt" style="margin-top:20px;">
@@ -365,6 +366,44 @@
     </div>
 
     <!-- ABA 3: PRÓ-LABORE -->
+    <!-- ABA: RESCISÃO -->
+    <div id="aba-rescisao" class="aba-conteudo">
+        <div class="panel">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-user-minus"></i> Rescisão de contrato (CLT)</span> <span class="tag-sim">Cálculo 2026 · conferir com a contabilidade</span></div>
+            <div class="form-row">
+                <div><label>Funcionário (CLT ativo) *</label><select id="rs_func" class="form-control" onchange="rescEscolher()"></select></div>
+                <div><label>Data do desligamento *</label><input type="date" id="rs_data" class="form-control"></div>
+                <div><label>Motivo *</label><select id="rs_motivo" class="form-control" onchange="rescMotivoMudou()"></select></div>
+                <div><label>Aviso prévio</label><select id="rs_aviso" class="form-control"></select></div>
+            </div>
+            <div id="rs_info" style="font-size:12.5px;color:var(--text-light);margin:-4px 0 12px;"></div>
+            <div class="form-row">
+                <div><label>Média de variáveis (R$)</label><input type="number" step="0.01" min="0" id="rs_media" class="form-control" placeholder="Horas extras, comissões... (opcional)"></div>
+                <div><label>Períodos de férias vencidas (0 a 2)</label><input type="number" min="0" max="2" id="rs_fv" class="form-control" value="0"></div>
+                <div><label>Saldo do FGTS (R$) - do extrato</label><input type="number" step="0.01" min="0" id="rs_fgts" class="form-control" placeholder="Se vazio, a multa é estimada"></div>
+                <div><label>Outros descontos (R$)</label><input type="number" step="0.01" min="0" id="rs_outros" class="form-control" placeholder="Adiantamentos, empréstimos..."></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-acao" onclick="calcularRescisaoTela()"><i class="fas fa-calculator"></i> Calcular rescisão</button>
+                <button class="btn-acao cinza" onclick="imprimirTermoPrevia()"><i class="fas fa-print"></i> Imprimir prévia</button>
+                <button class="btn-acao sucesso" id="btnEfetivarResc" onclick="efetivarRescisao()" style="display:none;"><i class="fas fa-check"></i> Efetivar rescisão</button>
+            </div>
+            <div id="resultadoResc" style="margin-top:16px;"></div>
+            <div style="background:#eff6ff;border:1px solid #bfdbfe;padding:10px 12px;border-radius:8px;margin-top:14px;font-size:12px;color:#1e3a8a;">
+                <i class="fas fa-info-circle"></i> <strong>Importante:</strong> esta tela calcula as verbas e gera o demonstrativo para conferência. <strong>Não envia o evento S-2299 ao eSocial</strong> nem substitui o TRCT oficial. Ao efetivar, o funcionário sai da folha do mês do desligamento (se a folha do mês já foi calculada com ele, recalcule-a). Não calcula: pensão alimentícia, 1/3 sobre férias em dobro, estabilidades, indenizações especiais e rescisão antecipada de contrato a prazo.
+            </div>
+        </div>
+        <div class="panel" style="margin-top:20px;">
+            <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-clipboard-list"></i> Rescisões efetivadas</span></div>
+            <div class="table-container">
+                <table class="analitica-table">
+                    <thead><tr><th>Funcionário</th><th>Desligamento</th><th>Motivo</th><th style="text-align:right;">Líquido</th><th>Contabilidade</th><th style="text-align:right;">Ações</th></tr></thead>
+                    <tbody id="tbodyResc"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <div id="aba-pro_labore" class="aba-conteudo">
         <div class="panel">
             <div class="panel-header"><span style="color:var(--primary);"><i class="fas fa-hand-holding-usd"></i> Pró-labore (Sócio / Administrador)</span> <span class="tag-sim">Cálculo 2026 · conferir com a contabilidade</span></div>
@@ -633,7 +672,7 @@ function mudarAba(nomeAba) {
     document.querySelectorAll('.aba-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.aba-conteudo').forEach(c => c.classList.remove('active'));
     
-    let mapa = { 'funcionarios': 0, 'folha_clt': 1, 'ferias13': 2, 'pro_labore': 3, 'rubricas': 4, 'tabelas': 5 };
+    let mapa = { 'funcionarios': 0, 'folha_clt': 1, 'ferias13': 2, 'rescisao': 3, 'pro_labore': 4, 'rubricas': 5, 'tabelas': 6 };
     let idx = mapa[nomeAba] !== undefined ? mapa[nomeAba] : 0;
     
     document.querySelectorAll('.aba-btn')[idx].classList.add('active');
@@ -641,6 +680,7 @@ function mudarAba(nomeAba) {
 
     if(nomeAba === 'folha_clt') { carregarFolha(); }
     if(nomeAba === 'ferias13') { prepararFerias13(); }
+    if(nomeAba === 'rescisao') { prepararRescisao(); }
     if(nomeAba === 'pro_labore') {
         carregarSociosParaProLabore();
     }
@@ -1146,6 +1186,7 @@ function valorHora(c){ return Number(c.salario||0) / jornadaMensal(c); }
 function elegiveisFolha(k){
   var p=k.split('-'), ini=new Date(parseInt(p[0],10), parseInt(p[1],10)-1, 1), fim=new Date(parseInt(p[0],10), parseInt(p[1],10), 0);
   return funcionariosCltLista().filter(function(c){
+    if(rescMesIds[c.id]) return false;
     if(c.status && c.status!=='Ativo' && !c.data_desligamento) return false;
     if(c.admissao && new Date(c.admissao+'T12:00:00') > fim) return false;
     if(c.data_desligamento && new Date(c.data_desligamento+'T12:00:00') < ini) return false;
@@ -1166,6 +1207,8 @@ async function carregarFolha(){
   var k = compKey(); if(!k) return;
   var cid = clienteIdAtual();
   folhaEstado = { comp:null, eventos:[], itens:[], key:k, lote:null };
+  rescMesIds = {};
+  try { var rq = await sb.from('folha_rescisoes').select('colaborador_id').eq('cliente_id', cid).gte('data_desligamento', k+'-01').lte('data_desligamento', k+'-'+String(ultimoDiaMes(k)).padStart(2,'0')); (rq.data||[]).forEach(function(x){ rescMesIds[x.colaborador_id]=true; }); } catch(e){}
   var box = document.getElementById('resultadoFolhaClt');
   if(!funcionariosCache.length){ try{ await carregarFuncionarios(); }catch(e){} }
   var r = await sb.from('folha_competencias').select('*').eq('cliente_id', cid).eq('competencia', k).maybeSingle();
@@ -1202,7 +1245,7 @@ function renderFolha(){
   var h = '<table class="analitica-table"><thead><tr><th>Funcionário</th><th>Salário base</th><th>Eventos</th><th>Proventos</th><th>Descontos</th><th>INSS</th><th>IRRF</th><th>Líquido</th><th>FGTS (empresa)</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
   lista.forEach(function(c){
     var it = itensPor[c.id], ne = (evPor[c.id]||[]).length;
-    var aviso = c.data_desligamento ? ' <span class="tag-sim" title="Rescisão ainda não é calculada por esta tela">desligado</span>' : '';
+    var aviso = c.data_desligamento ? ' <span class="tag-sim" title="Desligado: use a aba Rescisão para calcular e efetivar">desligado</span>' : '';
     h += '<tr><td><strong>'+esc(c.nome)+'</strong>'+aviso+'<br><span style="font-size:11px;color:var(--text-light);">'+esc(c.cargo||'')+'</span></td><td>R$ '+moedaBR(c.salario)+'</td>';
     h += '<td><button class="btn-mini-fl'+(ne?'':' cinza')+'" onclick="abrirEventos('+c.id+')">'+(fechada?'Ver':'Eventos')+' ('+ne+')</button></td>';
     if(it){
@@ -1503,6 +1546,293 @@ function imprimirGuias(){
     observacao:'INSS: apenas a parte descontada dos funcionários (a parte patronal não está incluída). Valores oficiais conforme eSocial/DCTFWeb e FGTS Digital. Vencimento com antecipação para o dia útil anterior quando o dia 20 não é útil.',
     assinaturas:['Responsável pela folha','Aprovação']
   });
+}
+
+// ===== RESCISÃO: motor de cálculo (regras de 2026) =====
+var MOTIVOS_RESC = {
+  sem_justa: 'Dispensa sem justa causa',
+  pedido:    'Pedido de demissão',
+  justa:     'Dispensa por justa causa',
+  acordo:    'Acordo entre as partes (art. 484-A)',
+  termino:   'Término de contrato por prazo determinado / experiência'
+};
+function rIso(s){ var p=String(s).slice(0,10).split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function rFmt(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rBR(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function rMais(d,n){ var x=new Date(d.getFullYear(), d.getMonth(), d.getDate()+n); return x; }
+function rAnosCompletos(adm, des){
+  var y = des.getFullYear()-adm.getFullYear();
+  if(des.getMonth()<adm.getMonth() || (des.getMonth()===adm.getMonth() && des.getDate()<adm.getDate())) y--;
+  return Math.max(0,y);
+}
+function rMesesCompletos(adm, des){
+  var m = (des.getFullYear()-adm.getFullYear())*12 + (des.getMonth()-adm.getMonth());
+  if(des.getDate()<adm.getDate()) m--;
+  return Math.max(0,m);
+}
+/* avos de 13º no ano da data projetada: mês com 15 dias ou mais trabalhados conta */
+function rAvos13(adm, proj){
+  var ano = proj.getFullYear(), ini = (adm.getFullYear()===ano) ? adm : new Date(ano,0,1), n=0;
+  for(var m=ini.getMonth(); m<=proj.getMonth(); m++){
+    var d1 = (m===ini.getMonth()) ? ini.getDate() : 1;
+    var d2 = (m===proj.getMonth()) ? proj.getDate() : new Date(ano, m+1, 0).getDate();
+    if(d2-d1+1 >= 15) n++;
+  }
+  return n;
+}
+/* avos de férias proporcionais: desde o último aniversário da admissão até a data projetada */
+function rAvosFerias(adm, proj){
+  var a = new Date(proj.getFullYear(), adm.getMonth(), adm.getDate());
+  if(a>proj) a = new Date(proj.getFullYear()-1, adm.getMonth(), adm.getDate());
+  if(a<adm) a = adm;
+  var m = (proj.getFullYear()-a.getFullYear())*12 + (proj.getMonth()-a.getMonth());
+  if(proj.getDate()<a.getDate()) m--;
+  m = Math.max(0,m);
+  var ad = new Date(a.getFullYear(), a.getMonth()+m, a.getDate());
+  var rest = Math.round((proj-ad)/86400000)+1;
+  if(rest>=15) m++;
+  return Math.min(12,m);
+}
+function calcularRescisao(c, p){
+  var sal = Number(c.salario||0), dep = Number(c.dependentes||0), media = Number(p.media||0);
+  var adm = rIso(c.admissao), des = rIso(p.deslig);
+  var avisos = [];
+  var anos = rAnosCompletos(adm, des);
+  var motivo = p.motivo, aviso = p.aviso;
+  var avisoDiasPrev = (motivo==='sem_justa'||motivo==='acordo') ? Math.min(90, 30+3*anos) : 0;
+  var avisoIndenizado = (aviso==='indenizado') && (motivo==='sem_justa'||motivo==='acordo');
+  var avisoDiasPagos = avisoIndenizado ? (motivo==='acordo' ? Math.round(avisoDiasPrev/2) : avisoDiasPrev) : 0;
+  var proj = avisoIndenizado ? rMais(des, avisoDiasPagos) : des;
+  var rem = r2(sal+media);
+
+  // saldo de salário (base 30 dias; último dia do mês = 30)
+  var ultimo = new Date(des.getFullYear(), des.getMonth()+1, 0).getDate();
+  var diaIni = (adm.getFullYear()===des.getFullYear() && adm.getMonth()===des.getMonth()) ? adm.getDate() : 1;
+  var fimDia = (des.getDate()===ultimo) ? 30 : Math.min(30, des.getDate());
+  var diasSaldo = Math.max(0, Math.min(30, fimDia-(diaIni-1)));
+  var saldo = r2(sal/30*diasSaldo);
+
+  var avosD = (motivo==='justa') ? 0 : rAvos13(adm, proj);
+  var v13 = r2(rem/12*avosD);
+  var avosF = (motivo==='justa') ? 0 : rAvosFerias(adm, proj);
+  var fProp = r2(rem/12*avosF), fPropTerco = r2(fProp/3);
+  var perV = Math.max(0, parseInt(p.ferias_venc,10)||0);
+  var fVenc = r2(rem*perV), fVencTerco = r2(fVenc/3);
+  var avisoValor = r2(sal/30*avisoDiasPagos);
+  var avisoDesc = (motivo==='pedido' && aviso==='nao_cumprido') ? r2(sal) : 0;
+
+  // tributos
+  var inssS = inssProgressivo(saldo), irS = irrfMensal(saldo, inssS, dep);
+  var inss13 = inssProgressivo(v13), ir13 = v13>0 ? irrfMensal(v13, inss13, dep) : {irrf:0, simplificado:false, reducao:0};
+  var vt = (c.vt && saldo>0) ? r2(saldo*0.06) : 0;
+  var outros = r2(Number(p.outros_desc||0));
+
+  var fgtsOpt = (c.fgts_optante!==false);
+  var fgtsResc = fgtsOpt ? r2((saldo+v13+avisoValor)*P26.fgts) : 0;
+  var perc = motivo==='sem_justa' ? 0.40 : (motivo==='acordo' ? 0.20 : 0);
+  var saldoInf = (p.saldo_fgts===''||p.saldo_fgts==null||isNaN(Number(p.saldo_fgts))) ? null : Number(p.saldo_fgts);
+  var estimado = false;
+  if(saldoInf==null){ estimado = true; saldoInf = fgtsOpt ? r2(sal*P26.fgts*rMesesCompletos(adm, des)) : 0; }
+  var baseMulta = r2(saldoInf + fgtsResc);
+  var multa = fgtsOpt ? r2(baseMulta*perc) : 0;
+  if(perc>0 && estimado) avisos.push('O saldo do FGTS não foi informado: a multa foi ESTIMADA (8% do salário por mês completo). Informe o saldo do extrato do FGTS para o valor correto.');
+  if(motivo==='justa') avisos.push('Justa causa: só saldo de salário e férias vencidas. Sem 13º proporcional, férias proporcionais, aviso prévio e multa do FGTS.');
+  if(motivo==='termino') avisos.push('Contrato por prazo determinado: sem aviso prévio e sem multa de 40% (só o depósito de 8%).');
+  if(perV>0) avisos.push('Férias vencidas: confira se o prazo para gozar já passou. Se passou, as férias são pagas em DOBRO (some o valor em "Outros" ou peça ajuste à contabilidade).');
+
+  var L = [];
+  function pv(cod, desc, ref, v){ if(v>0) L.push({cod:cod, desc:desc, ref:ref, prov:v, desc_v:0}); }
+  function dv(cod, desc, ref, v){ if(v>0) L.push({cod:cod, desc:desc, ref:ref, prov:0, desc_v:v}); }
+  pv('SAL','Saldo de salário', diasSaldo+' dias', saldo);
+  pv('AVI','Aviso prévio indenizado', avisoDiasPagos+' dias'+(motivo==='acordo'?' (50% - acordo)':''), avisoValor);
+  pv('13P','13º salário proporcional', avosD+'/12 avos', v13);
+  pv('FVE','Férias vencidas', perV+' período(s)', fVenc);
+  pv('FVT','1/3 constitucional sobre férias vencidas', '', fVencTerco);
+  pv('FPR','Férias proporcionais', avosF+'/12 avos', fProp);
+  pv('FPT','1/3 constitucional sobre férias proporcionais', '', fPropTerco);
+  dv('INS','INSS sobre o saldo de salário', 'tabela 2026', inssS);
+  dv('IRS','IRRF sobre o saldo de salário', irS.simplificado?'desc. simplificado':'dedução legal', irS.irrf);
+  dv('IN13','INSS sobre o 13º', 'tabela 2026', inss13);
+  dv('IR13','IRRF sobre o 13º', ir13.simplificado?'desc. simplificado':'dedução legal', ir13.irrf);
+  dv('VT','Vale-transporte (6% do saldo)', '6%', vt);
+  dv('AVD','Aviso prévio não cumprido (desconto)', '30 dias', avisoDesc);
+  dv('OUT','Outros descontos', '', outros);
+
+  var prov = r2(saldo+avisoValor+v13+fVenc+fVencTerco+fProp+fPropTerco);
+  var inss = r2(inssS+inss13), irrf = r2(irS.irrf+ir13.irrf);
+  var desc = r2(inss+irrf+vt+avisoDesc+outros);
+  var liq = r2(prov-desc);
+  if(liq<0) avisos.push('Os descontos superam as verbas: o líquido ficou negativo. Confira os valores com a contabilidade.');
+  var pagarAte = rMais(des, 10);
+  return {
+    anos:anos, avisoDiasPrev:avisoDiasPrev, avisoDiasPagos:avisoDiasPagos, projecao: rFmt(proj),
+    diasSaldo:diasSaldo, saldo:saldo, avisoValor:avisoValor, avosD:avosD, v13:v13, avosF:avosF, fProp:fProp, fPropTerco:fPropTerco,
+    perV:perV, fVenc:fVenc, fVencTerco:fVencTerco, avisoDesc:avisoDesc,
+    inssS:inssS, irS:irS.irrf, inss13:inss13, ir13:ir13.irrf, vt:vt, outros:outros,
+    proventos:prov, inss:inss, irrf:irrf, descontos:desc, liquido:liq,
+    fgtsResc:fgtsResc, multaPerc:perc, saldoFgts:saldoInf, saldoFgtsEstimado:estimado, multaFgts:multa,
+    pagarAte: rFmt(pagarAte), linhas:L, avisos:avisos
+  };
+}
+
+
+// ===== RESCISÃO: tela, gravação, termo impresso e contabilização =====
+var rescEstado = { calc:null, colab:null, entrada:null, lista:[], lotes:{} };
+var rescMesIds = {};
+function rescElegiveis(){
+  return funcionariosCltLista().filter(function(c){ return (!c.status || c.status==='Ativo') && !c.data_desligamento && c.admissao && Number(c.salario||0)>0; });
+}
+function prepararRescisao(){
+  var sel=document.getElementById('rs_func'); if(!sel) return;
+  var atual=sel.value, lista=rescElegiveis();
+  sel.innerHTML = '<option value="">Escolha o funcionário...</option>' + lista.map(function(c){ return '<option value="'+esc(String(c.id))+'">'+esc(c.nome)+'</option>'; }).join('');
+  sel.value = atual;
+  var mo=document.getElementById('rs_motivo');
+  if(!mo.options.length){ mo.innerHTML = Object.keys(MOTIVOS_RESC).map(function(k){ return '<option value="'+k+'">'+esc(MOTIVOS_RESC[k])+'</option>'; }).join(''); }
+  rescMotivoMudou(); rescEscolher(); carregarRescisoes();
+}
+function rescEscolher(){
+  var id=document.getElementById('rs_func').value, info=document.getElementById('rs_info');
+  var c = funcionariosCltLista().filter(function(x){ return String(x.id)===String(id); })[0];
+  rescEstado.colab = c||null;
+  info.innerHTML = c ? ('Admissão: <b>'+rBR(rIso(c.admissao))+'</b> · Salário: <b>R$ '+moedaBR(c.salario)+'</b> · Dependentes: <b>'+(c.dependentes||0)+'</b> · '+(c.vt?'Recebe vale-transporte':'Sem vale-transporte')) : '';
+}
+function rescMotivoMudou(){
+  var m=document.getElementById('rs_motivo').value, av=document.getElementById('rs_aviso');
+  var ops = (m==='sem_justa'||m==='acordo') ? [['trabalhado','Aviso trabalhado (empregado cumpre)'],['indenizado','Aviso indenizado (empresa paga e dispensa)']]
+          : (m==='pedido') ? [['trabalhado','Aviso cumprido (trabalhado)'],['nao_cumprido','Aviso NÃO cumprido (desconta 30 dias)']]
+          : [['nao_se_aplica','Não se aplica']];
+  av.innerHTML = ops.map(function(o){ return '<option value="'+o[0]+'">'+esc(o[1])+'</option>'; }).join('');
+  av.disabled = (ops.length===1);
+}
+function rescLerEntrada(){
+  var c = rescEstado.colab; if(!c){ toast('Escolha o funcionário.', 'error'); return null; }
+  var d = document.getElementById('rs_data').value;
+  if(!d){ toast('Informe a data do desligamento.', 'error'); return null; }
+  if(rIso(d) < rIso(c.admissao)){ toast('A data de desligamento é anterior à admissão.', 'error'); return null; }
+  if(rIso(d).getFullYear()!==P26.ano){ toast('Os parâmetros desta tela são de '+P26.ano+'. Informe um desligamento em '+P26.ano+'.', 'error'); return null; }
+  var media=parseFloat(document.getElementById('rs_media').value)||0, outros=parseFloat(document.getElementById('rs_outros').value)||0;
+  var per=parseInt(document.getElementById('rs_fv').value,10)||0;
+  if(media<0||outros<0||per<0||per>2){ toast('Confira os valores: nada pode ser negativo e as férias vencidas vão de 0 a 2 períodos.', 'error'); return null; }
+  var sf=document.getElementById('rs_fgts').value;
+  return { deslig:d, motivo:document.getElementById('rs_motivo').value, aviso:document.getElementById('rs_aviso').value, media:media, ferias_venc:per, saldo_fgts:sf, outros_desc:outros };
+}
+function tabelaRescisao(r){
+  var h='<table class="analitica-table"><thead><tr><th>Verba</th><th>Referência</th><th style="text-align:right;">Proventos</th><th style="text-align:right;">Descontos</th></tr></thead><tbody>';
+  r.linhas.forEach(function(l){ h+='<tr><td>'+esc(l.desc)+'</td><td>'+esc(l.ref||'')+'</td><td style="text-align:right;">'+(l.prov>0?'R$ '+moedaBR(l.prov):'')+'</td><td style="text-align:right;color:var(--danger);">'+(l.desc_v>0?'R$ '+moedaBR(l.desc_v):'')+'</td></tr>'; });
+  h+='<tr style="font-weight:800;background:var(--bg);"><td>TOTAIS</td><td></td><td style="text-align:right;">R$ '+moedaBR(r.proventos)+'</td><td style="text-align:right;color:var(--danger);">R$ '+moedaBR(r.descontos)+'</td></tr>';
+  h+='<tr style="font-weight:800;background:#dcfce7;"><td>LÍQUIDO A PAGAR</td><td>pagar até '+rBR(rIso(r.pagarAte))+'</td><td style="text-align:right;" colspan="2">R$ '+moedaBR(r.liquido)+'</td></tr></tbody></table>';
+  h+='<div style="margin-top:10px;font-size:12px;color:var(--text-light);">Encargos da empresa (informativo): FGTS sobre as verbas rescisórias <b>R$ '+moedaBR(r.fgtsResc)+'</b> · Multa do FGTS ('+Math.round(r.multaPerc*100)+'%) <b>R$ '+moedaBR(r.multaFgts)+'</b>'+(r.saldoFgtsEstimado?' (estimada)':'')+' · Aviso prévio previsto em lei: '+r.avisoDiasPrev+' dias ('+r.anos+' ano(s) completo(s) de casa).</div>';
+  (r.avisos||[]).forEach(function(a){ h+='<div style="margin-top:8px;padding:8px 12px;border-radius:8px;background:#fef9c3;color:#854d0e;font-size:12.5px;font-weight:600;"><i class="fas fa-triangle-exclamation"></i> '+esc(a)+'</div>'; });
+  return h;
+}
+function calcularRescisaoTela(){
+  var p = rescLerEntrada(); if(!p) return;
+  var r = calcularRescisao(rescEstado.colab, p);
+  rescEstado.calc = r; rescEstado.entrada = p;
+  document.getElementById('resultadoResc').innerHTML = tabelaRescisao(r);
+  document.getElementById('btnEfetivarResc').style.display = '';
+  toast('Rescisão calculada (regras de '+P26.ano+'). Confira antes de efetivar.', 'info');
+}
+function cabecalhoTermo(x){
+  return [['Funcionário', x.nome],['CPF', x.cpf||'—'],['Admissão', rBR(rIso(x.admissao))],['Desligamento', rBR(rIso(x.deslig))],['Motivo', x.motivoRotulo],['Pagar até', rBR(rIso(x.res.pagarAte))]];
+}
+function imprimirTermoDados(x){
+  if(typeof ERPPrint==='undefined'){ toast('O módulo de impressão não foi carregado. Recarregue a página.','error'); return; }
+  var emp=dadosEmpresaPrint(), r=x.res;
+  ERPPrint.imprimir({
+    titulo:'Termo de rescisão do contrato de trabalho (demonstrativo)', subtitulo:x.nome+' — desligamento em '+rBR(rIso(x.deslig)), codigo:'RH-RES', orientacao:'portrait',
+    empresa:emp.empresa, cnpj:emp.cnpj,
+    filtros:cabecalhoTermo(x),
+    resumo:[['Total de proventos','R$ '+moedaBR(r.proventos)],['Total de descontos','R$ '+moedaBR(r.descontos)],['Líquido a pagar','R$ '+moedaBR(r.liquido)],['FGTS + multa (empresa)','R$ '+moedaBR(r.fgtsResc+r.multaFgts)]],
+    colunas:[{t:'Verba',w:4.2},{t:'Referência',w:2.2},{t:'Proventos',w:1.6,a:'right'},{t:'Descontos',w:1.6,a:'right'}],
+    linhas:r.linhas.map(function(l){ return [l.desc, l.ref||'', l.prov>0?'R$ '+moedaBR(l.prov):'', l.desc_v>0?'R$ '+moedaBR(l.desc_v):'']; }),
+    totais:['TOTAIS','','R$ '+moedaBR(r.proventos),'R$ '+moedaBR(r.descontos)],
+    observacao:'Demonstrativo de conferência com as regras de '+P26.ano+'. O TRCT oficial e os eventos do eSocial (S-2299) devem ser emitidos conforme a legislação; confira com a contabilidade antes de pagar. Prazo de pagamento: 10 dias corridos (art. 477 da CLT).',
+    assinaturas:['Empregador','Empregado']
+  });
+}
+function imprimirTermoPrevia(){
+  if(!rescEstado.calc){ toast('Calcule a rescisão antes de imprimir.', 'error'); return; }
+  var c=rescEstado.colab, p=rescEstado.entrada;
+  imprimirTermoDados({ nome:c.nome, cpf:c.cpf, admissao:c.admissao, deslig:p.deslig, motivoRotulo:MOTIVOS_RESC[p.motivo], res:rescEstado.calc });
+}
+async function efetivarRescisao(){
+  var c=rescEstado.colab, r=rescEstado.calc, p=rescEstado.entrada;
+  if(!c||!r||!p){ toast('Calcule a rescisão antes de efetivar.', 'error'); return; }
+  if(!confirm('Efetivar a rescisão de '+c.nome+'?\n\nO funcionário passará a "Desligado" e sairá da folha do mês do desligamento. Valor líquido: R$ '+moedaBR(r.liquido)+'.')) return;
+  var cid=clienteIdAtual(), btn=document.getElementById('btnEfetivarResc'); btn.disabled=true;
+  try {
+    var ins = await sb.from('folha_rescisoes').insert({
+      cliente_id:cid, colaborador_id:c.id, nome:c.nome, cpf:c.cpf||null, data_desligamento:p.deslig, motivo:p.motivo, aviso:p.aviso,
+      dados:{ entrada:p, admissao:c.admissao, res:r }, proventos:r.proventos, descontos:r.descontos, liquido:r.liquido, inss:r.inss, irrf:r.irrf,
+      fgts:r2(r.fgtsResc+r.multaFgts), multa_fgts:r.multaFgts, criado_por:(obterUsuarioAtual()||{}).email||null
+    }).select().single();
+    if(ins.error) throw new Error(ins.error.code==='23505' ? 'Este funcionário já tem rescisão efetivada. Cancele a anterior para refazer.' : ins.error.message);
+    var up = await sb.from('colaboradores_rh').update({ status:'Desligado', data_desligamento:p.deslig }).eq('id', c.id).eq('cliente_id', cid);
+    if(up.error){ await sb.from('folha_rescisoes').delete().eq('id', ins.data.id); throw new Error('Não foi possível marcar o funcionário como desligado: '+up.error.message); }
+    toast('Rescisão efetivada. Agora você pode imprimir o termo e contabilizar.', 'success');
+    rescEstado.calc=null; document.getElementById('resultadoResc').innerHTML=''; btn.style.display='none';
+    await carregarFuncionarios(); prepararRescisao();
+  } catch(e){ toast('Erro: '+e.message, 'error'); }
+  finally { btn.disabled=false; }
+}
+async function carregarRescisoes(){
+  var cid=clienteIdAtual(), tb=document.getElementById('tbodyResc'); if(!tb) return;
+  var r = await sb.from('folha_rescisoes').select('*').eq('cliente_id', cid).order('data_desligamento', {ascending:false});
+  if(r.error){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--danger);">Não foi possível carregar: '+esc(r.error.message)+'</td></tr>'; return; }
+  rescEstado.lista = r.data||[]; rescEstado.lotes = {};
+  try { var lt = await sb.from('contab_lotes').select('id,numero,data,origem').eq('cliente_id', cid).like('origem','rescisao:%'); (lt.data||[]).forEach(function(l){ rescEstado.lotes[l.origem]=l; }); } catch(e){}
+  renderRescisoes();
+}
+function renderRescisoes(){
+  var tb=document.getElementById('tbodyResc');
+  if(!rescEstado.lista.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-light);">Nenhuma rescisão efetivada.</td></tr>'; return; }
+  tb.innerHTML = rescEstado.lista.map(function(x){
+    var lote = rescEstado.lotes['rescisao:'+x.id];
+    var cont = lote ? '<span style="color:#166534;font-weight:700;"><i class="fas fa-circle-check"></i> Lançamento nº '+lote.numero+'</span>' : '<span style="color:#b45309;font-weight:700;">Não contabilizada</span>';
+    return '<tr><td><b>'+esc(x.nome)+'</b></td><td>'+rBR(rIso(x.data_desligamento))+'</td><td>'+esc(MOTIVOS_RESC[x.motivo]||x.motivo)+'</td><td style="text-align:right;">R$ '+moedaBR(x.liquido)+'</td><td>'+cont+'</td>'+
+      '<td style="text-align:right;"><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">'+
+      '<button class="btn-acao cinza" style="padding:6px 10px;font-size:11px;" onclick="imprimirTermoSalvo('+Number(x.id)+')"><i class="fas fa-print"></i> Termo</button>'+
+      (lote ? '' : '<button class="btn-acao" style="padding:6px 10px;font-size:11px;background:#047857;" onclick="contabilizarRescisao('+Number(x.id)+')"><i class="fas fa-book"></i> Contabilizar</button>')+
+      '<button class="btn-acao perigo" style="padding:6px 10px;font-size:11px;" onclick="cancelarRescisao('+Number(x.id)+')"><i class="fas fa-rotate-left"></i> Cancelar</button></div></td></tr>';
+  }).join('');
+}
+function imprimirTermoSalvo(id){
+  var x = rescEstado.lista.filter(function(y){ return y.id===id; })[0]; if(!x) return;
+  imprimirTermoDados({ nome:x.nome, cpf:x.cpf, admissao:x.dados.admissao, deslig:x.data_desligamento, motivoRotulo:MOTIVOS_RESC[x.motivo]||x.motivo, res:x.dados.res });
+}
+async function contabilizarRescisao(id){
+  var x = rescEstado.lista.filter(function(y){ return y.id===id; })[0]; if(!x) return;
+  if(rescEstado.lotes['rescisao:'+id]){ toast('Esta rescisão já foi contabilizada.', 'error'); return; }
+  var r=x.dados.res, cid=clienteIdAtual();
+  var codigos = Object.keys(CONTAS_FOLHA).map(function(k){ return CONTAS_FOLHA[k]; });
+  try {
+    var rc = await sb.from('contab_contas').select('id,codigo,analitica,ativa').eq('cliente_id', cid).in('codigo', codigos);
+    if(rc.error) throw new Error(rc.error.message);
+    var por={}; (rc.data||[]).forEach(function(c){ por[c.codigo]=c; });
+    var falta = codigos.filter(function(c){ return !por[c]||!por[c].analitica||!por[c].ativa; });
+    if(falta.length) throw new Error('Faltam contas no plano de contas desta empresa: '+falta.join(', ')+'. Em Contabilidade, aba Plano de Contas, use "Importar plano padrão".');
+    var enc = r2(r.fgtsResc + r.multaFgts), outros = r2(r.vt + r.avisoDesc + r.outros);
+    var partidas=[];
+    function add(cod,tipo,v){ v=r2(v); if(v>0) partidas.push({ conta_id:por[cod].id, tipo:tipo, valor:v }); }
+    add(CONTAS_FOLHA.desp_sal,'D',r.proventos); add(CONTAS_FOLHA.desp_enc,'D',enc);
+    add(CONTAS_FOLHA.pag_sal,'C',r.liquido); add(CONTAS_FOLHA.inss,'C',r.inss); add(CONTAS_FOLHA.irrf,'C',r.irrf); add(CONTAS_FOLHA.fgts,'C',enc); add(CONTAS_FOLHA.outros,'C',outros);
+    var rr = await sb.rpc('contab_lancar', { p_cliente:cid, p_data:x.data_desligamento, p_historico:'Rescisão de contrato - '+x.nome+' ('+(MOTIVOS_RESC[x.motivo]||x.motivo)+')', p_origem:'rescisao:'+id, p_partidas:partidas });
+    if(rr.error) throw new Error(rr.error.message);
+    toast('Rescisão contabilizada na Contabilidade.', 'success'); await carregarRescisoes();
+  } catch(e){ toast('Erro: '+e.message, 'error'); }
+}
+async function cancelarRescisao(id){
+  var x = rescEstado.lista.filter(function(y){ return y.id===id; })[0]; if(!x) return;
+  var lote = rescEstado.lotes['rescisao:'+id], cid=clienteIdAtual();
+  if(!confirm('Cancelar a rescisão de '+x.nome+'?\n\nO funcionário volta a "Ativo"'+(lote?' e o lançamento contábil nº '+lote.numero+' será EXCLUÍDO':'')+'.')) return;
+  try {
+    if(lote){ var ex = await sb.rpc('contab_excluir_lote', { p_cliente:cid, p_lote:lote.id }); if(ex.error) throw new Error('Não foi possível excluir o lançamento contábil: '+ex.error.message); }
+    var d = await sb.from('folha_rescisoes').delete().eq('id', id).eq('cliente_id', cid); if(d.error) throw new Error(d.error.message);
+    var u = await sb.from('colaboradores_rh').update({ status:'Ativo', data_desligamento:null }).eq('id', x.colaborador_id).eq('cliente_id', cid); if(u.error) throw new Error(u.error.message);
+    toast('Rescisão cancelada.', 'info'); await carregarFuncionarios(); prepararRescisao();
+  } catch(e){ toast('Erro: '+e.message, 'error'); }
 }
 
 // ----- impressões (padrão ERPPrint) -----
