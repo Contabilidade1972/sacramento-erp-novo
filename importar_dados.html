@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar dados do Domínio (ECD) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1200px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); } .btn-acao:disabled { opacity:.45; cursor:not-allowed; }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .info { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .erro { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:14px 0; }
+        .card-n { border:1px solid var(--border); border-radius:12px; padding:12px 14px; background:#fff; }
+        .card-n b { display:block; font-size:20px; color:var(--secondary); } .card-n span { font-size:11px; color:var(--text-light); text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); }
+        .tabela td { padding:9px 12px; border-bottom:1px solid var(--border); }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.vermelho { background:#fee2e2; color:#991b1b; } .chip.amarelo { background:#fef3c7; color:#92400e; }
+        .barra { height:12px; background:#e2e8f0; border-radius:8px; overflow:hidden; margin:10px 0 4px; } .barra i { display:block; height:100%; width:0; background:var(--success); transition:width .2s; }
+        .linha-chk { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.5; margin-top:10px; }
+        .linha-chk input { margin-top:3px; width:16px; height:16px; }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; max-width:440px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        @media (max-width:800px) { .cards { grid-template-columns:repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="contabilidade.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar à Contabilidade</a>
+    </div>
+    <div>
+        <div class="page-title"><i class="fas fa-file-import" style="color:var(--primary);"></i> Importar dados do Domínio (ECD)</div>
+        <div class="page-subtitle">Traga para o Sacramento o plano de contas, o saldo de abertura e os lançamentos do ano, a partir do arquivo ECD (SPED Contábil) que o Domínio gera.</div>
+    </div>
+
+    <div class="info"><i class="fas fa-circle-info"></i> <b>Como usar:</b> 1) no Domínio, gere o arquivo do <b>SPED Contábil (ECD)</b> da empresa e salve o <b>.txt</b>; 2) aqui, escolha a empresa certa no topo e selecione o arquivo; 3) confira o resumo; 4) clique em <b>Importar</b>. O sistema confere sozinho se o CNPJ do arquivo é o da empresa, se débitos e créditos fecham e se as contas existem. <b>Importar o mesmo arquivo de novo não duplica nada.</b></div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-upload"></i> 1. Escolha o arquivo ECD <span id="empresaTxt" style="margin-left:auto;font-weight:600;font-size:12px;color:var(--text-light);"></span></div>
+        <input type="file" id="arquivo" accept=".txt,.ecd,text/plain" onchange="aoEscolher(this)">
+        <div id="msgLeitura"></div>
+    </div>
+
+    <div class="panel" id="painelResumo" style="display:none;">
+        <div class="panel-title"><i class="fas fa-clipboard-check"></i> 2. Confira o resumo</div>
+        <div id="resumo"></div>
+    </div>
+
+    <div class="panel" id="painelImportar" style="display:none;">
+        <div class="panel-title"><i class="fas fa-database"></i> 3. Importar</div>
+        <div id="opcoes"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+            <button class="btn-acao sucesso" id="btnImportar" onclick="importar()"><i class="fas fa-check"></i> Importar agora</button>
+            <button class="btn-acao cinza" onclick="imprimirConferencia()"><i class="fas fa-print"></i> Imprimir conferência</button>
+        </div>
+        <div id="progresso" style="display:none;margin-top:14px;"><div class="barra"><i id="barra"></i></div><div id="progTxt" style="font-size:12px;color:var(--text-light);"></div></div>
+        <div id="resultado"></div>
+    </div>
+</div>
+<script src="erp-print.js"></script>
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, EMP = null, ECD = null, PREP = null, EST = { contas:[], lotesPeriodo:0 };
+
+// ===== Leitor do arquivo ECD (SPED Contábil) =====
+function ecdNum(s){ s=String(s==null?'':s).trim(); if(!s) return 0; return Math.round(parseFloat(s.replace(/\./g,'').replace(',','.'))*100)/100 || 0; }
+function ecdData(s){ s=String(s||'').trim(); if(!/^\d{8}$/.test(s)) return null; return s.slice(4,8)+'-'+s.slice(2,4)+'-'+s.slice(0,2); }
+function ecdGrupoNatureza(codNat, codigo, nome, topoNome){
+  var grupo, nat;
+  var n=String(nome||'').trim();
+  if(codNat==='01') grupo='ativo';
+  else if(codNat==='02') grupo='passivo';
+  else if(codNat==='03') grupo='patrimonio_liquido';
+  else if(codNat==='04'){
+    var t=(topoNome||'')+' '+n;
+    if(/receita|venda|faturamento|rendimento/i.test(topoNome||'') ) grupo='receita';
+    else if(/custo|cmv|cpv|csp/i.test(topoNome||'')) grupo='custo';
+    else if(/despesa|deduc/i.test(topoNome||'')) grupo= /deduc/i.test(topoNome||'') ? 'receita' : 'despesa';
+    else if(/receita|venda|faturamento/i.test(n)) grupo='receita';
+    else if(/custo/i.test(n)) grupo='custo';
+    else grupo='despesa';
+  } else return null; // 05 compensação e 09 outras: não entram
+  nat = (grupo==='ativo'||grupo==='custo'||grupo==='despesa') ? 'D' : 'C';
+  if(/^\s*\(\s*-\s*\)/.test(n) || /deprecia[cç][aã]o acumulada|amortiza[cç][aã]o acumulada|exaust[aã]o acumulada/i.test(n)) nat = (nat==='D') ? 'C' : 'D';
+  if(grupo==='receita' && /^\s*\(\s*-\s*\)|deduc/i.test(n)) nat='D';
+  return { grupo:grupo, natureza:nat };
+}
+function lerECD(texto){
+  var linhas = texto.split(/\r?\n/), R = { cabecalho:null, contas:[], periodos:[], saldos:[], lotes:[], erros:[], linhasLidas:0 };
+  var porCod = {}, periodoAtual = -1, lote = null;
+  for(var i=0;i<linhas.length;i++){
+    var ln = linhas[i]; if(!ln || ln.charAt(0)!=='|') continue;
+    var f = ln.split('|'); R.linhasLidas++;
+    var reg = f[1];
+    if(reg==='0000'){
+      R.cabecalho = { ini: ecdData(f[3]), fim: ecdData(f[4]), nome: f[5]||'', cnpj: String(f[6]||'').replace(/\D/g,'') };
+    } else if(reg==='I050'){
+      var c = { dtAlt:ecdData(f[2]), codNat:f[3], indCta:f[4], nivel:parseInt(f[5],10)||1, codigo:String(f[6]||'').trim(), sup:String(f[7]||'').trim(), nome:String(f[8]||'').trim() };
+      R.contas.push(c); porCod[c.codigo]=c;
+    } else if(reg==='I150'){
+      R.periodos.push({ ini:ecdData(f[2]), fim:ecdData(f[3]) }); periodoAtual = R.periodos.length-1;
+    } else if(reg==='I155'){
+      R.saldos.push({ per:periodoAtual, cod:String(f[2]||'').trim(), ccus:f[3]||'', ini:ecdNum(f[4]), iniDC:f[5], deb:ecdNum(f[6]), cred:ecdNum(f[7]), fin:ecdNum(f[8]), finDC:f[9] });
+    } else if(reg==='I200'){
+      lote = { num:String(f[2]||'').trim(), data:ecdData(f[3]), valor:ecdNum(f[4]), tipo:String(f[5]||'N').trim(), partidas:[] };
+      if(!lote.data) R.erros.push('Lançamento '+lote.num+' sem data válida (linha '+(i+1)+').');
+      R.lotes.push(lote);
+    } else if(reg==='I250'){
+      if(!lote){ R.erros.push('Partida sem lançamento (linha '+(i+1)+').'); continue; }
+      lote.partidas.push({ cod:String(f[2]||'').trim(), ccus:f[3]||'', valor:ecdNum(f[4]), dc:f[5], hist:String(f[8]||'').trim() });
+    }
+  }
+  // topo (conta de nível 1) de cada conta, para classificar receita/custo/despesa
+  function topo(c){ var g=0, x=c; while(x && x.sup && porCod[x.sup] && g<20){ x=porCod[x.sup]; g++; } return x; }
+  R.contas.forEach(function(c){
+    var t = topo(c); var gn = ecdGrupoNatureza(c.codNat, c.codigo, c.nome, t?t.nome:'');
+    c.grupo = gn?gn.grupo:null; c.natureza = gn?gn.natureza:null;
+    c.analitica = (c.indCta==='A');
+  });
+  R.porCod = porCod;
+  return R;
+}
+/* Monta o plano e os lançamentos a importar + conferências */
+function prepararECD(R, opcoes){
+  opcoes = opcoes||{};
+  var P = { contas:[], ignoradasContas:[], codigosInvalidos:[], abertura:null, aberturaDif:0, lotes:[], lotesPulados:{encerramento:0, semPartida:0, zerados:0}, desbalanceados:[], contasInexistentes:[], conferencia:{ comparadas:0, divergentes:[] }, ano:null };
+  var cab = R.cabecalho||{}; P.ano = cab.ini ? parseInt(cab.ini.slice(0,4),10) : null;
+  R.contas.forEach(function(c){
+    if(!c.grupo){ P.ignoradasContas.push(c); return; }
+    if(!/^[0-9]+(\.[0-9]+)*$/.test(c.codigo)){ P.codigosInvalidos.push(c.codigo); return; }
+    P.contas.push({ codigo:c.codigo, descricao:c.nome||c.codigo, pai:c.sup||null, nivel:c.nivel, analitica:c.analitica, grupo:c.grupo, natureza:c.natureza });
+  });
+  var valida = {}; P.contas.forEach(function(c){ valida[c.codigo]=c; });
+  // saldo de abertura = saldos iniciais do 1º período (somando centros de custo)
+  var ab = {}, per0 = R.saldos.length ? R.saldos[0].per : 0;
+  R.saldos.forEach(function(s){
+    if(s.per!==per0) return; var c=valida[s.cod]; if(!c||!c.analitica) return;
+    ab[s.cod] = (ab[s.cod]||0) + (s.iniDC==='D' ? s.ini : -s.ini);
+  });
+  var partAb=[], td=0, tc=0;
+  Object.keys(ab).forEach(function(k){ var v=Math.round(ab[k]*100)/100; if(v===0) return; if(v>0){ partAb.push({codigo:k,tipo:'D',valor:v}); td+=v; } else { partAb.push({codigo:k,tipo:'C',valor:-v}); tc+=-v; } });
+  td=Math.round(td*100)/100; tc=Math.round(tc*100)/100; P.aberturaDif = Math.round((td-tc)*100)/100;
+  var dtAb = (R.periodos[per0] && R.periodos[per0].ini) || cab.ini;
+  if(partAb.length) P.abertura = { origem:'ecd:'+P.ano+':abertura', data:dtAb, historico:'Saldo de abertura (importado da ECD '+P.ano+')', partidas:partAb, totalD:td, totalC:tc };
+  // lançamentos
+  R.lotes.forEach(function(l){
+    if(l.tipo==='E'){ P.lotesPulados.encerramento++; return; }
+    var ps = l.partidas.filter(function(p){ return p.valor>0; });
+    if(!ps.length){ P.lotesPulados.zerados++; return; }
+    var d=0,c=0, faltam=[];
+    ps.forEach(function(p){ if(p.dc==='D') d+=p.valor; else c+=p.valor; if(!valida[p.cod]) faltam.push(p.cod); else if(!valida[p.cod].analitica) faltam.push(p.cod+' (sintética)'); });
+    d=Math.round(d*100)/100; c=Math.round(c*100)/100;
+    if(faltam.length){ P.contasInexistentes.push({ num:l.num, contas:faltam }); return; }
+    if(d!==c){ P.desbalanceados.push({ num:l.num, d:d, c:c }); return; }
+    var hist = (ps.find(function(p){ return p.hist; })||{}).hist || ('Lançamento ECD nº '+l.num);
+    P.lotes.push({ origem:'ecd:'+P.ano+':'+l.num, data:l.data, historico:hist, partidas: ps.map(function(p){ return { codigo:p.cod, tipo:p.dc==='D'?'D':'C', valor:p.valor, complemento:(p.hist && p.hist!==hist)?p.hist:'' }; }) });
+  });
+  // conferência: saldo inicial + movimento do arquivo = saldo final do último período (prova de leitura)
+  if(R.saldos.length){
+    var ult = R.saldos[R.saldos.length-1].per, fimInf = {};
+    R.saldos.forEach(function(s){ if(s.per!==ult) return; var c=valida[s.cod]; if(!c||!c.analitica) return; fimInf[s.cod]=(fimInf[s.cod]||0)+(s.finDC==='D'?s.fin:-s.fin); });
+    var calc = {}; Object.keys(ab).forEach(function(k){ calc[k]=ab[k]; });
+    R.lotes.forEach(function(l){ if(l.tipo==='E') return; l.partidas.forEach(function(p){ if(!valida[p.cod]) return; calc[p.cod]=(calc[p.cod]||0)+(p.dc==='D'?p.valor:-p.valor); }); });
+    Object.keys(fimInf).forEach(function(k){
+      P.conferencia.comparadas++;
+      var a=Math.round((calc[k]||0)*100)/100, b=Math.round(fimInf[k]*100)/100;
+      if(a!==b) P.conferencia.divergentes.push({ codigo:k, arquivo:b, calculado:a });
+    });
+  }
+  P.totais = { contas:P.contas.length, analiticas:P.contas.filter(function(c){return c.analitica;}).length, lotes:P.lotes.length, partidas:P.lotes.reduce(function(a,l){return a+l.partidas.length;},0) };
+  return P;
+}
+
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function dataBR(d) { if (!d) return '—'; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function fmtCnpj(c) { c = String(c || '').replace(/\D/g, ''); return c.length === 14 ? c.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (c || '—'); }
+    function toast(msg, type) { const c = document.getElementById('toastContainer'); const x = document.createElement('div'); x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 7000); }
+    function clienteIdAtual() {
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    function decodificar(buf) {
+        try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1252').decode(buf); }
+    }
+    async function carregarEmpresa() {
+        CID = clienteIdAtual(); if (!CID) return;
+        try { const r = await sb.from('clientes_contratantes').select('id,razao_social,nome_fantasia,cnpj_cpf').eq('id', CID).maybeSingle(); EMP = r.data || null; } catch (e) {}
+        document.getElementById('empresaTxt').textContent = EMP ? ('Empresa selecionada: ' + (EMP.nome_fantasia || EMP.razao_social || CID) + ' · CNPJ ' + fmtCnpj(EMP.cnpj_cpf)) : '';
+    }
+    async function carregarEstadoAtual() {
+        EST = { contas: [], lotesPeriodo: 0 };
+        for (let ini = 0; ini < 20000; ini += 1000) {
+            const r = await sb.from('contab_contas').select('codigo,descricao').eq('cliente_id', CID).range(ini, ini + 999);
+            if (r.error) throw new Error(r.error.message);
+            EST.contas = EST.contas.concat(r.data || []); if (!r.data || r.data.length < 1000) break;
+        }
+        const cab = ECD.cabecalho || {};
+        if (cab.ini && cab.fim) {
+            const q = await sb.from('contab_lotes').select('id', { count: 'exact', head: true }).eq('cliente_id', CID).gte('data', cab.ini).lte('data', cab.fim).not('origem', 'like', 'ecd:%');
+            EST.lotesPeriodo = q.count || 0;
+        }
+    }
+    async function aoEscolher(inp) {
+        const f = inp.files && inp.files[0]; ECD = null; PREP = null;
+        document.getElementById('painelResumo').style.display = 'none'; document.getElementById('painelImportar').style.display = 'none';
+        document.getElementById('resultado').innerHTML = ''; document.getElementById('progresso').style.display = 'none';
+        const msg = document.getElementById('msgLeitura'); msg.innerHTML = '';
+        if (!f) return;
+        if (!CID) { msg.innerHTML = '<div class="erro">Selecione uma empresa no topo da página.</div>'; return; }
+        if (f.size > 120 * 1024 * 1024) { msg.innerHTML = '<div class="erro">Arquivo muito grande (mais de 120 MB).</div>'; return; }
+        msg.innerHTML = '<div class="dica" style="margin-top:10px;font-size:12px;color:var(--text-light);">Lendo o arquivo...</div>';
+        try {
+            const texto = decodificar(await f.arrayBuffer());
+            ECD = lerECD(texto);
+            if (!ECD.cabecalho || ECD.cabecalho.cnpj.length !== 14) throw new Error('Este não parece um arquivo ECD (registro |0000| não encontrado ou sem CNPJ). Confira se é o arquivo do SPED Contábil.');
+            if (!ECD.contas.length) throw new Error('O arquivo não tem plano de contas (registros I050).');
+            PREP = prepararECD(ECD);
+            await carregarEstadoAtual();
+            msg.innerHTML = ''; mostrarResumo();
+        } catch (e) { ECD = null; PREP = null; msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> ' + esc(e.message) + '</div>'; }
+    }
+    function problemasBloqueantes() {
+        const p = [], cab = ECD.cabecalho, cnpjEmp = EMP ? String(EMP.cnpj_cpf || '').replace(/\D/g, '') : '';
+        if (!cnpjEmp) p.push('A empresa selecionada não tem CNPJ cadastrado. Preencha em Dados da Empresa para liberar a importação.');
+        else if (cnpjEmp !== cab.cnpj) p.push('O CNPJ do arquivo (' + fmtCnpj(cab.cnpj) + ') é diferente do CNPJ da empresa selecionada (' + fmtCnpj(cnpjEmp) + '). Troque a empresa no topo da página ou use o arquivo correto.');
+        if (PREP.codigosInvalidos.length) p.push('Há códigos de conta fora do padrão aceito (só números separados por ponto), por exemplo: ' + PREP.codigosInvalidos.slice(0, 5).join(', ') + '.');
+        if (!PREP.lotes.length && !PREP.abertura) p.push('Não há lançamentos nem saldo de abertura para importar.');
+        return p;
+    }
+    function divergenciasPlano() {
+        const mapa = {}; EST.contas.forEach(function (c) { mapa[c.codigo] = c.descricao; });
+        const norm = function (s) { return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+        let iguais = 0; const dif = [];
+        PREP.contas.forEach(function (c) { if (mapa[c.codigo] != null) { if (norm(mapa[c.codigo]) === norm(c.descricao)) iguais++; else dif.push({ codigo: c.codigo, atual: mapa[c.codigo], arquivo: c.descricao }); } });
+        return { existentes: iguais + dif.length, iguais: iguais, dif: dif };
+    }
+    function mostrarResumo() {
+        const cab = ECD.cabecalho, T = PREP.totais, bloq = problemasBloqueantes(), dv = divergenciasPlano(), h = [];
+        h.push('<div><b>' + esc(cab.nome) + '</b> · CNPJ ' + fmtCnpj(cab.cnpj) + ' · período ' + dataBR(cab.ini) + ' a ' + dataBR(cab.fim) + '</div>');
+        h.push('<div class="cards"><div class="card-n"><b>' + T.contas + '</b><span>Contas (' + T.analiticas + ' analíticas)</span></div><div class="card-n"><b>' + T.lotes + '</b><span>Lançamentos a importar</span></div><div class="card-n"><b>' + T.partidas + '</b><span>Partidas (débitos/créditos)</span></div><div class="card-n"><b>' + (PREP.abertura ? brl(PREP.abertura.totalD) : '—') + '</b><span>Saldo de abertura (total)</span></div></div>');
+        bloq.forEach(function (m) { h.push('<div class="erro"><i class="fas fa-ban"></i> <b>Importação bloqueada:</b> ' + esc(m) + '</div>'); });
+        if (!bloq.length) h.push('<div class="ok"><i class="fas fa-circle-check"></i> O CNPJ do arquivo confere com o da empresa selecionada.</div>');
+        if (PREP.desbalanceados.length) h.push('<div class="erro"><i class="fas fa-scale-unbalanced"></i> <b>' + PREP.desbalanceados.length + ' lançamento(s) com débitos diferentes dos créditos</b> não serão importados (ex.: nº ' + PREP.desbalanceados.slice(0, 5).map(function (x) { return x.num + ' [D ' + brl(x.d) + ' / C ' + brl(x.c) + ']'; }).join(', ') + ').</div>');
+        if (PREP.contasInexistentes.length) h.push('<div class="erro"><i class="fas fa-link-slash"></i> <b>' + PREP.contasInexistentes.length + ' lançamento(s) usam contas que não estão no plano (ou são sintéticas)</b> e não serão importados (ex.: nº ' + PREP.contasInexistentes.slice(0, 5).map(function (x) { return x.num + ' [' + x.contas.join(', ') + ']'; }).join(', ') + ').</div>');
+        if (PREP.aberturaDif !== 0) h.push('<div class="erro"><i class="fas fa-scale-unbalanced"></i> <b>O saldo de abertura não fecha</b> (diferença de R$ ' + brl(PREP.aberturaDif) + ') e não será importado.</div>');
+        const notas = [];
+        if (PREP.lotesPulados.encerramento) notas.push(PREP.lotesPulados.encerramento + ' lançamento(s) de encerramento do exercício foram deixados de fora de propósito (eles zeram as contas de resultado)');
+        if (PREP.ignoradasContas.length) notas.push(PREP.ignoradasContas.length + ' conta(s) de compensação/outras não entram no plano');
+        if (PREP.lotesPulados.zerados) notas.push(PREP.lotesPulados.zerados + ' lançamento(s) sem valor');
+        if (notas.length) h.push('<div class="info" style="margin-top:10px;"><i class="fas fa-circle-info"></i> ' + esc(notas.join('; ')) + '.</div>');
+        if (PREP.conferencia.comparadas) {
+            if (PREP.conferencia.divergentes.length) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> <b>Conferência de saldos:</b> em ' + PREP.conferencia.divergentes.length + ' de ' + PREP.conferencia.comparadas + ' contas, o saldo inicial + movimento do arquivo não bate com o saldo final informado nele (ex.: ' + PREP.conferencia.divergentes.slice(0, 4).map(function (x) { return x.codigo + ' [arquivo ' + brl(x.arquivo) + ' / calculado ' + brl(x.calculado) + ']'; }).join(', ') + '). Pode ser arquivo parcial ou lançamento de encerramento; confira com a contabilidade.</div>');
+            else h.push('<div class="ok"><i class="fas fa-circle-check"></i> <b>Conferência de saldos:</b> em todas as ' + PREP.conferencia.comparadas + ' contas, saldo inicial + movimento = saldo final do arquivo.</div>');
+        }
+        if (dv.existentes) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> Esta empresa <b>já tem ' + EST.contas.length + ' conta(s)</b> no plano. ' + dv.existentes + ' código(s) do arquivo já existem' + (dv.dif.length ? ' e <b>' + dv.dif.length + ' têm nome diferente</b> (ex.: ' + dv.dif.slice(0, 3).map(function (x) { return x.codigo + ' "' + esc(x.atual) + '" × "' + esc(x.arquivo) + '"'; }).join('; ') + ')' : ' com o mesmo nome') + '. Contas de mesmo código são reaproveitadas, sem alterar.</div>');
+        if (EST.lotesPeriodo) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> A empresa já tem <b>' + EST.lotesPeriodo + ' lançamento(s)</b> neste período feitos no Sacramento (não vindos da ECD). Importar pode duplicar valores.</div>');
+        document.getElementById('resumo').innerHTML = h.join('');
+        document.getElementById('painelResumo').style.display = '';
+        // opções
+        const o = [];
+        const podeAb = !!PREP.abertura && PREP.aberturaDif === 0;
+        o.push('<label class="linha-chk"><input type="checkbox" id="optAbertura" ' + (podeAb ? 'checked' : 'disabled') + '> <span>Importar o <b>saldo de abertura</b> (um lançamento em ' + dataBR(PREP.abertura ? PREP.abertura.data : cab.ini) + ')</span></label>');
+        if (dv.dif.length) o.push('<label class="linha-chk"><input type="checkbox" id="optDif"> <span>Entendo que existem contas com o mesmo código e nome diferente: os lançamentos usarão a conta que já existe.</span></label>');
+        if (EST.lotesPeriodo) o.push('<label class="linha-chk"><input type="checkbox" id="optDup"> <span>Entendo que já há lançamentos neste período e que a importação pode duplicar valores.</span></label>');
+        document.getElementById('opcoes').innerHTML = o.join('');
+        document.getElementById('btnImportar').disabled = bloq.length > 0;
+        document.getElementById('painelImportar').style.display = '';
+    }
+    function progresso(pct, txt) { document.getElementById('progresso').style.display = ''; document.getElementById('barra').style.width = pct + '%'; document.getElementById('progTxt').textContent = txt; }
+    async function importar() {
+        if (!PREP || problemasBloqueantes().length) return;
+        if (document.getElementById('optDif') && !document.getElementById('optDif').checked) { toast('Marque a confirmação sobre as contas com nome diferente.', 'error'); return; }
+        if (document.getElementById('optDup') && !document.getElementById('optDup').checked) { toast('Marque a confirmação sobre lançamentos já existentes no período.', 'error'); return; }
+        if (!confirm('Importar para a empresa selecionada?\n\n' + PREP.totais.contas + ' conta(s) e ' + PREP.totais.lotes + ' lançamento(s).')) return;
+        const btn = document.getElementById('btnImportar'); btn.disabled = true; document.getElementById('resultado').innerHTML = '';
+        let novas = 0, existentes = 0, imp = 0, ja = 0;
+        try {
+            const cs = PREP.contas, TAM_C = 400;
+            for (let i = 0; i < cs.length; i += TAM_C) {
+                progresso(Math.round(5 + 25 * i / Math.max(1, cs.length)), 'Importando plano de contas (' + Math.min(i + TAM_C, cs.length) + ' de ' + cs.length + ')...');
+                const r = await sb.rpc('contab_importar_ecd_contas', { p_cliente: CID, p_contas: cs.slice(i, i + TAM_C) });
+                if (r.error) throw new Error(r.error.message); novas += r.data.novas; existentes += r.data.existentes;
+            }
+            const lista = []; const ab = document.getElementById('optAbertura');
+            if (ab && ab.checked && PREP.abertura) lista.push(PREP.abertura);
+            PREP.lotes.forEach(function (l) { lista.push(l); });
+            const TAM_L = 100;
+            for (let i = 0; i < lista.length; i += TAM_L) {
+                progresso(Math.round(30 + 68 * i / Math.max(1, lista.length)), 'Importando lançamentos (' + Math.min(i + TAM_L, lista.length) + ' de ' + lista.length + ')...');
+                const r = await sb.rpc('contab_importar_ecd_lotes', { p_cliente: CID, p_lotes: lista.slice(i, i + TAM_L) });
+                if (r.error) throw new Error(r.error.message); imp += r.data.importados; ja += r.data.ja_existiam;
+            }
+            progresso(100, 'Concluído.');
+            document.getElementById('resultado').innerHTML = '<div class="ok"><i class="fas fa-circle-check"></i> <b>Importação concluída.</b> Contas novas: ' + novas + ' (já existiam: ' + existentes + '). Lançamentos importados: ' + imp + (ja ? ' (já existiam e foram pulados: ' + ja + ')' : '') + '. Confira em <a href="contabilidade.html">Contabilidade</a> (Balancete e Diário) comparando com o Domínio.</div>';
+            toast('Importação concluída.', 'success');
+        } catch (e) {
+            document.getElementById('resultado').innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> <b>A importação parou:</b> ' + esc(e.message) + '<br>O que já foi gravado fica salvo. Corrija o problema e importe o mesmo arquivo de novo: o sistema continua de onde parou, sem duplicar.</div>';
+            toast('A importação parou. Veja a mensagem na tela.', 'error');
+        } finally { btn.disabled = false; }
+    }
+    function imprimirConferencia() {
+        if (!PREP) return;
+        if (typeof ERPPrint === 'undefined') { toast('O módulo de impressão não foi carregado. Recarregue a página.', 'error'); return; }
+        const cab = ECD.cabecalho, T = PREP.totais, bloq = problemasBloqueantes();
+        const linhas = [
+            ['Contas no arquivo', String(T.contas) + ' (' + T.analiticas + ' analíticas)'],
+            ['Lançamentos a importar', String(T.lotes)], ['Partidas', String(T.partidas)],
+            ['Saldo de abertura (total)', PREP.abertura ? 'R$ ' + brl(PREP.abertura.totalD) + (PREP.aberturaDif !== 0 ? ' (NÃO FECHA: diferença R$ ' + brl(PREP.aberturaDif) + ')' : ' (fecha)') : 'não há'],
+            ['Lançamentos com débito ≠ crédito (não importados)', String(PREP.desbalanceados.length)],
+            ['Lançamentos com conta inexistente/sintética (não importados)', String(PREP.contasInexistentes.length)],
+            ['Lançamentos de encerramento (deixados de fora)', String(PREP.lotesPulados.encerramento)],
+            ['Conferência de saldos (contas divergentes / comparadas)', PREP.conferencia.divergentes.length + ' / ' + PREP.conferencia.comparadas],
+            ['CNPJ do arquivo × empresa', bloq.some(function (m) { return m.indexOf('CNPJ') > -1; }) ? 'DIFERENTE' : 'confere']
+        ];
+        const emp = { empresa: EMP ? (EMP.nome_fantasia || EMP.razao_social) : undefined, cnpj: EMP ? fmtCnpj(EMP.cnpj_cpf) : undefined };
+        ERPPrint.imprimir({
+            titulo: 'Conferência da importação ECD', subtitulo: cab.nome + ' — ' + dataBR(cab.ini) + ' a ' + dataBR(cab.fim), codigo: 'IMP-ECD', orientacao: 'portrait',
+            empresa: emp.empresa, cnpj: emp.cnpj,
+            filtros: [['Arquivo (empresa)', cab.nome], ['CNPJ do arquivo', fmtCnpj(cab.cnpj)], ['Período', dataBR(cab.ini) + ' a ' + dataBR(cab.fim)]],
+            resumo: [['Contas', String(T.contas)], ['Lançamentos', String(T.lotes)], ['Partidas', String(T.partidas)]],
+            colunas: [{ t: 'Item conferido', w: 5 }, { t: 'Resultado', w: 4 }],
+            linhas: linhas,
+            observacao: 'Conferência feita antes da gravação. Depois de importar, compare o balancete do Sacramento com o do Domínio.',
+            assinaturas: ['Responsável pela importação', 'Contador']
+        });
+    }
+    window.addEventListener('load', function () { carregarEmpresa(); });
+</script>
+</body>
+</html>
