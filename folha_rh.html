@@ -51,6 +51,7 @@
         .chip-fl.aberta { background:#dbeafe; color:#1e40af; } .chip-fl.fechada { background:#dcfce7; color:#166534; }
         .btn-mini-fl { padding:5px 10px; font-size:11.5px; border-radius:7px; border:none; cursor:pointer; font-weight:700; background:var(--primary); color:#fff; font-family:inherit; }
         .btn-mini-fl.cinza { background:#64748b; } .btn-mini-fl.perigo { background:var(--danger); }
+        .btn-acao[disabled] { opacity:.45; cursor:not-allowed; filter:grayscale(.6); }
         .btn-mini-fl[disabled] { opacity:.45; cursor:default; }
         .aba-conteudo { display: none; }
         .aba-conteudo.active { display: block; }
@@ -102,7 +103,7 @@
 
     <div class="aviso-simulacao">
         <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
-        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula o <strong>INSS (progressivo por faixa)</strong> e o <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025) sobre o salário base. Ainda <strong>não calcula</strong> horas extras, adicional noturno, DSR, vale-transporte, plano de saúde e FGTS sobre outras verbas (férias e 13º têm aba própria, com limites informados nela), e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
+        <div><strong>CÁLCULO DE INSS E IRRF COM AS REGRAS DE 2026.</strong> Esta tela calcula <strong>INSS (progressivo por faixa)</strong>, <strong>IRRF</strong> (dependentes, desconto simplificado e redução da Lei 15.270/2025), <strong>FGTS</strong>, vale-transporte (6%) e os eventos lançados (horas extras, faltas, adicionais e descontos). Ainda <strong>não faz</strong> rescisão, salário-família, pensão alimentícia, DSR automático e <strong>não gera eventos do eSocial</strong>. Por isso os valores devem ser <strong>conferidos pela contabilidade</strong> antes de pagamento, holerite ou recolhimento.</div>
     </div>
 
     <!-- ABAS DE NAVEGAÇÃO COMPLETAS -->
@@ -1162,7 +1163,7 @@ function renderFolha(){
   var k = folhaEstado.key, comp = folhaEstado.comp, fechada = !!(comp && comp.status==='fechada');
   var chip = document.getElementById('fl_status');
   chip.className = 'chip-fl ' + (comp ? comp.status : '');
-  chip.textContent = !comp ? 'Competência ainda não iniciada' : (fechada ? 'FECHADA em '+String(comp.fechada_em||'').slice(0,10).split('-').reverse().join('/') : 'ABERTA'+(comp.calculada_em?' · calculada':' · não calculada'));
+  chip.textContent = !comp ? 'Competência ainda não iniciada' : (fechada ? 'FECHADA em '+(comp.fechada_em?new Date(comp.fechada_em).toLocaleDateString('pt-BR'):'') : 'ABERTA'+(comp.calculada_em?' · calculada':' · não calculada'));
   document.getElementById('btnFecharFolha').style.display = fechada ? 'none' : '';
   document.getElementById('btnReabrirFolha').style.display = fechada ? '' : 'none';
   document.getElementById('btnCalcFolha').disabled = fechada;
@@ -1180,14 +1181,14 @@ function renderFolha(){
     h += '<td><button class="btn-mini-fl'+(ne?'':' cinza')+'" onclick="abrirEventos('+c.id+')">'+(fechada?'Ver':'Eventos')+' ('+ne+')</button></td>';
     if(it){
       algum=true; t.sal+=Number(it.salario_base); t.prov+=Number(it.proventos); t.desc+=Number(it.descontos); t.inss+=Number(it.inss); t.irrf+=Number(it.irrf); t.liq+=Number(it.liquido); t.fgts+=Number(it.fgts);
-      var dsc = Number(it.descontos)-Number(it.inss)-Number(it.irrf);
+      var dsc = Math.max(0, r2(Number(it.descontos)-Number(it.inss)-Number(it.irrf)));
       h += '<td>R$ '+moedaBR(it.proventos)+'</td><td style="color:var(--danger)">- R$ '+moedaBR(dsc)+'</td><td style="color:var(--danger)">- R$ '+moedaBR(it.inss)+'</td><td style="color:var(--danger)">- R$ '+moedaBR(it.irrf)+'</td><td><strong style="color:var(--success)">R$ '+moedaBR(it.liquido)+'</strong></td><td>R$ '+moedaBR(it.fgts)+'</td>';
       h += '<td style="text-align:right;"><button class="btn-mini-fl cinza" onclick="imprimirHolerite('+c.id+')"><i class="fas fa-print"></i> Holerite</button></td></tr>';
     } else {
       h += '<td colspan="6" style="color:var(--text-light);text-align:center;">Ainda não calculado</td><td></td></tr>';
     }
   });
-  if(algum) h += '<tr style="font-weight:700;background:var(--bg);"><td>TOTAL</td><td>R$ '+moedaBR(t.sal)+'</td><td></td><td>R$ '+moedaBR(t.prov)+'</td><td>- R$ '+moedaBR(t.desc-t.inss-t.irrf)+'</td><td>- R$ '+moedaBR(t.inss)+'</td><td>- R$ '+moedaBR(t.irrf)+'</td><td>R$ '+moedaBR(t.liq)+'</td><td>R$ '+moedaBR(t.fgts)+'</td><td></td></tr>';
+  if(algum) h += '<tr style="font-weight:700;background:var(--bg);"><td>TOTAL</td><td>R$ '+moedaBR(t.sal)+'</td><td></td><td>R$ '+moedaBR(t.prov)+'</td><td>- R$ '+moedaBR(Math.max(0,r2(t.desc-t.inss-t.irrf)))+'</td><td>- R$ '+moedaBR(t.inss)+'</td><td>- R$ '+moedaBR(t.irrf)+'</td><td>R$ '+moedaBR(t.liq)+'</td><td>R$ '+moedaBR(t.fgts)+'</td><td></td></tr>';
   h += '</tbody></table>';
   if(comp && comp.calculada_em && !fechada) h += '<div style="margin-top:10px;font-size:12px;color:#92400e;"><i class="fas fa-triangle-exclamation"></i> Se você mudou eventos ou o cadastro depois do último cálculo, clique de novo em <strong>Calcular e gravar folha</strong>.</div>';
   box.innerHTML = h;
