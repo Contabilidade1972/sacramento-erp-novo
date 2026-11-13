@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conexões Bancárias — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1300px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; } .btn-acao.alerta { background:#d97706; }
+        .btn-mini { padding:6px 10px; font-size:11.5px; border-radius:8px; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        label { font-size:11px; font-weight:700; color:var(--text-light); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+        .form-control { width:100%; height:42px; padding:0 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; color:var(--text-main); outline:none; }
+        .form-control:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .dica { font-size:11.5px; color:var(--text-light); margin-top:8px; line-height:1.5; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.5; }
+        .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:12px 14px; text-align:left; font-weight:700; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); white-space:nowrap; }
+        .tabela td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .sub { display:block; font-size:11px; color:var(--text-light); margin-top:2px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; background:#e0e7ff; color:#3730a3; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.amarelo { background:#fef3c7; color:#92400e; } .chip.vermelho { background:#fee2e2; color:#991b1b; }
+        .contador { font-size:13px; color:var(--text-light); }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; box-shadow:0 10px 15px -3px rgba(0,0,0,.1); max-width:420px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        .modal-bg { display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); z-index:5000; align-items:center; justify-content:center; padding:20px; }
+        .modal-bg.on { display:flex; }
+        .modal { background:#fff; border-radius:16px; padding:26px; width:100%; max-width:640px; max-height:92vh; overflow:auto; }
+        .modal h3 { color:var(--secondary); font-size:17px; margin-bottom:16px; }
+        .modal-rodape { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+        @media (max-width:700px) { .grid { grid-template-columns:1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="contas_bancarias.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar</a>
+        <button class="btn-acao sucesso" id="btnNovo" onclick="abrirNovo()" style="display:none;"><i class="fas fa-plug"></i> Nova conexão com o Banco Inter</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-building-columns" style="color:var(--primary);"></i> Conexões Bancárias</div>
+        <div class="page-subtitle">Ligue a conta PJ da empresa ao Sacramento para buscar o extrato automaticamente, sem precisar de arquivo OFX.</div>
+    </div>
+
+    <div class="aviso"><i class="fas fa-shield-halved"></i> <b>Segurança:</b> a conexão é <b>somente leitura</b> (saldo e extrato): ela nunca movimenta dinheiro. As chaves ficam guardadas <b>criptografadas</b> no servidor e nunca voltam para a tela. Só o administrador da empresa vê esta página.</div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-plug"></i> Conexões da empresa <span class="contador" id="contador" style="margin-left:auto;"></span></div>
+        <div class="table-wrap"><table class="tabela">
+            <thead><tr><th>Banco / conta</th><th>Situação</th><th>Certificado vence em</th><th>Último teste</th><th style="text-align:right;">Ações</th></tr></thead>
+            <tbody id="corpo"><tr><td colspan="5" style="text-align:center; padding:26px; color:var(--text-light);">Carregando...</td></tr></tbody>
+        </table></div>
+        <div class="dica">O certificado do Inter vale <b>1 ano</b>. Perto do vencimento, gere um novo no Inter e cadastre de novo com o mesmo apelido (ele substitui o antigo).</div>
+    </div>
+</div>
+
+<div class="modal-bg" id="modalNovo"><div class="modal">
+    <h3><i class="fas fa-plug"></i> Nova conexão com o Banco Inter</h3>
+    <div class="aviso" style="margin-bottom:14px;">Antes: no Internet Banking do Inter PJ, crie a integração <b>somente com Saldo e Extrato</b>, baixe a <b>chave e o certificado</b> e <b>extraia o arquivo compactado</b> (botão direito &gt; Extrair tudo). Vão aparecer um arquivo <b>.crt</b> e um <b>.key</b>.</div>
+    <div class="grid">
+        <div><label>Apelido da conta</label><input id="f_apelido" class="form-control" value="Conta principal" maxlength="60"></div>
+        <div><label>Número da conta corrente (opcional)</label><input id="f_conta" class="form-control" placeholder="Só se o Inter pedir" maxlength="20"></div>
+        <div><label>Client ID</label><input id="f_cid" class="form-control" autocomplete="off" spellcheck="false"></div>
+        <div><label>Client Secret</label><input id="f_sec" class="form-control" type="password" autocomplete="new-password" spellcheck="false"></div>
+        <div><label>Arquivo do certificado (.crt)</label><input id="f_crt" class="form-control" type="file" accept=".crt,.pem,.cer" style="padding-top:9px;"></div>
+        <div><label>Arquivo da chave (.key)</label><input id="f_key" class="form-control" type="file" accept=".key,.pem" style="padding-top:9px;"></div>
+    </div>
+    <div class="dica">Os dados são enviados direto ao servidor por conexão segura e guardados criptografados. Depois de salvar, clique em <b>Testar</b>.</div>
+    <div class="modal-rodape">
+        <button class="btn-acao cinza" onclick="fecharNovo()">Cancelar</button>
+        <button class="btn-acao sucesso" id="btnSalvar" onclick="salvar()"><i class="fas fa-lock"></i> Guardar com segurança</button>
+    </div>
+</div></div>
+
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, linhas = [], contas = [];
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function dataBR(d) { if (!d) return '—'; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function dataHoraBR(d) { if (!d) return 'nunca'; var x = new Date(d); return x.toLocaleDateString('pt-BR') + ' ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function toast(msg, type) {
+        const c = document.getElementById('toastContainer'); const x = document.createElement('div');
+        x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 6000);
+    }
+    function clienteIdAtual() {
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    async function chamar(corpo) {
+        const s = await sb.auth.getSession();
+        const tk = s && s.data && s.data.session ? s.data.session.access_token : '';
+        if (!tk) throw new Error('Sessão expirada. Entre novamente.');
+        const r = await fetch('/api/banco-conexao', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk }, body: JSON.stringify(corpo) });
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (!j) throw new Error('O servidor não respondeu (código ' + r.status + '). Confira se o servidor está configurado.');
+        return j;
+    }
+    function chipSituacao(c) {
+        if (c.status === 'ativa') return '<span class="chip verde">Funcionando</span>';
+        if (c.status === 'erro') return '<span class="chip vermelho" title="' + esc(c.ultimo_erro || '') + '">Com erro</span><span class="sub">' + esc(c.ultimo_erro || '') + '</span>';
+        return '<span class="chip amarelo">Não testada</span>';
+    }
+    function avisoValidade(v) {
+        if (!v) return '—';
+        var dias = Math.round((new Date(v + 'T12:00:00') - new Date()) / 86400000);
+        var cor = dias < 0 ? 'vermelho' : (dias <= 45 ? 'amarelo' : 'verde');
+        return dataBR(v) + ' <span class="chip ' + cor + '">' + (dias < 0 ? 'vencido' : dias + ' dias') + '</span>';
+    }
+    function render() {
+        document.getElementById('contador').textContent = linhas.length + ' conexão(ões)';
+        const tb = document.getElementById('corpo');
+        if (!linhas.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:26px; color:var(--text-light);">Nenhuma conexão cadastrada. Clique em <b>Nova conexão com o Banco Inter</b>.</td></tr>'; return; }
+        tb.innerHTML = linhas.map(function (c) {
+            var opts = '<option value="">— escolha a conta —</option>' + contas.map(function (k) {
+                return '<option value="' + k.id + '"' + (String(k.id) === String(c.conta_id) ? ' selected' : '') + '>' + esc((k.nome || k.banco || 'Conta') + (k.tipo ? ' — ' + k.tipo : '')) + '</option>'; }).join('');
+            return '<tr><td><b>Banco Inter</b><span class="sub">' + esc(c.apelido) + (c.conta_corrente ? ' · conta ' + esc(c.conta_corrente) : '') + '</span>' +
+                '<span class="sub" style="margin-top:8px;">Extrato cai na conta do Sacramento:</span><select class="form-control" style="height:34px; font-size:12px; margin-top:3px; max-width:260px;" onchange="vincular(' + c.id + ', this.value)">' + opts + '</select></td>' +
+                '<td>' + chipSituacao(c) + '</td><td>' + avisoValidade(c.validade) + '</td><td>' + dataHoraBR(c.ultimo_teste_em) + '<span class="sub">Último extrato: ' + dataHoraBR(c.ultima_sync_em) + '</span></td>' +
+                '<td style="text-align:right; white-space:nowrap;"><select id="dias_' + c.id + '" class="form-control" style="height:34px; width:auto; display:inline-block; font-size:12px;"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option></select> ' +
+                '<button class="btn-acao btn-mini sucesso" onclick="sincronizar(' + c.id + ', this)"><i class="fas fa-download"></i> Buscar extrato</button> ' +
+                '<button class="btn-acao btn-mini" onclick="testar(' + c.id + ', this)"><i class="fas fa-vial"></i> Testar</button> <button class="btn-acao btn-mini alerta" onclick="remover(' + c.id + ')"><i class="fas fa-trash"></i> Remover</button></td></tr>';
+        }).join('');
+    }
+    async function carregar() {
+        const r = await sb.rpc('banco_conexoes_listar', { p_cliente: CID });
+        if (r.error) { document.getElementById('corpo').innerHTML = '<tr><td colspan="5" style="padding:24px; color:var(--danger);">' + esc(r.error.message) + '</td></tr>'; return; }
+        const cb = await sb.from('contas_bancarias').select('id,nome,banco,tipo').eq('cliente_id', CID).order('nome');
+        contas = cb.data || [];
+        linhas = r.data || []; document.getElementById('btnNovo').style.display = ''; render();
+    }
+    function abrirNovo() { ['f_cid', 'f_sec', 'f_conta'].forEach(function (i) { document.getElementById(i).value = ''; }); document.getElementById('f_crt').value = ''; document.getElementById('f_key').value = ''; document.getElementById('modalNovo').classList.add('on'); }
+    function fecharNovo() { document.getElementById('modalNovo').classList.remove('on'); document.getElementById('f_sec').value = ''; }
+    function lerArquivo(inp) {
+        return new Promise(function (resolve, reject) {
+            const f = inp.files && inp.files[0]; if (!f) return resolve('');
+            if (f.size > 20000) return reject(new Error('O arquivo "' + f.name + '" é grande demais para ser uma chave ou certificado.'));
+            const r = new FileReader(); r.onload = function () { resolve(String(r.result || '')); }; r.onerror = function () { reject(new Error('Não consegui ler o arquivo.')); }; r.readAsText(f);
+        });
+    }
+    async function salvar() {
+        const bt = document.getElementById('btnSalvar'); bt.disabled = true;
+        try {
+            const crt = await lerArquivo(document.getElementById('f_crt')), key = await lerArquivo(document.getElementById('f_key'));
+            if (!crt || !key) throw new Error('Escolha o arquivo .crt e o arquivo .key.');
+            const r = await chamar({ acao: 'salvar', cliente_id: CID, banco: 'inter', apelido: document.getElementById('f_apelido').value, conta_corrente: document.getElementById('f_conta').value,
+                client_id: document.getElementById('f_cid').value, client_secret: document.getElementById('f_sec').value, cert_pem: crt, key_pem: key });
+            if (!r.ok) throw new Error(r.erro || 'Não foi possível salvar.');
+            fecharNovo(); toast('Conexão guardada com segurança. Agora clique em Testar.', 'success'); await carregar();
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        finally { bt.disabled = false; }
+    }
+    async function testar(id, btn) {
+        btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testando';
+        try {
+            const r = await chamar({ acao: 'testar', id: id });
+            if (r.ok) toast('Conexão funcionando! Saldo disponível no Inter em ' + dataBR(r.data) + ': R$ ' + brl(r.saldo_disponivel), 'success');
+            else toast(r.erro || 'O teste falhou.', 'error');
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        btn.disabled = false; btn.innerHTML = t; await carregar();
+    }
+    async function vincular(id, contaId) {
+        try { const r = await chamar({ acao: 'vincular', id: id, conta_id: contaId || null }); if (!r.ok) throw new Error(r.erro || 'Erro'); toast(contaId ? 'Conta escolhida. Agora pode buscar o extrato.' : 'Ligação removida.', 'success'); await carregar(); }
+        catch (e) { toast(e.message || String(e), 'error'); await carregar(); }
+    }
+    async function sincronizar(id, btn) {
+        const dias = parseInt((document.getElementById('dias_' + id) || {}).value, 10) || 30;
+        btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando';
+        try {
+            const r = await chamar({ acao: 'sincronizar', id: id, dias: dias });
+            if (r.ok) {
+                var extra = r.ignoradas > 0 ? ' ATENÇÃO: ' + r.ignoradas + ' lançamento(s) do Inter não foram entendidos e foram ignorados.' : '';
+                toast('Extrato de ' + dataBR(r.inicio) + ' a ' + dataBR(r.fim) + ': o Inter devolveu ' + r.brutas + ' lançamento(s); ' + r.novas + ' novo(s), ' + r.ja_existiam + ' já existia(m).' + extra + (r.brutas === 0 ? ' (campos da resposta: ' + (r.campos || 'vazia') + ')' : ' Veja em Conciliação.'), r.ignoradas > 0 ? 'error' : 'success');
+            }
+            else toast(r.erro || 'Não consegui buscar o extrato.', 'error');
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        btn.disabled = false; btn.innerHTML = t; await carregar();
+    }
+    async function remover(id) {
+        if (!confirm('Remover esta conexão? As chaves guardadas serão apagadas. Os lançamentos já feitos não mudam.')) return;
+        try { const r = await chamar({ acao: 'remover', id: id }); if (!r.ok) throw new Error(r.erro || 'Erro'); toast('Conexão removida.', 'info'); await carregar(); }
+        catch (e) { toast(e.message || String(e), 'error'); }
+    }
+    window.addEventListener('load', function () { CID = clienteIdAtual(); if (!CID) { document.getElementById('corpo').innerHTML = '<tr><td colspan="5" style="padding:24px;">Selecione uma empresa.</td></tr>'; return; } carregar(); });
+</script>
+</body>
+</html>
