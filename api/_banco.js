@@ -133,4 +133,38 @@ async function interExtrato(cred, conta, dias) {
   return { inicio: di, fim: df, brutas: lista.length, ignoradas: lista.length - out.length - zeros, campos: campos, itens: out };
 }
 
-module.exports = { cifrar, decifrar, sbFetch, podeGerir, emailDoToken, interSaldo, interExtrato, hojeISO };
+function msgSegura(e) { return String((e && e.message) || e || 'Erro').replace(/[A-Za-z0-9+\/=_-]{40,}/g, '***').slice(0, 300); }
+
+// Busca o extrato de UMA conexao e grava na tabela da Conciliacao (sem duplicar). Lanca erro se falhar.
+async function sincronizar(c, dias) {
+  const aad = 'cli:' + c.cliente_id + ':' + c.banco + ':' + c.apelido;
+  let cred;
+  try { cred = { client_id: decifrar(c.client_id_enc, aad), client_secret: decifrar(c.client_secret_enc, aad), cert: decifrar(c.cert_enc, aad), key: decifrar(c.key_enc, aad) }; }
+  catch (e) { throw new Error('Não consegui abrir as credenciais guardadas. Cadastre-as de novo.'); }
+  const ex = await interExtrato(cred, c.conta_corrente, dias);
+  const jaTem = {};
+  for (let i = 0; i < ex.itens.length; i += 80) {
+    const ids = ex.itens.slice(i, i + 80).map(function (x) { return '"' + x.fitid + '"'; }).join(',');
+    const r1 = await sbFetch('/rest/v1/extrato_ofx_importado?cliente_id=eq.' + c.cliente_id + '&conta_id=eq.' + c.conta_id + '&fitid=in.(' + encodeURIComponent(ids) + ')&select=fitid', { service: true });
+    (r1 || []).forEach(function (r) { jaTem[r.fitid] = true; });
+  }
+  const novos = [], vistos = {};
+  ex.itens.forEach(function (x) {
+    if (jaTem[x.fitid] || vistos[x.fitid]) return; vistos[x.fitid] = true;
+    novos.push({ cliente_id: c.cliente_id, conta_id: c.conta_id, fitid: x.fitid, data_transacao: x.data, valor: x.valor, tipo: x.tipo, historico: x.historico, status: 'Pendente' });
+  });
+  for (let i = 0; i < novos.length; i += 100) await sbFetch('/rest/v1/extrato_ofx_importado', { method: 'POST', service: true, prefer: 'return=minimal', body: novos.slice(i, i + 100) });
+  await sbFetch('/rest/v1/banco_conexoes?id=eq.' + c.id, { method: 'PATCH', service: true, body: { status: 'ativa', ultima_sync_em: new Date().toISOString(), ultimo_erro: null } });
+  return { ok: true, inicio: ex.inicio, fim: ex.fim, brutas: ex.brutas, ignoradas: ex.ignoradas, campos: ex.campos, lidas: ex.itens.length, novas: novos.length, ja_existiam: ex.itens.length - novos.length };
+}
+// Igual a sincronizar, mas nunca lanca: registra o erro na conexao e devolve { ok:false, erro }.
+async function sincronizarSeguro(c, dias) {
+  try { return await sincronizar(c, dias); }
+  catch (e) {
+    const m = msgSegura(e);
+    try { await sbFetch('/rest/v1/banco_conexoes?id=eq.' + c.id, { method: 'PATCH', service: true, body: { status: 'erro', ultimo_erro: m } }); } catch (x) {}
+    return { ok: false, erro: m };
+  }
+}
+
+module.exports = { cifrar, decifrar, sbFetch, podeGerir, emailDoToken, interSaldo, interExtrato, sincronizar, sincronizarSeguro, msgSegura, hojeISO };
