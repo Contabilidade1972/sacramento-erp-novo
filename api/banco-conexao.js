@@ -101,7 +101,7 @@ module.exports = async function (req, res) {
         });
         for (let i = 0; i < novos.length; i += 100) await B.sbFetch('/rest/v1/extrato_ofx_importado', { method: 'POST', service: true, prefer: 'return=minimal', body: novos.slice(i, i + 100) });
         await B.sbFetch('/rest/v1/banco_conexoes?id=eq.' + id, { method: 'PATCH', service: true, body: { status: 'ativa', ultima_sync_em: new Date().toISOString(), ultimo_erro: null } });
-        return resp(res, 200, { ok: true, inicio: ex.inicio, fim: ex.fim, lidas: ex.itens.length, novas: novos.length, ja_existiam: ex.itens.length - novos.length });
+        return resp(res, 200, { ok: true, inicio: ex.inicio, fim: ex.fim, brutas: ex.brutas, ignoradas: ex.ignoradas, campos: ex.campos, lidas: ex.itens.length, novas: novos.length, ja_existiam: ex.itens.length - novos.length });
       } catch (e) {
         const m = msgSegura(e);
         try { await B.sbFetch('/rest/v1/banco_conexoes?id=eq.' + id, { method: 'PATCH', service: true, body: { status: 'erro', ultimo_erro: m } }); } catch (x) {}
