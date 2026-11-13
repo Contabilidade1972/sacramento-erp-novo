@@ -100,4 +100,35 @@ async function interSaldo(cred, conta) {
   return interGet(cred, tk, '/banking/v2/saldo?dataSaldo=' + hojeISO(), conta);
 }
 
-module.exports = { cifrar, decifrar, sbFetch, podeGerir, emailDoToken, interSaldo, hojeISO };
+
+function diaISO(d) { return new Date(d.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10); }
+// Extrato do Inter (somente leitura). Periodo maximo 90 dias. Devolve lancamentos ja no formato do Sacramento.
+async function interExtrato(cred, conta, dias) {
+  dias = Math.max(1, Math.min(90, parseInt(dias, 10) || 30));
+  const fim = new Date(); const ini = new Date(Date.now() - (dias - 1) * 86400000);
+  const di = diaISO(ini), df = diaISO(fim);
+  const tk = await interToken(cred, 'extrato.read');
+  const lista = []; let pagina = 0, total = 1;
+  while (pagina < total && pagina < 40) {
+    const j = await interGet(cred, tk, '/banking/v2/extrato/completo?dataInicio=' + di + '&dataFim=' + df + '&pagina=' + pagina + '&tamanhoPagina=50', conta);
+    const ts = (j && (j.transacoes || j.lancamentos)) || [];
+    ts.forEach(function (t) { lista.push(t); });
+    total = (j && Number(j.totalPaginas)) || 1; pagina++;
+  }
+  const out = [];
+  lista.forEach(function (t) {
+    const bruto = Number(String(t.valor == null ? '' : t.valor).replace(',', '.'));
+    if (!isFinite(bruto) || bruto === 0) return;
+    const op = String(t.tipoOperacao || '').toUpperCase();
+    const entrada = op ? op === 'C' : bruto > 0;
+    const dt = String(t.dataTransacao || t.dataEntrada || t.dataInclusao || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) return;
+    const hist = [t.titulo, t.descricao].filter(Boolean).join(' - ').slice(0, 200) || String(t.tipoTransacao || 'Lançamento Inter');
+    const idb = t.idTransacao || t.codigoTransacao;
+    const fitid = 'inter:' + (idb ? String(idb) : crypto.createHash('sha1').update([dt, bruto, op, hist].join('|')).digest('hex').slice(0, 24));
+    out.push({ fitid: fitid, data: dt, valor: Math.abs(bruto), tipo: entrada ? 'Entrada' : 'Saida', historico: hist });
+  });
+  return { inicio: di, fim: df, lidas: lista.length, itens: out };
+}
+
+module.exports = { cifrar, decifrar, sbFetch, podeGerir, emailDoToken, interSaldo, interExtrato, hojeISO };
