@@ -44,7 +44,7 @@
             .search-global-box input { width:100% !important; background:rgba(255,255,255,0.1) !important; border:1px solid rgba(255,255,255,0.2) !important; border-radius:8px !important; padding:7px 12px 7px 34px !important; color:#fff !important; font-size:12.5px !important; outline:none !important; }
             .search-global-box input::placeholder { color:#cbd5e1 !important; }
             .search-global-box i { position:absolute !important; left:12px !important; top:50% !important; transform:translateY(-50%) !important; color:#93c5fd !important; font-size:12px !important; }
-            .search-results-dropdown { position:absolute !important; top:calc(100% + 8px) !important; left:0 !important; width:100% !important; background:#ffffff !important; border-radius:10px !important; box-shadow:0 10px 25px rgba(15,23,42,0.15) !important; display:none !important; z-index:3000 !important; overflow:hidden !important; border:1px solid var(--border) !important; }
+            .search-results-dropdown { position:absolute !important; top:calc(100% + 8px) !important; left:0 !important; width:100% !important; background:#ffffff !important; border-radius:10px !important; box-shadow:0 10px 25px rgba(15,23,42,0.15) !important; display:none; z-index:3000 !important; overflow:hidden !important; border:1px solid var(--border) !important; }
             .search-dropdown-header { padding:10px 14px !important; font-size:10px !important; font-weight:800 !important; text-transform:uppercase !important; color:var(--text-light) !important; background:#f8fafc !important; border-bottom:1px solid var(--border) !important; }
             .search-item { padding:10px 14px !important; font-size:13px !important; color:var(--text-main) !important; text-decoration:none !important; display:flex !important; align-items:center !important; gap:10px !important; border-bottom:1px solid var(--border) !important; font-weight:500 !important; }
             .search-item:hover { background:#eff6ff !important; color:var(--primary) !important; }
@@ -72,6 +72,7 @@
         { nome:"Contas a Receber", url:"contas_receber.html", icon:"fa-hand-holding-usd", keywords:["receber","receita","cliente"] },
         { nome:"Faturas & Emissão", url:"faturas.html", icon:"fa-file-invoice", keywords:["fatura","nota","fiscal","nfe"] },
         { nome:"Orçamentos & Propostas", url:"orcamentos.html", icon:"fa-file-contract", keywords:["orcamento","proposta","comercial"] },
+        { nome:"Conexões Bancárias (extrato automático)", url:"bancos_conexoes.html", icon:"fa-plug", keywords:["conexao","conexoes","bancaria","bancarias","inter","extrato automatico","api","integracao"] },
         { nome:"Contas Bancárias / Caixa", url:"contas_bancarias.html", icon:"fa-university", keywords:["banco","caixa","saldo"] },
         { nome:"Fluxo de Caixa", url:"fluxo_de_caixa.html", icon:"fa-chart-line", keywords:["fluxo","caixa","entrada","saida"] },
         { nome:"DRE Gerencial", url:"dre_gerencial.html", icon:"fa-chart-pie", keywords:["dre","resultado","contabil"] },
@@ -90,7 +91,7 @@
         { nome:"Documentos Recebidos", url:"documentos_recebidos.html", icon:"fa-file-invoice", keywords:["xml","nfe","cte","recebido"] },
         { nome:"Contabilidade (ECD/ECF)", url:"modulo_contabil.html", icon:"fa-book", keywords:["contabilidade","ecd","ecf","balanco"] },
         { nome:"Fiscal (EFD/DCTF)", url:"fiscal_contabil.html", icon:"fa-calculator", keywords:["fiscal","efd","dctf","imposto"] },
-        { nome:"Folha / RH (eSocial)", url:"folha_rh.html", icon:"fa-users", keywords:["folha","rh","esocial","salario"] },
+        { nome:"Folha / RH (eSocial)", url:"folha_rh.html", icon:"fa-users", keywords:["folha","rh","esocial","salario","rescisao","demissao","ferias","13o","decimo terceiro","guias","inss","fgts","irrf","holerite","funcionario","funcionarios"] },
         { nome:"Gestão do Escritório", url:"gestao_escritorio.html", icon:"fa-briefcase", keywords:["escritorio","tarefas","clientes"] },
         { nome:"Jurídico & Auditoria", url:"juridico_auditoria.html", icon:"fa-gavel", keywords:["juridico","contrato","auditoria","risco"] },
         { nome:"Dados da Empresa", url:"dados_empresa.html", icon:"fa-building", keywords:["empresa","cnpj","receita","dados"] },
@@ -488,11 +489,15 @@
         var inputBusca = document.getElementById('inputBuscaGlobalCore');
         var dropdown = document.getElementById('dropdownResultadosCore');
         if (inputBusca && dropdown) {
+            var semAcento = function(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); };
+            inputBusca.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { var primeiro = dropdown.querySelector('a.search-item'); if (primeiro) { window.location.href = primeiro.getAttribute('href'); } }
+            });
             inputBusca.addEventListener('input', function(e) {
-                var q = e.target.value.toLowerCase().trim();
+                var q = semAcento(e.target.value);
                 if (!q) { dropdown.style.display = 'none'; return; }
                 var encontrados = rotasModulos.filter(function(m) {
-                    return m.nome.toLowerCase().includes(q) || m.keywords.some(function(k){ return k.includes(q); });
+                    return semAcento(m.nome).includes(q) || m.keywords.some(function(k){ return semAcento(k).includes(q); });
                 });
                 if (encontrados.length === 0) {
                     dropdown.innerHTML = '<div class="search-dropdown-header">Resultados</div><div class="search-item" style="color:#64748b;">Nenhum módulo encontrado.</div>';
