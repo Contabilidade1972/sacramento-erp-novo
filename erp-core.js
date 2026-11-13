@@ -72,6 +72,7 @@
         { nome:"Contas a Receber", url:"contas_receber.html", icon:"fa-hand-holding-usd", keywords:["receber","receita","cliente"] },
         { nome:"Faturas & Emissão", url:"faturas.html", icon:"fa-file-invoice", keywords:["fatura","nota","fiscal","nfe"] },
         { nome:"Orçamentos & Propostas", url:"orcamentos.html", icon:"fa-file-contract", keywords:["orcamento","proposta","comercial"] },
+        { nome:"Importar dados do Domínio (ECD)", url:"importar_dados.html", icon:"fa-file-import", keywords:["importar","importacao","dominio","ecd","sped","migrar","migracao","plano de contas","saldo de abertura"] },
         { nome:"Conexões Bancárias (extrato automático)", url:"bancos_conexoes.html", icon:"fa-plug", keywords:["conexao","conexoes","bancaria","bancarias","inter","extrato automatico","api","integracao"] },
         { nome:"Contas Bancárias / Caixa", url:"contas_bancarias.html", icon:"fa-university", keywords:["banco","caixa","saldo"] },
         { nome:"Fluxo de Caixa", url:"fluxo_de_caixa.html", icon:"fa-chart-line", keywords:["fluxo","caixa","entrada","saida"] },
