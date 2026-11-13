@@ -96,7 +96,7 @@
     const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
     const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
     const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
-    let CID = null, linhas = [];
+    let CID = null, linhas = [], contas = [];
 
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
     function dataBR(d) { if (!d) return '—'; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
@@ -136,13 +136,21 @@
         const tb = document.getElementById('corpo');
         if (!linhas.length) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:26px; color:var(--text-light);">Nenhuma conexão cadastrada. Clique em <b>Nova conexão com o Banco Inter</b>.</td></tr>'; return; }
         tb.innerHTML = linhas.map(function (c) {
-            return '<tr><td><b>Banco Inter</b><span class="sub">' + esc(c.apelido) + (c.conta_corrente ? ' · conta ' + esc(c.conta_corrente) : '') + '</span></td><td>' + chipSituacao(c) + '</td><td>' + avisoValidade(c.validade) + '</td><td>' + dataHoraBR(c.ultimo_teste_em) + '</td>' +
-                '<td style="text-align:right; white-space:nowrap;"><button class="btn-acao btn-mini" onclick="testar(' + c.id + ', this)"><i class="fas fa-vial"></i> Testar</button> <button class="btn-acao btn-mini alerta" onclick="remover(' + c.id + ')"><i class="fas fa-trash"></i> Remover</button></td></tr>';
+            var opts = '<option value="">— escolha a conta —</option>' + contas.map(function (k) {
+                return '<option value="' + k.id + '"' + (String(k.id) === String(c.conta_id) ? ' selected' : '') + '>' + esc((k.nome || k.banco || 'Conta') + (k.tipo ? ' — ' + k.tipo : '')) + '</option>'; }).join('');
+            return '<tr><td><b>Banco Inter</b><span class="sub">' + esc(c.apelido) + (c.conta_corrente ? ' · conta ' + esc(c.conta_corrente) : '') + '</span>' +
+                '<span class="sub" style="margin-top:8px;">Extrato cai na conta do Sacramento:</span><select class="form-control" style="height:34px; font-size:12px; margin-top:3px; max-width:260px;" onchange="vincular(' + c.id + ', this.value)">' + opts + '</select></td>' +
+                '<td>' + chipSituacao(c) + '</td><td>' + avisoValidade(c.validade) + '</td><td>' + dataHoraBR(c.ultimo_teste_em) + '<span class="sub">Último extrato: ' + dataHoraBR(c.ultima_sync_em) + '</span></td>' +
+                '<td style="text-align:right; white-space:nowrap;"><select id="dias_' + c.id + '" class="form-control" style="height:34px; width:auto; display:inline-block; font-size:12px;"><option value="7">7 dias</option><option value="30" selected>30 dias</option><option value="90">90 dias</option></select> ' +
+                '<button class="btn-acao btn-mini sucesso" onclick="sincronizar(' + c.id + ', this)"><i class="fas fa-download"></i> Buscar extrato</button> ' +
+                '<button class="btn-acao btn-mini" onclick="testar(' + c.id + ', this)"><i class="fas fa-vial"></i> Testar</button> <button class="btn-acao btn-mini alerta" onclick="remover(' + c.id + ')"><i class="fas fa-trash"></i> Remover</button></td></tr>';
         }).join('');
     }
     async function carregar() {
         const r = await sb.rpc('banco_conexoes_listar', { p_cliente: CID });
         if (r.error) { document.getElementById('corpo').innerHTML = '<tr><td colspan="5" style="padding:24px; color:var(--danger);">' + esc(r.error.message) + '</td></tr>'; return; }
+        const cb = await sb.from('contas_bancarias').select('id,nome,banco,tipo').eq('cliente_id', CID).order('nome');
+        contas = cb.data || [];
         linhas = r.data || []; document.getElementById('btnNovo').style.display = ''; render();
     }
     function abrirNovo() { ['f_cid', 'f_sec', 'f_conta'].forEach(function (i) { document.getElementById(i).value = ''; }); document.getElementById('f_crt').value = ''; document.getElementById('f_key').value = ''; document.getElementById('modalNovo').classList.add('on'); }
@@ -172,6 +180,20 @@
             const r = await chamar({ acao: 'testar', id: id });
             if (r.ok) toast('Conexão funcionando! Saldo disponível no Inter em ' + dataBR(r.data) + ': R$ ' + brl(r.saldo_disponivel), 'success');
             else toast(r.erro || 'O teste falhou.', 'error');
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        btn.disabled = false; btn.innerHTML = t; await carregar();
+    }
+    async function vincular(id, contaId) {
+        try { const r = await chamar({ acao: 'vincular', id: id, conta_id: contaId || null }); if (!r.ok) throw new Error(r.erro || 'Erro'); toast(contaId ? 'Conta escolhida. Agora pode buscar o extrato.' : 'Ligação removida.', 'success'); await carregar(); }
+        catch (e) { toast(e.message || String(e), 'error'); await carregar(); }
+    }
+    async function sincronizar(id, btn) {
+        const dias = parseInt((document.getElementById('dias_' + id) || {}).value, 10) || 30;
+        btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando';
+        try {
+            const r = await chamar({ acao: 'sincronizar', id: id, dias: dias });
+            if (r.ok) toast('Extrato de ' + dataBR(r.inicio) + ' a ' + dataBR(r.fim) + ': ' + r.novas + ' lançamento(s) novo(s), ' + r.ja_existiam + ' já existia(m). Veja em Conciliação.', 'success');
+            else toast(r.erro || 'Não consegui buscar o extrato.', 'error');
         } catch (e) { toast(e.message || String(e), 'error'); }
         btn.disabled = false; btn.innerHTML = t; await carregar();
     }
