@@ -244,7 +244,7 @@ function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
     x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},3000);
+    setTimeout(function(){x.remove();},type==='info'||msg.length<80?3000:7000);
 }
 
 async function consultarCnpjEmitente(){
@@ -265,7 +265,22 @@ async function consultarCnpjEmitente(){
         document.getElementById('emp_complemento').value = r.complemento || '';
         document.getElementById('emp_bairro').value = r.bairro || '';
         document.getElementById('emp_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
-        toast("Dados preenchidos automaticamente pela Receita Federal!");
+        // Regime: a Receita informa só se é optante pelo Simples Nacional / MEI. Presumido x Real ela não informa.
+        let msgRegime = '';
+        if(r.opcao_pelo_mei === true) {
+            document.getElementById('emp_regime').value = 'MEI';
+            msgRegime = ' Regime: MEI (optante, conforme a Receita).';
+        } else if(r.opcao_pelo_simples === true) {
+            document.getElementById('emp_regime').value = 'Simples Nacional';
+            msgRegime = ' Regime: Simples Nacional (optante, conforme a Receita).';
+        } else if(r.opcao_pelo_simples === false) {
+            if(document.getElementById('emp_regime').value === 'Simples Nacional' || document.getElementById('emp_regime').value === 'MEI') document.getElementById('emp_regime').value = '';
+            msgRegime = ' A empresa NÃO é optante pelo Simples: escolha Lucro Presumido ou Lucro Real (a Receita não informa qual).';
+        } else {
+            msgRegime = ' Confira o regime tributário (a Receita não informou a opção pelo Simples).';
+        }
+        atualizarCamposSimples();
+        toast("Dados preenchidos pela Receita Federal!" + msgRegime);
     } catch(e) {
         toast("CNPJ não localizado na API pública.", "error");
     }
