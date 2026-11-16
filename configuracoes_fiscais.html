@@ -259,13 +259,25 @@ function escR(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ ret
 function fmtCnae(v){ var d=String(v||'').replace(/\D/g,''); if(d.length!==7) return String(v||''); return d.slice(0,4)+'-'+d.slice(4,5)+'/'+d.slice(5); }
 function brData(d){ var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m ? m[3]+'/'+m[2]+'/'+m[1] : (d||''); }
 var receitaNova = null;
+var receitaMostrada = null, receitaMostradaSalva = false;
+var RECEITA_VAZIO = '<span style="color:var(--text-light);">Digite o CNPJ e clique na lupa azul para trazer CNAE principal e secundários, porte, natureza jurídica, situação cadastral e sócios. Eles ficam gravados quando você salvar.</span>';
+function soDigitos(v){ return String(v||'').replace(/\D/g,''); }
+function limparDadosReceita(){
+    if(!confirm('Limpar os dados da Receita Federal desta empresa? (a limpeza só é gravada quando você clicar em Salvar Parâmetros Fiscais)')) return;
+    receitaNova = { cnae_principal:null, cnae_principal_desc:null, cnaes_secundarios:null, porte_empresa:null, natureza_juridica_desc:null, data_inicio_ativ:null, situacao_cadastral:null, capital_social_rf:null, telefone_fiscal:null, municipio_ibge:null, socios_rf:null, dados_receita_em:null, dados_receita_cnpj:null };
+    receitaMostrada = null; receitaMostradaSalva = false;
+    document.getElementById('blocoReceita').innerHTML = RECEITA_VAZIO + '<div style="margin-top:6px;color:#b45309;font-size:11px;"><b>Limpeza pendente:</b> clique em Salvar Parâmetros Fiscais para confirmar.</div>';
+}
 function renderReceita(d, salvo){
     var b=document.getElementById('blocoReceita'); if(!b) return;
-    if(!d || !d.cnae_principal){ return; }
+    if(!d || !d.cnae_principal){ receitaMostrada = null; b.innerHTML = RECEITA_VAZIO; return; }
+    receitaMostrada = d; receitaMostradaSalva = !!salvo;
+    var atualCnpj = soDigitos((document.getElementById('emp_cnpj')||{}).value), cnpjDados = soDigitos(d.dados_receita_cnpj);
+    var difere = (cnpjDados && atualCnpj && cnpjDados !== atualCnpj) ? '<div style="background:#ffedd5;color:#9a3412;padding:8px 10px;border-radius:8px;margin-bottom:8px;font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Estes dados são do CNPJ '+escR(cnpjDados)+', diferente do CNPJ digitado acima. Clique na lupa azul para atualizar ou em "Limpar dados da Receita".</div>' : '';
     var sec=(d.cnaes_secundarios||[]), soc=(d.socios_rf||[]);
     var sit=String(d.situacao_cadastral||'');
     var aviso=(sit && !/ativa/i.test(sit)) ? '<div style="background:#fee2e2;color:#991b1b;padding:8px 10px;border-radius:8px;margin-bottom:8px;font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Situação cadastral: '+escR(sit)+' - confira antes de emitir notas.</div>' : '';
-    b.innerHTML = aviso +
+    b.innerHTML = difere + aviso +
       '<div><b>CNAE principal:</b> '+escR(d.cnae_principal)+' - '+escR(d.cnae_principal_desc)+'</div>'+
       '<div style="margin-top:4px;"><b>CNAEs secundários ('+sec.length+'):</b>'+(sec.length ? '<ul style="margin:4px 0 0 18px;">'+sec.map(function(c){ return '<li>'+escR(c.codigo)+' - '+escR(c.descricao)+'</li>'; }).join('')+'</ul>' : ' nenhum')+'</div>'+
       '<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px;">'+
@@ -278,7 +290,8 @@ function renderReceita(d, salvo){
         '<div><b>Código IBGE do município:</b> '+escR(d.municipio_ibge||'-')+'</div>'+
       '</div>'+
       '<div style="margin-top:6px;"><b>Sócios ('+soc.length+'):</b>'+(soc.length ? '<ul style="margin:4px 0 0 18px;">'+soc.map(function(x){ return '<li>'+escR(x.nome)+(x.qualificacao?' - '+escR(x.qualificacao):'')+'</li>'; }).join('')+'</ul>' : ' não informado')+'</div>'+
-      (d.dados_receita_em ? '<div style="margin-top:6px;color:'+(salvo?'var(--text-light)':'#b45309')+';font-size:11px;">'+(salvo ? 'Consulta gravada em '+escR(new Date(d.dados_receita_em).toLocaleString('pt-BR'))+'.' : '<b>Consulta feita agora, ainda não gravada:</b> clique em Salvar Parâmetros Fiscais para guardar.')+'</div>' : '');
+      (d.dados_receita_em ? '<div style="margin-top:6px;color:'+(salvo?'var(--text-light)':'#b45309')+';font-size:11px;">'+(salvo ? 'Consulta gravada em '+escR(new Date(d.dados_receita_em).toLocaleString('pt-BR'))+'.' : '<b>Consulta feita agora, ainda não gravada:</b> clique em Salvar Parâmetros Fiscais para guardar.')+'</div>' : '') +
+      '<div style="margin-top:8px;"><button type="button" onclick="limparDadosReceita()" style="background:none;border:1px solid #cbd5e1;border-radius:6px;padding:4px 10px;font-size:11px;color:#64748b;cursor:pointer;"><i class="fas fa-eraser"></i> Limpar dados da Receita</button></div>';
 }
 
 async function buscarDadosCnpj(raw){
@@ -341,7 +354,7 @@ async function consultarCnpjEmitente(){
         msgRegime = ' Confira o regime tributário (a consulta não informou a opção pelo Simples).';
     }
     atualizarCamposSimples();
-    receitaNova = Object.assign({}, r.rf, { dados_receita_em: new Date().toISOString() });
+    receitaNova = Object.assign({}, r.rf, { dados_receita_em: new Date().toISOString(), dados_receita_cnpj: rawCnpj });
     renderReceita(receitaNova, false);
     toast("Dados preenchidos pela Receita Federal (" + r.fonte + ")! CNAEs, porte e sócios abaixo." + msgRegime);
 }
@@ -493,6 +506,11 @@ function sair() {
         location.href = 'login.html';
     }
 }
+
+document.addEventListener('DOMContentLoaded', function(){
+    var c = document.getElementById('emp_cnpj');
+    if(c) c.addEventListener('input', function(){ if(receitaMostrada) renderReceita(receitaMostrada, receitaMostradaSalva); });
+});
 
 window.onload = async function(){
     let u = obterUsuario();
