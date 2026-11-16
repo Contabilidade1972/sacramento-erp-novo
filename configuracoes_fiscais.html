@@ -259,7 +259,7 @@ function escR(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ ret
 function fmtCnae(v){ var d=String(v||'').replace(/\D/g,''); if(d.length!==7) return String(v||''); return d.slice(0,4)+'-'+d.slice(4,5)+'/'+d.slice(5); }
 function brData(d){ var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m ? m[3]+'/'+m[2]+'/'+m[1] : (d||''); }
 var receitaNova = null;
-function renderReceita(d){
+function renderReceita(d, salvo){
     var b=document.getElementById('blocoReceita'); if(!b) return;
     if(!d || !d.cnae_principal){ return; }
     var sec=(d.cnaes_secundarios||[]), soc=(d.socios_rf||[]);
@@ -278,7 +278,7 @@ function renderReceita(d){
         '<div><b>Código IBGE do município:</b> '+escR(d.municipio_ibge||'-')+'</div>'+
       '</div>'+
       '<div style="margin-top:6px;"><b>Sócios ('+soc.length+'):</b>'+(soc.length ? '<ul style="margin:4px 0 0 18px;">'+soc.map(function(x){ return '<li>'+escR(x.nome)+(x.qualificacao?' - '+escR(x.qualificacao):'')+'</li>'; }).join('')+'</ul>' : ' não informado')+'</div>'+
-      (d.dados_receita_em ? '<div style="margin-top:6px;color:var(--text-light);font-size:11px;">Consulta gravada em '+escR(new Date(d.dados_receita_em).toLocaleString('pt-BR'))+'.</div>' : '');
+      (d.dados_receita_em ? '<div style="margin-top:6px;color:'+(salvo?'var(--text-light)':'#b45309')+';font-size:11px;">'+(salvo ? 'Consulta gravada em '+escR(new Date(d.dados_receita_em).toLocaleString('pt-BR'))+'.' : '<b>Consulta feita agora, ainda não gravada:</b> clique em Salvar Parâmetros Fiscais para guardar.')+'</div>' : '');
 }
 
 async function buscarDadosCnpj(raw){
@@ -342,7 +342,7 @@ async function consultarCnpjEmitente(){
     }
     atualizarCamposSimples();
     receitaNova = Object.assign({}, r.rf, { dados_receita_em: new Date().toISOString() });
-    renderReceita(receitaNova);
+    renderReceita(receitaNova, false);
     toast("Dados preenchidos pela Receita Federal (" + r.fonte + ")! CNAEs, porte e sócios abaixo." + msgRegime);
 }
 
@@ -417,7 +417,7 @@ async function carregarParametrosFiscais(){
         document.getElementById('emp_simples_ibs_cbs').value = data.simples_ibs_cbs || '';
         if(data.ambiente_emissao) document.getElementById('emp_ambiente').value = data.ambiente_emissao;
         atualizarCamposSimples();
-        renderReceita(data);
+        renderReceita(data, true);
     }
 
     await verificarStatusCertificado(cid);
