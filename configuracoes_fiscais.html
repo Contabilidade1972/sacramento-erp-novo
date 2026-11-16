@@ -256,6 +256,7 @@ function toast(msg,type='success'){
 }
 
 function escR(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+function cnaeLegado(cod, desc){ var d=String(cod||'').replace(/\D/g,''); if(!d) return ''; return d + (desc ? ' - ' + desc : ''); }
 function fmtCnae(v){ var d=String(v||'').replace(/\D/g,''); if(d.length!==7) return String(v||''); return d.slice(0,4)+'-'+d.slice(4,5)+'/'+d.slice(5); }
 function brData(d){ var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(d||''); return m ? m[3]+'/'+m[2]+'/'+m[1] : (d||''); }
 var receitaNova = null;
@@ -263,7 +264,7 @@ var receitaMostrada = null, receitaMostradaSalva = false;
 var RECEITA_VAZIO = '<span style="color:var(--text-light);">Digite o CNPJ e clique na lupa azul para trazer CNAE principal e secundários, porte, natureza jurídica, situação cadastral e sócios. Eles ficam gravados quando você salvar.</span>';
 function soDigitos(v){ return String(v||'').replace(/\D/g,''); }
 function zerarDadosReceita(){
-    receitaNova = { cnae_principal:null, cnae_principal_desc:null, cnaes_secundarios:null, porte_empresa:null, natureza_juridica_desc:null, data_inicio_ativ:null, situacao_cadastral:null, capital_social_rf:null, telefone_fiscal:null, municipio_ibge:null, socios_rf:null, dados_receita_em:null, dados_receita_cnpj:null };
+    receitaNova = { cnae_principal:null, cnaes_secundarios:null, porte_empresa:null, natureza_juridica_desc:null, data_inicio_ativ:null, situacao_cadastral:null, capital_social_rf:null, telefone_fiscal:null, municipio_ibge:null, socios_rf:null, dados_receita_em:null, dados_receita_cnpj:null };
     receitaMostrada = null; receitaMostradaSalva = false;
     document.getElementById('blocoReceita').innerHTML = RECEITA_VAZIO + '<div style="margin-top:6px;color:#b45309;font-size:11px;"><b>Limpeza pendente:</b> clique em Salvar Parâmetros Fiscais para confirmar.</div>';
 }
@@ -287,7 +288,7 @@ function renderReceita(d, salvo){
     var sit=String(d.situacao_cadastral||'');
     var aviso=(sit && !/ativa/i.test(sit)) ? '<div style="background:#fee2e2;color:#991b1b;padding:8px 10px;border-radius:8px;margin-bottom:8px;font-weight:700;"><i class="fas fa-triangle-exclamation"></i> Situação cadastral: '+escR(sit)+' - confira antes de emitir notas.</div>' : '';
     b.innerHTML = difere + aviso +
-      '<div><b>CNAE principal:</b> '+escR(d.cnae_principal)+' - '+escR(d.cnae_principal_desc)+'</div>'+
+      '<div><b>CNAE principal:</b> '+escR(d.cnae_principal)+'</div>'+
       '<div style="margin-top:4px;"><b>CNAEs secundários ('+sec.length+'):</b>'+(sec.length ? '<ul style="margin:4px 0 0 18px;">'+sec.map(function(c){ return '<li>'+escR(c.codigo)+' - '+escR(c.descricao)+'</li>'; }).join('')+'</ul>' : ' nenhum')+'</div>'+
       '<div style="margin-top:6px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px;">'+
         '<div><b>Porte:</b> '+escR(d.porte_empresa||'-')+'</div>'+
@@ -310,7 +311,7 @@ async function buscarDadosCnpj(raw){
         if(res.ok) {
             let r = await res.json();
             return { fonte:'BrasilAPI', razao: r.razao_social || r.nome_fantasia || '', cep: r.cep || '', logradouro: r.logradouro || '', numero: r.numero || '', complemento: r.complemento || '', bairro: r.bairro || '', cidade: r.municipio || '', uf: r.uf || '', email: r.email || '', ie: '', simples: (r.opcao_pelo_simples === true ? true : (r.opcao_pelo_simples === false ? false : null)), mei: (r.opcao_pelo_mei === true ? true : (r.opcao_pelo_mei === false ? false : null)),
-              rf: { cnae_principal: fmtCnae(r.cnae_fiscal), cnae_principal_desc: r.cnae_fiscal_descricao || '', cnaes_secundarios: (r.cnaes_secundarios || []).filter(function(c){ return c && c.codigo; }).map(function(c){ return { codigo: fmtCnae(c.codigo), descricao: c.descricao || '' }; }), porte_empresa: r.porte || r.descricao_porte || '', natureza_juridica_desc: r.natureza_juridica || '', data_inicio_ativ: r.data_inicio_atividade || null, situacao_cadastral: r.descricao_situacao_cadastral || '', capital_social_rf: (r.capital_social != null ? Number(r.capital_social) : null), telefone_fiscal: (r.ddd_telefone_1 || '').trim(), municipio_ibge: r.codigo_municipio_ibge ? String(r.codigo_municipio_ibge) : '', socios_rf: (r.qsa || []).map(function(x){ return { nome: x.nome_socio || '', qualificacao: x.qualificacao_socio || '' }; }) } };
+              rf: { cnae_principal: cnaeLegado(r.cnae_fiscal, r.cnae_fiscal_descricao), cnaes_secundarios: (r.cnaes_secundarios || []).filter(function(c){ return c && c.codigo; }).map(function(c){ return { codigo: fmtCnae(c.codigo), descricao: c.descricao || '' }; }), porte_empresa: r.porte || r.descricao_porte || '', natureza_juridica_desc: r.natureza_juridica || '', data_inicio_ativ: r.data_inicio_atividade || null, situacao_cadastral: r.descricao_situacao_cadastral || '', capital_social_rf: (r.capital_social != null ? Number(r.capital_social) : null), telefone_fiscal: (r.ddd_telefone_1 || '').trim(), municipio_ibge: r.codigo_municipio_ibge ? String(r.codigo_municipio_ibge) : '', socios_rf: (r.qsa || []).map(function(x){ return { nome: x.nome_socio || '', qualificacao: x.qualificacao_socio || '' }; }) } };
         }
     } catch(e) {}
     try {
@@ -320,7 +321,7 @@ async function buscarDadosCnpj(raw){
             let ies = (e.inscricoes_estaduais || []).filter(function(x){ return x && x.ativo; });
             let logr = ((e.tipo_logradouro ? e.tipo_logradouro + ' ' : '') + (e.logradouro || '')).trim();
             return { fonte:'CNPJ.ws', razao: r.razao_social || e.nome_fantasia || '', cep: e.cep || '', logradouro: logr, numero: e.numero || '', complemento: e.complemento || '', bairro: e.bairro || '', cidade: (e.cidade && e.cidade.nome) || '', uf: (e.estado && e.estado.sigla) || '', email: e.email || '', ie: ies.length ? ies[0].inscricao_estadual : '', simples: (sm.simples === 'Sim' ? true : (sm.simples === 'Não' ? false : null)), mei: (sm.mei === 'Sim' ? true : (sm.mei === 'Não' ? false : null)),
-              rf: { cnae_principal: (e.atividade_principal && e.atividade_principal.subclasse) ? e.atividade_principal.subclasse : fmtCnae(e.atividade_principal && e.atividade_principal.id), cnae_principal_desc: (e.atividade_principal && e.atividade_principal.descricao) || '', cnaes_secundarios: (e.atividades_secundarias || []).map(function(c){ return { codigo: c.subclasse || fmtCnae(c.id), descricao: c.descricao || '' }; }), porte_empresa: (r.porte && r.porte.descricao) || '', natureza_juridica_desc: (r.natureza_juridica && r.natureza_juridica.descricao) || '', data_inicio_ativ: e.data_inicio_atividade || null, situacao_cadastral: e.situacao_cadastral || '', capital_social_rf: (r.capital_social != null && r.capital_social !== '' ? Number(r.capital_social) : null), telefone_fiscal: ((e.ddd1 || '') + (e.telefone1 || '')).trim(), municipio_ibge: (e.cidade && e.cidade.ibge_id) ? String(e.cidade.ibge_id) : '', socios_rf: (r.socios || []).map(function(x){ return { nome: x.nome || '', qualificacao: (x.qualificacao_socio && x.qualificacao_socio.descricao) || '' }; }) } };
+              rf: { cnae_principal: cnaeLegado(e.atividade_principal && e.atividade_principal.id, e.atividade_principal && e.atividade_principal.descricao), cnaes_secundarios: (e.atividades_secundarias || []).map(function(c){ return { codigo: c.subclasse || fmtCnae(c.id), descricao: c.descricao || '' }; }), porte_empresa: (r.porte && r.porte.descricao) || '', natureza_juridica_desc: (r.natureza_juridica && r.natureza_juridica.descricao) || '', data_inicio_ativ: e.data_inicio_atividade || null, situacao_cadastral: e.situacao_cadastral || '', capital_social_rf: (r.capital_social != null && r.capital_social !== '' ? Number(r.capital_social) : null), telefone_fiscal: ((e.ddd1 || '') + (e.telefone1 || '')).trim(), municipio_ibge: (e.cidade && e.cidade.ibge_id) ? String(e.cidade.ibge_id) : '', socios_rf: (r.socios || []).map(function(x){ return { nome: x.nome || '', qualificacao: (x.qualificacao_socio && x.qualificacao_socio.descricao) || '' }; }) } };
         }
     } catch(e) {}
     return null;
