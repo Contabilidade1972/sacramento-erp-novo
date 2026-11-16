@@ -247,6 +247,27 @@ function toast(msg,type='success'){
     setTimeout(function(){x.remove();},type==='info'||msg.length<80?3000:7000);
 }
 
+async function buscarDadosCnpj(raw){
+    // 1) BrasilAPI; 2) CNPJ.ws (alternativa, quando a primeira não encontra ou está fora do ar)
+    try {
+        let res = await fetch('https://brasilapi.com.br/api/cnpj/v1/' + raw);
+        if(res.ok) {
+            let r = await res.json();
+            return { fonte:'BrasilAPI', razao: r.razao_social || r.nome_fantasia || '', cep: r.cep || '', logradouro: r.logradouro || '', numero: r.numero || '', complemento: r.complemento || '', bairro: r.bairro || '', cidade: r.municipio || '', uf: r.uf || '', email: r.email || '', ie: '', simples: (r.opcao_pelo_simples === true ? true : (r.opcao_pelo_simples === false ? false : null)), mei: (r.opcao_pelo_mei === true ? true : (r.opcao_pelo_mei === false ? false : null)) };
+        }
+    } catch(e) {}
+    try {
+        let res2 = await fetch('https://publica.cnpj.ws/cnpj/' + raw);
+        if(res2.ok) {
+            let r = await res2.json(), e = r.estabelecimento || {}, sm = r.simples || {};
+            let ies = (e.inscricoes_estaduais || []).filter(function(x){ return x && x.ativo; });
+            let logr = ((e.tipo_logradouro ? e.tipo_logradouro + ' ' : '') + (e.logradouro || '')).trim();
+            return { fonte:'CNPJ.ws', razao: r.razao_social || e.nome_fantasia || '', cep: e.cep || '', logradouro: logr, numero: e.numero || '', complemento: e.complemento || '', bairro: e.bairro || '', cidade: (e.cidade && e.cidade.nome) || '', uf: (e.estado && e.estado.sigla) || '', email: e.email || '', ie: ies.length ? ies[0].inscricao_estadual : '', simples: (sm.simples === 'Sim' ? true : (sm.simples === 'Não' ? false : null)), mei: (sm.mei === 'Sim' ? true : (sm.mei === 'Não' ? false : null)) };
+        }
+    } catch(e) {}
+    return null;
+}
+
 async function consultarCnpjEmitente(){
     let rawCnpj = document.getElementById('emp_cnpj').value.trim().replace(/\D/g, '');
     if(!rawCnpj || rawCnpj.length !== 14) {
@@ -254,36 +275,37 @@ async function consultarCnpjEmitente(){
         return;
     }
     toast("Consultando CNPJ na Receita Federal...", "info");
-    try {
-        let res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${rawCnpj}`);
-        if(!res.ok) throw new Error();
-        let r = await res.json();
-        document.getElementById('emp_razao').value = r.razao_social || r.nome_fantasia || '';
-        document.getElementById('emp_cep').value = r.cep || '';
-        document.getElementById('emp_logradouro').value = r.logradouro || '';
-        document.getElementById('emp_numero').value = r.numero || '';
-        document.getElementById('emp_complemento').value = r.complemento || '';
-        document.getElementById('emp_bairro').value = r.bairro || '';
-        document.getElementById('emp_cidade').value = `${r.municipio || ''} - ${r.uf || ''}`;
-        // Regime: a Receita informa só se é optante pelo Simples Nacional / MEI. Presumido x Real ela não informa.
-        let msgRegime = '';
-        if(r.opcao_pelo_mei === true) {
-            document.getElementById('emp_regime').value = 'MEI';
-            msgRegime = ' Regime: MEI (optante, conforme a Receita).';
-        } else if(r.opcao_pelo_simples === true) {
-            document.getElementById('emp_regime').value = 'Simples Nacional';
-            msgRegime = ' Regime: Simples Nacional (optante, conforme a Receita).';
-        } else if(r.opcao_pelo_simples === false) {
-            if(document.getElementById('emp_regime').value === 'Simples Nacional' || document.getElementById('emp_regime').value === 'MEI') document.getElementById('emp_regime').value = '';
-            msgRegime = ' A empresa NÃO é optante pelo Simples: escolha Lucro Presumido ou Lucro Real (a Receita não informa qual).';
-        } else {
-            msgRegime = ' Confira o regime tributário (a Receita não informou a opção pelo Simples).';
-        }
-        atualizarCamposSimples();
-        toast("Dados preenchidos pela Receita Federal!" + msgRegime);
-    } catch(e) {
-        toast("CNPJ não localizado na API pública.", "error");
+    let r = await buscarDadosCnpj(rawCnpj);
+    if(!r) {
+        toast("CNPJ não localizado nas consultas públicas. Confira o número ou preencha os dados manualmente.", "error");
+        return;
     }
+    document.getElementById('emp_razao').value = r.razao;
+    document.getElementById('emp_cep').value = r.cep;
+    document.getElementById('emp_logradouro').value = r.logradouro;
+    document.getElementById('emp_numero').value = r.numero;
+    document.getElementById('emp_complemento').value = r.complemento;
+    document.getElementById('emp_bairro').value = r.bairro;
+    document.getElementById('emp_cidade').value = r.cidade + ' - ' + r.uf;
+    if(r.email) document.getElementById('emp_email_fiscal').value = r.email;
+    if(r.ie) document.getElementById('emp_ie').value = r.ie;
+    // Regime: a Receita informa só se é optante pelo Simples Nacional / MEI. Presumido x Real ela não informa.
+    let msgRegime = '';
+    let selReg = document.getElementById('emp_regime');
+    if(r.mei === true) {
+        selReg.value = 'MEI';
+        msgRegime = ' Regime: MEI (optante, conforme a Receita).';
+    } else if(r.simples === true) {
+        selReg.value = 'Simples Nacional';
+        msgRegime = ' Regime: Simples Nacional (optante, conforme a Receita).';
+    } else if(r.simples === false) {
+        if(selReg.value === 'Simples Nacional' || selReg.value === 'MEI') selReg.value = '';
+        msgRegime = ' A empresa NÃO é optante pelo Simples: escolha Lucro Presumido ou Lucro Real (a Receita não informa qual).';
+    } else {
+        msgRegime = ' Confira o regime tributário (a consulta não informou a opção pelo Simples).';
+    }
+    atualizarCamposSimples();
+    toast("Dados preenchidos pela Receita Federal (" + r.fonte + ")!" + msgRegime);
 }
 
 async function buscarCepEmitente(){
