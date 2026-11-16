@@ -316,9 +316,18 @@
                         <tbody id="tbodyGuias"></tbody>
                     </table>
                 </div>
-                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:8px; margin-top:12px; font-size:12px; color:#1e3a8a;">
-                    <i class="fas fa-info-circle"></i> <strong>Importante:</strong> o INSS aqui é só a parte descontada dos funcionários. A parte da empresa (patronal, RAT e terceiros) depende do regime tributário e <strong>não é calculada nesta tela</strong>. O valor oficial de cada guia é o que o eSocial/DCTFWeb (INSS e IRRF) e o FGTS Digital emitem. Os vencimentos mostrados já consideram a antecipação para o dia útil anterior quando o dia 20 não é útil. Se o valor oficial for diferente, ajuste no Contas a Pagar.
-                </div>
+                <div id="notaGuias" style="background:#eff6ff; border:1px solid #bfdbfe; padding:10px 12px; border-radius:8px; margin-top:12px; font-size:12px; color:#1e3a8a;"></div>
+                <details id="detEncargos" style="margin-top:12px; border:1px solid var(--border); border-radius:10px; padding:12px 14px; background:#fff;">
+                    <summary style="cursor:pointer; font-weight:700; color:var(--primary); font-size:13px;"><i class="fas fa-sliders"></i> Encargos da empresa (INSS patronal, RAT e terceiros)</summary>
+                    <div style="font-size:12px; color:var(--text-light); margin:10px 0; line-height:1.5;">Ligue só se esta empresa recolhe a parte patronal separada da folha (Lucro Presumido, Lucro Real ou Simples Nacional Anexo IV). No Simples Anexos I, II, III e V a parte patronal já está dentro do DAS: deixe desligado. O RAT e a alíquota de terceiros dependem da atividade (CNAE) da empresa: <b>confirme com a contabilidade</b>.</div>
+                    <label style="display:flex; gap:8px; align-items:center; font-size:13px; font-weight:600; margin-bottom:12px;"><input type="checkbox" id="enc_ativo" style="width:16px;height:16px;"> Esta empresa recolhe INSS patronal separado da folha</label>
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px;">
+                        <div><label style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light);">RAT (1, 2 ou 3 %)</label><input type="number" id="enc_rat" class="form-control" step="0.01" min="0" max="10" value="0"></div>
+                        <div><label style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light);">FAP (0,5 a 2,0)</label><input type="number" id="enc_fap" class="form-control" step="0.0001" min="0.5" max="2" value="1"></div>
+                        <div><label style="font-size:11px; font-weight:700; text-transform:uppercase; color:var(--text-light);">Terceiros (%)</label><input type="number" id="enc_terc" class="form-control" step="0.01" min="0" max="10" value="0"></div>
+                    </div>
+                    <div style="margin-top:12px;"><button class="btn-acao sucesso" type="button" onclick="salvarEncargos()"><i class="fas fa-floppy-disk"></i> Salvar encargos</button></div>
+                </details>
             </div>
         </div>
     </div>
@@ -1482,19 +1491,37 @@ function vencimentoGuia(k){
 }
 function dataGuiaBR(s){ return String(s||'').slice(0,10).split('-').reverse().join('/'); }
 var guiasEstado = { lista:[], existentes:{} };
+var encargosEstado = { cfg:null, proLabore:0 };
 function guiasDaFolha(){
   var comp=folhaEstado.comp; if(!comp||comp.status!=='fechada'||!folhaEstado.itens.length) return [];
   var t={inss:0,irrf:0,fgts:0};
   folhaEstado.itens.forEach(function(i){ t.inss+=Number(i.inss); t.irrf+=Number(i.irrf); t.fgts+=Number(i.fgts); });
   var venc=vencimentoGuia(folhaEstado.key), rot=compRotulo(folhaEstado.key), pre='folha:'+comp.id+':';
+  var extra=[], cfg=encargosEstado.cfg;
+  if(cfg && cfg.recolhe_patronal){
+    var base=0; folhaEstado.itens.forEach(function(i){ base+=Number(i.base_inss); }); base=r2(base+encargosEstado.proLabore);
+    var rat=Number(cfg.rat_percentual)*Number(cfg.fap)/100, terc=Number(cfg.terceiros_percentual)/100;
+    var vpat=r2(base*0.20)+r2(base*rat)+r2(base*terc);
+    extra.push({ tag:pre+'patronal', nome:'INSS patronal, RAT e terceiros (parte da empresa)', como:'DARF (código 1082) pela DCTFWeb', forn:'Receita Federal - INSS patronal', cc:'INSS Patronal a Recolher (Folha)', desc:'INSS patronal, RAT e terceiros - folha '+rot, valor:r2(vpat), venc:venc, base:base });
+  }
   return [
     { tag:pre+'inss', nome:'INSS dos funcionários', como:'Guia pela DCTFWeb (eSocial)', forn:'Receita Federal - INSS', cc:'INSS a Recolher (Folha)', desc:'INSS retido dos funcionários - folha '+rot, valor:r2(t.inss), venc:venc },
     { tag:pre+'fgts', nome:'FGTS', como:'Guia no FGTS Digital', forn:'Caixa - FGTS Digital', cc:'FGTS a Recolher (Folha)', desc:'FGTS - folha '+rot, valor:r2(t.fgts), venc:venc },
     { tag:pre+'irrf', nome:'IRRF sobre salários', como:'DARF (código 0561) pela DCTFWeb', forn:'Receita Federal - IRRF', cc:'IRRF a Recolher (Folha)', desc:'IRRF sobre salários - folha '+rot, valor:r2(t.irrf), venc:venc }
-  ];
+  ].concat(extra);
 }
 async function carregarGuias(){
   var comp=folhaEstado.comp; guiasEstado.existentes={};
+  encargosEstado = { cfg:null, proLabore:0 };
+  try { var rc=await sb.from('folha_encargos_empresa').select('*').eq('cliente_id', clienteIdAtual()).maybeSingle(); if(rc && rc.data) encargosEstado.cfg=rc.data; } catch(e){}
+  preencherEncargos();
+  if(comp && comp.status==='fechada' && encargosEstado.cfg && encargosEstado.cfg.recolhe_patronal){
+    try {
+      var pm=String(folhaEstado.key||'').split('-'), nomes=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+      var rp=await sb.from('pro_labore').select('valor_bruto').eq('cliente_id', clienteIdAtual()).eq('competencia', nomes[parseInt(pm[1],10)-1]+' de '+pm[0]);
+      var tp=0; (rp.data||[]).forEach(function(x){ tp+=Number(x.valor_bruto)||0; }); encargosEstado.proLabore=r2(tp);
+    } catch(e){}
+  }
   if(comp && comp.status==='fechada'){
     try {
       var r=await sb.from('contas_pagar').select('id,descricao,status,vencimento,valor').eq('cliente_id', clienteIdAtual()).like('descricao','%[folha:'+comp.id+':%');
@@ -1508,6 +1535,7 @@ function renderGuias(){
   var lista=guiasDaFolha(); guiasEstado.lista=lista;
   if(!lista.length){ box.style.display='none'; return; }
   box.style.display='';
+  atualizarNotaGuias(lista);
   var pend=0;
   document.getElementById('tbodyGuias').innerHTML=lista.map(function(g){
     var ex=guiasEstado.existentes[g.tag], sit;
@@ -1517,6 +1545,38 @@ function renderGuias(){
     return '<tr><td><b>'+esc(g.nome)+'</b></td><td>'+esc(g.como)+'</td><td>'+dataGuiaBR(g.venc)+'</td><td style="text-align:right;">R$ '+moedaBR(g.valor)+'</td><td>'+sit+'</td></tr>';
   }).join('');
   document.getElementById('btnGerarGuias').disabled = pend===0;
+}
+function preencherEncargos(){
+  var c=encargosEstado.cfg||{};
+  var a=document.getElementById('enc_ativo'); if(!a) return;
+  a.checked=!!c.recolhe_patronal;
+  document.getElementById('enc_rat').value = c.rat_percentual!=null ? c.rat_percentual : 0;
+  document.getElementById('enc_fap').value = c.fap!=null ? c.fap : 1;
+  document.getElementById('enc_terc').value = c.terceiros_percentual!=null ? c.terceiros_percentual : 0;
+}
+function atualizarNotaGuias(lista){
+  var n=document.getElementById('notaGuias'); if(!n) return;
+  var cfg=encargosEstado.cfg, h='<i class="fas fa-info-circle"></i> <strong>Importante:</strong> ';
+  if(cfg && cfg.recolhe_patronal){
+    var g=(lista||[]).filter(function(x){ return /:patronal$/.test(x.tag); })[0];
+    h+='o INSS dos funcionários é só a parte descontada deles. A parte da empresa (INSS patronal 20%'+(Number(cfg.rat_percentual)>0?', RAT '+String(cfg.rat_percentual).replace('.',',')+'% × FAP '+String(cfg.fap).replace('.',','):'')+(Number(cfg.terceiros_percentual)>0?', terceiros '+String(cfg.terceiros_percentual).replace('.',',')+'%':'')+') é calculada sobre a base de INSS dos funcionários'+(encargosEstado.proLabore>0?' mais o pró-labore (R$ '+moedaBR(encargosEstado.proLabore)+')':'')+(g?' (base total R$ '+moedaBR(g.base)+')':'')+'. ';
+    if(!(Number(cfg.rat_percentual)>0) || !(Number(cfg.terceiros_percentual)>0)) h+='<strong>RAT e/ou terceiros estão zerados:</strong> o valor pode estar menor que o devido; confirme as alíquotas com a contabilidade. ';
+  } else {
+    h+='o INSS aqui é só a parte descontada dos funcionários. A parte da empresa (patronal, RAT e terceiros) <strong>não está sendo calculada</strong> para esta empresa: no Simples Nacional (Anexos I, II, III e V) ela já está dentro do DAS; nos demais casos ligue em <em>Encargos da empresa</em>, abaixo. ';
+  }
+  h+='O valor oficial de cada guia é o que o eSocial/DCTFWeb (INSS e IRRF) e o FGTS Digital emitem. Os vencimentos mostrados já consideram a antecipação para o dia útil anterior quando o dia 20 não é útil.';
+  n.innerHTML=h;
+}
+async function salvarEncargos(){
+  var ativo=document.getElementById('enc_ativo').checked, rat=parseFloat(document.getElementById('enc_rat').value), fap=parseFloat(document.getElementById('enc_fap').value), terc=parseFloat(document.getElementById('enc_terc').value);
+  if(isNaN(rat)||rat<0||rat>10){ toast('RAT inválido (0 a 10).','error'); return; }
+  if(isNaN(fap)||fap<0.5||fap>2){ toast('FAP inválido (0,5 a 2,0).','error'); return; }
+  if(isNaN(terc)||terc<0||terc>10){ toast('Terceiros inválido (0 a 10).','error'); return; }
+  var u=obterUsuarioAtual()||{};
+  var r=await sb.from('folha_encargos_empresa').upsert([{ cliente_id:clienteIdAtual(), recolhe_patronal:ativo, rat_percentual:rat, fap:fap, terceiros_percentual:terc, atualizado_em:new Date().toISOString(), atualizado_por:u.email||null }], { onConflict:'cliente_id' });
+  if(r.error){ toast('Erro ao salvar: '+r.error.message,'error'); return; }
+  toast('Encargos da empresa salvos.','success');
+  await carregarGuias();
 }
 async function gerarGuiasPagar(){
   var novas=guiasEstado.lista.filter(function(g){ return g.valor>0 && !guiasEstado.existentes[g.tag]; });
@@ -1543,7 +1603,7 @@ function imprimirGuias(){
     resumo:[['Total das guias','R$ '+moedaBR(tot)],['Vencimento',dataGuiaBR(lista[0].venc)]],
     colunas:[{t:'Guia',w:2.4},{t:'Como pagar',w:2.8},{t:'Vencimento',w:1.2},{t:'Valor',w:1.3,a:'right'},{t:'Situação',w:1.8}],
     linhas:linhas, totais:['TOTAL','','','R$ '+moedaBR(tot),''],
-    observacao:'INSS: apenas a parte descontada dos funcionários (a parte patronal não está incluída). Valores oficiais conforme eSocial/DCTFWeb e FGTS Digital. Vencimento com antecipação para o dia útil anterior quando o dia 20 não é útil.',
+    observacao:((encargosEstado.cfg && encargosEstado.cfg.recolhe_patronal)?'INSS dos funcionários (descontado) e INSS patronal/RAT/terceiros calculados conforme as alíquotas configuradas para a empresa; confira RAT e terceiros com a contabilidade. ':'INSS: apenas a parte descontada dos funcionários (a parte patronal não está incluída). ')+'Valores oficiais conforme eSocial/DCTFWeb e FGTS Digital. Vencimento com antecipação para o dia útil anterior quando o dia 20 não é útil.',
     assinaturas:['Responsável pela folha','Aprovação']
   });
 }
