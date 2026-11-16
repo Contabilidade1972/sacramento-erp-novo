@@ -75,6 +75,7 @@
         { nome:"Importar funcionários por planilha", url:"importar_funcionarios.html", icon:"fa-users", keywords:["importar","importacao","funcionarios","funcionario","colaboradores","empregados","planilha","csv","folha","rh","migrar","dominio"] },
         { nome:"Importar cadastros por planilha (clientes e fornecedores)", url:"importar_cadastros.html", icon:"fa-file-csv", keywords:["importar","importacao","cadastros","planilha","csv","clientes","fornecedores","parceiros","migrar","dominio"] },
         { nome:"Importar dados do Domínio (ECD)", url:"importar_dados.html", icon:"fa-file-import", keywords:["importar","importacao","dominio","ecd","sped","migrar","migracao","plano de contas","saldo de abertura"] },
+        { nome:"Importar plano de contas, saldos e diário por planilha", url:"importar_planilhas.html", icon:"fa-table-list", keywords:["importar","importacao","planilha","csv","dominio","plano de contas","balancete","saldo de abertura","diario","lancamentos","migrar","migracao","simples","sem ecd"] },
         { nome:"Conexões Bancárias (extrato automático)", url:"bancos_conexoes.html", icon:"fa-plug", keywords:["conexao","conexoes","bancaria","bancarias","inter","extrato automatico","api","integracao"] },
         { nome:"Contas Bancárias / Caixa", url:"contas_bancarias.html", icon:"fa-university", keywords:["banco","caixa","saldo"] },
         { nome:"Fluxo de Caixa", url:"fluxo_de_caixa.html", icon:"fa-chart-line", keywords:["fluxo","caixa","entrada","saida"] },
