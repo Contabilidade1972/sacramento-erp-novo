@@ -1374,6 +1374,7 @@ async function reabrirFolha(){
 
 // ----- contabilização da folha (lançamento automático na Contabilidade) -----
 var CONTAS_FOLHA = { desp_sal:'5.1.1.01', desp_enc:'5.1.1.03', pag_sal:'2.1.2.01', inss:'2.1.2.03', fgts:'2.1.2.04', irrf:'2.1.2.05', outros:'2.1.4.03' };
+var CONTA_PATRONAL = '2.1.2.09';
 async function contabilizarFolha(){
   var comp = folhaEstado.comp, k = folhaEstado.key;
   if(!comp || comp.status!=='fechada'){ toast('Feche a competência antes de contabilizar.', 'error'); return; }
@@ -1388,19 +1389,24 @@ async function contabilizarFolha(){
   var codigos = Object.keys(CONTAS_FOLHA).map(function(x){ return CONTAS_FOLHA[x]; });
   btn.disabled = true;
   try {
+    await carregarGuias();
+    var gp = guiasDaFolha().filter(function(g){ return /:patronal$/.test(g.tag); })[0], patronal = gp ? r2(gp.valor) : 0;
+    if(patronal>0) codigos.push(CONTA_PATRONAL);
     var rc = await sb.from('contab_contas').select('id,codigo,analitica,ativa').eq('cliente_id', cid).in('codigo', codigos);
     if(rc.error) throw new Error(rc.error.message);
     var porCod = {}; (rc.data||[]).forEach(function(c){ porCod[c.codigo]=c; });
     var falta = codigos.filter(function(c){ return !porCod[c] || !porCod[c].analitica || !porCod[c].ativa; });
+    if(falta.indexOf(CONTA_PATRONAL)>=0) throw new Error('Falta a conta '+CONTA_PATRONAL+' (INSS Patronal a Recolher) no plano de contas desta empresa. Crie-a em Contabilidade > Plano de Contas (grupo 2.1.2, analítica, natureza credora) ou peça ao suporte para rodar a atualização do plano.');
     if(falta.length) throw new Error('Faltam contas no plano de contas desta empresa: '+falta.join(', ')+'. Em Contabilidade, aba Plano de Contas, use "Importar plano padrão" (ou crie essas contas).');
     var partidas = [];
     function add(cod, tipo, v){ v=r2(v); if(v>0) partidas.push({ conta_id: porCod[cod].id, tipo: tipo, valor: v }); }
-    add(CONTAS_FOLHA.desp_sal,'D',despSal); add(CONTAS_FOLHA.desp_enc,'D',fgts);
+    add(CONTAS_FOLHA.desp_sal,'D',despSal); add(CONTAS_FOLHA.desp_enc,'D',fgts+patronal);
     add(CONTAS_FOLHA.pag_sal,'C',liq); add(CONTAS_FOLHA.inss,'C',inss); add(CONTAS_FOLHA.irrf,'C',irrf); add(CONTAS_FOLHA.fgts,'C',fgts); add(CONTAS_FOLHA.outros,'C',outros);
+    if(patronal>0) add(CONTA_PATRONAL,'C',patronal);
     var dia = ultimoDiaMes(k), data = k+'-'+String(dia).padStart(2,'0');
     var r = await sb.rpc('contab_lancar', { p_cliente: cid, p_data: data, p_historico: 'Folha de pagamento '+compRotulo(k)+' ('+folhaEstado.itens.length+' funcionário(s))', p_origem: 'folha:'+comp.id, p_partidas: partidas });
     if(r.error) throw new Error(r.error.message);
-    toast('Folha contabilizada: salários, INSS, FGTS e IRRF lançados na Contabilidade.', 'success');
+    toast('Folha contabilizada: salários, INSS, FGTS e IRRF'+(patronal>0?' e INSS patronal/RAT/terceiros':'')+' lançados na Contabilidade.', 'success');
     await carregarFolha();
   } catch(e){ toast('Erro: '+e.message, 'error'); }
   finally { btn.disabled = false; }
