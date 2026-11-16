@@ -128,8 +128,9 @@
             </div>
             <div>
                 <label>Regime Tributário *</label>
-                <select id="emp_regime" class="form-control" style="background:#fff;">
-                    <option value="Simples Nacional (ME / I.S.)">Simples Nacional (ME / I.S.)</option>
+                <select id="emp_regime" class="form-control" style="background:#fff;" onchange="atualizarCamposSimples()">
+                    <option value="">Selecione o regime...</option>
+                    <option value="Simples Nacional">Simples Nacional</option>
                     <option value="Lucro Presumido">Lucro Presumido</option>
                     <option value="Lucro Real">Lucro Real</option>
                     <option value="MEI">MEI</option>
@@ -142,6 +143,32 @@
                     <option value="Produção">Produção</option>
                 </select>
             </div>
+        </div>
+
+        <div id="blocoSimples" style="display:none; background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:14px 16px; margin-top:6px;">
+            <div class="form-row">
+                <div>
+                    <label>Anexo do Simples Nacional</label>
+                    <select id="emp_simples_anexo" class="form-control" style="background:#fff;">
+                        <option value="">Não informado</option>
+                        <option value="I">Anexo I (comércio)</option>
+                        <option value="II">Anexo II (indústria)</option>
+                        <option value="III">Anexo III (serviços)</option>
+                        <option value="IV">Anexo IV (serviços)</option>
+                        <option value="V">Anexo V (serviços)</option>
+                        <option value="Misto">Mais de um anexo</option>
+                    </select>
+                </div>
+                <div>
+                    <label>IBS/CBS a partir de 2027</label>
+                    <select id="emp_simples_ibs_cbs" class="form-control" style="background:#fff;">
+                        <option value="">Não informado</option>
+                        <option value="das">Dentro do DAS (padrão)</option>
+                        <option value="regular">Regime regular de IBS/CBS (opção feita)</option>
+                    </select>
+                </div>
+            </div>
+            <div style="font-size:12px; color:#0c4a6e; margin-top:8px; line-height:1.5;"><i class="fas fa-info-circle"></i> O Simples Nacional pode apurar IBS/CBS dentro do DAS ou optar pelo regime regular (híbrido), que gera crédito ao cliente. A janela de opção para 2027 foi em setembro de 2026: confirme com a contabilidade o que foi escolhido. No Simples (Anexos I, II, III e V) a parte patronal do INSS já está dentro do DAS; no Anexo IV ela é recolhida à parte.</div>
         </div>
 
         <!-- 2. ENDEREÇO FISCAL -->
@@ -323,13 +350,26 @@ async function carregarParametrosFiscais(){
         document.getElementById('emp_bairro').value = data.bairro || '';
         document.getElementById('emp_cidade').value = `${data.cidade || 'Belo Horizonte'} - ${data.uf || 'MG'}`;
         document.getElementById('emp_email_fiscal').value = data.email || '';
+        document.getElementById('emp_regime').value = data.regime_tributario || '';
+        document.getElementById('emp_simples_anexo').value = data.simples_anexo || '';
+        document.getElementById('emp_simples_ibs_cbs').value = data.simples_ibs_cbs || '';
+        if(data.ambiente_emissao) document.getElementById('emp_ambiente').value = data.ambiente_emissao;
+        atualizarCamposSimples();
     }
 
     await verificarStatusCertificado(cid);
 }
 
+function atualizarCamposSimples(){
+    var b = document.getElementById('blocoSimples');
+    if(b) b.style.display = (document.getElementById('emp_regime').value === 'Simples Nacional') ? '' : 'none';
+}
+
 async function salvarParametrosFiscais(){
     var cid = clienteIdAtual();
+    var regime = document.getElementById('emp_regime').value;
+    if(!regime){ toast("Selecione o Regime Tributário da empresa.", "error"); return; }
+    var simples = (regime === 'Simples Nacional');
     let cnpj = document.getElementById('emp_cnpj').value.trim();
     let razao_social = document.getElementById('emp_razao').value.trim();
     let inscricao_municipal = document.getElementById('emp_im').value.trim();
@@ -357,7 +397,12 @@ async function salvarParametrosFiscais(){
         bairro,
         cidade,
         uf,
-        email
+        email,
+        inscricao_estadual,
+        regime_tributario: regime,
+        simples_anexo: simples ? (document.getElementById('emp_simples_anexo').value || null) : null,
+        simples_ibs_cbs: simples ? (document.getElementById('emp_simples_ibs_cbs').value || null) : null,
+        ambiente_emissao: document.getElementById('emp_ambiente').value
     };
 
     var { error } = await sb.from('clientes_contratantes').update(payload).eq('id', cid);
