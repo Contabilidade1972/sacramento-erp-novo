@@ -156,7 +156,7 @@
 
     <div class="search-global-box">
         <i class="fas fa-search"></i>
-        <input type="text" id="inputBuscaGlobal" placeholder="Pesquisar módulo, financeiro..." oninput="executarBuscaGlobal(this.value)">
+        <input type="text" id="inputBuscaGlobal" name="busca_modulo_sacramento" placeholder="Pesquisar módulo, financeiro..." autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute('readonly')" oninput="executarBuscaGlobal(this.value)">
         <div class="search-results-dropdown" id="dropdownResultados"></div>
     </div>
 
@@ -425,6 +425,9 @@
         { nome: "Importar funcionários por planilha", url: "importar_funcionarios.html", icon: "fa-users", keywords: ["importar", "importacao", "funcionarios", "funcionario", "colaboradores", "empregados", "planilha", "csv", "folha", "rh", "migrar", "dominio"] },
         { nome: "Importar cadastros por planilha (clientes e fornecedores)", url: "importar_cadastros.html", icon: "fa-file-csv", keywords: ["importar", "importacao", "cadastros", "planilha", "csv", "clientes", "fornecedores", "parceiros", "migrar", "dominio"] },
         { nome: "Importar dados do Domínio (ECD)", url: "importar_dados.html", icon: "fa-file-import", keywords: ["importar", "importacao", "dominio", "ecd", "sped", "migrar", "migracao", "plano de contas", "saldo de abertura"] },
+        { nome: "Notas Fiscais (XML) — importar NF-e e NFS-e", url: "fiscal_notas.html", icon: "fa-file-invoice", keywords: ["notas", "nota", "fiscal", "fiscais", "xml", "nfe", "nfse", "importar", "compras", "vendas", "entrada", "saida", "servico"] },
+        { nome: "Livros Fiscais", url: "fiscal_livros.html", icon: "fa-book-open", keywords: ["livro", "livros", "fiscal", "fiscais", "entrada", "saida", "apuracao", "registro"] },
+        { nome: "Apuração de Impostos (mensal)", url: "fiscal_apuracao.html", icon: "fa-calculator", keywords: ["apuracao", "impostos", "simples", "das", "iss", "icms", "pis", "cofins", "fiscal", "mensal"] },
         { nome: "Importar plano de contas, saldos e diário por planilha", url: "importar_planilhas.html", icon: "fa-table-list", keywords: ["importar", "importacao", "planilha", "csv", "dominio", "plano de contas", "balancete", "saldo de abertura", "diario", "lancamentos", "migrar", "migracao", "simples", "sem ecd"] },
         { nome: "Escrituração Contábil (ECD / ECF)", url: "modulo_contabil.html", icon: "fa-book", keywords: ["contabilidade", "contabil", "escrituracao", "lancamento", "balancete", "balanco", "dre", "ecd", "ecf", "fiscal"] },
         { nome: "Registro de Acessos da Contabilidade (LGPD)", url: "acessos_contabilidade.html", icon: "fa-user-shield", keywords: ["acessos", "lgpd", "quem acessou", "contabilidade", "transparencia", "registro"] },
@@ -457,6 +460,21 @@
         if(btn) btn.innerHTML = isDark ? '<i class="fas fa-sun" style="color:#f59e0b;"></i>' : '<i class="fas fa-moon" style="color:#ffd700;"></i>';
     }
 
+    /* Impede o Chrome de abrir a busca do topo já preenchida com o e-mail do login */
+    function limparEmailDaBusca() {
+        const inp = document.getElementById('inputBuscaGlobal');
+        if (inp && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((inp.value || '').trim())) {
+            inp.value = '';
+            const dd = document.getElementById('dropdownResultados'); if (dd) dd.style.display = 'none';
+        }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+        limparEmailDaBusca();
+        let tentBusca = 0;
+        const timerBusca = setInterval(() => { limparEmailDaBusca(); if (++tentBusca > 40) clearInterval(timerBusca); }, 500);
+        window.addEventListener('pageshow', limparEmailDaBusca);
+        window.addEventListener('focus', limparEmailDaBusca);
+    });
     window.addEventListener('DOMContentLoaded', () => {
         if (localStorage.getItem('erp_tema_noite') === 'true') {
             document.body.classList.add('dark-mode');
@@ -543,9 +561,12 @@
             return;
         }
 
-        let encontrados = rotasModulos.filter(m => 
-            m.nome.toLowerCase().includes(query) || m.keywords.some(k => k.includes(query))
-        );
+        const semAc = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const tokens = semAc(query).split(/\s+/).filter(Boolean);
+        let encontrados = rotasModulos.filter(m => {
+            const texto = semAc(m.nome + ' ' + m.keywords.join(' '));
+            return tokens.every(t => texto.includes(t) || (t.length > 3 && /s$/.test(t) && texto.includes(t.replace(/(es|s)$/, ''))));
+        });
 
         if(encontrados.length === 0) {
             dropdown.innerHTML = `<div class="search-item" style="color:var(--text-light);">Nenhum módulo encontrado.</div>`;
