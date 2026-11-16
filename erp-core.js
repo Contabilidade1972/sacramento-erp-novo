@@ -2,6 +2,7 @@
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
     - v7.2: TRAVA DE MÓDULOS POR LICENÇA — carrega licenca-guard.js (bloqueio, faixas de aviso, degustação) + rota de busca "Licenças"
     - v7.1: causa real = campos type=password do modal "trocar senha" faziam o Chrome preencher o e-mail na busca; agora não há campo password na página.
+    - v7.3: busca do topo não abre mais com e-mail; busca tolerante (plural/várias palavras); atalhos Notas Fiscais, Livros e Apuração
     - v7.1: campos de busca/filtro não são mais preenchidos com o e-mail do login (autocomplete off + limpeza contínua)
     - v7.0: AVISO DE CERTIFICADO DIGITAL VENCIDO / A VENCER no topo de todas as páginas (+ rota de busca)
     - v6.9: ASSISTENTE DE IA (chat de ajuda) — carrega assistente-ia.js
@@ -75,6 +76,9 @@
         { nome:"Importar funcionários por planilha", url:"importar_funcionarios.html", icon:"fa-users", keywords:["importar","importacao","funcionarios","funcionario","colaboradores","empregados","planilha","csv","folha","rh","migrar","dominio"] },
         { nome:"Importar cadastros por planilha (clientes e fornecedores)", url:"importar_cadastros.html", icon:"fa-file-csv", keywords:["importar","importacao","cadastros","planilha","csv","clientes","fornecedores","parceiros","migrar","dominio"] },
         { nome:"Importar dados do Domínio (ECD)", url:"importar_dados.html", icon:"fa-file-import", keywords:["importar","importacao","dominio","ecd","sped","migrar","migracao","plano de contas","saldo de abertura"] },
+        { nome:"Notas Fiscais (XML) — importar NF-e e NFS-e", url:"fiscal_notas.html", icon:"fa-file-invoice", keywords:["notas","nota","fiscal","fiscais","xml","nfe","nfse","importar","compras","vendas","entrada","saida","servico"] },
+        { nome:"Livros Fiscais", url:"fiscal_livros.html", icon:"fa-book-open", keywords:["livro","livros","fiscal","fiscais","entrada","saida","apuracao","registro"] },
+        { nome:"Apuração de Impostos (mensal)", url:"fiscal_apuracao.html", icon:"fa-calculator", keywords:["apuracao","impostos","simples","das","iss","icms","pis","cofins","fiscal","mensal"] },
         { nome:"Importar plano de contas, saldos e diário por planilha", url:"importar_planilhas.html", icon:"fa-table-list", keywords:["importar","importacao","planilha","csv","dominio","plano de contas","balancete","saldo de abertura","diario","lancamentos","migrar","migracao","simples","sem ecd"] },
         { nome:"Conexões Bancárias (extrato automático)", url:"bancos_conexoes.html", icon:"fa-plug", keywords:["conexao","conexoes","bancaria","bancarias","inter","extrato automatico","api","integracao"] },
         { nome:"Contas Bancárias / Caixa", url:"contas_bancarias.html", icon:"fa-university", keywords:["banco","caixa","saldo"] },
@@ -380,6 +384,16 @@
           .catch(function () { if (tentativasWL < 30) setTimeout(aplicarWhiteLabel, 400); });
     }
 
+    // v7.3: busca tolerante (várias palavras, plural, sem acento): "notas fiscais" acha "Notas Fiscais (XML)"
+    function buscaCombina(m, q, semAcento) {
+        var texto = semAcento(m.nome + ' ' + m.keywords.join(' '));
+        return q.split(/\s+/).filter(Boolean).every(function (t) {
+            if (texto.indexOf(t) > -1) return true;
+            if (t.length > 3 && /s$/.test(t) && texto.indexOf(t.replace(/(es|s)$/, '')) > -1) return true;
+            return false;
+        });
+    }
+
     var filtroLimpo = false;
     function limparFiltroEmail(forcar) {
         var u = usuario();
@@ -390,7 +404,17 @@
             var inp = campos[i];
             // v7.1: impede o navegador (Chrome) de preencher campos de busca/filtro com o e-mail do login
             if (inp.getAttribute('autocomplete') !== 'off') inp.setAttribute('autocomplete', 'off');
-            if (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal') continue;
+            var ehBuscaGlobal = (inp.id === 'inputBuscaGlobalCore' || inp.id === 'inputBuscaGlobal');
+            if (ehBuscaGlobal) {
+                // v7.3: a busca do topo nunca deve abrir com e-mail; limpa só se o valor for um e-mail (nunca o que a pessoa digita de verdade)
+                var vb = (inp.value || '').toLowerCase().trim();
+                if (vb && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(vb)) {
+                    inp.value = '';
+                    inp.dispatchEvent(new Event('input', { bubbles: true }));
+                    limpou = true;
+                }
+                continue;
+            }
             if (inp === document.activeElement) continue; // nunca apaga o que a pessoa está digitando
             var val = (inp.value || '').toLowerCase().trim();
             // v7.1: além do e-mail do login salvo, limpa qualquer e-mail que o navegador tenha colocado em CAMPO DE BUSCA/FILTRO
@@ -431,7 +455,7 @@
                     '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">' + mod + '</span></div>' +
                 '</a>' +
                 '<div class="search-global-box"><i class="fas fa-search"></i>' +
-                    '<input type="text" id="inputBuscaGlobalCore" placeholder="Pesquisar módulo..." autocomplete="off">' +
+                    '<input type="text" id="inputBuscaGlobalCore" name="busca_modulo_sacramento" placeholder="Pesquisar módulo..." autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute(\'readonly\')">' +
                     '<div class="search-results-dropdown" id="dropdownResultadosCore"></div>' +
                 '</div>' +
                 '<div class="site-nav-right">' +
@@ -500,9 +524,7 @@
             inputBusca.addEventListener('input', function(e) {
                 var q = semAcento(e.target.value);
                 if (!q) { dropdown.style.display = 'none'; return; }
-                var encontrados = rotasModulos.filter(function(m) {
-                    return semAcento(m.nome).includes(q) || m.keywords.some(function(k){ return semAcento(k).includes(q); });
-                });
+                var encontrados = rotasModulos.filter(function(m) { return buscaCombina(m, q, semAcento); });
                 if (encontrados.length === 0) {
                     dropdown.innerHTML = '<div class="search-dropdown-header">Resultados</div><div class="search-item" style="color:#64748b;">Nenhum módulo encontrado.</div>';
                 } else {
