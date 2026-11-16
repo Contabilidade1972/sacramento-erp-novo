@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar cadastros por planilha — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1200px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); } .btn-acao:disabled { opacity:.45; cursor:not-allowed; }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .info { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .erro { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:14px 0; }
+        .card-n { border:1px solid var(--border); border-radius:12px; padding:12px 14px; background:#fff; }
+        .card-n b { display:block; font-size:20px; color:var(--secondary); } .card-n span { font-size:11px; color:var(--text-light); text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); }
+        .tabela td { padding:9px 12px; border-bottom:1px solid var(--border); }
+        .form-control { padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; min-width:280px; }
+        .tabela-rolagem { max-height:420px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.vermelho { background:#fee2e2; color:#991b1b; } .chip.amarelo { background:#fef3c7; color:#92400e; }
+        .barra { height:12px; background:#e2e8f0; border-radius:8px; overflow:hidden; margin:10px 0 4px; } .barra i { display:block; height:100%; width:0; background:var(--success); transition:width .2s; }
+        .linha-chk { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.5; margin-top:10px; }
+        .linha-chk input { margin-top:3px; width:16px; height:16px; }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; max-width:440px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        @media (max-width:800px) { .cards { grid-template-columns:repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="parceiros.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar aos Parceiros</a>
+    </div>
+    <div>
+        <div class="page-title"><i class="fas fa-file-csv" style="color:var(--primary);"></i> Importar cadastros por planilha</div>
+        <div class="page-subtitle">Traga clientes e fornecedores de uma vez, a partir de uma planilha CSV (a que o Domínio exporta serve, ou o nosso modelo).</div>
+    </div>
+
+    <div class="info"><i class="fas fa-circle-info"></i> <b>Como usar:</b> 1) baixe o <b>modelo</b> (ou use a planilha do Domínio salva como <b>CSV</b>); 2) preencha; 3) escolha o <b>centro de custo</b> e o arquivo; 4) confira o resumo; 5) clique em <b>Importar</b>. O sistema barra CNPJ/CPF inválido, repetido ou que já existe. <b>Importar o mesmo arquivo de novo não duplica nada</b> e não altera quem já está cadastrado.</div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-upload"></i> 1. Escolha o arquivo <span id="empresaTxt" style="margin-left:auto;font-weight:600;font-size:12px;color:var(--text-light);"></span></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+            <button class="btn-acao cinza" onclick="baixarModelo()"><i class="fas fa-download"></i> Baixar modelo de planilha</button>
+        </div>
+        <div style="margin-bottom:12px;"><label style="font-size:12px;font-weight:700;color:var(--text-light);">CENTRO DE CUSTO (obrigatório no cadastro de parceiros)</label><br>
+            <select id="centroCusto" class="form-control"><option value="">Carregando...</option></select></div>
+        <input type="file" id="arquivo" accept=".csv,.txt,text/csv,text/plain" onchange="aoEscolher(this)">
+        <div id="msgLeitura"></div>
+    </div>
+
+    <div class="panel" id="painelResumo" style="display:none;">
+        <div class="panel-title"><i class="fas fa-clipboard-check"></i> 2. Confira o resumo</div>
+        <div id="resumo"></div>
+        <div class="tabela-rolagem" style="margin-top:14px;"><table class="tabela"><thead><tr><th>Linha</th><th>Situação</th><th>Tipo</th><th>CNPJ/CPF</th><th>Nome</th><th>Observação</th></tr></thead><tbody id="tbodyPrev"></tbody></table></div>
+    </div>
+
+    <div class="panel" id="painelImportar" style="display:none;">
+        <div class="panel-title"><i class="fas fa-database"></i> 3. Importar</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-acao sucesso" id="btnImportar" onclick="importar()"><i class="fas fa-check"></i> Importar agora</button>
+            <button class="btn-acao cinza" onclick="imprimirConferencia()"><i class="fas fa-print"></i> Imprimir conferência</button>
+        </div>
+        <div id="progresso" style="display:none;margin-top:14px;"><div class="barra"><i id="barra"></i></div><div id="progTxt" style="font-size:12px;color:var(--text-light);"></div></div>
+        <div id="resultado"></div>
+    </div>
+</div>
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, EMP = null, PREP = null, ARQ = '';
+
+    /* ===== leitura e validação da planilha de cadastros ===== */
+    function soDigitos(s) { return String(s == null ? '' : s).replace(/\D/g, ''); }
+    function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+    function cpfValido(c) {
+        if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+        for (let t = 9; t < 11; t++) { let s = 0; for (let i = 0; i < t; i++) s += parseInt(c[i], 10) * (t + 1 - i); const d = ((s * 10) % 11) % 10; if (d !== parseInt(c[t], 10)) return false; }
+        return true;
+    }
+    function cnpjValido(c) {
+        if (c.length !== 14 || /^(\d)\1+$/.test(c)) return false;
+        const calc = function (n) { let s = 0, p = n - 7; for (let i = 0; i < n; i++) { s += parseInt(c[i], 10) * p--; if (p < 2) p = 9; } const r = s % 11; return r < 2 ? 0 : 11 - r; };
+        return calc(12) === parseInt(c[12], 10) && calc(13) === parseInt(c[13], 10);
+    }
+    function documentoValido(doc) { const d = soDigitos(doc); return d.length === 11 ? cpfValido(d) : (d.length === 14 ? cnpjValido(d) : false); }
+    function normalizarTipo(t) {
+        t = semAcento(t || 'cliente');
+        if (t.indexOf('ambos') >= 0 || (t.indexOf('cliente') >= 0 && t.indexOf('fornecedor') >= 0) || (t.indexOf('cliente') >= 0 && t.indexOf('forn') >= 0)) return 'Cliente & Fornecedor';
+        if (t.indexOf('forn') >= 0) return 'Fornecedor';
+        return 'Cliente';
+    }
+    // CSV simples: detecta ; , ou tab; aceita aspas e quebras de linha dentro de aspas
+    function lerCSV(texto) {
+        if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+        const prim = texto.split(/\r?\n/)[0] || '';
+        const cont = function (ch) { return prim.split(ch).length - 1; };
+        let sep = ';'; if (cont(';') < cont(',')) sep = ','; if (cont('\t') > cont(sep)) sep = '\t';
+        const linhas = []; let campo = '', linha = [], aspas = false;
+        for (let i = 0; i < texto.length; i++) {
+            const ch = texto[i];
+            if (aspas) {
+                if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; } else campo += ch;
+            } else if (ch === '"') aspas = true;
+            else if (ch === sep) { linha.push(campo); campo = ''; }
+            else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texto[i + 1] === '\n') i++; linha.push(campo); campo = ''; if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha); linha = []; }
+            else campo += ch;
+        }
+        linha.push(campo); if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha);
+        return linhas;
+    }
+    const CAMPOS = {
+        tipo_cadastro: ['tipo', 'tipo cadastro', 'tipo de cadastro', 'categoria'],
+        cnpj_cpf: ['cnpj cpf', 'cpf cnpj', 'cnpj', 'cpf', 'documento', 'cnpj ou cpf', 'inscricao federal', 'cgc'],
+        nome: ['nome', 'razao social', 'nome razao social', 'razao social nome', 'nome empresarial', 'cliente', 'fornecedor', 'nome do cliente'],
+        nome_fantasia: ['nome fantasia', 'fantasia', 'apelido', 'nome social'],
+        email: ['email', 'e mail'],
+        telefone: ['telefone', 'fone', 'celular', 'telefone celular', 'whatsapp'],
+        cep: ['cep'],
+        logradouro: ['logradouro', 'endereco', 'rua'],
+        numero: ['numero', 'num', 'n'],
+        complemento: ['complemento'],
+        bairro: ['bairro'],
+        cidade_uf: ['cidade uf', 'cidade', 'municipio', 'cidade estado'],
+        uf: ['uf', 'estado'],
+        inscricao_estadual: ['inscricao estadual', 'ie', 'insc estadual'],
+        inscricao_municipal: ['inscricao municipal', 'im', 'insc municipal'],
+        observacoes: ['observacoes', 'observacao', 'obs']
+    };
+    function mapearColunas(cab) {
+        const idx = {}, naoReconhecidas = [];
+        cab.forEach(function (h, i) {
+            const n = semAcento(h); let achou = null;
+            Object.keys(CAMPOS).forEach(function (k) { if (!achou && CAMPOS[k].indexOf(n) >= 0) achou = k; });
+            if (achou && idx[achou] == null) idx[achou] = i; else if (String(h).trim()) naoReconhecidas.push(String(h).trim());
+        });
+        return { idx: idx, naoReconhecidas: naoReconhecidas };
+    }
+    // existentes: conjunto de documentos (só dígitos) já cadastrados na empresa
+    function prepararCadastros(linhas, existentes) {
+        if (!linhas.length) return { erro: 'A planilha está vazia.' };
+        const m = mapearColunas(linhas[0]);
+        if (m.idx.nome == null || m.idx.cnpj_cpf == null) return { erro: 'Não achei as colunas obrigatórias. A primeira linha precisa ter pelo menos "cnpj_cpf" e "nome". Baixe o modelo para ver o formato.' };
+        const vistos = {}, itens = [];
+        const val = function (r, k) { return m.idx[k] == null ? '' : String(r[m.idx[k]] == null ? '' : r[m.idx[k]]).trim(); };
+        for (let i = 1; i < linhas.length; i++) {
+            const r = linhas[i], doc = soDigitos(val(r, 'cnpj_cpf')), nome = val(r, 'nome');
+            const it = { linha: i + 1, doc: doc, nome: nome, tipo: normalizarTipo(val(r, 'tipo_cadastro')), status: 'novo', motivo: '', dados: null };
+            if (!nome && !doc) continue;
+            if (!nome) { it.status = 'erro'; it.motivo = 'Falta o nome.'; }
+            else if (!doc) { it.status = 'erro'; it.motivo = 'Falta o CNPJ/CPF.'; }
+            else if (!documentoValido(doc)) { it.status = 'erro'; it.motivo = 'CNPJ/CPF inválido.'; }
+            else if (existentes[doc]) { it.status = 'existe'; it.motivo = 'Já cadastrado: ' + existentes[doc]; }
+            else if (vistos[doc]) { it.status = 'repetido'; it.motivo = 'Repetido no arquivo (linha ' + vistos[doc] + ').'; }
+            if (it.status === 'novo') {
+                vistos[doc] = it.linha;
+                let cidade = val(r, 'cidade_uf'); const uf = val(r, 'uf');
+                if (uf && cidade && cidade.indexOf('/') < 0 && cidade.indexOf('-') < 0) cidade = cidade + '/' + uf.toUpperCase(); else if (uf && !cidade) cidade = uf.toUpperCase();
+                it.dados = {
+                    tipo_cadastro: it.tipo, cnpj_cpf: doc, nome: nome, nome_fantasia: val(r, 'nome_fantasia'), email: val(r, 'email'), telefone: val(r, 'telefone'),
+                    cep: val(r, 'cep'), logradouro: val(r, 'logradouro'), numero: val(r, 'numero'), complemento: val(r, 'complemento'), bairro: val(r, 'bairro'),
+                    cidade_uf: cidade, inscricao_estadual: val(r, 'inscricao_estadual'), inscricao_municipal: val(r, 'inscricao_municipal'), observacoes: val(r, 'observacoes')
+                };
+            } else if (doc && !vistos[doc] && it.status !== 'existe') { /* mantém */ }
+            itens.push(it);
+        }
+        const tot = { novo: 0, existe: 0, erro: 0, repetido: 0 }; itens.forEach(function (x) { tot[x.status]++; });
+        return { itens: itens, totais: tot, naoReconhecidas: m.naoReconhecidas, colunas: Object.keys(m.idx) };
+    }
+    function modeloCSV() {
+        const cab = ['tipo_cadastro', 'cnpj_cpf', 'nome', 'nome_fantasia', 'email', 'telefone', 'cep', 'logradouro', 'numero', 'complemento', 'bairro', 'cidade_uf', 'inscricao_estadual', 'inscricao_municipal', 'observacoes'];
+        const ex = ['Cliente', '11.222.333/0001-81', 'EMPRESA EXEMPLO LTDA', 'Exemplo', 'contato@exemplo.com.br', '(11) 99999-0000', '01001-000', 'Rua Exemplo', '100', 'Sala 2', 'Centro', 'São Paulo/SP', '', '', 'Linha de exemplo: apague antes de importar'];
+        return '﻿' + cab.join(';') + '\r\n' + ex.join(';') + '\r\n';
+    }
+
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function fmtDoc(d) { d = soDigitos(d); if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5'); if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4'); return d || '—'; }
+    function toast(msg, type) { const c = document.getElementById('toastContainer'); const x = document.createElement('div'); x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 7000); }
+    function clienteIdAtual() {
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    function decodificar(buf) { try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1252').decode(buf); } }
+    function baixarModelo() {
+        const blob = new Blob([modeloCSV()], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'modelo_cadastros_sacramento.csv'; document.body.appendChild(a); a.click(); a.remove();
+    }
+    async function carregarBase() {
+        CID = clienteIdAtual(); if (!CID) return;
+        try { const r = await sb.from('clientes_contratantes').select('id,razao_social,nome_fantasia,cnpj_cpf').eq('id', CID).maybeSingle(); EMP = r.data || null; } catch (e) {}
+        document.getElementById('empresaTxt').textContent = EMP ? ('Empresa selecionada: ' + (EMP.nome_fantasia || EMP.razao_social || CID)) : '';
+        const sel = document.getElementById('centroCusto');
+        try {
+            const r = await sb.from('centros_custo').select('*').eq('cliente_id', CID);
+            const lista = r.data || [];
+            sel.innerHTML = '<option value="">Selecione o centro de custo...</option>' + lista.map(function (cc) {
+                const v = (cc.codigo || cc.id || '') + ' - ' + (cc.nome || cc.descricao || 'Centro de custo'); return '<option value="' + esc(v) + '">' + esc(v) + '</option>';
+            }).join('');
+            if (!lista.length) sel.innerHTML = '<option value="">Nenhum centro de custo cadastrado nesta empresa</option>';
+        } catch (e) { sel.innerHTML = '<option value="">Não foi possível carregar os centros de custo</option>'; }
+    }
+    async function documentosExistentes() {
+        const mapa = {};
+        for (let ini = 0; ini < 200000; ini += 1000) {
+            const r = await sb.from('parceiros').select('nome,cnpj_cpf').eq('cliente_id', CID).range(ini, ini + 999);
+            if (r.error) throw new Error(r.error.message);
+            (r.data || []).forEach(function (p) { const d = soDigitos(p.cnpj_cpf); if (d) mapa[d] = p.nome || ''; });
+            if (!r.data || r.data.length < 1000) break;
+        }
+        return mapa;
+    }
+    async function aoEscolher(inp) {
+        const f = inp.files && inp.files[0]; PREP = null;
+        document.getElementById('painelResumo').style.display = 'none'; document.getElementById('painelImportar').style.display = 'none';
+        document.getElementById('resultado').innerHTML = ''; document.getElementById('progresso').style.display = 'none';
+        const msg = document.getElementById('msgLeitura'); msg.innerHTML = '';
+        if (!f) return;
+        ARQ = f.name;
+        if (!CID) { msg.innerHTML = '<div class="erro">Selecione uma empresa no topo da página.</div>'; return; }
+        if (/\.xlsx?$/i.test(f.name)) { msg.innerHTML = '<div class="erro">Este é um arquivo do Excel. No Excel, use <b>Arquivo → Salvar como → CSV (separado por vírgulas ou ponto e vírgula)</b> e escolha o CSV aqui.</div>'; return; }
+        if (f.size > 20 * 1024 * 1024) { msg.innerHTML = '<div class="erro">Arquivo muito grande (mais de 20 MB).</div>'; return; }
+        msg.innerHTML = '<div style="margin-top:10px;font-size:12px;color:var(--text-light);">Lendo o arquivo...</div>';
+        try {
+            const linhas = lerCSV(decodificar(await f.arrayBuffer()));
+            const ex = await documentosExistentes();
+            const P = prepararCadastros(linhas, ex);
+            if (P.erro) throw new Error(P.erro);
+            if (!P.itens.length) throw new Error('A planilha não tem nenhuma linha de dados.');
+            PREP = P; msg.innerHTML = ''; mostrarResumo();
+        } catch (e) { PREP = null; msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> ' + esc(e.message) + '</div>'; }
+    }
+    function chipStatus(s) { return s === 'novo' ? '<span class="chip verde">Novo</span>' : (s === 'existe' ? '<span class="chip amarelo">Já existe</span>' : (s === 'repetido' ? '<span class="chip amarelo">Repetido</span>' : '<span class="chip vermelho">Erro</span>')); }
+    function mostrarResumo() {
+        const T = PREP.totais, h = [];
+        h.push('<div class="cards"><div class="card-n"><b>' + T.novo + '</b><span>Novos a importar</span></div><div class="card-n"><b>' + T.existe + '</b><span>Já cadastrados</span></div><div class="card-n"><b>' + T.repetido + '</b><span>Repetidos no arquivo</span></div><div class="card-n"><b>' + T.erro + '</b><span>Com erro</span></div></div>');
+        if (T.erro) h.push('<div class="erro"><i class="fas fa-ban"></i> <b>' + T.erro + ' linha(s) com erro</b> não serão importadas (CNPJ/CPF inválido ou faltando, ou sem nome). Corrija na planilha e importe de novo: quem já entrou não duplica.</div>');
+        if (PREP.naoReconhecidas.length) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> Estas colunas não foram reconhecidas e serão ignoradas: <b>' + esc(PREP.naoReconhecidas.join(', ')) + '</b>.</div>');
+        if (!T.novo) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-circle-info"></i> Não há nenhum cadastro novo para importar neste arquivo.</div>');
+        document.getElementById('resumo').innerHTML = h.join('');
+        document.getElementById('tbodyPrev').innerHTML = PREP.itens.slice(0, 500).map(function (i) {
+            return '<tr><td>' + i.linha + '</td><td>' + chipStatus(i.status) + '</td><td>' + esc(i.tipo) + '</td><td>' + esc(fmtDoc(i.doc)) + '</td><td>' + esc(i.nome) + '</td><td>' + esc(i.motivo) + '</td></tr>';
+        }).join('') + (PREP.itens.length > 500 ? '<tr><td colspan="6" style="color:var(--text-light);">... e mais ' + (PREP.itens.length - 500) + ' linha(s) (todas são conferidas, só a lista na tela é limitada).</td></tr>' : '');
+        document.getElementById('painelResumo').style.display = '';
+        document.getElementById('btnImportar').disabled = !T.novo;
+        document.getElementById('painelImportar').style.display = '';
+    }
+    function progresso(pct, txt) { document.getElementById('progresso').style.display = ''; document.getElementById('barra').style.width = pct + '%'; document.getElementById('progTxt').textContent = txt; }
+    async function importar() {
+        if (!PREP || !PREP.totais.novo) return;
+        const cc = document.getElementById('centroCusto').value;
+        if (!cc) { toast('Escolha o centro de custo antes de importar.', 'error'); return; }
+        if (!confirm('Importar ' + PREP.totais.novo + ' cadastro(s) novo(s) para a empresa selecionada?')) return;
+        const btn = document.getElementById('btnImportar'); btn.disabled = true; document.getElementById('resultado').innerHTML = '';
+        const novos = PREP.itens.filter(function (i) { return i.status === 'novo'; }), TAM = 100; let gravados = 0;
+        try {
+            for (let i = 0; i < novos.length; i += TAM) {
+                progresso(Math.round(100 * i / novos.length), 'Importando (' + Math.min(i + TAM, novos.length) + ' de ' + novos.length + ')...');
+                const lote = novos.slice(i, i + TAM).map(function (n) { return Object.assign({}, n.dados, { centro_custo: cc, cliente_id: CID }); });
+                const r = await sb.from('parceiros').insert(lote);
+                if (r.error) throw new Error(r.error.message);
+                gravados += lote.length;
+            }
+            progresso(100, 'Concluído.');
+            document.getElementById('resultado').innerHTML = '<div class="ok"><i class="fas fa-circle-check"></i> <b>Importação concluída.</b> Cadastros novos gravados: ' + gravados + '. Confira em <a href="parceiros.html">Parceiros</a>.</div>';
+            toast('Importação concluída.', 'success');
+        } catch (e) {
+            document.getElementById('resultado').innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> <b>A importação parou:</b> ' + esc(e.message) + '<br>Já gravados nesta tentativa: ' + gravados + '. Importe o mesmo arquivo de novo: quem já entrou é reconhecido e pulado, sem duplicar.</div>';
+            toast('A importação parou. Veja a mensagem na tela.', 'error');
+        } finally { btn.disabled = false; }
+    }
+    function imprimirConferencia() {
+        if (!PREP) return;
+        if (typeof ERPPrint === 'undefined') { toast('O módulo de impressão não foi carregado. Recarregue a página.', 'error'); return; }
+        const T = PREP.totais;
+        ERPPrint.imprimir({
+            titulo: 'Conferência da importação de cadastros', subtitulo: 'Arquivo: ' + ARQ, codigo: 'IMP-CAD', orientacao: 'portrait',
+            empresa: EMP ? (EMP.nome_fantasia || EMP.razao_social) : undefined, cnpj: EMP ? fmtDoc(EMP.cnpj_cpf) : undefined,
+            filtros: [['Arquivo', ARQ]], resumo: [['Novos', String(T.novo)], ['Já existem', String(T.existe)], ['Erros', String(T.erro + T.repetido)]],
+            colunas: [{ t: 'Linha', w: 1 }, { t: 'Situação', w: 2 }, { t: 'CNPJ/CPF', w: 3 }, { t: 'Nome', w: 5 }, { t: 'Observação', w: 4 }],
+            linhas: PREP.itens.map(function (i) { return [String(i.linha), i.status === 'novo' ? 'Novo' : (i.status === 'existe' ? 'Já existe' : (i.status === 'repetido' ? 'Repetido' : 'Erro')), fmtDoc(i.doc), i.nome, i.motivo]; }),
+            observacao: 'Conferência feita antes da gravação. Depois de importar, confira a lista em Parceiros.', assinaturas: ['Responsável pela importação']
+        });
+    }
+    window.addEventListener('load', function () { carregarBase(); });
+</script>
+</body>
+</html>
