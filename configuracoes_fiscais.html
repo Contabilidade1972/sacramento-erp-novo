@@ -252,7 +252,7 @@ function toast(msg,type='success'){
     var c=document.getElementById('toastContainer'),x=document.createElement('div');
     if(!c){c=document.createElement('div');c.id='toastContainer';c.style.cssText='position:fixed;top:20px;right:20px;z-index:4000;display:flex;flex-direction:column;gap:8px';document.body.appendChild(c);}
     x.className='toast '+type;x.innerHTML='<i class="fas fa-info-circle"></i> '+msg;c.appendChild(x);
-    setTimeout(function(){x.remove();},type==='info'||msg.length<80?3000:7000);
+    setTimeout(function(){x.remove();},msg.length<80?3000:7000);
 }
 
 function escR(t){ return String(t==null?'':t).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
@@ -262,11 +262,20 @@ var receitaNova = null;
 var receitaMostrada = null, receitaMostradaSalva = false;
 var RECEITA_VAZIO = '<span style="color:var(--text-light);">Digite o CNPJ e clique na lupa azul para trazer CNAE principal e secundários, porte, natureza jurídica, situação cadastral e sócios. Eles ficam gravados quando você salvar.</span>';
 function soDigitos(v){ return String(v||'').replace(/\D/g,''); }
-function limparDadosReceita(){
-    if(!confirm('Limpar os dados da Receita Federal desta empresa? (a limpeza só é gravada quando você clicar em Salvar Parâmetros Fiscais)')) return;
+function zerarDadosReceita(){
     receitaNova = { cnae_principal:null, cnae_principal_desc:null, cnaes_secundarios:null, porte_empresa:null, natureza_juridica_desc:null, data_inicio_ativ:null, situacao_cadastral:null, capital_social_rf:null, telefone_fiscal:null, municipio_ibge:null, socios_rf:null, dados_receita_em:null, dados_receita_cnpj:null };
     receitaMostrada = null; receitaMostradaSalva = false;
     document.getElementById('blocoReceita').innerHTML = RECEITA_VAZIO + '<div style="margin-top:6px;color:#b45309;font-size:11px;"><b>Limpeza pendente:</b> clique em Salvar Parâmetros Fiscais para confirmar.</div>';
+}
+function limparDadosReceita(){
+    if(!confirm('Limpar os dados da Receita Federal desta empresa? (a limpeza só é gravada quando você clicar em Salvar Parâmetros Fiscais)')) return;
+    zerarDadosReceita();
+}
+var cnpjBase = '';
+function limparDadosDaEmpresa(){
+    ['emp_razao','emp_im','emp_ie','emp_cep','emp_logradouro','emp_numero','emp_complemento','emp_bairro','emp_cidade','emp_email_fiscal'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+    document.getElementById('emp_regime').value=''; document.getElementById('emp_simples_ibs_cbs').value='';
+    atualizarCamposSimples(); zerarDadosReceita();
 }
 function renderReceita(d, salvo){
     var b=document.getElementById('blocoReceita'); if(!b) return;
@@ -354,6 +363,7 @@ async function consultarCnpjEmitente(){
         msgRegime = ' Confira o regime tributário (a consulta não informou a opção pelo Simples).';
     }
     atualizarCamposSimples();
+    cnpjBase = rawCnpj;
     receitaNova = Object.assign({}, r.rf, { dados_receita_em: new Date().toISOString(), dados_receita_cnpj: rawCnpj });
     renderReceita(receitaNova, false);
     toast("Dados preenchidos pela Receita Federal (" + r.fonte + ")! CNAEs, porte e sócios abaixo." + msgRegime);
@@ -416,6 +426,7 @@ async function carregarParametrosFiscais(){
     var { data } = await sb.from('clientes_contratantes').select('*').eq('id', cid).maybeSingle();
     if(data) {
         document.getElementById('emp_cnpj').value = data.cnpj || '';
+        cnpjBase = soDigitos(data.cnpj);
         document.getElementById('emp_razao').value = data.razao_social || data.nome_fantasia || '';
         document.getElementById('emp_im').value = data.inscricao_municipal || '';
         document.getElementById('emp_ie').value = data.inscricao_estadual || 'Isento';
@@ -509,7 +520,14 @@ function sair() {
 
 document.addEventListener('DOMContentLoaded', function(){
     var c = document.getElementById('emp_cnpj');
-    if(c) c.addEventListener('input', function(){ if(receitaMostrada) renderReceita(receitaMostrada, receitaMostradaSalva); });
+    if(c) c.addEventListener('input', function(){
+        var d = soDigitos(c.value);
+        if(d.length === 14 && cnpjBase && d !== cnpjBase){
+            limparDadosDaEmpresa(); cnpjBase = d;
+            toast("CNPJ alterado: os dados da empresa anterior foram limpos (ainda não gravados). Clique na lupa azul para buscar os dados do novo CNPJ.", "info");
+        } else if(d.length === 14 && !cnpjBase){ cnpjBase = d; }
+        else if(receitaMostrada) renderReceita(receitaMostrada, receitaMostradaSalva);
+    });
 });
 
 window.onload = async function(){
