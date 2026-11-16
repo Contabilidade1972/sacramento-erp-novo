@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar funcionários por planilha — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1200px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); } .btn-acao:disabled { opacity:.45; cursor:not-allowed; }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .info { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .erro { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:14px 0; }
+        .card-n { border:1px solid var(--border); border-radius:12px; padding:12px 14px; background:#fff; }
+        .card-n b { display:block; font-size:20px; color:var(--secondary); } .card-n span { font-size:11px; color:var(--text-light); text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); }
+        .tabela td { padding:9px 12px; border-bottom:1px solid var(--border); }
+        .form-control { padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; min-width:280px; }
+        .tabela-rolagem { max-height:420px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.vermelho { background:#fee2e2; color:#991b1b; } .chip.amarelo { background:#fef3c7; color:#92400e; }
+        .barra { height:12px; background:#e2e8f0; border-radius:8px; overflow:hidden; margin:10px 0 4px; } .barra i { display:block; height:100%; width:0; background:var(--success); transition:width .2s; }
+        .linha-chk { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.5; margin-top:10px; }
+        .linha-chk input { margin-top:3px; width:16px; height:16px; }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; max-width:440px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        @media (max-width:800px) { .cards { grid-template-columns:repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="folha_rh.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar a Recursos Humanos &amp; Folha</a>
+    </div>
+    <div>
+        <div class="page-title"><i class="fas fa-users" style="color:var(--primary);"></i> Importar funcionários por planilha</div>
+        <div class="page-subtitle">Traga os funcionários de uma vez, a partir de uma planilha CSV (a que o Domínio exporta serve, ou o nosso modelo).</div>
+    </div>
+
+    <div class="info"><i class="fas fa-circle-info"></i> <b>Como usar:</b> 1) baixe o <b>modelo</b> (ou use a planilha do Domínio salva como <b>CSV</b>); 2) preencha; 3) escolha o arquivo; 4) confira o resumo; 5) clique em <b>Importar</b>. O sistema barra CPF inválido, repetido ou que já existe, e exige cargo, salário e admissão para CLT. <b>Importar o mesmo arquivo de novo não duplica nada</b> e não altera quem já está cadastrado.</div>
+    <div class="aviso"><i class="fas fa-shield-halved"></i> <b>Dados pessoais (LGPD):</b> a planilha tem CPF e salário. Importe só pelo computador da contabilidade, e apague o arquivo depois. Dependentes, vale-transporte, plano de saúde, endereço e dados bancários <b>não</b> vêm pela planilha: complete na ficha de cada funcionário.</div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-upload"></i> 1. Escolha o arquivo <span id="empresaTxt" style="margin-left:auto;font-weight:600;font-size:12px;color:var(--text-light);"></span></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+            <button class="btn-acao cinza" onclick="baixarModelo()"><i class="fas fa-download"></i> Baixar modelo de planilha</button>
+        </div>
+        <input type="file" id="arquivo" accept=".csv,.txt,text/csv,text/plain" onchange="aoEscolher(this)">
+        <div id="msgLeitura"></div>
+    </div>
+
+    <div class="panel" id="painelResumo" style="display:none;">
+        <div class="panel-title"><i class="fas fa-clipboard-check"></i> 2. Confira o resumo</div>
+        <div id="resumo"></div>
+        <div class="tabela-rolagem" style="margin-top:14px;"><table class="tabela"><thead><tr><th>Linha</th><th>Situação</th><th>Vínculo</th><th>CPF</th><th>Nome</th><th>Cargo</th><th>Observação</th></tr></thead><tbody id="tbodyPrev"></tbody></table></div>
+    </div>
+
+    <div class="panel" id="painelImportar" style="display:none;">
+        <div class="panel-title"><i class="fas fa-database"></i> 3. Importar</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn-acao sucesso" id="btnImportar" onclick="importar()"><i class="fas fa-check"></i> Importar agora</button>
+            <button class="btn-acao cinza" onclick="imprimirConferencia()"><i class="fas fa-print"></i> Imprimir conferência</button>
+        </div>
+        <div id="progresso" style="display:none;margin-top:14px;"><div class="barra"><i id="barra"></i></div><div id="progTxt" style="font-size:12px;color:var(--text-light);"></div></div>
+        <div id="resultado"></div>
+    </div>
+</div>
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, EMP = null, PREP = null, ARQ = '';
+
+    /* ===== leitura e validação da planilha de funcionários ===== */
+    function soDigitos(s) { return String(s == null ? '' : s).replace(/\D/g, ''); }
+    function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+    function cpfValido(c) {
+        if (c.length !== 11 || /^(\d)\1+$/.test(c)) return false;
+        for (let t = 9; t < 11; t++) { let s = 0; for (let i = 0; i < t; i++) s += parseInt(c[i], 10) * (t + 1 - i); const d = ((s * 10) % 11) % 10; if (d !== parseInt(c[t], 10)) return false; }
+        return true;
+    }
+    function fmtCpf(d) { d = soDigitos(d); return d.length === 11 ? d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4') : d; }
+    function lerCSV(texto) {
+        if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+        const prim = texto.split(/\r?\n/)[0] || '';
+        const cont = function (ch) { return prim.split(ch).length - 1; };
+        let sep = ';'; if (cont(';') < cont(',')) sep = ','; if (cont('\t') > cont(sep)) sep = '\t';
+        const linhas = []; let campo = '', linha = [], aspas = false;
+        for (let i = 0; i < texto.length; i++) {
+            const ch = texto[i];
+            if (aspas) { if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; } else campo += ch; }
+            else if (ch === '"') aspas = true;
+            else if (ch === sep) { linha.push(campo); campo = ''; }
+            else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texto[i + 1] === '\n') i++; linha.push(campo); campo = ''; if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha); linha = []; }
+            else campo += ch;
+        }
+        linha.push(campo); if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha);
+        return linhas;
+    }
+    // valor em formato brasileiro ("R$ 1.518,00", "1518,00", "1518.00") -> número; null se não entender
+    function lerValor(s) {
+        s = String(s == null ? '' : s).replace(/R\$|\s/g, '');
+        if (!s) return null;
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        else if (/^\d{1,3}\.\d{3}$/.test(s)) s = s.replace('.', '');
+        else if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+        if (!/^-?\d+(\.\d+)?$/.test(s)) return NaN;
+        return Math.round(parseFloat(s) * 100) / 100;
+    }
+    // data dd/mm/aaaa, d/m/aaaa ou aaaa-mm-dd -> 'aaaa-mm-dd'; '' se vazia; null se inválida
+    function lerData(s) {
+        s = String(s == null ? '' : s).trim(); if (!s) return '';
+        let d, m, a, x;
+        if ((x = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) { d = +x[1]; m = +x[2]; a = +x[3]; }
+        else if ((x = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) { a = +x[1]; m = +x[2]; d = +x[3]; }
+        else return null;
+        const dt = new Date(a, m - 1, d);
+        if (dt.getFullYear() !== a || dt.getMonth() !== m - 1 || dt.getDate() !== d || a < 1900 || a > 2100) return null;
+        return a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+    function normVinculo(t) {
+        t = semAcento(t);
+        if (!t) return 'CLT';
+        if (t.indexOf('pro') >= 0 && t.indexOf('lab') >= 0 || t.indexOf('socio') >= 0) return 'Pro-labore';
+        if (t.indexOf('estag') >= 0) return 'Estagio';
+        return 'CLT';
+    }
+    function normSexo(t) { t = semAcento(t); if (t === 'm' || t.indexOf('masc') === 0) return 'Masculino'; if (t === 'f' || t.indexOf('fem') === 0) return 'Feminino'; return ''; }
+    function normStatus(t) { t = semAcento(t); if (t.indexOf('deslig') === 0 || t.indexOf('demit') === 0 || t.indexOf('inativ') === 0) return 'Desligado'; if (t.indexOf('afast') === 0) return 'Afastado'; return 'Ativo'; }
+    const CATEGORIAS = { 'CLT': '101', 'Pro-labore': '723', 'Estagio': '901' };
+    const CAMPOS = {
+        nome: ['nome', 'nome completo', 'funcionario', 'colaborador', 'nome do funcionario', 'nome do empregado', 'empregado'],
+        cpf: ['cpf', 'cpf funcionario', 'cpf do funcionario', 'numero do cpf'],
+        vinculo: ['vinculo', 'tipo de vinculo', 'tipo vinculo', 'tipo', 'categoria'],
+        cargo: ['cargo', 'funcao', 'cargo funcao', 'cargo ou funcao'],
+        salario: ['salario', 'salario base', 'remuneracao', 'salario mensal', 'salario contratual'],
+        admissao: ['admissao', 'data admissao', 'data de admissao', 'dt admissao'],
+        data_nascimento: ['nascimento', 'data nascimento', 'data de nascimento', 'dt nascimento'],
+        sexo: ['sexo', 'genero'],
+        email: ['email', 'e mail'],
+        telefone: ['telefone', 'fone', 'celular'],
+        matricula: ['matricula', 'codigo', 'cod', 'registro'],
+        pis_nis: ['pis', 'nis', 'pis nis', 'pis pasep'],
+        cbo: ['cbo'],
+        departamento: ['departamento', 'setor', 'depto'],
+        nome_mae: ['nome da mae', 'mae', 'nome mae'],
+        status: ['status', 'situacao'],
+        data_desligamento: ['desligamento', 'data desligamento', 'data de desligamento', 'demissao', 'data demissao']
+    };
+    function mapearColunas(cab) {
+        const idx = {}, naoReconhecidas = [];
+        cab.forEach(function (h, i) {
+            const n = semAcento(h); let achou = null;
+            Object.keys(CAMPOS).forEach(function (k) { if (!achou && CAMPOS[k].indexOf(n) >= 0) achou = k; });
+            if (achou && idx[achou] == null) idx[achou] = i; else if (String(h).trim()) naoReconhecidas.push(String(h).trim());
+        });
+        return { idx: idx, naoReconhecidas: naoReconhecidas };
+    }
+    // existentes: { 'só dígitos do CPF': 'Nome' }
+    function prepararFuncionarios(linhas, existentes) {
+        if (!linhas.length) return { erro: 'A planilha está vazia.' };
+        const m = mapearColunas(linhas[0]);
+        if (m.idx.nome == null || m.idx.cpf == null) return { erro: 'Não achei as colunas obrigatórias. A primeira linha precisa ter pelo menos "nome" e "cpf". Baixe o modelo para ver o formato.' };
+        const vistos = {}, itens = [];
+        const val = function (r, k) { return m.idx[k] == null ? '' : String(r[m.idx[k]] == null ? '' : r[m.idx[k]]).trim(); };
+        for (let i = 1; i < linhas.length; i++) {
+            const r = linhas[i], doc = soDigitos(val(r, 'cpf')), nome = val(r, 'nome');
+            if (!nome && !doc) continue;
+            const vinc = normVinculo(val(r, 'vinculo'));
+            const it = { linha: i + 1, doc: doc, nome: nome, vinculo: vinc, cargo: '', salario: null, admissao: '', status: 'novo', motivo: '', avisos: [], dados: null };
+            const sal = lerValor(val(r, 'salario')), adm = lerData(val(r, 'admissao')), nasc = lerData(val(r, 'data_nascimento')), desl = lerData(val(r, 'data_desligamento'));
+            let cargo = val(r, 'cargo'); if (!cargo && vinc === 'Pro-labore') cargo = 'Sócio';
+            it.cargo = cargo; it.salario = (sal == null || isNaN(sal)) ? null : sal; it.admissao = adm || '';
+            let erro = '';
+            if (!nome) erro = 'Falta o nome.';
+            else if (!doc) erro = 'Falta o CPF.';
+            else if (!cpfValido(doc)) erro = 'CPF inválido.';
+            else if (sal !== null && isNaN(sal)) erro = 'Salário não reconhecido.';
+            else if (sal !== null && sal < 0) erro = 'Salário negativo.';
+            else if (adm === null) erro = 'Data de admissão inválida (use dd/mm/aaaa).';
+            else if (nasc === null) erro = 'Data de nascimento inválida (use dd/mm/aaaa).';
+            else if (desl === null) erro = 'Data de desligamento inválida (use dd/mm/aaaa).';
+            else if (!cargo) erro = 'Falta o cargo/função.';
+            else if (vinc === 'CLT' && !adm) erro = 'Falta a data de admissão (obrigatória para CLT).';
+            else if (vinc === 'CLT' && !(sal > 0)) erro = 'Falta o salário (obrigatório para CLT).';
+            else if (nasc) { const h = new Date(), n = new Date(nasc); let idade = h.getFullYear() - n.getFullYear(); if (h < new Date(h.getFullYear(), n.getMonth(), n.getDate())) idade--; if (idade < 14) erro = 'Idade inferior a 14 anos.'; }
+            if (erro) { it.status = 'erro'; it.motivo = erro; }
+            else if (existentes[doc]) { it.status = 'existe'; it.motivo = 'Já cadastrado: ' + existentes[doc]; }
+            else if (vistos[doc]) { it.status = 'repetido'; it.motivo = 'Repetido no arquivo (linha ' + vistos[doc] + ').'; }
+            if (it.status === 'novo') {
+                vistos[doc] = it.linha;
+                const sexo = normSexo(val(r, 'sexo')); if (!nasc) it.avisos.push('nascimento'); if (!sexo) it.avisos.push('sexo'); if (!val(r, 'nome_mae')) it.avisos.push('nome da mãe'); if (!val(r, 'pis_nis')) it.avisos.push('PIS');
+                const st = normStatus(val(r, 'status'));
+                it.dados = {
+                    nome: nome, cpf: fmtCpf(doc), vinculo: vinc, categoria_esocial: CATEGORIAS[vinc], cargo: cargo, salario: sal == null ? 0 : sal,
+                    admissao: adm || null, data_nascimento: nasc || null, sexo: sexo || null, email: val(r, 'email') || null, telefone: val(r, 'telefone') || null,
+                    matricula: val(r, 'matricula') || null, pis_nis: soDigitos(val(r, 'pis_nis')) || null, cbo: vinc === 'CLT' ? (val(r, 'cbo') || null) : null,
+                    departamento: val(r, 'departamento') || null, nome_mae: val(r, 'nome_mae') || null, status: st, data_desligamento: st === 'Desligado' ? (desl || null) : null,
+                    nacionalidade: 'Brasileira', dependentes: 0, vt: false, saude: false, fgts_optante: vinc === 'CLT', consentimento_dados_opcionais: false
+                };
+            }
+            itens.push(it);
+        }
+        const tot = { novo: 0, existe: 0, erro: 0, repetido: 0, incompletos: 0 };
+        itens.forEach(function (x) { tot[x.status]++; if (x.status === 'novo' && x.avisos.length) tot.incompletos++; });
+        return { itens: itens, totais: tot, naoReconhecidas: m.naoReconhecidas };
+    }
+    function modeloCSV() {
+        const cab = ['nome', 'cpf', 'vinculo', 'cargo', 'salario', 'admissao', 'data_nascimento', 'sexo', 'email', 'telefone', 'matricula', 'pis_nis', 'cbo', 'departamento', 'nome_mae', 'status', 'data_desligamento'];
+        const ex = ['MARIA EXEMPLO DA SILVA', '123.456.789-09', 'CLT', 'Auxiliar Administrativo', '2.500,00', '01/03/2026', '15/05/1990', 'Feminino', 'maria@exemplo.com.br', '(11) 99999-0000', '001', '', '411010', 'Administrativo', 'ANA EXEMPLO', 'Ativo', ''];
+        return '﻿' + cab.join(';') + '\r\n' + ex.join(';') + '\r\n';
+    }
+
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function fmtDocCnpj(d) { d = soDigitos(d); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (d || ''); }
+    function toast(msg, type) { const c = document.getElementById('toastContainer'); const x = document.createElement('div'); x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 7000); }
+    function clienteIdAtual() {
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    function decodificar(buf) { try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1252').decode(buf); } }
+    function baixarModelo() {
+        const blob = new Blob([modeloCSV()], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'modelo_funcionarios_sacramento.csv'; document.body.appendChild(a); a.click(); a.remove();
+    }
+    async function carregarBase() {
+        CID = clienteIdAtual(); if (!CID) return;
+        try { const r = await sb.from('clientes_contratantes').select('id,razao_social,nome_fantasia,cnpj_cpf').eq('id', CID).maybeSingle(); EMP = r.data || null; } catch (e) {}
+        document.getElementById('empresaTxt').textContent = EMP ? ('Empresa selecionada: ' + (EMP.nome_fantasia || EMP.razao_social || CID)) : '';
+    }
+    async function cpfsExistentes() {
+        const mapa = {};
+        for (let ini = 0; ini < 100000; ini += 1000) {
+            const r = await sb.from('colaboradores_rh').select('nome,cpf').eq('cliente_id', CID).range(ini, ini + 999);
+            if (r.error) throw new Error(r.error.message);
+            (r.data || []).forEach(function (p) { const d = soDigitos(p.cpf); if (d) mapa[d] = p.nome || ''; });
+            if (!r.data || r.data.length < 1000) break;
+        }
+        return mapa;
+    }
+    async function aoEscolher(inp) {
+        const f = inp.files && inp.files[0]; PREP = null;
+        document.getElementById('painelResumo').style.display = 'none'; document.getElementById('painelImportar').style.display = 'none';
+        document.getElementById('resultado').innerHTML = ''; document.getElementById('progresso').style.display = 'none';
+        const msg = document.getElementById('msgLeitura'); msg.innerHTML = '';
+        if (!f) return;
+        ARQ = f.name;
+        if (!CID) { msg.innerHTML = '<div class="erro">Selecione uma empresa no topo da página.</div>'; return; }
+        if (/\.xlsx?$/i.test(f.name)) { msg.innerHTML = '<div class="erro">Este é um arquivo do Excel. No Excel, use <b>Arquivo → Salvar como → CSV (separado por vírgulas ou ponto e vírgula)</b> e escolha o CSV aqui.</div>'; return; }
+        if (f.size > 20 * 1024 * 1024) { msg.innerHTML = '<div class="erro">Arquivo muito grande (mais de 20 MB).</div>'; return; }
+        msg.innerHTML = '<div style="margin-top:10px;font-size:12px;color:var(--text-light);">Lendo o arquivo...</div>';
+        try {
+            const linhas = lerCSV(decodificar(await f.arrayBuffer()));
+            const ex = await cpfsExistentes();
+            const P = prepararFuncionarios(linhas, ex);
+            if (P.erro) throw new Error(P.erro);
+            if (!P.itens.length) throw new Error('A planilha não tem nenhuma linha de dados.');
+            PREP = P; msg.innerHTML = ''; mostrarResumo();
+        } catch (e) { PREP = null; msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> ' + esc(e.message) + '</div>'; }
+    }
+    function chipStatus(s) { return s === 'novo' ? '<span class="chip verde">Novo</span>' : (s === 'existe' ? '<span class="chip amarelo">Já existe</span>' : (s === 'repetido' ? '<span class="chip amarelo">Repetido</span>' : '<span class="chip vermelho">Erro</span>')); }
+    function mostrarResumo() {
+        const T = PREP.totais, h = [];
+        h.push('<div class="cards"><div class="card-n"><b>' + T.novo + '</b><span>Novos a importar</span></div><div class="card-n"><b>' + T.existe + '</b><span>Já cadastrados</span></div><div class="card-n"><b>' + T.repetido + '</b><span>Repetidos no arquivo</span></div><div class="card-n"><b>' + T.erro + '</b><span>Com erro</span></div></div>');
+        if (T.erro) h.push('<div class="erro"><i class="fas fa-ban"></i> <b>' + T.erro + ' linha(s) com erro</b> não serão importadas (veja a coluna Observação). Corrija na planilha e importe de novo: quem já entrou não duplica.</div>');
+        if (T.incompletos) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> <b>' + T.incompletos + ' funcionário(s) novo(s) entram com a ficha incompleta</b> (faltam dados como nascimento, sexo, nome da mãe ou PIS, exigidos pelo eSocial). Eles são importados, e você completa depois na ficha de cada um.</div>');
+        if (PREP.naoReconhecidas.length) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> Estas colunas não foram reconhecidas e serão ignoradas: <b>' + esc(PREP.naoReconhecidas.join(', ')) + '</b>.</div>');
+        if (!T.novo) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-circle-info"></i> Não há nenhum funcionário novo para importar neste arquivo.</div>');
+        document.getElementById('resumo').innerHTML = h.join('');
+        document.getElementById('tbodyPrev').innerHTML = PREP.itens.slice(0, 500).map(function (i) {
+            const obs = i.motivo || (i.avisos.length ? 'Ficha incompleta: falta ' + i.avisos.join(', ') : '');
+            return '<tr><td>' + i.linha + '</td><td>' + chipStatus(i.status) + '</td><td>' + esc(i.vinculo) + '</td><td>' + esc(fmtCpf(i.doc) || '—') + '</td><td>' + esc(i.nome) + '</td><td>' + esc(i.cargo) + '</td><td>' + esc(obs) + '</td></tr>';
+        }).join('') + (PREP.itens.length > 500 ? '<tr><td colspan="7" style="color:var(--text-light);">... e mais ' + (PREP.itens.length - 500) + ' linha(s) (todas são conferidas, só a lista na tela é limitada).</td></tr>' : '');
+        document.getElementById('painelResumo').style.display = '';
+        document.getElementById('btnImportar').disabled = !T.novo;
+        document.getElementById('painelImportar').style.display = '';
+    }
+    function progresso(pct, txt) { document.getElementById('progresso').style.display = ''; document.getElementById('barra').style.width = pct + '%'; document.getElementById('progTxt').textContent = txt; }
+    async function importar() {
+        if (!PREP || !PREP.totais.novo) return;
+        if (!confirm('Importar ' + PREP.totais.novo + ' funcionário(s) novo(s) para a empresa selecionada?')) return;
+        const btn = document.getElementById('btnImportar'); btn.disabled = true; document.getElementById('resultado').innerHTML = '';
+        const novos = PREP.itens.filter(function (i) { return i.status === 'novo'; }), TAM = 50; let gravados = 0;
+        try {
+            for (let i = 0; i < novos.length; i += TAM) {
+                progresso(Math.round(100 * i / novos.length), 'Importando (' + Math.min(i + TAM, novos.length) + ' de ' + novos.length + ')...');
+                const lote = novos.slice(i, i + TAM).map(function (n) { return Object.assign({}, n.dados, { cliente_id: CID }); });
+                const r = await sb.from('colaboradores_rh').insert(lote);
+                if (r.error) throw new Error(r.error.code === '23505' ? 'Já existe um funcionário com um dos CPFs deste lote (recarregue a página e confira o resumo).' : r.error.message);
+                gravados += lote.length;
+            }
+            progresso(100, 'Concluído.');
+            document.getElementById('resultado').innerHTML = '<div class="ok"><i class="fas fa-circle-check"></i> <b>Importação concluída.</b> Funcionários novos gravados: ' + gravados + '. Confira em <a href="folha_rh.html">Recursos Humanos &amp; Folha</a> e complete as fichas incompletas.</div>';
+            toast('Importação concluída.', 'success');
+        } catch (e) {
+            document.getElementById('resultado').innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> <b>A importação parou:</b> ' + esc(e.message) + '<br>Já gravados nesta tentativa: ' + gravados + '. Importe o mesmo arquivo de novo: quem já entrou é reconhecido e pulado, sem duplicar.</div>';
+            toast('A importação parou. Veja a mensagem na tela.', 'error');
+        } finally { btn.disabled = false; }
+    }
+    function imprimirConferencia() {
+        if (!PREP) return;
+        if (typeof ERPPrint === 'undefined') { toast('O módulo de impressão não foi carregado. Recarregue a página.', 'error'); return; }
+        const T = PREP.totais;
+        ERPPrint.imprimir({
+            titulo: 'Conferência da importação de funcionários', subtitulo: 'Arquivo: ' + ARQ, codigo: 'IMP-FUN', orientacao: 'portrait',
+            empresa: EMP ? (EMP.nome_fantasia || EMP.razao_social) : undefined, cnpj: EMP ? fmtDocCnpj(EMP.cnpj_cpf) : undefined,
+            filtros: [['Arquivo', ARQ]], resumo: [['Novos', String(T.novo)], ['Já existem', String(T.existe)], ['Erros', String(T.erro + T.repetido)]],
+            colunas: [{ t: 'Linha', w: 1 }, { t: 'Situação', w: 2 }, { t: 'CPF', w: 3 }, { t: 'Nome', w: 5 }, { t: 'Observação', w: 5 }],
+            linhas: PREP.itens.map(function (i) { return [String(i.linha), i.status === 'novo' ? 'Novo' : (i.status === 'existe' ? 'Já existe' : (i.status === 'repetido' ? 'Repetido' : 'Erro')), fmtCpf(i.doc), i.nome, i.motivo || (i.avisos.length ? 'Ficha incompleta: ' + i.avisos.join(', ') : '')]; }),
+            observacao: 'Conferência feita antes da gravação. Depois de importar, complete as fichas em Recursos Humanos & Folha.', assinaturas: ['Responsável pela importação']
+        });
+    }
+    window.addEventListener('load', function () { carregarBase(); });
+</script>
+</body>
+</html>
