@@ -106,7 +106,7 @@
             <div>
                 <label>Código / Sigla *</label>
                 <input type="text" id="codigo" class="form-control" placeholder="Ex: 1.01" onblur="verificarDuplicado()">
-                <div class="dica">Não pode repetir dentro da mesma empresa.</div>
+                <div class="dica">Sugerido automaticamente (pode alterar). Não pode repetir dentro da mesma empresa.</div>
             </div>
             <div>
                 <label>Nome do Centro de Custo *</label>
@@ -232,6 +232,7 @@
             }).sort(ordemNatural);
             atualizarKpis();
             renderizarTabela();
+            sugerirCodigo();
         } catch (e) {
             console.error(e);
             el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Erro ao carregar dados: ' + esc(e.message || e) + '</div>';
@@ -299,10 +300,26 @@
         if (!msg) { a.style.display = 'none'; a.textContent = ''; return; }
         a.textContent = msg; a.style.display = 'block';
     }
+    // sugere o próximo código livre (1, 2, 3... ou 1.01, 1.02... conforme o padrão já usado)
+    function proximoCodigo() {
+        const cods = (centros || []).map(function (c) { return String(c.codigo || '').trim(); }).filter(function (c) { return /\d+$/.test(c); });
+        if (!cods.length) return '1';
+        cods.sort(function (x, y) { return x.localeCompare(y, 'pt-BR', { numeric: true, sensitivity: 'base' }); });
+        const ult = cods[cods.length - 1], m = ult.match(/^(.*?)(\d+)$/);
+        let n = parseInt(m[2], 10) + 1, novo = m[1] + String(n).padStart(m[2].length, '0');
+        while (cods.indexOf(novo) >= 0) { n++; novo = m[1] + String(n).padStart(m[2].length, '0'); }
+        return novo;
+    }
+    function sugerirCodigo() {
+        const ed = document.getElementById('edit_id'), cod = document.getElementById('codigo');
+        if (!ed || !cod || ed.value || cod.value.trim()) return;
+        cod.value = proximoCodigo();
+    }
     function limparForm() {
         ['edit_id', 'codigo', 'nome', 'descricao'].forEach(function (i) { document.getElementById(i).value = ''; });
         document.getElementById('status').value = 'Ativo';
         mostrarAviso('');
+        sugerirCodigo();
         document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--primary);"></i> Novo Centro de Custo / Projeto';
         document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Centro de Custo';
     }
