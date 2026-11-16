@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar planilhas contábeis — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1200px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); } .btn-acao:disabled { opacity:.45; cursor:not-allowed; }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .info { background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.55; }
+        .erro { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .ok { background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; border-radius:12px; padding:12px 16px; font-size:13px; line-height:1.5; margin-top:10px; }
+        .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:14px 0; }
+        .card-n { border:1px solid var(--border); border-radius:12px; padding:12px 14px; background:#fff; }
+        .card-n b { display:block; font-size:20px; color:var(--secondary); } .card-n span { font-size:11px; color:var(--text-light); text-transform:uppercase; font-weight:700; letter-spacing:.4px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:10px 12px; text-align:left; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); }
+        .tabela td { padding:9px 12px; border-bottom:1px solid var(--border); }
+        .form-control { padding:9px 12px; border:1px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; min-width:280px; }
+        .tabela-rolagem { max-height:420px; overflow:auto; border:1px solid var(--border); border-radius:12px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.vermelho { background:#fee2e2; color:#991b1b; } .chip.amarelo { background:#fef3c7; color:#92400e; }
+        .barra { height:12px; background:#e2e8f0; border-radius:8px; overflow:hidden; margin:10px 0 4px; } .barra i { display:block; height:100%; width:0; background:var(--success); transition:width .2s; }
+        .linha-chk { display:flex; gap:10px; align-items:flex-start; font-size:13px; line-height:1.5; margin-top:10px; }
+        .linha-chk input { margin-top:3px; width:16px; height:16px; }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; max-width:440px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        @media (max-width:800px) { .cards { grid-template-columns:repeat(2,1fr); } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Voltar à Contabilidade</a>
+    </div>
+    <div>
+        <div class="page-title"><i class="fas fa-table-list" style="color:var(--primary);"></i> Importar plano de contas, saldos e diário por planilha</div>
+        <div class="page-subtitle">Para quem não tem o arquivo ECD (empresas do Simples, por exemplo): traga os dados do Domínio exportados em planilha CSV.</div>
+    </div>
+
+    <div class="info"><i class="fas fa-circle-info"></i> <b>Ordem certa:</b> <b>1º Plano de contas</b> → <b>2º Saldos (balancete)</b> → <b>3º Diário (lançamentos)</b>. Cada etapa tem o seu modelo de planilha. O sistema confere tudo antes de gravar (contas existentes, débito = crédito, datas e valores) e <b>importar o mesmo arquivo de novo não duplica nada</b>.</div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-upload"></i> O que você vai importar? <span id="empresaTxt" style="margin-left:auto;font-weight:600;font-size:12px;color:var(--text-light);"></span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+            <button class="btn-acao" id="tabPlano" onclick="escolherTipo('plano')"><i class="fas fa-sitemap"></i> 1. Plano de contas</button>
+            <button class="btn-acao cinza" id="tabSaldos" onclick="escolherTipo('saldos')"><i class="fas fa-scale-balanced"></i> 2. Saldos (balancete)</button>
+            <button class="btn-acao cinza" id="tabDiario" onclick="escolherTipo('diario')"><i class="fas fa-book"></i> 3. Diário (lançamentos)</button>
+        </div>
+        <div id="ajudaTipo" class="aviso" style="margin-bottom:14px;"></div>
+        <div id="opcoesTipo" style="margin-bottom:14px;"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px;">
+            <button class="btn-acao cinza" onclick="baixarModelo()"><i class="fas fa-download"></i> Baixar modelo de planilha</button>
+        </div>
+        <input type="file" id="arquivo" accept=".csv,.txt,text/csv,text/plain" onclick="this.value=null" onchange="aoEscolher(this)">
+        <div id="msgLeitura"></div>
+    </div>
+
+    <div class="panel" id="painelResumo" style="display:none;">
+        <div class="panel-title"><i class="fas fa-clipboard-check"></i> Confira o resumo</div>
+        <div id="resumo"></div>
+        <div class="tabela-rolagem" style="margin-top:14px;"><table class="tabela"><thead><tr><th>Linha</th><th>Situação</th><th id="thA">Conta</th><th id="thB">Descrição</th><th id="thC">Detalhe</th><th>Observação</th></tr></thead><tbody id="tbodyPrev"></tbody></table></div>
+        <div id="maisLinhas" style="font-size:12px;color:var(--text-light);margin-top:6px;"></div>
+    </div>
+
+    <div class="panel" id="painelImportar" style="display:none;">
+        <div class="panel-title"><i class="fas fa-database"></i> Importar</div>
+        <div id="confirmacoes"></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+            <button class="btn-acao sucesso" id="btnImportar" onclick="importar()"><i class="fas fa-check"></i> Importar agora</button>
+            <button class="btn-acao cinza" onclick="imprimirConferencia()"><i class="fas fa-print"></i> Imprimir conferência</button>
+        </div>
+        <div id="progresso" style="display:none;margin-top:14px;"><div class="barra"><i id="barra"></i></div><div id="progTxt" style="font-size:12px;color:var(--text-light);"></div></div>
+        <div id="resultado"></div>
+    </div>
+</div>
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, EMP = null, TIPO = 'plano', PREP = null, ARQ = '', BASE = { contas: [], origens: {}, lotesNoPeriodo: 0 };
+
+    /* ===== utilitários ===== */
+    function semAcento(s) { return String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+    function lerCSV(texto) {
+        if (texto.charCodeAt(0) === 0xFEFF) texto = texto.slice(1);
+        const prim = texto.split(/\r?\n/)[0] || '';
+        const cont = function (ch) { return prim.split(ch).length - 1; };
+        let sep = ';'; if (cont(';') < cont(',')) sep = ','; if (cont('\t') > cont(sep)) sep = '\t';
+        const linhas = []; let campo = '', linha = [], aspas = false;
+        for (let i = 0; i < texto.length; i++) {
+            const ch = texto[i];
+            if (aspas) { if (ch === '"') { if (texto[i + 1] === '"') { campo += '"'; i++; } else aspas = false; } else campo += ch; }
+            else if (ch === '"') aspas = true;
+            else if (ch === sep) { linha.push(campo); campo = ''; }
+            else if (ch === '\n' || ch === '\r') { if (ch === '\r' && texto[i + 1] === '\n') i++; linha.push(campo); campo = ''; if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha); linha = []; }
+            else campo += ch;
+        }
+        linha.push(campo); if (linha.some(function (c) { return String(c).trim() !== ''; })) linhas.push(linha);
+        return linhas;
+    }
+    // número BR -> número; null se vazio; NaN se não entende. Aceita "1.234,56", "R$ 10,00", "-5,00", "(5,00)"
+    function lerNumero(s) {
+        s = String(s == null ? '' : s).replace(/R\$|\s/g, '');
+        if (!s) return null;
+        let neg = false;
+        if (/^\(.*\)$/.test(s)) { neg = true; s = s.slice(1, -1); }
+        if (s.charAt(0) === '-') { neg = !neg; s = s.slice(1); }
+        if (s.indexOf(',') >= 0) s = s.replace(/\./g, '').replace(',', '.');
+        else if (/^\d{1,3}\.\d{3}$/.test(s)) s = s.replace('.', '');
+        else if ((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+        if (!/^\d+(\.\d+)?$/.test(s)) return NaN;
+        const v = Math.round(parseFloat(s) * 100) / 100;
+        return neg ? -v : v;
+    }
+    // saldo com letra D/C no fim ou no começo ("1.234,56 D", "C 500,00"); devolve {v, dc} (dc '' se não tem letra)
+    function lerSaldo(s) {
+        s = String(s == null ? '' : s).trim(); if (!s) return { v: null, dc: '' };
+        let dc = '', m;
+        if ((m = s.match(/^(.*?)\s*([DC])$/i))) { dc = m[2].toUpperCase(); s = m[1]; }
+        else if ((m = s.match(/^([DC])\s*(.*)$/i))) { dc = m[1].toUpperCase(); s = m[2]; }
+        return { v: lerNumero(s), dc: dc };
+    }
+    function lerData(s) {
+        s = String(s == null ? '' : s).trim(); if (!s) return '';
+        let d, m, a, x;
+        if ((x = s.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/))) { d = +x[1]; m = +x[2]; a = +x[3]; }
+        else if ((x = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) { a = +x[1]; m = +x[2]; d = +x[3]; }
+        else return null;
+        const dt = new Date(Date.UTC(a, m - 1, d));
+        if (dt.getUTCFullYear() !== a || dt.getUTCMonth() !== m - 1 || dt.getUTCDate() !== d || a < 1990 || a > 2100) return null;
+        return a + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    }
+    function codigoValido(c) { return /^[0-9]+(\.[0-9]+)*$/.test(c); }
+    function ordemCodigo(a, b) {
+        const x = a.split('.'), y = b.split('.');
+        for (let i = 0; i < Math.max(x.length, y.length); i++) { if (x[i] == null) return -1; if (y[i] == null) return 1; const d = (+x[i]) - (+y[i]); if (d) return d; }
+        return 0;
+    }
+    function r2(n) { return Math.round(n * 100) / 100; }
+    function limparCodigo(s) { return String(s == null ? '' : s).trim().replace(/\s+/g, ''); }
+
+    /* ===== mapeamento de colunas por apelidos ===== */
+    const APELIDOS = {
+        plano: {
+            codigo: ['codigo', 'classificacao', 'conta', 'codigo da conta', 'classificacao da conta', 'cod conta'],
+            descricao: ['descricao', 'nome', 'nome da conta', 'descricao da conta', 'conta descricao'],
+            tipo: ['tipo', 'tipo da conta', 'sintetica analitica', 'sintetica ou analitica', 'tipo conta', 'natureza da conta'],
+            grupo: ['grupo'], natureza: ['natureza', 'natureza saldo', 'saldo natural']
+        },
+        saldos: {
+            codigo: ['codigo', 'classificacao', 'conta', 'codigo da conta', 'classificacao da conta', 'cod conta'],
+            descricao: ['descricao', 'nome', 'nome da conta', 'descricao da conta'],
+            saldo_ini: ['saldo anterior', 'saldo inicial', 'saldo de abertura', 'saldo ant', 'saldo abertura'],
+            saldo: ['saldo'], saldo_fim: ['saldo atual', 'saldo final', 'saldo fim'],
+            dc: ['dc', 'd c', 'tipo saldo', 'deb cred', 'debito credito', 'natureza do saldo']
+        },
+        diario: {
+            data: ['data', 'data do lancamento', 'dt', 'data lancamento'],
+            numero: ['numero', 'lancamento', 'lote', 'n lancamento', 'numero do lancamento', 'num', 'no', 'n'],
+            historico: ['historico', 'descricao', 'complemento', 'historico do lancamento'],
+            conta_d: ['conta debito', 'conta debitada', 'debito conta', 'conta devedora', 'cd'],
+            conta_c: ['conta credito', 'conta creditada', 'credito conta', 'conta credora', 'cc'],
+            valor: ['valor', 'valor do lancamento', 'vlr'],
+            conta: ['conta', 'codigo', 'classificacao', 'codigo da conta', 'classificacao da conta'],
+            debito: ['debito', 'valor debito', 'deb', 'd'], credito: ['credito', 'valor credito', 'cred', 'c'],
+            dc: ['dc', 'd c', 'tipo', 'deb cred']
+        }
+    };
+    function mapearColunas(tipo, cab) {
+        const idx = {}, usados = {};
+        const tab = APELIDOS[tipo];
+        // 1ª passada: prioriza o apelido mais específico (ordem da lista)
+        Object.keys(tab).forEach(function (k) {
+            tab[k].some(function (ap) {
+                for (let i = 0; i < cab.length; i++) { if (usados[i]) continue; if (semAcento(cab[i]) === ap) { idx[k] = i; usados[i] = true; return true; } }
+                return false;
+            });
+        });
+        return idx;
+    }
+
+    /* ===== PLANO DE CONTAS ===== */
+    function normGrupo(t) {
+        t = semAcento(t);
+        if (!t) return '';
+        if (t.indexOf('ativ') === 0) return 'ativo';
+        if (t.indexOf('passiv') === 0) return 'passivo';
+        if (t.indexOf('patrim') === 0 || t === 'pl') return 'patrimonio_liquido';
+        if (t.indexOf('receit') === 0) return 'receita';
+        if (t.indexOf('cust') === 0) return 'custo';
+        if (t.indexOf('desp') === 0) return 'despesa';
+        return null;
+    }
+    function inferirGrupo(codigo, cadeiaNomes) {
+        const raiz = cadeiaNomes[0] || '', outros = cadeiaNomes.slice(1).join(' ');
+        const PL = /patrim[oô]nio l[ií]quido|capital|reserva|lucros|preju[ií]zo/i;
+        if (/ativo/i.test(raiz) && !/passivo/i.test(raiz)) return 'ativo';
+        if (/passivo|patrim/i.test(raiz)) {
+            if (/passivo/i.test(raiz) && !/patrim/i.test(raiz)) return PL.test(outros) ? 'patrimonio_liquido' : 'passivo';
+            if (/^\s*patrim/i.test(raiz) && !/passivo/i.test(raiz)) return 'patrimonio_liquido';
+            return PL.test(outros) ? 'patrimonio_liquido' : 'passivo';
+        }
+        for (let i = 0; i < cadeiaNomes.length; i++) {
+            const n = cadeiaNomes[i];
+            if (/dedu[cç]/i.test(n)) return 'receita';
+            if (/receita|venda|faturamento|rendimento/i.test(n)) return 'receita';
+            if (/custo|cmv|cpv|csp/i.test(n)) return 'custo';
+            if (/despesa/i.test(n)) return 'despesa';
+        }
+        const d = codigo.charAt(0);
+        return d === '1' ? 'ativo' : d === '2' ? 'passivo' : d === '3' ? 'receita' : 'despesa';
+    }
+    function prepararPlano(linhas, existentes) {
+        const R = { tipo: 'plano', erros: [], itens: [], contas: [], colunasFaltando: [] };
+        if (linhas.length < 2) { R.erros.push('A planilha está vazia (precisa do cabeçalho e de pelo menos uma conta).'); return R; }
+        const m = mapearColunas('plano', linhas[0]);
+        if (m.codigo == null) R.colunasFaltando.push('codigo (classificação da conta, ex.: 1.1.01.001)');
+        if (m.descricao == null) R.colunasFaltando.push('descricao (nome da conta)');
+        if (R.colunasFaltando.length) { R.erros.push('Não encontrei a(s) coluna(s): ' + R.colunasFaltando.join('; ') + '. Use o modelo de planilha.'); return R; }
+        const val = function (r, k) { return m[k] == null ? '' : String(r[m[k]] == null ? '' : r[m[k]]).trim(); };
+        const vistos = {}, brutas = [];
+        for (let i = 1; i < linhas.length; i++) {
+            const r = linhas[i], linha = i + 1, codigo = limparCodigo(val(r, 'codigo')), nome = val(r, 'descricao').replace(/\s+/g, ' ');
+            const it = { linha: linha, codigo: codigo, descricao: nome, status: 'novo', motivo: '', tipoTxt: val(r, 'tipo'), grupoTxt: val(r, 'grupo'), natTxt: val(r, 'natureza') };
+            R.itens.push(it);
+            if (!codigo) { it.status = 'erro'; it.motivo = 'Falta o código da conta.'; continue; }
+            if (!codigoValido(codigo)) { it.status = 'erro'; it.motivo = 'Código fora do padrão (use só números separados por ponto, ex.: 1.1.01.001).'; continue; }
+            if (!nome) { it.status = 'erro'; it.motivo = 'Falta o nome da conta.'; continue; }
+            if (vistos[codigo]) { it.status = 'repetido'; it.motivo = 'Código repetido no arquivo (linha ' + vistos[codigo] + ').'; continue; }
+            vistos[codigo] = linha; brutas.push(it);
+        }
+        // hierarquia: pai = maior prefixo existente
+        const porCod = {}; brutas.forEach(function (it) { porCod[it.codigo] = it; });
+        brutas.forEach(function (it) {
+            const seg = it.codigo.split('.'); it.pai = null;
+            for (let n = seg.length - 1; n >= 1; n--) { const p = seg.slice(0, n).join('.'); if (porCod[p]) { it.pai = p; break; } }
+        });
+        const filhas = {}; brutas.forEach(function (it) { if (it.pai) filhas[it.pai] = (filhas[it.pai] || 0) + 1; });
+        function cadeia(it) { const out = []; let x = it, g = 0; while (x && g < 30) { out.unshift(x.descricao); x = x.pai ? porCod[x.pai] : null; g++; } return out; }
+        function nivel(it) { let n = 1, x = it, g = 0; while (x.pai && g < 30) { n++; x = porCod[x.pai]; g++; } return n; }
+        brutas.sort(function (a, b) { return ordemCodigo(a.codigo, b.codigo); });
+        brutas.forEach(function (it) {
+            const t = semAcento(it.tipoTxt);
+            let analitica;
+            if (t) {
+                if (t === 'a' || t.indexOf('analit') === 0) analitica = true;
+                else if (t === 's' || t.indexOf('sintet') === 0) analitica = false;
+                else { it.status = 'erro'; it.motivo = 'Tipo "' + it.tipoTxt + '" não entendido (use S/Sintética ou A/Analítica).'; return; }
+                if (analitica && filhas[it.codigo]) { it.status = 'erro'; it.motivo = 'Marcada como analítica, mas tem contas filhas.'; return; }
+            } else analitica = !filhas[it.codigo];
+            let grupo = it.grupoTxt ? normGrupo(it.grupoTxt) : inferirGrupo(it.codigo, cadeia(it));
+            if (grupo === null) { it.status = 'erro'; it.motivo = 'Grupo "' + it.grupoTxt + '" não entendido (ativo, passivo, patrimônio líquido, receita, custo ou despesa).'; return; }
+            let nat = (grupo === 'ativo' || grupo === 'custo' || grupo === 'despesa') ? 'D' : 'C';
+            if (/^\s*\(\s*-\s*\)/.test(it.descricao) || /deprecia[cç][aã]o acumulada|amortiza[cç][aã]o acumulada|exaust[aã]o acumulada/i.test(it.descricao)) nat = nat === 'D' ? 'C' : 'D';
+            if (grupo === 'receita' && (/^\s*\(\s*-\s*\)/.test(it.descricao) || /dedu[cç]/i.test(it.descricao))) nat = 'D';
+            if (it.natTxt) { const n = semAcento(it.natTxt); if (n.charAt(0) === 'd') nat = 'D'; else if (n.charAt(0) === 'c') nat = 'C'; }
+            it.analitica = analitica; it.grupo = grupo; it.natureza = nat; it.nivel = nivel(it);
+            if (existentes && existentes[it.codigo] != null) { it.status = 'existe'; it.atual = existentes[it.codigo]; it.motivo = 'Já existe: ' + existentes[it.codigo]; }
+        });
+        R.itens.forEach(function (it) { if (it.status === 'novo') R.contas.push({ codigo: it.codigo, descricao: it.descricao, pai: it.pai, nivel: it.nivel, analitica: it.analitica, grupo: it.grupo, natureza: it.natureza }); });
+        const tot = { novo: 0, existe: 0, repetido: 0, erro: 0, analiticas: 0, sinteticas: 0 };
+        R.itens.forEach(function (it) { tot[it.status]++; if (it.status === 'novo') { if (it.analitica) tot.analiticas++; else tot.sinteticas++; } });
+        R.totais = tot;
+        // aviso: plano "achatado" (sem hierarquia por pontos)
+        R.semHierarquia = brutas.length > 5 && brutas.filter(function (b) { return !b.pai; }).length > brutas.length * 0.7;
+        return R;
+    }
+
+    /* ===== SALDOS (BALANCETE) ===== */
+    // base: mapa codigo -> {analitica, natureza, descricao}
+    function prepararSaldos(linhas, base) {
+        const R = { tipo: 'saldos', erros: [], itens: [], partidas: [], colunaUsada: '' };
+        if (linhas.length < 2) { R.erros.push('A planilha está vazia.'); return R; }
+        const m = mapearColunas('saldos', linhas[0]);
+        if (m.codigo == null) { R.erros.push('Não encontrei a coluna do código da conta (codigo/classificação). Use o modelo de planilha.'); return R; }
+        let ci = null;
+        if (m.saldo_ini != null) { ci = m.saldo_ini; R.colunaUsada = linhas[0][ci]; }
+        else if (m.saldo != null) { ci = m.saldo; R.colunaUsada = linhas[0][ci]; }
+        else if (m.saldo_fim != null) { ci = m.saldo_fim; R.colunaUsada = linhas[0][ci]; }
+        if (ci == null) { R.erros.push('Não encontrei a coluna de saldo (saldo anterior / saldo inicial / saldo). Use o modelo de planilha.'); return R; }
+        const vistos = {}; let td = 0, tc = 0;
+        for (let i = 1; i < linhas.length; i++) {
+            const r = linhas[i], linha = i + 1, codigo = limparCodigo(r[m.codigo]);
+            const nome = m.descricao != null ? String(r[m.descricao] || '').trim() : '';
+            const it = { linha: linha, codigo: codigo, descricao: nome, status: 'ok', motivo: '', valor: 0, dc: '' };
+            R.itens.push(it);
+            if (!codigo) { it.status = 'erro'; it.motivo = 'Falta o código da conta.'; continue; }
+            const c = base[codigo];
+            const s = lerSaldo(r[ci]);
+            if (s.v == null || s.v === 0) { it.status = 'zerado'; it.motivo = s.v === 0 ? 'Saldo zero: não gera lançamento.' : 'Sem saldo informado.'; continue; }
+            if (Number.isNaN(s.v)) { it.status = 'erro'; it.motivo = 'Saldo "' + r[ci] + '" não entendido.'; continue; }
+            if (!c) { it.status = 'erro'; it.motivo = 'A conta não existe no plano desta empresa. Importe o plano de contas primeiro (ou corrija o código).'; continue; }
+            it.descricao = it.descricao || c.descricao || '';
+            if (!c.analitica) { it.status = 'sintetica'; it.motivo = 'Conta sintética (totalizadora): ignorada, só contas analíticas têm saldo.'; continue; }
+            if (vistos[codigo]) { it.status = 'erro'; it.motivo = 'Conta repetida no arquivo (linha ' + vistos[codigo] + ').'; continue; }
+            vistos[codigo] = linha;
+            let dc = s.dc || (m.dc != null ? String(r[m.dc] || '').trim().toUpperCase().charAt(0) : '');
+            let v = s.v;
+            if (dc === 'D' || dc === 'C') { if (v < 0) { v = -v; dc = dc === 'D' ? 'C' : 'D'; } }
+            else { // sem letra: positivo = saldo natural da conta; negativo = contrário
+                const nat = c.natureza === 'C' ? 'C' : 'D';
+                if (v >= 0) dc = nat; else { dc = nat === 'D' ? 'C' : 'D'; v = -v; }
+                it.motivo = 'Sem D/C na planilha: assumido saldo ' + (dc === nat ? 'natural' : 'invertido') + ' da conta.';
+            }
+            it.valor = v; it.dc = dc; it.status = 'ok';
+            R.partidas.push({ codigo: codigo, tipo: dc, valor: v, complemento: '' });
+            if (dc === 'D') td += v; else tc += v;
+        }
+        R.totalD = r2(td); R.totalC = r2(tc); R.dif = r2(td - tc);
+        const tot = { ok: 0, zerado: 0, sintetica: 0, erro: 0 }; R.itens.forEach(function (it) { tot[it.status]++; });
+        R.totais = tot;
+        return R;
+    }
+
+    /* ===== DIÁRIO ===== */
+    function prepararDiario(linhas, base, origensExistentes) {
+        const R = { tipo: 'diario', erros: [], itens: [], lotes: [], formato: '' };
+        if (linhas.length < 2) { R.erros.push('A planilha está vazia.'); return R; }
+        const m = mapearColunas('diario', linhas[0]);
+        if (m.data == null) { R.erros.push('Não encontrei a coluna "data". Use o modelo de planilha.'); return R; }
+        const fmtA = m.conta_d != null && m.conta_c != null && m.valor != null;
+        const fmtB = m.conta != null && (m.debito != null || m.credito != null || (m.valor != null && m.dc != null));
+        if (!fmtA && !fmtB) { R.erros.push('Não reconheci o formato. Use "conta_debito; conta_credito; valor" (uma linha por lançamento) ou "conta; debito; credito" (uma linha por partida). Veja o modelo de planilha.'); return R; }
+        R.formato = fmtA ? 'A' : 'B';
+        if (!fmtA && m.numero == null) { R.erros.push('No formato por partidas é obrigatória a coluna "numero" (para agrupar as partidas de um mesmo lançamento).'); return R; }
+        const get = function (r, k) { return m[k] == null ? '' : String(r[m[k]] == null ? '' : r[m[k]]).trim(); };
+        const grupos = {}, ordem = [];
+        function addPart(chave, dt, num, hist, linha, cod, tipo, valor, erroLinha) {
+            let g = grupos[chave];
+            if (!g) { g = grupos[chave] = { chave: chave, data: dt, numero: num, historico: hist, linha: linha, partidas: [], erros: [], linhas: [] }; ordem.push(chave); }
+            if (!g.historico && hist) g.historico = hist;
+            g.linhas.push(linha);
+            if (erroLinha) g.erros.push('linha ' + linha + ': ' + erroLinha);
+            else g.partidas.push({ codigo: cod, tipo: tipo, valor: valor, complemento: '' });
+        }
+        function conta(cod) { const c = base[cod]; if (!c) return 'conta ' + cod + ' não existe no plano (importe o plano primeiro)'; if (!c.analitica) return 'conta ' + cod + ' é sintética (use a analítica)'; return ''; }
+        for (let i = 1; i < linhas.length; i++) {
+            const r = linhas[i], linha = i + 1, dt = lerData(get(r, 'data')), num = get(r, 'numero'), hist = get(r, 'historico').replace(/\s+/g, ' ');
+            const chaveBase = num ? dt + ':' + num : null;
+            if (dt === '' || dt === null) { addPart('L' + linha, null, num, hist, linha, '', '', 0, dt === '' ? 'falta a data' : 'data "' + get(r, 'data') + '" inválida'); continue; }
+            if (R.formato === 'A') {
+                const cd = limparCodigo(get(r, 'conta_d')), cc = limparCodigo(get(r, 'conta_c')), v = lerNumero(get(r, 'valor'));
+                const chave = chaveBase || ('L' + linha + ':' + dt);
+                let e = '';
+                if (!cd || !cc) e = 'falta conta de débito ou de crédito'; else if (v == null || Number.isNaN(v) || v <= 0) e = 'valor inválido ou zero'; else e = conta(cd) || conta(cc);
+                if (e) { addPart(chave, dt, num, hist, linha, '', '', 0, e); continue; }
+                addPart(chave, dt, num, hist, linha, cd, 'D', v, ''); addPart(chave, dt, num, hist, linha, cc, 'C', v, '');
+            } else {
+                const cod = limparCodigo(get(r, 'conta')); let vd = lerNumero(get(r, 'debito')), vc = lerNumero(get(r, 'credito'));
+                const chave = chaveBase;
+                if (!num) { addPart('L' + linha, dt, '', hist, linha, '', '', 0, 'falta o número do lançamento'); continue; }
+                if (!cod) { addPart(chave, dt, num, hist, linha, '', '', 0, 'falta o código da conta'); continue; }
+                if (m.debito == null && m.credito == null) { // valor + dc
+                    const v = lerNumero(get(r, 'valor')), dc = get(r, 'dc').toUpperCase().charAt(0);
+                    if (v == null || Number.isNaN(v) || v <= 0 || (dc !== 'D' && dc !== 'C')) { addPart(chave, dt, num, hist, linha, '', '', 0, 'valor ou D/C inválido'); continue; }
+                    if (dc === 'D') { vd = v; vc = null; } else { vc = v; vd = null; }
+                }
+                if (Number.isNaN(vd) || Number.isNaN(vc)) { addPart(chave, dt, num, hist, linha, '', '', 0, 'valor não entendido'); continue; }
+                const d = vd || 0, c = vc || 0;
+                if ((d > 0) === (c > 0)) { addPart(chave, dt, num, hist, linha, '', '', 0, d > 0 ? 'débito e crédito na mesma linha' : 'sem valor de débito nem de crédito'); continue; }
+                const e = conta(cod); if (e) { addPart(chave, dt, num, hist, linha, '', '', 0, e); continue; }
+                addPart(chave, dt, num, hist, linha, cod, d > 0 ? 'D' : 'C', d > 0 ? d : c, '');
+            }
+        }
+        const tot = { novo: 0, existe: 0, erro: 0, partidas: 0 }; let totD = 0, minD = null, maxD = null;
+        ordem.forEach(function (k) {
+            const g = grupos[k], it = { linha: g.linha, numero: g.numero || '', data: g.data, historico: g.historico, status: 'novo', motivo: '', valor: 0, chave: k };
+            let d = 0, c = 0; g.partidas.forEach(function (p) { if (p.tipo === 'D') d += p.valor; else c += p.valor; });
+            d = r2(d); c = r2(c); it.valor = d;
+            if (g.erros.length) { it.status = 'erro'; it.motivo = g.erros.slice(0, 3).join('; '); }
+            else if (!g.partidas.length) { it.status = 'erro'; it.motivo = 'Lançamento sem partidas.'; }
+            else if (d !== c) { it.status = 'erro'; it.motivo = 'Débitos (' + d.toFixed(2) + ') diferentes dos créditos (' + c.toFixed(2) + ').'; }
+            else if (g.partidas.length < 2) { it.status = 'erro'; it.motivo = 'Lançamento com uma partida só.'; }
+            else {
+                const origem = 'planilha:diario:' + g.data + ':' + (g.numero ? g.numero : 'L' + g.linha);
+                it.origem = origem;
+                if (origensExistentes && origensExistentes[origem]) { it.status = 'existe'; it.motivo = 'Já importado antes.'; }
+                else {
+                    R.lotes.push({ origem: origem, data: g.data, historico: g.historico || ('Lançamento ' + (g.numero || g.linha) + ' (planilha)'), partidas: g.partidas });
+                    totD += d; tot.partidas += g.partidas.length; if (!minD || g.data < minD) minD = g.data; if (!maxD || g.data > maxD) maxD = g.data;
+                }
+            }
+            tot[it.status]++; R.itens.push(it);
+        });
+        R.itens.sort(function (a, b) { return a.linha - b.linha; });
+        R.totais = tot; R.totalD = r2(totD); R.minData = minD; R.maxData = maxD;
+        return R;
+    }
+
+    /* ===== tela ===== */
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function dataBR(d) { if (!d) return '—'; const p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function fmtDocCnpj(d) { d = String(d || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (d || ''); }
+    function toast(msg, type) { const c = document.getElementById('toastContainer'); const x = document.createElement('div'); x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 7000); }
+    function clienteIdAtual() {
+        try { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { const u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    function decodificar(buf) { try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (e) { return new TextDecoder('windows-1252').decode(buf); } }
+
+    const AJUDA = {
+        plano: '<b>Plano de contas.</b> Colunas: <b>codigo</b> (classificação com pontos, ex.: 1.1.01.001), <b>descricao</b> e, se tiver, <b>tipo</b> (S = sintética, A = analítica). O sistema descobre sozinho a hierarquia (pelos pontos do código), o grupo (ativo, passivo, receita...) e se a conta é devedora ou credora. Contas que já existem são mantidas como estão.',
+        saldos: '<b>Saldos do balancete (abertura).</b> Colunas: <b>codigo</b>, <b>descricao</b> (opcional) e <b>saldo_anterior</b> (ou saldo_inicial / saldo). Escreva o saldo com a letra <b>D</b> ou <b>C</b> (ex.: 1.234,56 D). Sem letra, o sistema entende que é o saldo natural da conta. Contas sintéticas (totais) são ignoradas. <b>Escolha abaixo a data do saldo</b> (ex.: 01/01/2026). O total de débitos precisa ser igual ao de créditos.',
+        diario: '<b>Diário (lançamentos).</b> Colunas: <b>data</b>, <b>numero</b>, <b>conta_debito</b>, <b>conta_credito</b>, <b>valor</b>, <b>historico</b> (uma linha por lançamento; mesmo número em várias linhas junta tudo num lançamento só). Também aceito: <b>conta</b>, <b>debito</b>, <b>credito</b> (uma linha por partida). Use o código com pontos (classificação) das contas já importadas.'
+    };
+    function escolherTipo(t) {
+        TIPO = t; PREP = null; ARQ = '';
+        ['plano', 'saldos', 'diario'].forEach(function (k) { const b = document.getElementById('tab' + k.charAt(0).toUpperCase() + k.slice(1)); b.className = 'btn-acao' + (k === t ? '' : ' cinza'); });
+        document.getElementById('ajudaTipo').innerHTML = '<i class="fas fa-lightbulb"></i> ' + AJUDA[t];
+        document.getElementById('opcoesTipo').innerHTML = t === 'saldos' ? '<label style="font-size:13px;font-weight:700;color:var(--secondary);">Data do saldo de abertura: <input type="date" id="dataSaldo" style="margin-left:8px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-family:inherit;" onchange="if(PREP)mostrarResumo()"></label>' : '';
+        document.getElementById('arquivo').value = '';
+        ['painelResumo', 'painelImportar'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+        document.getElementById('msgLeitura').innerHTML = ''; document.getElementById('resultado').innerHTML = ''; document.getElementById('progresso').style.display = 'none';
+    }
+    function modeloCSV() {
+        if (TIPO === 'plano') return 'codigo;descricao;tipo\r\n1;ATIVO;S\r\n1.1;ATIVO CIRCULANTE;S\r\n1.1.01;DISPONIBILIDADES;S\r\n1.1.01.001;Caixa;A\r\n1.1.01.002;Banco Exemplo;A\r\n2;PASSIVO;S\r\n2.1;PASSIVO CIRCULANTE;S\r\n2.1.01.001;Fornecedores;A\r\n3;RECEITAS;S\r\n3.1.01.001;Receita de Serviços;A\r\n4;DESPESAS;S\r\n4.1.01.001;Aluguel;A\r\n';
+        if (TIPO === 'saldos') return 'codigo;descricao;saldo_anterior\r\n1.1.01.001;Caixa;2.500,00 D\r\n1.1.01.002;Banco Exemplo;7.500,00 D\r\n2.1.01.001;Fornecedores;10.000,00 C\r\n';
+        return 'data;numero;conta_debito;conta_credito;valor;historico\r\n10/01/2026;1;1.1.01.002;3.1.01.001;1.500,00;Recebimento de serviços\r\n15/01/2026;2;4.1.01.001;1.1.01.002;800,00;Pagamento de aluguel\r\n';
+    }
+    function baixarModelo() {
+        const blob = new Blob(['﻿' + modeloCSV()], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'modelo_' + TIPO + '_sacramento.csv'; document.body.appendChild(a); a.click(); a.remove();
+    }
+    async function carregarEmpresa() {
+        CID = clienteIdAtual(); if (!CID) return;
+        try { const r = await sb.from('clientes_contratantes').select('id,razao_social,nome_fantasia,cnpj_cpf').eq('id', CID).maybeSingle(); EMP = r.data || null; } catch (e) {}
+        document.getElementById('empresaTxt').textContent = EMP ? ('Empresa selecionada: ' + (EMP.nome_fantasia || EMP.razao_social || CID)) : '';
+    }
+    async function carregarBase() {
+        BASE = { contas: {}, qtdContas: 0, origens: {}, lotesNoPeriodo: 0 };
+        for (let ini = 0; ini < 40000; ini += 1000) {
+            const r = await sb.from('contab_contas').select('codigo,descricao,analitica,natureza').eq('cliente_id', CID).range(ini, ini + 999);
+            if (r.error) throw new Error(r.error.message);
+            (r.data || []).forEach(function (c) { BASE.contas[c.codigo] = { descricao: c.descricao, analitica: !!c.analitica, natureza: c.natureza }; BASE.qtdContas++; });
+            if (!r.data || r.data.length < 1000) break;
+        }
+        if (TIPO !== 'plano') {
+            for (let ini = 0; ini < 100000; ini += 1000) {
+                const r = await sb.from('contab_lotes').select('origem').eq('cliente_id', CID).like('origem', 'planilha:%').range(ini, ini + 999);
+                if (r.error) throw new Error(r.error.message);
+                (r.data || []).forEach(function (l) { BASE.origens[l.origem] = true; });
+                if (!r.data || r.data.length < 1000) break;
+            }
+        }
+    }
+    async function contarLotesNoPeriodo(ini, fim) {
+        const q = await sb.from('contab_lotes').select('id', { count: 'exact', head: true }).eq('cliente_id', CID).gte('data', ini).lte('data', fim).or('origem.is.null,origem.not.like.planilha:%');
+        return q.count || 0;
+    }
+    async function aoEscolher(inp) {
+        const f = inp.files && inp.files[0]; PREP = null;
+        ['painelResumo', 'painelImportar'].forEach(function (id) { document.getElementById(id).style.display = 'none'; });
+        document.getElementById('resultado').innerHTML = ''; document.getElementById('progresso').style.display = 'none';
+        const msg = document.getElementById('msgLeitura'); msg.innerHTML = '';
+        if (!f) return;
+        if (!CID) { msg.innerHTML = '<div class="erro">Selecione uma empresa no topo da página.</div>'; return; }
+        if (/\.xlsx?$/i.test(f.name)) { msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> Este é um arquivo do Excel. Abra-o no Excel, clique em <b>Arquivo → Salvar como</b> e escolha <b>CSV (separado por vírgulas ou ponto e vírgula)</b>; depois selecione o CSV aqui.</div>'; inp.value = ''; return; }
+        if (f.size > 40 * 1024 * 1024) { msg.innerHTML = '<div class="erro">Arquivo muito grande (mais de 40 MB).</div>'; return; }
+        ARQ = f.name; msg.innerHTML = '<div style="margin-top:10px;font-size:12px;color:var(--text-light);">Lendo o arquivo...</div>';
+        try {
+            const linhas = lerCSV(decodificar(await f.arrayBuffer()));
+            await carregarBase();
+            if (TIPO === 'plano') { const ex = {}; Object.keys(BASE.contas).forEach(function (k) { ex[k] = BASE.contas[k].descricao; }); PREP = prepararPlano(linhas, ex); }
+            else if (TIPO === 'saldos') PREP = prepararSaldos(linhas, BASE.contas);
+            else {
+                PREP = prepararDiario(linhas, BASE.contas, BASE.origens);
+                if (!PREP.erros.length && PREP.minData) PREP.lotesNoPeriodo = await contarLotesNoPeriodo(PREP.minData, PREP.maxData);
+            }
+            if (PREP.erros.length) { const e0 = PREP.erros[0]; PREP = null; msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> ' + esc(e0) + '</div>'; return; }
+            msg.innerHTML = ''; mostrarResumo();
+        } catch (e) { PREP = null; msg.innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> ' + esc(e.message) + '</div>'; }
+    }
+    function chip(s) {
+        const m = { novo: ['verde', 'Novo'], ok: ['verde', 'Entra'], existe: ['amarelo', 'Já existe'], repetido: ['amarelo', 'Repetido'], zerado: ['amarelo', 'Sem saldo'], sintetica: ['amarelo', 'Sintética'], erro: ['vermelho', 'Erro'] }[s] || ['amarelo', s];
+        return '<span class="chip ' + m[0] + '">' + m[1] + '</span>';
+    }
+    function dataSaldoEscolhida() { const e = document.getElementById('dataSaldo'); return e && e.value ? e.value : ''; }
+    function bloqueios() {
+        const b = [];
+        if (!PREP) return b;
+        if (TIPO === 'plano') { if (!PREP.contas.length) b.push('Não há contas novas para importar.'); }
+        else if (TIPO === 'saldos') {
+            if (PREP.totais.erro) b.push('Há ' + PREP.totais.erro + ' linha(s) com erro. Como o saldo de abertura precisa fechar, corrija a planilha e escolha o arquivo de novo.');
+            if (!PREP.partidas.length) b.push('Não há saldos para importar.');
+            else if (PREP.dif !== 0) b.push('O total de débitos (R$ ' + brl(PREP.totalD) + ') é diferente do total de créditos (R$ ' + brl(PREP.totalC) + '): diferença de R$ ' + brl(PREP.dif) + '.');
+            if (!dataSaldoEscolhida()) b.push('Escolha a data do saldo de abertura (campo acima).');
+        } else { if (!PREP.lotes.length) b.push('Não há lançamentos novos para importar.'); }
+        return b;
+    }
+    function mostrarResumo() {
+        const h = [], T = PREP.totais, bl = bloqueios(), conf = [];
+        let ths = ['Conta', 'Descrição', 'Detalhe'], linhasHtml = '';
+        if (TIPO === 'plano') {
+            h.push('<div class="cards"><div class="card-n"><b>' + T.novo + '</b><span>Contas novas (' + T.analiticas + ' analíticas)</span></div><div class="card-n"><b>' + T.existe + '</b><span>Já existem</span></div><div class="card-n"><b>' + T.repetido + '</b><span>Repetidas no arquivo</span></div><div class="card-n"><b>' + T.erro + '</b><span>Com erro</span></div></div>');
+            if (T.erro || T.repetido) h.push('<div class="erro"><i class="fas fa-ban"></i> ' + (T.erro + T.repetido) + ' linha(s) não serão importadas (veja a coluna Observação). As demais entram normalmente.</div>');
+            if (PREP.semHierarquia) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> Quase nenhuma conta tem "pai" pelo código. Confira se a coluna <b>codigo</b> é a classificação com pontos (1.1.01.001) e não o código reduzido.</div>');
+            if (BASE.qtdContas) h.push('<div class="info" style="margin-top:10px;"><i class="fas fa-circle-info"></i> A empresa já tem ' + BASE.qtdContas + ' conta(s). Contas com o mesmo código são mantidas sem alteração.</div>');
+            ths = ['Código', 'Nome', 'Tipo / grupo'];
+            linhasHtml = PREP.itens.slice(0, 500).map(function (i) { return '<tr><td>' + i.linha + '</td><td>' + chip(i.status) + '</td><td>' + esc(i.codigo) + '</td><td>' + esc(i.descricao) + '</td><td>' + (i.grupo ? (i.analitica ? 'Analítica' : 'Sintética') + ' · ' + esc(i.grupo.replace('_', ' ')) + ' · ' + i.natureza : '') + '</td><td>' + esc(i.motivo) + '</td></tr>'; }).join('');
+        } else if (TIPO === 'saldos') {
+            h.push('<div class="cards"><div class="card-n"><b>' + T.ok + '</b><span>Contas com saldo</span></div><div class="card-n"><b>' + brl(PREP.totalD) + '</b><span>Total débitos</span></div><div class="card-n"><b>' + brl(PREP.totalC) + '</b><span>Total créditos</span></div><div class="card-n"><b>' + T.erro + '</b><span>Com erro</span></div></div>');
+            h.push('<div class="info"><i class="fas fa-circle-info"></i> Coluna de saldo usada: <b>' + esc(PREP.colunaUsada) + '</b>.' + (T.sintetica ? ' ' + T.sintetica + ' conta(s) sintética(s) ignorada(s).' : '') + (T.zerado ? ' ' + T.zerado + ' conta(s) sem saldo.' : '') + '</div>');
+            const dt = dataSaldoEscolhida();
+            if (PREP.partidas.length) h.push(PREP.dif === 0 ? '<div class="ok"><i class="fas fa-circle-check"></i> Débitos e créditos <b>fecham</b>.</div>' : '<div class="erro"><i class="fas fa-scale-unbalanced"></i> Não fecha: diferença de R$ ' + brl(PREP.dif) + '.</div>');
+            if (dt && BASE.origens['planilha:saldos:' + dt]) h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> Já existe um saldo de abertura importado por planilha em ' + dataBR(dt) + '. Importar de novo não duplica (será pulado).</div>');
+            ths = ['Conta', 'Nome', 'Saldo'];
+            linhasHtml = PREP.itens.slice(0, 500).map(function (i) { return '<tr><td>' + i.linha + '</td><td>' + chip(i.status) + '</td><td>' + esc(i.codigo) + '</td><td>' + esc(i.descricao) + '</td><td>' + (i.valor ? brl(i.valor) + ' ' + i.dc : '') + '</td><td>' + esc(i.motivo) + '</td></tr>'; }).join('');
+        } else {
+            h.push('<div class="cards"><div class="card-n"><b>' + T.novo + '</b><span>Lançamentos novos</span></div><div class="card-n"><b>' + T.partidas + '</b><span>Partidas</span></div><div class="card-n"><b>' + T.existe + '</b><span>Já importados</span></div><div class="card-n"><b>' + T.erro + '</b><span>Com erro</span></div></div>');
+            if (PREP.minData) h.push('<div class="info"><i class="fas fa-circle-info"></i> Período dos lançamentos novos: ' + dataBR(PREP.minData) + ' a ' + dataBR(PREP.maxData) + ' · total de débitos R$ ' + brl(PREP.totalD) + '.</div>');
+            if (T.erro) h.push('<div class="erro"><i class="fas fa-ban"></i> ' + T.erro + ' lançamento(s) com erro <b>não serão importados</b> (veja a coluna Observação). Os demais entram. Corrija na planilha e importe de novo: o que já entrou não duplica.</div>');
+            if (PREP.lotesNoPeriodo) { h.push('<div class="aviso" style="margin-top:10px;"><i class="fas fa-triangle-exclamation"></i> A empresa já tem <b>' + PREP.lotesNoPeriodo + ' lançamento(s)</b> nesse período que não vieram de planilha. Importar pode duplicar valores.</div>'); conf.push('<label class="linha-chk"><input type="checkbox" id="optDup"> <span>Entendo que já há lançamentos neste período e que a importação pode duplicar valores.</span></label>'); }
+            ths = ['Lançamento', 'Histórico', 'Valor'];
+            linhasHtml = PREP.itens.slice(0, 500).map(function (i) { return '<tr><td>' + i.linha + '</td><td>' + chip(i.status) + '</td><td>nº ' + esc(i.numero || '—') + ' · ' + dataBR(i.data) + '</td><td>' + esc(i.historico) + '</td><td>' + (i.valor ? brl(i.valor) : '') + '</td><td>' + esc(i.motivo) + '</td></tr>'; }).join('');
+        }
+        bl.forEach(function (m) { h.push('<div class="erro"><i class="fas fa-ban"></i> <b>Importação bloqueada:</b> ' + esc(m) + '</div>'); });
+        document.getElementById('resumo').innerHTML = h.join('');
+        document.getElementById('thA').textContent = ths[0]; document.getElementById('thB').textContent = ths[1]; document.getElementById('thC').textContent = ths[2];
+        document.getElementById('tbodyPrev').innerHTML = linhasHtml;
+        document.getElementById('maisLinhas').textContent = PREP.itens.length > 500 ? 'Mostrando as primeiras 500 de ' + PREP.itens.length + ' linhas (todas são importadas/conferidas).' : '';
+        document.getElementById('confirmacoes').innerHTML = conf.join('');
+        document.getElementById('btnImportar').disabled = bl.length > 0;
+        document.getElementById('painelResumo').style.display = ''; document.getElementById('painelImportar').style.display = '';
+    }
+    function progresso(pct, txt) { document.getElementById('progresso').style.display = ''; document.getElementById('barra').style.width = pct + '%'; document.getElementById('progTxt').textContent = txt; }
+    async function importar() {
+        if (!PREP || bloqueios().length) return;
+        if (document.getElementById('optDup') && !document.getElementById('optDup').checked) { toast('Marque a confirmação sobre lançamentos já existentes no período.', 'error'); return; }
+        const resumoTxt = TIPO === 'plano' ? PREP.contas.length + ' conta(s) nova(s)' : TIPO === 'saldos' ? 'saldo de abertura de ' + PREP.partidas.length + ' conta(s) em ' + dataBR(dataSaldoEscolhida()) : PREP.lotes.length + ' lançamento(s)';
+        if (!confirm('Importar para a empresa selecionada?\n\n' + resumoTxt + '.')) return;
+        const btn = document.getElementById('btnImportar'); btn.disabled = true; document.getElementById('resultado').innerHTML = '';
+        try {
+            let html = '';
+            if (TIPO === 'plano') {
+                let novas = 0, ex = 0; const cs = PREP.contas, TAM = 400;
+                for (let i = 0; i < cs.length; i += TAM) {
+                    progresso(Math.round(100 * i / Math.max(1, cs.length)), 'Importando contas (' + Math.min(i + TAM, cs.length) + ' de ' + cs.length + ')...');
+                    const r = await sb.rpc('contab_importar_ecd_contas', { p_cliente: CID, p_contas: cs.slice(i, i + TAM) });
+                    if (r.error) throw new Error(r.error.message); novas += r.data.novas; ex += r.data.existentes;
+                }
+                html = '<b>Importação concluída.</b> Contas novas: ' + novas + (ex ? ' (já existiam: ' + ex + ')' : '') + '. Confira em <a href="contabilidade.html">Contabilidade</a> (Plano de Contas). Próximo passo: importar os saldos (balancete).';
+            } else {
+                let lista;
+                if (TIPO === 'saldos') { const dt = dataSaldoEscolhida(); lista = [{ origem: 'planilha:saldos:' + dt, data: dt, historico: 'Saldo de abertura (importado de planilha)', partidas: PREP.partidas }]; }
+                else lista = PREP.lotes;
+                let imp = 0, ja = 0; const TAM = 100;
+                for (let i = 0; i < lista.length; i += TAM) {
+                    progresso(Math.round(100 * i / Math.max(1, lista.length)), 'Importando lançamentos (' + Math.min(i + TAM, lista.length) + ' de ' + lista.length + ')...');
+                    const r = await sb.rpc('contab_importar_ecd_lotes', { p_cliente: CID, p_lotes: lista.slice(i, i + TAM) });
+                    if (r.error) throw new Error(r.error.message); imp += r.data.importados; ja += r.data.ja_existiam;
+                }
+                html = '<b>Importação concluída.</b> ' + (TIPO === 'saldos' ? (imp ? 'Saldo de abertura gravado.' : 'O saldo desta data já tinha sido importado (nada foi duplicado).') : 'Lançamentos importados: ' + imp + (ja ? ' (já existiam: ' + ja + ')' : '') + '.') + ' Confira em <a href="contabilidade.html">Contabilidade</a> (Balancete e Diário) comparando com o Domínio.';
+            }
+            progresso(100, 'Concluído.');
+            document.getElementById('resultado').innerHTML = '<div class="ok"><i class="fas fa-circle-check"></i> ' + html + '</div>';
+            toast('Importação concluída.', 'success');
+        } catch (e) {
+            document.getElementById('resultado').innerHTML = '<div class="erro"><i class="fas fa-circle-xmark"></i> <b>A importação parou:</b> ' + esc(e.message) + '<br>O que já foi gravado fica salvo. Corrija o problema e importe o mesmo arquivo de novo: o sistema continua de onde parou, sem duplicar.</div>';
+            toast('A importação parou. Veja a mensagem na tela.', 'error');
+        } finally { btn.disabled = bloqueios().length > 0; }
+    }
+    function imprimirConferencia() {
+        if (!PREP) return;
+        if (typeof ERPPrint === 'undefined') { toast('O módulo de impressão não foi carregado. Recarregue a página.', 'error'); return; }
+        const nome = { plano: 'plano de contas', saldos: 'saldos (balancete)', diario: 'diário' }[TIPO], T = PREP.totais;
+        const lab = function (s) { return { novo: 'Novo', ok: 'Entra', existe: 'Já existe', repetido: 'Repetido', zerado: 'Sem saldo', sintetica: 'Sintética', erro: 'Erro' }[s] || s; };
+        let colunas, linhas, resumo;
+        if (TIPO === 'plano') { colunas = [{ t: 'Linha', w: 1 }, { t: 'Situação', w: 2 }, { t: 'Código', w: 3 }, { t: 'Nome', w: 6 }, { t: 'Observação', w: 5 }]; linhas = PREP.itens.map(function (i) { return [String(i.linha), lab(i.status), i.codigo, i.descricao, i.motivo]; }); resumo = [['Novas', String(T.novo)], ['Já existem', String(T.existe)], ['Erros', String(T.erro + T.repetido)]]; }
+        else if (TIPO === 'saldos') { colunas = [{ t: 'Linha', w: 1 }, { t: 'Situação', w: 2 }, { t: 'Conta', w: 3 }, { t: 'Nome', w: 5 }, { t: 'Saldo', w: 3 }, { t: 'Observação', w: 5 }]; linhas = PREP.itens.map(function (i) { return [String(i.linha), lab(i.status), i.codigo, i.descricao, i.valor ? brl(i.valor) + ' ' + i.dc : '', i.motivo]; }); resumo = [['Total débitos', brl(PREP.totalD)], ['Total créditos', brl(PREP.totalC)], ['Diferença', brl(PREP.dif)]]; }
+        else { colunas = [{ t: 'Linha', w: 1 }, { t: 'Situação', w: 2 }, { t: 'Nº', w: 1 }, { t: 'Data', w: 2 }, { t: 'Histórico', w: 6 }, { t: 'Valor', w: 2 }, { t: 'Observação', w: 5 }]; linhas = PREP.itens.map(function (i) { return [String(i.linha), lab(i.status), i.numero || '', dataBR(i.data), i.historico, i.valor ? brl(i.valor) : '', i.motivo]; }); resumo = [['Novos', String(T.novo)], ['Já importados', String(T.existe)], ['Erros', String(T.erro)]]; }
+        ERPPrint.imprimir({
+            titulo: 'Conferência da importação — ' + nome, subtitulo: 'Arquivo: ' + ARQ, codigo: 'IMP-' + TIPO.toUpperCase().slice(0, 3), orientacao: TIPO === 'plano' ? 'portrait' : 'landscape',
+            empresa: EMP ? (EMP.nome_fantasia || EMP.razao_social) : undefined, cnpj: EMP ? fmtDocCnpj(EMP.cnpj_cpf) : undefined,
+            filtros: [['Arquivo', ARQ]], resumo: resumo, colunas: colunas, linhas: linhas,
+            observacao: 'Conferência feita antes da gravação. Depois de importar, compare o balancete do Sacramento com o do Domínio.', assinaturas: ['Responsável pela importação', 'Contador']
+        });
+    }
+    window.addEventListener('load', function () { carregarEmpresa(); escolherTipo('plano'); });
+</script>
+</body>
+</html>
