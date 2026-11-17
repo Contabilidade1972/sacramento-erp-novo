@@ -201,7 +201,7 @@
     }
     async function carregarNotas() {
         try {
-            const cols = 'id,modelo,direcao,numero,serie,data_emissao,competencia,parceiro_cnpj,parceiro_nome,natureza,cfop,valor_total,valor_produtos,valor_servicos,valor_icms,valor_ipi,valor_pis,valor_cofins,valor_iss,iss_retido,situacao';
+            const cols = 'id,modelo,direcao,numero,serie,data_emissao,competencia,parceiro_cnpj,parceiro_nome,natureza,cfop,valor_total,valor_produtos,valor_servicos,valor_icms,valor_ipi,valor_pis,valor_cofins,valor_iss,valor_ibs,valor_cbs,iss_retido,situacao';
             let out = [];
             for (let ini = 0; ini < 100000; ini += 1000) {
                 const r = await sb.from('fiscal_notas').select(cols).eq('cliente_id', emp).order('data_emissao', { ascending: true }).range(ini, ini + 999);
@@ -251,17 +251,17 @@
         const l = lista.filter(function (n) { return n.direcao === dir; });
         const cols = [
             { t: 'Data', w: 1.15 }, { t: 'Documento', w: 1.5 }, { t: dir === 'saida' ? 'Cliente' : 'Fornecedor', w: 3 }, { t: 'CFOP', w: .7 }, { t: 'Natureza / serviço', w: 2.6 },
-            { t: 'Valor total', w: 1.2, a: 'r' }, { t: 'Produtos', w: 1.1, a: 'r' }, { t: 'Serviços', w: 1.1, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }
+            { t: 'Valor total', w: 1.2, a: 'r' }, { t: 'Produtos', w: 1.1, a: 'r' }, { t: 'Serviços', w: 1.1, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }, { t: 'IBS', w: 1, a: 'r' }, { t: 'CBS', w: 1, a: 'r' }
         ];
         const rows = l.map(function (n) {
             return [dataBR(n.data_emissao), docTxt(n) + (ehCancelada(n) ? ' (cancelada)' : ''), (n.parceiro_nome || '—') + (n.parceiro_cnpj ? ' — ' + fmtDoc(n.parceiro_cnpj) : ''), n.cfop || '—', n.natureza || '—',
-                brl(n.valor_total), brl(n.valor_produtos), brl(n.valor_servicos), brl(n.valor_icms), brl(n.valor_iss)];
+                brl(n.valor_total), brl(n.valor_produtos), brl(n.valor_servicos), brl(n.valor_icms), brl(n.valor_iss), brl(n.valor_ibs), brl(n.valor_cbs)];
         });
-        const tot = ['TOTAL', '', '', '', '', brl(somar(l, 'valor_total')), brl(somar(l, 'valor_produtos')), brl(somar(l, 'valor_servicos')), brl(somar(l, 'valor_icms')), brl(somar(l, 'valor_iss'))];
+        const tot = ['TOTAL', '', '', '', '', brl(somar(l, 'valor_total')), brl(somar(l, 'valor_produtos')), brl(somar(l, 'valor_servicos')), brl(somar(l, 'valor_icms')), brl(somar(l, 'valor_iss')), brl(somar(l, 'valor_ibs')), brl(somar(l, 'valor_cbs'))];
         const nv = l.filter(function (n) { return !ehCancelada(n); }).length;
         return {
             titulo: dir === 'saida' ? 'Registro de Saídas' : 'Registro de Entradas', codigo: dir === 'saida' ? 'FIS-RS' : 'FIS-RE', cols: cols, rows: rows, canc: l.map(ehCancelada), totais: tot,
-            resumo: [['Notas', String(nv)], ['Valor total', 'R$ ' + brl(somar(l, 'valor_total'))], ['ICMS', 'R$ ' + brl(somar(l, 'valor_icms'))], ['ISS', 'R$ ' + brl(somar(l, 'valor_iss'))]],
+            resumo: [['Notas', String(nv)], ['Valor total', 'R$ ' + brl(somar(l, 'valor_total'))], ['ICMS', 'R$ ' + brl(somar(l, 'valor_icms'))], ['ISS', 'R$ ' + brl(somar(l, 'valor_iss'))], ['IBS', 'R$ ' + brl(somar(l, 'valor_ibs'))], ['CBS', 'R$ ' + brl(somar(l, 'valor_cbs'))]],
             obs: 'Relação das notas fiscais ' + (dir === 'saida' ? 'de venda' : 'de compra') + ' importadas em XML. Notas canceladas aparecem riscadas e não entram nos totais. Cálculo e escrituração de apoio.',
             dica: 'Montado a partir das notas importadas em Notas Fiscais (XML). Se faltar alguma nota, importe o XML dela lá. Notas canceladas aparecem riscadas e não somam.'
         };
@@ -271,16 +271,16 @@
         lista.forEach(function (n) {
             if (ehCancelada(n)) return;
             const k = n.direcao + '|' + (n.cfop || (n.modelo === 'nfse' ? 'Serviços' : '—'));
-            if (!g[k]) g[k] = { dir: n.direcao, cfop: n.cfop || (n.modelo === 'nfse' ? 'Serviços (NFS-e)' : '—'), nat: n.natureza || '', q: 0, t: 0, p: 0, s: 0, i: 0, iss: 0 };
-            g[k].q++; g[k].t += Number(n.valor_total || 0); g[k].p += Number(n.valor_produtos || 0); g[k].s += Number(n.valor_servicos || 0); g[k].i += Number(n.valor_icms || 0); g[k].iss += Number(n.valor_iss || 0);
+            if (!g[k]) g[k] = { dir: n.direcao, cfop: n.cfop || (n.modelo === 'nfse' ? 'Serviços (NFS-e)' : '—'), nat: n.natureza || '', q: 0, t: 0, p: 0, s: 0, i: 0, iss: 0, ibs: 0, cbs: 0 };
+            g[k].q++; g[k].t += Number(n.valor_total || 0); g[k].p += Number(n.valor_produtos || 0); g[k].s += Number(n.valor_servicos || 0); g[k].i += Number(n.valor_icms || 0); g[k].iss += Number(n.valor_iss || 0); g[k].ibs += Number(n.valor_ibs || 0); g[k].cbs += Number(n.valor_cbs || 0);
         });
         const itens = Object.keys(g).map(function (k) { return g[k]; }).sort(function (a, b) { return (a.dir === b.dir ? 0 : (a.dir === 'saida' ? -1 : 1)) || String(a.cfop).localeCompare(String(b.cfop)); });
-        const cols = [{ t: 'Operação', w: 1.1 }, { t: 'CFOP', w: 1.4 }, { t: 'Natureza (exemplo)', w: 3 }, { t: 'Notas', w: .7, a: 'r' }, { t: 'Valor total', w: 1.3, a: 'r' }, { t: 'Produtos', w: 1.2, a: 'r' }, { t: 'Serviços', w: 1.2, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }];
-        const rows = itens.map(function (x) { return [x.dir === 'saida' ? 'Saída' : 'Entrada', x.cfop, x.nat || '—', String(x.q), brl(x.t), brl(x.p), brl(x.s), brl(x.i), brl(x.iss)]; });
+        const cols = [{ t: 'Operação', w: 1.1 }, { t: 'CFOP', w: 1.4 }, { t: 'Natureza (exemplo)', w: 3 }, { t: 'Notas', w: .7, a: 'r' }, { t: 'Valor total', w: 1.3, a: 'r' }, { t: 'Produtos', w: 1.2, a: 'r' }, { t: 'Serviços', w: 1.2, a: 'r' }, { t: 'ICMS', w: 1, a: 'r' }, { t: 'ISS', w: 1, a: 'r' }, { t: 'IBS', w: 1, a: 'r' }, { t: 'CBS', w: 1, a: 'r' }];
+        const rows = itens.map(function (x) { return [x.dir === 'saida' ? 'Saída' : 'Entrada', x.cfop, x.nat || '—', String(x.q), brl(x.t), brl(x.p), brl(x.s), brl(x.i), brl(x.iss), brl(x.ibs), brl(x.cbs)]; });
         const tt = function (d) { return itens.filter(function (x) { return x.dir === d; }).reduce(function (s, x) { return s + x.t; }, 0); };
         return {
             titulo: 'Resumo por CFOP', codigo: 'FIS-CF', cols: cols, rows: rows, canc: rows.map(function () { return false; }),
-            totais: ['TOTAL', '', '', String(itens.reduce(function (s, x) { return s + x.q; }, 0)), brl(itens.reduce(function (s, x) { return s + x.t; }, 0)), brl(itens.reduce(function (s, x) { return s + x.p; }, 0)), brl(itens.reduce(function (s, x) { return s + x.s; }, 0)), brl(itens.reduce(function (s, x) { return s + x.i; }, 0)), brl(itens.reduce(function (s, x) { return s + x.iss; }, 0))],
+            totais: ['TOTAL', '', '', String(itens.reduce(function (s, x) { return s + x.q; }, 0)), brl(itens.reduce(function (s, x) { return s + x.t; }, 0)), brl(itens.reduce(function (s, x) { return s + x.p; }, 0)), brl(itens.reduce(function (s, x) { return s + x.s; }, 0)), brl(itens.reduce(function (s, x) { return s + x.i; }, 0)), brl(itens.reduce(function (s, x) { return s + x.iss; }, 0)), brl(itens.reduce(function (s, x) { return s + x.ibs; }, 0)), brl(itens.reduce(function (s, x) { return s + x.cbs; }, 0))],
             resumo: [['Saídas', 'R$ ' + brl(tt('saida'))], ['Entradas', 'R$ ' + brl(tt('entrada'))]],
             obs: 'Totais por tipo de operação (CFOP). Notas de serviço (NFS-e) não têm CFOP e ficam agrupadas como Serviços. Notas canceladas não entram.',
             dica: 'CFOP é o código que identifica o tipo da operação (ex.: 5102 = venda de mercadoria dentro do estado). Notas de serviço não têm CFOP e ficam em "Serviços".'
@@ -289,19 +289,19 @@
     function montarMensal(lista) {
         const g = {};
         lista.forEach(function (n) {
-            if (!g[n.competencia]) g[n.competencia] = { qs: 0, ts: 0, qe: 0, te: 0, icms: 0, iss: 0, canc: 0 };
+            if (!g[n.competencia]) g[n.competencia] = { qs: 0, ts: 0, qe: 0, te: 0, icms: 0, iss: 0, ibs: 0, cbs: 0, canc: 0 };
             const x = g[n.competencia];
             if (ehCancelada(n)) { x.canc++; return; }
-            if (n.direcao === 'saida') { x.qs++; x.ts += Number(n.valor_total || 0); x.icms += Number(n.valor_icms || 0); x.iss += Number(n.valor_iss || 0); }
+            if (n.direcao === 'saida') { x.qs++; x.ts += Number(n.valor_total || 0); x.icms += Number(n.valor_icms || 0); x.iss += Number(n.valor_iss || 0); x.ibs += Number(n.valor_ibs || 0); x.cbs += Number(n.valor_cbs || 0); }
             else { x.qe++; x.te += Number(n.valor_total || 0); }
         });
         const meses = Object.keys(g).sort();
-        const cols = [{ t: 'Mês', w: 1 }, { t: 'Notas de saída', w: 1.2, a: 'r' }, { t: 'Total saídas', w: 1.4, a: 'r' }, { t: 'Notas de entrada', w: 1.3, a: 'r' }, { t: 'Total entradas', w: 1.4, a: 'r' }, { t: 'ICMS nas saídas', w: 1.2, a: 'r' }, { t: 'ISS nas saídas', w: 1.2, a: 'r' }, { t: 'Canceladas', w: 1, a: 'r' }];
-        const rows = meses.map(function (m) { const x = g[m]; return [mesBR(m), String(x.qs), brl(x.ts), String(x.qe), brl(x.te), brl(x.icms), brl(x.iss), String(x.canc)]; });
+        const cols = [{ t: 'Mês', w: 1 }, { t: 'Notas de saída', w: 1.2, a: 'r' }, { t: 'Total saídas', w: 1.4, a: 'r' }, { t: 'Notas de entrada', w: 1.3, a: 'r' }, { t: 'Total entradas', w: 1.4, a: 'r' }, { t: 'ICMS nas saídas', w: 1.2, a: 'r' }, { t: 'ISS nas saídas', w: 1.2, a: 'r' }, { t: 'IBS nas saídas', w: 1.2, a: 'r' }, { t: 'CBS nas saídas', w: 1.2, a: 'r' }, { t: 'Canceladas', w: 1, a: 'r' }];
+        const rows = meses.map(function (m) { const x = g[m]; return [mesBR(m), String(x.qs), brl(x.ts), String(x.qe), brl(x.te), brl(x.icms), brl(x.iss), brl(x.ibs), brl(x.cbs), String(x.canc)]; });
         const s = function (f) { return meses.reduce(function (a, m) { return a + g[m][f]; }, 0); };
         return {
             titulo: 'Resumo mensal', codigo: 'FIS-RM', cols: cols, rows: rows, canc: rows.map(function () { return false; }),
-            totais: ['TOTAL', String(s('qs')), brl(s('ts')), String(s('qe')), brl(s('te')), brl(s('icms')), brl(s('iss')), String(s('canc'))],
+            totais: ['TOTAL', String(s('qs')), brl(s('ts')), String(s('qe')), brl(s('te')), brl(s('icms')), brl(s('iss')), brl(s('ibs')), brl(s('cbs')), String(s('canc'))],
             resumo: [['Saídas', 'R$ ' + brl(s('ts'))], ['Entradas', 'R$ ' + brl(s('te'))]],
             obs: 'Movimento fiscal mês a mês, a partir das notas importadas. Notas canceladas contadas à parte e fora dos totais.',
             dica: 'O total de saídas de cada mês é a base da apuração do Simples Nacional (receita bruta). Confira com a tela de Apuração.'
