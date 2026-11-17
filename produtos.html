@@ -156,7 +156,7 @@
         <div style="display:flex; flex-direction:column; gap:12px;">
             <div>
                 <label>Código Automático / Sugerido</label>
-                <input type="text" id="novo_cc_codigo" class="form-control" placeholder="Ex: 1.05">
+                <input type="text" id="novo_cc_codigo" class="form-control" readonly style="background:var(--bg);">
             </div>
             <div>
                 <label>Nome / Descrição do Projeto *</label>
@@ -450,7 +450,7 @@ async function carregarCentrosCustoSelect(selecionarCodigo = null) {
 }
 
 function abrirModalCcRapido() {
-    document.getElementById('novo_cc_codigo').value = 'CC-' + Math.floor(100 + Math.random() * 900);
+    document.getElementById('novo_cc_codigo').value = '(automático ao salvar)';
     document.getElementById('novo_cc_nome').value = '';
     document.getElementById('modalCentroCustoRápido').classList.add('ativo');
 }
@@ -460,17 +460,17 @@ function fecharModalCcRapido() {
 }
 
 async function salvarCentroCustoRapido() {
-    const codigo = document.getElementById('novo_cc_codigo').value.trim();
     const nome = document.getElementById('novo_cc_nome').value.trim();
     if(!nome) { toast("Digite o nome do Centro de Custo!", "error"); return; }
 
-    const payload = { codigo, nome, descricao: nome, cliente_id: window.clienteIdAtual() };
+    const payload = { nome, descricao: nome, cliente_id: window.clienteIdAtual() };
     const { data, error } = await sb.from('centros_custo').insert([payload]).select();
     if(error) { toast("Erro ao criar centro de custo: " + error.message, "error"); return; }
 
     toast("Centro de Custo criado com sucesso!");
     fecharModalCcRapido();
-    await carregarCentrosCustoSelect(`${codigo} - ${nome}`);
+    const codigoGerado = (data && data[0] && data[0].codigo) ? data[0].codigo : '';
+    await carregarCentrosCustoSelect(`${codigoGerado} - ${nome}`);
 }
 
 async function gerarCodigoAutomatico() {
