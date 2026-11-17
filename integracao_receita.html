@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integração com a Receita (Integra Contador) — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <style>
+        :root { --primary:#2563eb; --primary-dark:#1d4ed8; --secondary:#1e3a8a; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --bg:#f8fafc; --card:#fff; --text-main:#0f172a; --text-light:#64748b; --border:#e2e8f0; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text-main); min-height:100vh; display:flex; flex-direction:column; }
+        .container { max-width:1300px; margin:30px auto; padding:0 24px; width:100%; flex:1; display:flex; flex-direction:column; gap:22px; }
+        .page-toolbar { display:flex; align-items:center; flex-wrap:wrap; gap:12px; justify-content:space-between; }
+        .btn-acao { background:var(--primary); color:#fff; border:none; padding:10px 18px; border-radius:10px; font-size:13px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:8px; text-decoration:none; font-family:inherit; }
+        .btn-acao:hover { background:var(--primary-dark); }
+        .btn-acao.sucesso { background:var(--success); } .btn-acao.cinza { background:#64748b; } .btn-acao.alerta { background:#d97706; }
+        .btn-mini { padding:6px 10px; font-size:11.5px; border-radius:8px; }
+        .page-title { font-size:22px; font-weight:800; color:var(--secondary); display:flex; align-items:center; gap:10px; }
+        .page-subtitle { font-size:13px; color:var(--text-light); margin-top:4px; line-height:1.5; }
+        .panel { background:var(--card); border:1px solid var(--border); border-radius:16px; padding:24px; box-shadow:0 4px 20px rgba(0,0,0,.02); }
+        .panel-title { font-size:15px; font-weight:800; color:var(--secondary); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+        label { font-size:11px; font-weight:700; color:var(--text-light); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+        .form-control { width:100%; height:42px; padding:0 14px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; color:var(--text-main); outline:none; }
+        .form-control:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        .grid { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; }
+        .dica { font-size:11.5px; color:var(--text-light); margin-top:8px; line-height:1.5; }
+        .aviso { background:#fffbeb; border:1px solid #fde68a; color:#92400e; border-radius:12px; padding:14px 16px; font-size:13px; line-height:1.5; }
+        .table-wrap { overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
+        .tabela { width:100%; border-collapse:collapse; font-size:13px; }
+        .tabela th { background:var(--bg); padding:12px 14px; text-align:left; font-weight:700; font-size:11px; text-transform:uppercase; color:var(--text-light); border-bottom:2px solid var(--border); white-space:nowrap; }
+        .tabela td { padding:11px 14px; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .sub { display:block; font-size:11px; color:var(--text-light); margin-top:2px; }
+        .chip { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; background:#e0e7ff; color:#3730a3; }
+        .chip.verde { background:#d1fae5; color:#065f46; } .chip.amarelo { background:#fef3c7; color:#92400e; } .chip.vermelho { background:#fee2e2; color:#991b1b; }
+        .contador { font-size:13px; color:var(--text-light); }
+        .toast-container { position:fixed; top:20px; right:20px; z-index:6000; display:flex; flex-direction:column; gap:8px; }
+        .toast { padding:12px 16px; border-radius:10px; color:#fff; font-size:13px; font-weight:600; box-shadow:0 10px 15px -3px rgba(0,0,0,.1); max-width:420px; }
+        .toast.success { background:var(--success); } .toast.error { background:var(--danger); } .toast.info { background:var(--primary); }
+        .modal-bg { display:none; position:fixed; inset:0; background:rgba(15,23,42,.6); z-index:5000; align-items:center; justify-content:center; padding:20px; }
+        .modal-bg.on { display:flex; }
+        .modal { background:#fff; border-radius:16px; padding:26px; width:100%; max-width:640px; max-height:92vh; overflow:auto; }
+        .modal h3 { color:var(--secondary); font-size:17px; margin-bottom:16px; }
+        .modal-rodape { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+        .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+        .kpi { border:1px solid var(--border); border-radius:12px; padding:14px 16px; background:var(--bg); }
+        .kpi .t { font-size:11px; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.4px; }
+        .kpi .v { font-size:22px; font-weight:800; color:var(--secondary); margin-top:4px; }
+        details.guia { border:1px solid var(--border); border-radius:12px; padding:14px 16px; background:#f0f9ff; font-size:13px; line-height:1.6; }
+        details.guia summary { cursor:pointer; font-weight:700; color:var(--secondary); }
+        details.guia ol { margin:10px 0 0 20px; }
+        @media (max-width:700px) { .grid { grid-template-columns:1fr; } .kpis { grid-template-columns:1fr 1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao cinza"><i class="fas fa-arrow-left"></i> Módulo Contábil</a>
+        <button class="btn-acao sucesso" id="btnNovo" onclick="abrirNovo()" style="display:none;"><i class="fas fa-key"></i> Cadastrar / atualizar credenciais</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-landmark" style="color:var(--primary);"></i> Integração com a Receita (Integra Contador)</div>
+        <div class="page-subtitle">Ligue o escritório ao Integra Contador do Serpro para consultar a Receita Federal sem abrir o e-CAC cliente por cliente.</div>
+    </div>
+
+    <div class="aviso"><i class="fas fa-shield-halved"></i> <b>Segurança:</b> por enquanto a integração é <b>somente leitura</b>: o Sacramento <b>não envia nem transmite nada</b> à Receita. As chaves e o certificado ficam <b>criptografados no servidor</b> e nunca voltam para a tela. Quem cadastra é o administrador do escritório.</div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-plug"></i> Conexão do escritório</div>
+        <div class="table-wrap"><table class="tabela">
+            <thead><tr><th>CNPJ do escritório (contratante)</th><th>Situação</th><th>Certificado e-CNPJ vence em</th><th>Último teste</th><th style="text-align:right;">Ações</th></tr></thead>
+            <tbody id="corpo"><tr><td colspan="5" style="text-align:center; padding:26px; color:var(--text-light);">Carregando...</td></tr></tbody>
+        </table></div>
+        <div class="dica">O certificado e-CNPJ A1 vale 1 ano. Perto do vencimento, renove o certificado e cadastre de novo aqui (substitui o anterior). O certificado precisa ser <b>o mesmo e-CNPJ usado na contratação</b> do Integra Contador.</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><i class="fas fa-coins"></i> Consumo e custo estimado <span class="contador" style="margin-left:auto;" id="periodoUso"></span></div>
+        <div class="kpis">
+            <div class="kpi"><div class="t">Consultas no mês</div><div class="v" id="kCham">0</div></div>
+            <div class="kpi"><div class="t">Gratuitas</div><div class="v" id="kGrat">0</div></div>
+            <div class="kpi"><div class="t">Pagas</div><div class="v" id="kPag">0</div></div>
+            <div class="kpi"><div class="t">Custo estimado no mês</div><div class="v" id="kCusto">R$ 0,00</div></div>
+        </div>
+        <div class="table-wrap"><table class="tabela">
+            <thead><tr><th>Quando</th><th>Serviço</th><th>Cliente (CNPJ)</th><th>Tipo</th><th style="text-align:right;">Custo est.</th><th>Resultado</th></tr></thead>
+            <tbody id="corpoUso"><tr><td colspan="6" style="text-align:center; padding:22px; color:var(--text-light);">Sem consultas ainda.</td></tr></tbody>
+        </table></div>
+        <div class="dica">O custo é uma <b>estimativa</b> do Sacramento. A cobrança oficial é a da sua Área do Cliente Serpro (https://cliente.serpro.gov.br), pós-paga e por consumo. Serviços de monitoramento gratuitos são sempre consultados primeiro.</div>
+    </div>
+
+    <details class="guia">
+        <summary><i class="fas fa-circle-question"></i> Como obter as credenciais (passo a passo)</summary>
+        <ol>
+            <li>Entre na <b>Loja Serpro</b> (loja.serpro.gov.br), abra o produto <b>Integra Contador</b> e clique em <b>Quero contratar</b>, usando o <b>certificado e-CNPJ do escritório</b>. A contratação é gratuita; paga-se só pelo consumo.</li>
+            <li>Na <b>Área do Cliente Serpro</b> (cliente.serpro.gov.br), copie a <b>Consumer Key</b> e a <b>Consumer Secret</b>.</li>
+            <li>Tenha em mãos o arquivo do certificado e-CNPJ <b>A1</b> (.pfx ou .p12) e a senha dele.</li>
+            <li>Clique em <b>Cadastrar / atualizar credenciais</b>, preencha, guarde e depois clique em <b>Testar conexão</b>.</li>
+            <li>Os clientes precisam ter dado a <b>autorização de acesso</b> (antiga procuração eletrônica) ao escritório no e-CAC. Essa parte é feita fora do Sacramento.</li>
+        </ol>
+    </details>
+</div>
+
+<div class="modal-bg" id="modalNovo"><div class="modal">
+    <h3><i class="fas fa-key"></i> Credenciais do Integra Contador</h3>
+    <div class="aviso" style="margin-bottom:14px;">Os dados vão direto ao servidor por conexão segura e ficam criptografados. <b>Nunca envie a chave, a senha ou o certificado por mensagem ou e-mail.</b></div>
+    <div class="grid">
+        <div><label>CNPJ do escritório</label><input id="f_cnpj" class="form-control" placeholder="00.000.000/0000-00" maxlength="18"></div>
+        <div></div>
+        <div><label>Consumer Key</label><input id="f_key" class="form-control" autocomplete="off" spellcheck="false"></div>
+        <div><label>Consumer Secret</label><input id="f_sec" class="form-control" type="password" autocomplete="new-password" spellcheck="false"></div>
+        <div><label>Certificado e-CNPJ A1 (.pfx ou .p12)</label><input id="f_pfx" class="form-control" type="file" accept=".pfx,.p12" style="padding-top:9px;"></div>
+        <div><label>Senha do certificado</label><input id="f_senha" class="form-control" type="password" autocomplete="new-password" spellcheck="false"></div>
+    </div>
+    <div class="dica">Depois de guardar, clique em <b>Testar conexão</b>. Se já havia credenciais, estas substituem as anteriores.</div>
+    <div class="modal-rodape">
+        <button class="btn-acao cinza" onclick="fecharNovo()">Cancelar</button>
+        <button class="btn-acao sucesso" id="btnSalvar" onclick="salvar()"><i class="fas fa-lock"></i> Guardar com segurança</button>
+    </div>
+</div></div>
+
+<script>
+    const URL_SB = 'https://vcuhkvqrbkyulnnyqnbf.supabase.co';
+    const KEY_SB = 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei';
+    const sb = window.sb || supabase.createClient(URL_SB, KEY_SB);
+    let CID = null, conf = null;
+
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+    function dataBR(d) { if (!d) return '—'; var p = String(d).slice(0, 10).split('-'); return p[2] + '/' + p[1] + '/' + p[0]; }
+    function dataHoraBR(d) { if (!d) return 'nunca'; var x = new Date(d); return x.toLocaleDateString('pt-BR') + ' ' + x.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    function brl(n) { return Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+    function fmtCnpj(v) { var d = String(v || '').replace(/\D/g, ''); return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5') : (v || '—'); }
+    function toast(msg, type) {
+        const c = document.getElementById('toastContainer'); const x = document.createElement('div');
+        x.className = 'toast ' + (type || 'success'); x.textContent = msg; c.appendChild(x); setTimeout(function () { x.remove(); }, 6000);
+    }
+    function clienteIdAtual() {
+        try { var sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel, 10); } catch (e) {}
+        try { var u = JSON.parse(localStorage.getItem('usuarioLogado') || 'null'); if (u && u.cliente_id) return u.cliente_id; } catch (e) {}
+        return null;
+    }
+    async function chamar(corpo) {
+        const s = await sb.auth.getSession();
+        const tk = s && s.data && s.data.session ? s.data.session.access_token : '';
+        if (!tk) throw new Error('Sessão expirada. Entre novamente.');
+        const r = await fetch('/api/integra-contador', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tk }, body: JSON.stringify(corpo) });
+        let j = null; try { j = await r.json(); } catch (e) {}
+        if (!j) throw new Error('O servidor não respondeu (código ' + r.status + '). Confira se o servidor está configurado.');
+        return j;
+    }
+    function chipSituacao(c) {
+        if (c.status === 'ativa') return '<span class="chip verde">Funcionando</span>';
+        if (c.status === 'erro') return '<span class="chip vermelho">Com erro</span><span class="sub">' + esc(c.ultimo_erro || '') + '</span>';
+        return '<span class="chip amarelo">Não testada</span>';
+    }
+    function avisoValidade(v) {
+        if (!v) return '— <span class="sub">aparece depois do primeiro teste</span>';
+        var dias = Math.round((new Date(v + 'T12:00:00') - new Date()) / 86400000);
+        var cor = dias < 0 ? 'vermelho' : (dias <= 45 ? 'amarelo' : 'verde');
+        return dataBR(v) + ' <span class="chip ' + cor + '">' + (dias < 0 ? 'vencido' : dias + ' dias') + '</span>';
+    }
+    function render() {
+        const tb = document.getElementById('corpo');
+        if (!conf) { tb.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:26px; color:var(--text-light);">Nenhuma credencial cadastrada. Clique em <b>Cadastrar / atualizar credenciais</b>.</td></tr>'; return; }
+        tb.innerHTML = '<tr><td><b>' + esc(fmtCnpj(conf.cnpj_contratante)) + '</b></td><td>' + chipSituacao(conf) + '</td><td>' + avisoValidade(conf.validade) + '</td><td>' + dataHoraBR(conf.ultimo_teste_em) + '</td>' +
+            '<td style="text-align:right; white-space:nowrap;"><button class="btn-acao btn-mini" onclick="testar(this)"><i class="fas fa-vial"></i> Testar conexão</button> <button class="btn-acao btn-mini alerta" onclick="remover()"><i class="fas fa-trash"></i> Remover</button></td></tr>';
+    }
+    function renderUso(resumo, lista) {
+        resumo = resumo || {};
+        document.getElementById('kCham').textContent = resumo.chamadas || 0;
+        document.getElementById('kGrat').textContent = resumo.gratuitas || 0;
+        document.getElementById('kPag').textContent = resumo.pagas || 0;
+        document.getElementById('kCusto').textContent = 'R$ ' + brl(resumo.custo);
+        const tb = document.getElementById('corpoUso');
+        tb.innerHTML = (lista && lista.length) ? lista.map(function (u) {
+            return '<tr><td>' + dataHoraBR(u.criado_em) + '</td><td>' + esc(u.id_sistema) + ' / ' + esc(u.id_servico) + '</td><td>' + (u.contribuinte_cnpj ? esc(fmtCnpj(u.contribuinte_cnpj)) : '—') + '</td>' +
+                '<td>' + (u.gratuito ? '<span class="chip verde">Gratuita</span>' : '<span class="chip amarelo">Paga</span>') + '</td><td style="text-align:right;">R$ ' + brl(u.custo_estimado) + '</td>' +
+                '<td>' + (u.ok ? '<span class="chip verde">OK</span>' : '<span class="chip vermelho">Falhou</span>') + (u.mensagem ? '<span class="sub">' + esc(u.mensagem) + '</span>' : '') + '</td></tr>';
+        }).join('') : '<tr><td colspan="6" style="text-align:center; padding:22px; color:var(--text-light);">Sem consultas ainda.</td></tr>';
+    }
+    function isoDia(d) { return new Date(d.getTime() - 3 * 3600 * 1000).toISOString().slice(0, 10); }
+    async function carregar() {
+        const r = await sb.rpc('integra_config_listar', { p_cliente: CID });
+        if (r.error) { document.getElementById('corpo').innerHTML = '<tr><td colspan="5" style="padding:24px; color:var(--danger);">' + esc(r.error.message) + '</td></tr>'; return; }
+        conf = (r.data || [])[0] || null; document.getElementById('btnNovo').style.display = ''; render();
+        const h = new Date(); const ini = isoDia(new Date(h.getFullYear(), h.getMonth(), 1, 12)), fim = isoDia(h);
+        document.getElementById('periodoUso').textContent = dataBR(ini) + ' a ' + dataBR(fim);
+        const rs = await sb.rpc('integra_uso_resumo', { p_cliente: CID, p_ini: ini, p_fim: fim });
+        const ls = await sb.rpc('integra_uso_listar', { p_cliente: CID, p_limite: 60 });
+        renderUso(rs.data, ls.data);
+    }
+    async function abrirNovo() {
+        ['f_key', 'f_sec', 'f_senha'].forEach(function (i) { document.getElementById(i).value = ''; }); document.getElementById('f_pfx').value = '';
+        var cn = conf ? fmtCnpj(conf.cnpj_contratante) : '';
+        if (!cn) { try { var q = await sb.from('clientes_contratantes').select('cnpj').eq('id', CID).single(); if (q.data && q.data.cnpj) cn = fmtCnpj(q.data.cnpj); } catch (e) {} }
+        document.getElementById('f_cnpj').value = cn === '—' ? '' : cn;
+        document.getElementById('modalNovo').classList.add('on');
+    }
+    function fecharNovo() { document.getElementById('modalNovo').classList.remove('on'); document.getElementById('f_sec').value = ''; document.getElementById('f_senha').value = ''; }
+    function lerBase64(inp) {
+        return new Promise(function (resolve, reject) {
+            const f = inp.files && inp.files[0]; if (!f) return resolve('');
+            if (f.size > 60000) return reject(new Error('O arquivo "' + f.name + '" é grande demais para ser um certificado A1.'));
+            const r = new FileReader(); r.onload = function () { resolve(String(r.result || '').split(',')[1] || ''); }; r.onerror = function () { reject(new Error('Não consegui ler o arquivo.')); }; r.readAsDataURL(f);
+        });
+    }
+    async function salvar() {
+        const bt = document.getElementById('btnSalvar'); bt.disabled = true;
+        try {
+            const pfx = await lerBase64(document.getElementById('f_pfx'));
+            if (!pfx) throw new Error('Escolha o arquivo do certificado (.pfx ou .p12).');
+            const r = await chamar({ acao: 'salvar', cliente_id: CID, cnpj: document.getElementById('f_cnpj').value, consumer_key: document.getElementById('f_key').value,
+                consumer_secret: document.getElementById('f_sec').value, pfx_base64: pfx, pfx_senha: document.getElementById('f_senha').value });
+            if (!r.ok) throw new Error(r.erro || 'Não foi possível salvar.');
+            fecharNovo(); toast('Credenciais guardadas com segurança. Agora clique em Testar conexão.', 'success'); await carregar();
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        finally { bt.disabled = false; }
+    }
+    async function testar(btn) {
+        btn.disabled = true; const t = btn.innerHTML; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testando';
+        try {
+            const r = await chamar({ acao: 'testar', cliente_id: CID });
+            if (r.ok) toast('Conexão funcionando! O Serpro aceitou o certificado e as chaves.' + (r.validade ? ' Certificado vence em ' + dataBR(r.validade) + '.' : ''), 'success');
+            else toast(r.erro || 'O teste falhou.', 'error');
+        } catch (e) { toast(e.message || String(e), 'error'); }
+        btn.disabled = false; btn.innerHTML = t; await carregar();
+    }
+    async function remover() {
+        if (!confirm('Remover as credenciais? As chaves e o certificado guardados serão apagados.')) return;
+        try { const r = await chamar({ acao: 'remover', cliente_id: CID }); if (!r.ok) throw new Error(r.erro || 'Erro'); toast('Credenciais removidas.', 'info'); await carregar(); }
+        catch (e) { toast(e.message || String(e), 'error'); }
+    }
+    window.addEventListener('load', function () { CID = clienteIdAtual(); if (!CID) { document.getElementById('corpo').innerHTML = '<tr><td colspan="5" style="padding:24px;">Selecione uma empresa.</td></tr>'; return; } carregar(); });
+</script>
+</body>
+</html>
