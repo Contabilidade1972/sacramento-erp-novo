@@ -242,7 +242,7 @@
                 <div><label for="fBuscaNota">Buscar nota</label><input type="text" id="fBuscaNota" class="form-control" autocomplete="off" placeholder="Número, nome ou CNPJ..." oninput="renderNotas()"></div>
             </div>
             <div class="table-wrap"><table class="tabela">
-                <thead><tr><th>Data</th><th>Modelo</th><th>Tipo</th><th>Nº</th><th>Cliente / Fornecedor</th><th class="num">Valor</th><th class="num">Imposto</th><th>Situação</th><th></th></tr></thead>
+                <thead><tr><th>Data</th><th>Modelo</th><th>Tipo</th><th>Nº</th><th>Cliente / Fornecedor</th><th class="num">Valor</th><th class="num">Imposto (ICMS+ISS)</th><th class="num">IBS</th><th class="num">CBS</th><th>Situação</th><th></th></tr></thead>
                 <tbody id="tbNotas"></tbody>
             </table></div>
         </div>
@@ -257,7 +257,7 @@
             </div>
             <p class="dica" style="margin-bottom:12px;">Notas canceladas não entram na soma. As vendas somadas aqui são a base para o cálculo do Simples Nacional (próxima etapa).</p>
             <div class="table-wrap"><table class="tabela">
-                <thead><tr><th>Mês</th><th class="num">Notas de saída</th><th class="num">Mercadorias</th><th class="num">Serviços</th><th class="num">Total vendido</th><th class="num">Notas de entrada</th><th class="num">Total comprado</th><th class="num">ICMS</th><th class="num">ISS</th></tr></thead>
+                <thead><tr><th>Mês</th><th class="num">Notas de saída</th><th class="num">Mercadorias</th><th class="num">Serviços</th><th class="num">Total vendido</th><th class="num">Notas de entrada</th><th class="num">Total comprado</th><th class="num">ICMS</th><th class="num">ISS</th><th class="num">IBS</th><th class="num">CBS</th></tr></thead>
                 <tbody id="tbResumo"></tbody>
             </table></div>
         </div>
@@ -360,7 +360,7 @@
         } catch (err) { toast('Erro ao carregar: ' + (err.message || err), 'error'); }
     }
     async function carregarNotas() {
-        const cols = 'id,modelo,direcao,dedup,numero,serie,data_emissao,competencia,emitente_cnpj,emitente_nome,parceiro_cnpj,parceiro_nome,natureza,valor_total,valor_produtos,valor_servicos,valor_icms,valor_iss,iss_retido,situacao,arquivo';
+        const cols = 'id,modelo,direcao,dedup,numero,serie,data_emissao,competencia,emitente_cnpj,emitente_nome,parceiro_cnpj,parceiro_nome,natureza,valor_total,valor_produtos,valor_servicos,valor_icms,valor_iss,valor_ibs,valor_cbs,iss_retido,situacao,arquivo';
         let out = [];
         for (let ini = 0; ini < 100000; ini += 1000) {
             const r = await sb.from('fiscal_notas').select(cols).eq('cliente_id', emp).order('data_emissao', { ascending: false }).range(ini, ini + 999);
@@ -377,6 +377,24 @@
     function eFirst(root, nome) { const l = root ? root.getElementsByTagNameNS('*', nome) : []; return l.length ? l[0] : null; }
     function eTxt(root, nome) { const e = eFirst(root, nome); return e ? String(e.textContent || '').trim() : ''; }
     function num(v) { const n = parseFloat(String(v || '').replace(',', '.')); return isNaN(n) ? 0 : n; }
+    // IBS e CBS (Reforma Tributária): lê os valores destacados no XML, se existirem (notas de 2026 em diante)
+    function ibsCbs(inf, tipo) {
+        let ibs = 0, cbs = 0;
+        const tot = eFirst(inf, 'IBSCBSTot');
+        if (tot) {
+            ibs = num(eTxt(eFirst(tot, 'gIBS'), 'vIBS'));
+            cbs = num(eTxt(eFirst(tot, 'gCBS'), 'vCBS'));
+        } else {
+            const grupos = eAll(inf, 'IBSCBS');
+            for (let i = 0; i < grupos.length; i++) {
+                const g = eFirst(grupos[i], 'gIBSCBS') || grupos[i];
+                const vi = num(eTxt(g, 'vIBS')), vc = num(eTxt(eFirst(g, 'gCBS'), 'vCBS'));
+                if (tipo === 'nfse') { if (vi || vc) { ibs = vi; cbs = vc; break; } }
+                else { ibs += vi; cbs += vc; }
+            }
+        }
+        return { ibs: Math.round(ibs * 100) / 100, cbs: Math.round(cbs * 100) / 100 };
+    }
     function docDe(root) { return soDig(eTxt(root, 'CNPJ') || eTxt(root, 'Cnpj') || eTxt(root, 'CPF') || eTxt(root, 'Cpf')); }
 
     // Lê UM arquivo e devolve { erro } ou { notas: [ {...} ] } (um arquivo pode trazer várias notas)
@@ -391,7 +409,7 @@
 
         if (infNFe.length) {
             infNFe.forEach(function (inf) {
-                const ide = eFirst(inf, 'ide'), emit = eFirst(inf, 'emit'), dest = eFirst(inf, 'dest'), tot = eFirst(inf, 'ICMSTot');
+                const ic = ibsCbs(inf, 'nfe'); const ide = eFirst(inf, 'ide'), emit = eFirst(inf, 'emit'), dest = eFirst(inf, 'dest'), tot = eFirst(inf, 'ICMSTot');
                 let chave = String(inf.getAttribute('Id') || '').replace(/^NFe/i, '');
                 if (!chave) chave = eTxt(doc, 'chNFe');
                 const dh = eTxt(ide, 'dhEmi') || eTxt(ide, 'dEmi');
@@ -401,7 +419,7 @@
                     return { descricao: eTxt(p, 'xProd'), ncm: eTxt(p, 'NCM'), cfop: eTxt(p, 'CFOP'), quantidade: num(eTxt(p, 'qCom')), valor_unitario: num(eTxt(p, 'vUnCom')), valor_total: num(eTxt(p, 'vProd')) };
                 });
                 lista.push({
-                    modelo: 'nfe', dedup: chave || ('nfe:' + docDe(emit) + ':' + eTxt(ide, 'nNF') + ':' + eTxt(ide, 'serie')), chave: chave,
+                    modelo: 'nfe', valor_ibs: ic.ibs, valor_cbs: ic.cbs, dedup: chave || ('nfe:' + docDe(emit) + ':' + eTxt(ide, 'nNF') + ':' + eTxt(ide, 'serie')), chave: chave,
                     numero: eTxt(ide, 'nNF'), serie: eTxt(ide, 'serie'), data_emissao: dh.slice(0, 10),
                     emit: { doc: docDe(emit), nome: eTxt(emit, 'xNome') }, outro: { doc: docDe(dest), nome: eTxt(dest, 'xNome') || (dest ? '' : 'Consumidor final') },
                     natureza: eTxt(ide, 'natOp'), cfop: itens.length ? itens[0].cfop : '',
@@ -412,13 +430,13 @@
             });
         } else if (infNacional.length) {
             infNacional.forEach(function (inf) {
-                const emit = eFirst(inf, 'emit'), dps = eFirst(inf, 'infDPS') || inf, toma = eFirst(dps, 'toma');
+                const ic = ibsCbs(inf, 'nfse'); const emit = eFirst(inf, 'emit'), dps = eFirst(inf, 'infDPS') || inf, toma = eFirst(dps, 'toma');
                 const num_ = eTxt(inf, 'nNFSe') || eTxt(dps, 'nDPS');
                 const dh = eTxt(dps, 'dhEmi') || eTxt(inf, 'dhProc') || eTxt(dps, 'dCompet');
                 const vserv = num(eTxt(dps, 'vServ')) || num(eTxt(inf, 'vLiq'));
                 const ret = eTxt(dps, 'tpRetISSQN');
                 lista.push({
-                    modelo: 'nfse', dedup: 'nfse:' + docDe(emit) + ':' + num_, chave: '', numero: num_, serie: eTxt(dps, 'serie'), data_emissao: dh.slice(0, 10),
+                    modelo: 'nfse', valor_ibs: ic.ibs, valor_cbs: ic.cbs, dedup: 'nfse:' + docDe(emit) + ':' + num_, chave: '', numero: num_, serie: eTxt(dps, 'serie'), data_emissao: dh.slice(0, 10),
                     emit: { doc: docDe(emit), nome: eTxt(emit, 'xNome') }, outro: { doc: docDe(toma), nome: eTxt(toma, 'xNome') },
                     natureza: eTxt(dps, 'xDescServ'), cfop: '',
                     valor_total: vserv, valor_produtos: 0, valor_servicos: vserv, valor_icms: 0, valor_ipi: 0, valor_pis: 0, valor_cofins: 0,
@@ -428,7 +446,7 @@
             });
         } else if (infAbrasf.length) {
             infAbrasf.forEach(function (inf) {
-                const prest = eFirst(inf, 'PrestadorServico') || eFirst(inf, 'Prestador');
+                const ic = ibsCbs(inf, 'nfse'); const prest = eFirst(inf, 'PrestadorServico') || eFirst(inf, 'Prestador');
                 const toma = eFirst(inf, 'TomadorServico') || eFirst(inf, 'Tomador');
                 const serv = eFirst(inf, 'Servico');
                 const num_ = eTxt(inf, 'Numero');
@@ -436,7 +454,7 @@
                 const iss = num(eTxt(serv, 'ValorIss')) || num(eTxt(inf, 'ValorIss'));
                 const desc = eTxt(serv, 'Discriminacao') || eTxt(inf, 'Discriminacao');
                 lista.push({
-                    modelo: 'nfse', dedup: 'nfse:' + docDe(prest) + ':' + num_, chave: '', numero: num_, serie: '', data_emissao: eTxt(inf, 'DataEmissao').slice(0, 10),
+                    modelo: 'nfse', valor_ibs: ic.ibs, valor_cbs: ic.cbs, dedup: 'nfse:' + docDe(prest) + ':' + num_, chave: '', numero: num_, serie: '', data_emissao: eTxt(inf, 'DataEmissao').slice(0, 10),
                     emit: { doc: docDe(prest), nome: eTxt(prest, 'RazaoSocial') || eTxt(prest, 'NomeFantasia') }, outro: { doc: docDe(toma), nome: eTxt(toma, 'RazaoSocial') },
                     natureza: desc, cfop: '', valor_total: vserv, valor_produtos: 0, valor_servicos: vserv, valor_icms: 0, valor_ipi: 0, valor_pis: 0, valor_cofins: 0,
                     valor_iss: iss, iss_retido: (eTxt(serv, 'IssRetido') || eTxt(inf, 'IssRetido')) === '1', situacao: 'autorizada',
@@ -545,7 +563,7 @@
                     return { modelo: n.modelo, direcao: p.dir, dedup: n.dedup, chave: n.chave, numero: n.numero, serie: n.serie, data_emissao: n.data_emissao,
                         emitente_cnpj: n.emit.doc, emitente_nome: n.emit.nome, parceiro_cnpj: outro.doc, parceiro_nome: outro.nome, natureza: n.natureza, cfop: n.cfop,
                         valor_total: n.valor_total, valor_produtos: n.valor_produtos, valor_servicos: n.valor_servicos, valor_icms: n.valor_icms, valor_ipi: n.valor_ipi,
-                        valor_pis: n.valor_pis, valor_cofins: n.valor_cofins, valor_iss: n.valor_iss, iss_retido: n.iss_retido, situacao: n.situacao,
+                        valor_pis: n.valor_pis, valor_cofins: n.valor_cofins, valor_iss: n.valor_iss, valor_ibs: n.valor_ibs || 0, valor_cbs: n.valor_cbs || 0, iss_retido: n.iss_retido, situacao: n.situacao,
                         arquivo: n.arquivo, xml: n.xml, itens: n.itens };
                 });
                 const r = await rpc('fiscal_importar_notas', { p_cliente: emp, p_notas: lote });
@@ -588,12 +606,12 @@
             return '<tr><td>' + dataBR(n.data_emissao) + '</td><td>' + (n.modelo === 'nfe' ? 'NF-e' : 'NFS-e') + '</td>' +
                 '<td><span class="sentido">' + (n.direcao === 'saida' ? '<i class="fas fa-arrow-up" style="color:#059669;"></i> Venda' : '<i class="fas fa-arrow-down" style="color:#d97706;"></i> Compra') + '</span></td>' +
                 '<td>' + esc(n.numero) + '</td><td>' + esc(n.parceiro_nome) + '<span class="sub">' + esc(fmtDoc(n.parceiro_cnpj)) + (n.natureza ? ' · ' + esc(String(n.natureza).slice(0, 60)) : '') + '</span></td>' +
-                '<td class="num">' + brl(n.valor_total) + '</td><td class="num">' + brl(impostoNota(n)) + '</td>' +
+                '<td class="num">' + brl(n.valor_total) + '</td><td class="num">' + brl(impostoNota(n)) + '</td><td class="num">' + brl(n.valor_ibs) + '</td><td class="num">' + brl(n.valor_cbs) + '</td>' +
                 '<td>' + (n.situacao === 'cancelada' ? '<span class="badge-st st-pendente_correcao">Cancelada</span>' : '<span class="badge-st st-contabilizado">Autorizada</span>') + '</td>' +
                 '<td><div class="acoes"><button class="btn-acao btn-mini cinza" type="button" title="Ver itens" onclick="verItens(' + n.id + ')"><i class="fas fa-list-ul"></i></button>' +
                 '<button class="btn-acao btn-mini cinza" type="button" title="Baixar XML" onclick="baixarXml(' + n.id + ')"><i class="fas fa-download"></i></button>' +
                 (podeEditar ? '<button class="btn-acao btn-mini perigo" type="button" title="Excluir nota" onclick="excluirNota(' + n.id + ')"><i class="fas fa-trash"></i></button>' : '') + '</div></td></tr>';
-        }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma nota. Use a aba <b>Importar XML</b>.</td></tr>';
+        }).join('') : '<tr><td colspan="11" style="text-align:center; color:var(--text-light); padding:26px;">Nenhuma nota. Use a aba <b>Importar XML</b>.</td></tr>';
     }
     async function verItens(id) {
         const n = notas.find(function (x) { return x.id === id; });
@@ -624,10 +642,10 @@
         const m = {};
         notas.forEach(function (n) {
             if (n.situacao === 'cancelada') return;
-            const x = m[n.competencia] = m[n.competencia] || { mes: n.competencia, ns: 0, merc: 0, serv: 0, totS: 0, ne: 0, totE: 0, icms: 0, iss: 0 };
+            const x = m[n.competencia] = m[n.competencia] || { mes: n.competencia, ns: 0, merc: 0, serv: 0, totS: 0, ne: 0, totE: 0, icms: 0, iss: 0, ibs: 0, cbs: 0 };
             if (n.direcao === 'saida') { x.ns++; x.merc += Number(n.valor_produtos); x.serv += Number(n.valor_servicos); x.totS += Number(n.valor_total); }
             else { x.ne++; x.totE += Number(n.valor_total); }
-            x.icms += Number(n.valor_icms); x.iss += Number(n.valor_iss);
+            x.icms += Number(n.valor_icms); x.iss += Number(n.valor_iss); x.ibs += Number(n.valor_ibs || 0); x.cbs += Number(n.valor_cbs || 0);
         });
         return Object.keys(m).sort().reverse().map(function (k) { return m[k]; });
     }
@@ -635,8 +653,8 @@
     function renderResumo() {
         const l = resumoMeses();
         document.getElementById('tbResumo').innerHTML = l.length ? l.map(function (x) {
-            return '<tr><td><b>' + mesBR(x.mes) + '</b></td><td class="num">' + x.ns + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num"><b>' + brl(x.totS) + '</b></td><td class="num">' + x.ne + '</td><td class="num">' + brl(x.totE) + '</td><td class="num">' + brl(x.icms) + '</td><td class="num">' + brl(x.iss) + '</td></tr>';
-        }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Ainda não há notas importadas.</td></tr>';
+            return '<tr><td><b>' + mesBR(x.mes) + '</b></td><td class="num">' + x.ns + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num"><b>' + brl(x.totS) + '</b></td><td class="num">' + x.ne + '</td><td class="num">' + brl(x.totE) + '</td><td class="num">' + brl(x.icms) + '</td><td class="num">' + brl(x.iss) + '</td><td class="num">' + brl(x.ibs) + '</td><td class="num">' + brl(x.cbs) + '</td></tr>';
+        }).join('') : '<tr><td colspan="11" style="text-align:center; color:var(--text-light); padding:26px;">Ainda não há notas importadas.</td></tr>';
     }
 
     // ---------- impressão (padrão dos relatórios) ----------
@@ -650,8 +668,8 @@
             titulo: 'Notas Fiscais', subtitulo: 'Notas fiscais importadas (XML)', codigo: 'FIS-NF', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
             filtros: [['Empresa', nomeEmp()], ['Mês', mes ? mesBR(mes) : 'Todos']],
             resumo: [['Notas', String(l.length)], ['Vendas', 'R$ ' + brl(s)], ['Compras', 'R$ ' + brl(e)]],
-            colunas: [{ t: 'Data', w: 1 }, { t: 'Modelo', w: .8 }, { t: 'Tipo', w: .9 }, { t: 'Nº', w: .9 }, { t: 'Cliente / Fornecedor', w: 4 }, { t: 'Valor', w: 1.2, a: 'r' }, { t: 'Imposto', w: 1.1, a: 'r' }, { t: 'Situação', w: 1 }],
-            linhas: l.map(function (n) { return { c: [dataBR(n.data_emissao), n.modelo === 'nfe' ? 'NF-e' : 'NFS-e', n.direcao === 'saida' ? 'Venda' : 'Compra', n.numero || '', n.parceiro_nome || '', brl(n.valor_total), brl(impostoNota(n)), n.situacao === 'cancelada' ? 'Cancelada' : 'Autorizada'] }; }),
+            colunas: [{ t: 'Data', w: 1 }, { t: 'Modelo', w: .8 }, { t: 'Tipo', w: .9 }, { t: 'Nº', w: .9 }, { t: 'Cliente / Fornecedor', w: 4 }, { t: 'Valor', w: 1.2, a: 'r' }, { t: 'ICMS+ISS', w: 1.1, a: 'r' }, { t: 'IBS', w: 1, a: 'r' }, { t: 'CBS', w: 1, a: 'r' }, { t: 'Situação', w: 1 }],
+            linhas: l.map(function (n) { return { c: [dataBR(n.data_emissao), n.modelo === 'nfe' ? 'NF-e' : 'NFS-e', n.direcao === 'saida' ? 'Venda' : 'Compra', n.numero || '', n.parceiro_nome || '', brl(n.valor_total), brl(impostoNota(n)), brl(n.valor_ibs), brl(n.valor_cbs), n.situacao === 'cancelada' ? 'Cancelada' : 'Autorizada'] }; }),
             totais: null, observacao: 'Notas canceladas não entram nas somas do resumo.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
         });
     }
@@ -662,8 +680,8 @@
         ERPPrint.imprimir({
             titulo: 'Resumo Mensal das Notas', subtitulo: 'Vendas e compras por mês, a partir dos XML importados', codigo: 'FIS-RM', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
             filtros: [['Empresa', nomeEmp()]], resumo: [['Total vendido', 'R$ ' + brl(t.totS)], ['Total comprado', 'R$ ' + brl(t.totE)]],
-            colunas: [{ t: 'Mês', w: 1 }, { t: 'Notas saída', w: 1, a: 'r' }, { t: 'Mercadorias', w: 1.4, a: 'r' }, { t: 'Serviços', w: 1.4, a: 'r' }, { t: 'Total vendido', w: 1.5, a: 'r' }, { t: 'Notas entrada', w: 1, a: 'r' }, { t: 'Total comprado', w: 1.5, a: 'r' }, { t: 'ICMS', w: 1.1, a: 'r' }, { t: 'ISS', w: 1.1, a: 'r' }],
-            linhas: l.map(function (x) { return { c: [mesBR(x.mes), String(x.ns), brl(x.merc), brl(x.serv), brl(x.totS), String(x.ne), brl(x.totE), brl(x.icms), brl(x.iss)] }; }),
+            colunas: [{ t: 'Mês', w: 1 }, { t: 'Notas saída', w: 1, a: 'r' }, { t: 'Mercadorias', w: 1.4, a: 'r' }, { t: 'Serviços', w: 1.4, a: 'r' }, { t: 'Total vendido', w: 1.5, a: 'r' }, { t: 'Notas entrada', w: 1, a: 'r' }, { t: 'Total comprado', w: 1.5, a: 'r' }, { t: 'ICMS', w: 1.1, a: 'r' }, { t: 'ISS', w: 1.1, a: 'r' }, { t: 'IBS', w: 1, a: 'r' }, { t: 'CBS', w: 1, a: 'r' }],
+            linhas: l.map(function (x) { return { c: [mesBR(x.mes), String(x.ns), brl(x.merc), brl(x.serv), brl(x.totS), String(x.ne), brl(x.totE), brl(x.icms), brl(x.iss), brl(x.ibs), brl(x.cbs)] }; }),
             totais: null, observacao: 'Notas canceladas não entram na soma.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
         });
     }
