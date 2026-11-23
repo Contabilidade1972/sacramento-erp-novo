@@ -130,7 +130,7 @@
                 <p>O Simples Nacional cobra um único boleto, o <b>DAS</b>, calculado assim:</p>
                 <ul>
                     <li><b>1. Receita do mês:</b> soma das notas de <b>venda</b> importadas (mercadorias e serviços), sem as canceladas.</li>
-                    <li><b>2. RBT12:</b> a receita bruta dos <b>12 meses anteriores</b>. Ela define a faixa da tabela.</li>
+                    <li><b>2. RBT12:</b> a receita bruta dos <b>12 meses anteriores</b> (até 12/2026). <b>A partir de 01/2027</b> (Resolução CGSN 190/2026) são os <b>12 meses antecedentes ao mês anterior</b>: o mês imediatamente anterior fica de fora. Ela define a faixa da tabela.</li>
                     <li><b>3. Alíquota efetiva</b> = (RBT12 × alíquota da faixa − parcela a deduzir) ÷ RBT12.</li>
                     <li><b>4. DAS</b> = receita do mês × alíquota efetiva. Vence no dia 20 do mês seguinte.</li>
                 </ul>
@@ -146,7 +146,7 @@
                 <div><label for="apDedM">Devoluções de mercadorias (R$)</label><input type="number" step="0.01" min="0" id="apDedM" class="form-control" value="0" oninput="calcular()"></div>
                 <div><label for="apDedS">Cancelamentos de serviços (R$)</label><input type="number" step="0.01" min="0" id="apDedS" class="form-control" value="0" oninput="calcular()"></div>
                 <div><label for="apCompl">Receita de meses anteriores não importados (R$)</label><input type="number" step="0.01" min="0" id="apCompl" class="form-control" value="0" oninput="calcular()"></div>
-                <div id="boxFolha" style="display:none;"><label for="apFolha">Folha de pagamento dos 12 meses (R$) — Fator R</label><input type="number" step="0.01" min="0" id="apFolha" class="form-control" value="0" oninput="calcular()"></div>
+                <div id="boxFolha" style="display:none;"><label for="apFolha">Folha de pagamento dos 12 meses (R$) — Fator R (FS12; a partir de 01/2027, os mesmos 12 meses do RBT12, sem o mês anterior)</label><input type="number" step="0.01" min="0" id="apFolha" class="form-control" value="0" oninput="calcular()"></div>
                 <div><label for="apRecibo">Nº do recibo da declaração (PGDAS-D)</label><input type="text" id="apRecibo" class="form-control" maxlength="40" autocomplete="off" oninput="calcular()" placeholder="Preencha depois de entregar"></div>
                 <div><label for="apDataDecl">Data da entrega da declaração</label><input type="date" id="apDataDecl" class="form-control" onchange="calcular()"></div>
                 <div class="span2"></div>
@@ -181,7 +181,7 @@
         </div>
 
         <div class="panel">
-            <div class="panel-title"><span class="t"><i class="fas fa-calendar-days" style="color:var(--primary);"></i> Receita dos 12 meses anteriores (de onde vem o RBT12)</span></div>
+            <div class="panel-title"><span class="t"><i class="fas fa-calendar-days" style="color:var(--primary);"></i> Receita dos 12 meses que formam o RBT12 (até 12/2026: os 12 anteriores; a partir de 01/2027: sem o mês anterior)</span></div>
             <div class="table-wrap"><table class="tabela">
                 <thead><tr><th>Mês</th><th class="num">Mercadorias</th><th class="num">Serviços</th><th class="num">Total</th></tr></thead>
                 <tbody id="tbJanela"></tbody>
@@ -415,17 +415,29 @@
         const baseM = Math.max(0, r2(mes.merc - ent.dedM)), baseS = Math.max(0, r2(mes.serv - ent.dedS));
         const totalMes = r2(baseM + baseS);
 
-        // janela dos 12 meses anteriores
+        // Meses que formam o RBT12:
+        //  - até 12/2026: os 12 meses imediatamente anteriores ao mês de apuração;
+        //  - a partir de 01/2027 (Resolução CGSN 190/2026): os 12 meses antecedentes ao MÊS ANTERIOR
+        //    (o mês imediatamente anterior ao da apuração fica de fora). O mesmo vale para a folha (FS12).
+        const novaRegra = comp >= '2027-01';
+        const desl = novaRegra ? 1 : 0;
         const janela = [];
-        for (let i = 12; i >= 1; i--) { const c = somaMes(comp, -i); const x = rec[c] || { merc: 0, serv: 0 }; janela.push({ mes: c, merc: r2(x.merc), serv: r2(x.serv), total: r2(x.merc + x.serv), tem: !!rec[c] }); }
+        for (let i = 12 + desl; i >= 1 + desl; i--) { const c = somaMes(comp, -i); const x = rec[c] || { merc: 0, serv: 0 }; janela.push({ mes: c, merc: r2(x.merc), serv: r2(x.serv), total: r2(x.merc + x.serv), tem: !!rec[c] }); }
         const somaJanela = r2(janela.reduce(function (a, x) { return a + x.total; }, 0));
 
         let rbt12 = 0, regra = 'normal', mesesAtiv = 12;
         const ini = cfg.inicio_atividade ? String(cfg.inicio_atividade).slice(0, 7) : '';
-        if (ini && difMeses(ini, comp) >= 0 && difMeses(ini, comp) < 12) {
-            mesesAtiv = difMeses(ini, comp);                       // meses completos de atividade antes de comp
-            if (mesesAtiv === 0) { rbt12 = r2(totalMes * 12); regra = 'primeiro'; if (ent.compl > 0) { avisos.push({ t: 'amarelo', m: 'No primeiro mês de atividade não existe receita anterior: o valor digitado em "Receita de meses anteriores não importados" foi IGNORADO. Para usá-lo, apague o início das atividades no Enquadramento.' }); ent = Object.assign({}, ent, { compl: 0 }); } }
-            else {
+        const dAtiv = ini ? difMeses(ini, comp) : -1;              // meses completos de atividade antes de comp
+        const limiteNova = novaRegra ? 12 : 11;                    // regra nova vai até o 13º mês de atividade; a antiga até o 12º
+        if (ini && dAtiv >= 0 && dAtiv <= limiteNova) {
+            if (dAtiv === 0 || (novaRegra && dAtiv === 1)) {
+                // 1º mês (e, pela regra nova, também o 2º): alíquotas da 1ª faixa. Pela regra antiga: receita do mês × 12.
+                regra = dAtiv === 0 ? 'primeiro' : 'segundo';
+                rbt12 = novaRegra ? 0 : r2(totalMes * 12);
+                if (ent.compl > 0) { avisos.push({ t: 'amarelo', m: 'No ' + (dAtiv === 0 ? 'primeiro' : 'segundo') + ' mês de atividade não se usa receita anterior: o valor digitado em "Receita de meses anteriores não importados" foi IGNORADO. Para usá-lo, apague o início das atividades no Enquadramento.' }); ent = Object.assign({}, ent, { compl: 0 }); }
+            } else {
+                // do 2º ao 12º mês (regra até 2026) ou do 3º ao 13º mês (regra de 2027): média dos meses de atividade da janela × 12
+                mesesAtiv = novaRegra ? dAtiv - 1 : dAtiv;
                 const soma = janela.filter(function (x) { return difMeses(ini, x.mes) >= 0; }).reduce(function (a, x) { return a + x.total; }, 0) + ent.compl;
                 rbt12 = r2(soma / mesesAtiv * 12); regra = 'proporcional';
             }
@@ -434,8 +446,11 @@
             const comNotas = janela.filter(function (x) { return x.tem; }).length;
             if (comNotas < 12 && ent.compl === 0 && (somaJanela > 0 || totalMes > 0)) avisos.push({ t: 'amarelo', m: 'Há notas de venda em apenas ' + comNotas + ' dos 12 meses anteriores. Se a empresa já existia nos outros meses, informe a receita deles em "Receita de meses anteriores não importados"; senão o RBT12 fica baixo e o DAS sai menor que o devido. Se a empresa é nova, informe o início das atividades no Enquadramento.' });
         }
-        if (regra === 'primeiro') avisos.push({ t: 'azul', m: 'Primeiro mês de atividade: o RBT12 é a receita do próprio mês × 12 (regra do Simples para empresas novas).' });
-        if (regra === 'proporcional') avisos.push({ t: 'azul', m: 'Empresa com menos de 12 meses: RBT12 = média dos ' + mesesAtiv + ' mês(es) de atividade × 12 (regra proporcional).' });
+        if (novaRegra) avisos.push({ t: 'azul', m: 'Regra de 2027 (Resolução CGSN 190/2026): o RBT12 e a folha do Fator R (FS12) usam os 12 meses antecedentes ao mês anterior' + (regra === 'normal' ? ', de ' + mesBR(janela[0].mes) + ' a ' + mesBR(janela[11].mes) : '') + '. O mês imediatamente anterior a ' + mesBR(comp) + ' fica fora da conta.' });
+        if (regra === 'primeiro' && !novaRegra) avisos.push({ t: 'azul', m: 'Primeiro mês de atividade: o RBT12 é a receita do próprio mês × 12 (regra do Simples para empresas novas).' });
+        if (regra === 'primeiro' && novaRegra) avisos.push({ t: 'azul', m: 'Primeiro mês de atividade (regra de 2027): aplica-se a 1ª faixa da tabela do anexo.' });
+        if (regra === 'segundo') avisos.push({ t: 'azul', m: 'Segundo mês de atividade (regra de 2027): aplica-se a 1ª faixa da tabela do anexo.' });
+        if (regra === 'proporcional') avisos.push({ t: 'azul', m: 'Empresa nova: RBT12 = média dos ' + mesesAtiv + ' mês(es) de atividade ' + (novaRegra ? '(antecedentes ao mês anterior) ' : '') + '× 12 (regra proporcional).' });
         if (ini && difMeses(ini, comp) < 0) avisos.push({ t: 'amarelo', m: 'O mês escolhido é anterior ao início das atividades informado no Enquadramento.' });
         if (totalMes === 0) avisos.push({ t: 'azul', m: 'Sem receita de vendas em ' + mesBR(comp) + ': o DAS é zero e o mês fica SEM MOVIMENTO. Se a empresa vendeu, importe as notas antes. Se não vendeu, salve esta apuração, entregue a declaração sem movimento no PGDAS-D e registre o recibo acima.' });
         if (rbt12 > 4800000) avisos.push({ t: 'vermelho', m: 'O RBT12 passou de R$ 4,8 milhões: a empresa ultrapassa o limite do Simples Nacional. O cálculo não é feito; fale com a contabilidade (exclusão/enquadramento).' });
@@ -445,7 +460,8 @@
         const linhas = [];
         let fatorR = null, anexoServ = cfg.anexo_servicos;
         if (anexoServ === 'FR') {
-            if (rbt12 > 0 && ent.folha > 0) { fatorR = ent.folha / rbt12; anexoServ = fatorR >= 0.28 ? 'III' : 'V'; }
+            if (novaRegra && (regra === 'primeiro' || regra === 'segundo')) { fatorR = 0.28; anexoServ = 'III'; avisos.push({ t: 'azul', m: 'Fator R: nos dois primeiros meses de atividade considera-se 28% (Anexo III), pela regra de 2027.' }); }
+            else if (rbt12 > 0 && ent.folha > 0) { fatorR = ent.folha / rbt12; anexoServ = fatorR >= 0.28 ? 'III' : 'V'; }
             else { anexoServ = 'V'; avisos.push({ t: 'amarelo', m: 'Fator R: folha de pagamento dos 12 meses não informada, então foi usado o Anexo V (mais caro). Informe a folha para o sistema escolher entre III e V.' }); }
         }
         function addLinha(rotulo, anexo, base) {
@@ -458,7 +474,7 @@
         addLinha('Prestação de serviços', anexoServ, baseS);
         const das = r2(linhas.reduce(function (a, l) { return a + l.das; }, 0));
         const aliqMedia = totalMes > 0 ? das / totalMes * 100 : 0;
-        return { comp: comp, entradas: ent, receita_mes: totalMes, receita_bruta: { merc: r2(mes.merc), serv: r2(mes.serv) }, rbt12: rbt12, regra: regra, janela: janela, linhas: linhas, das: das,
+        return { comp: comp, entradas: ent, receita_mes: totalMes, receita_bruta: { merc: r2(mes.merc), serv: r2(mes.serv) }, rbt12: rbt12, regra: regra, novaRegra: novaRegra, janela: janela, linhas: linhas, das: das,
                  aliq_media: aliqMedia, fatorR: fatorR, vencimento: vencimentoDas(comp), avisos: avisos, anexos_cfg: { merc: cfg.anexo_mercadorias, serv: cfg.anexo_servicos } };
     }
 
@@ -493,7 +509,7 @@
         document.getElementById('kReceita').textContent = 'R$ ' + brl(c.receita_mes);
         document.getElementById('kReceitaSub').textContent = 'mercadorias R$ ' + brl(c.receita_bruta.merc) + ' · serviços R$ ' + brl(c.receita_bruta.serv);
         document.getElementById('kRbt').textContent = 'R$ ' + brl(c.rbt12);
-        document.getElementById('kRbtSub').textContent = c.regra === 'normal' ? 'soma de ' + mesBR(c.janela[0].mes) + ' a ' + mesBR(c.janela[11].mes) : (c.regra === 'primeiro' ? 'primeiro mês: receita × 12' : 'regra proporcional (empresa nova)');
+        document.getElementById('kRbtSub').textContent = c.regra === 'normal' ? 'soma de ' + mesBR(c.janela[0].mes) + ' a ' + mesBR(c.janela[11].mes) + (c.novaRegra ? ' (sem o mês anterior)' : '') : (c.regra === 'primeiro' ? (c.novaRegra ? 'primeiro mês: 1ª faixa da tabela' : 'primeiro mês: receita × 12') : (c.regra === 'segundo' ? 'segundo mês: 1ª faixa da tabela' : 'regra proporcional (empresa nova)'));
         document.getElementById('kDas').textContent = 'R$ ' + brl(c.das);
         document.getElementById('kDasSub').textContent = c.receita_mes > 0 ? 'alíquota média ' + c.aliq_media.toFixed(4).replace('.', ',') + '% da receita' : 'sem receita no mês';
         document.getElementById('kVenc').textContent = c.das > 0 ? dataBR(c.vencimento) : '—';
@@ -502,7 +518,7 @@
             return '<tr><td><b>' + esc(l.rotulo) + '</b><span class="sub">' + esc(NOME_ANEXO[l.anexo]) + '</span></td><td class="num">' + brl(l.receita) + '</td><td class="num">' + brl(l.rbt12) + '</td><td>' + l.faixa + 'ª faixa</td><td class="num">' + l.aliq.toFixed(2).replace('.', ',') + '%</td><td class="num">' + brl(l.pd) + '</td><td class="num">' + l.ef.toFixed(4).replace('.', ',') + '%</td><td class="num"><b>' + brl(l.das) + '</b></td></tr>';
         }).join('') : '<tr><td colspan="8" style="text-align:center; color:var(--text-light); padding:24px;">Sem receita de vendas no mês escolhido.</td></tr>';
         document.getElementById('tfCalc').innerHTML = '<tr><td>TOTAL DO DAS</td><td class="num">' + brl(c.receita_mes) + '</td><td></td><td></td><td></td><td></td><td></td><td class="num">' + brl(c.das) + '</td></tr>';
-        document.getElementById('notaFatorR').textContent = c.fatorR != null ? 'Fator R = folha dos 12 meses ÷ RBT12 = ' + (c.fatorR * 100).toFixed(2).replace('.', ',') + '%. A partir de 28% os serviços usam o Anexo III; abaixo disso, o Anexo V.' : '';
+        document.getElementById('notaFatorR').textContent = c.fatorR != null ? 'Fator R = FS12 (folha dos 12 meses) ÷ RBT12 = ' + (c.fatorR * 100).toFixed(2).replace('.', ',') + '%. A partir de 28% os serviços usam o Anexo III; abaixo disso, o Anexo V.' : '';
         document.getElementById('tbJanela').innerHTML = c.janela.map(function (x) { return '<tr><td>' + mesBR(x.mes) + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num">' + brl(x.total) + '</td></tr>'; }).join('');
         const compl = c.entradas.compl;
         document.getElementById('tfJanela').innerHTML = (compl > 0 ? '<tr><td colspan="3" style="font-weight:600;">(+) Receita de meses anteriores não importados</td><td class="num" style="font-weight:600;">' + brl(compl) + '</td></tr>' : '') +
@@ -598,7 +614,7 @@
             colunas: [{ t: 'Atividade / Anexo', w: 3.2 }, { t: 'Receita', w: 1.4, a: 'r' }, { t: 'RBT12', w: 1.4, a: 'r' }, { t: 'Faixa', w: .9 }, { t: 'Alíq. nominal', w: 1.1, a: 'r' }, { t: 'Parc. a deduzir', w: 1.3, a: 'r' }, { t: 'Alíq. efetiva', w: 1.2, a: 'r' }, { t: 'DAS', w: 1.3, a: 'r' }],
             linhas: linhas.map(function (l) { return { c: [l.rotulo + ' — ' + NOME_ANEXO[l.anexo], brl(l.receita), brl(l.rbt12), l.faixa ? l.faixa + 'ª' : '—', Number(l.aliq).toFixed(2).replace('.', ',') + '%', brl(l.pd), Number(l.ef).toFixed(4).replace('.', ',') + '%', brl(l.das)] }; }),
             totais: ['TOTAL DO DAS', brl(receita), '', '', '', '', '', brl(das)],
-            observacao: (recibo ? 'Declaração PGDAS-D: recibo ' + recibo + (dataDecl ? ' (entregue em ' + dataBR(dataDecl) + ')' : '') + '. ' : '') + (regra && regra !== 'normal' ? 'Empresa com menos de 12 meses: RBT12 calculado pela regra proporcional. ' : '') + (obs ? obs + ' ' : '') + 'Cálculo de apoio; confira com o PGDAS-D antes do pagamento.',
+            observacao: (recibo ? 'Declaração PGDAS-D: recibo ' + recibo + (dataDecl ? ' (entregue em ' + dataBR(dataDecl) + ')' : '') + '. ' : '') + (regra && regra !== 'normal' ? 'Empresa nova: RBT12 calculado pela regra de início de atividade. ' : '') + (obs ? obs + ' ' : '') + 'Cálculo de apoio; confira com o PGDAS-D antes do pagamento.',
             assinaturas: ['Responsável pela empresa', 'Contador responsável']
         });
     }
