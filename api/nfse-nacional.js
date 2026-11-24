@@ -1,0 +1,116 @@
+// POST /api/nfse-nacional  { acao: 'emitir' | 'consultar' | 'listar', cliente_id, certificado_id, senha, nota:{...} }
+// Emite NFS-e pelo Emissor Publico Nacional (gratuito). A senha do certificado vem a cada pedido, e usada so na memoria e NUNCA guardada.
+// Producao so e liberada quando a variavel NFSE_PRODUCAO_LIBERADA = "sim" existir no servidor; fora disso tudo vai para o ambiente de TESTES do governo.
+const B = require('./_banco');
+const N = require('./_nfse_nacional');
+
+function resp(res, code, obj) { res.statusCode = code; res.setHeader('Content-Type', 'application/json; charset=utf-8'); res.setHeader('Cache-Control', 'no-store'); res.end(JSON.stringify(obj)); }
+function lerCorpo(req) {
+  return new Promise(function (resolve, reject) {
+    if (req.body && typeof req.body === 'object') return resolve(req.body);
+    let s = ''; req.on('data', function (d) { s += d; if (s.length > 100000) { reject(new Error('Corpo grande demais.')); req.destroy(); } });
+    req.on('end', function () { try { resolve(s ? JSON.parse(s) : {}); } catch (e) { reject(new Error('Pedido inválido.')); } });
+    req.on('error', reject);
+  });
+}
+const limpa = function (s) { return String(s == null ? '' : s).trim(); };
+const soDig = function (s) { return String(s == null ? '' : s).replace(/\D/g, ''); };
+const msg = function (e) { return String((e && e.message) || e || 'Erro').replace(/[A-Za-z0-9+\/=_-]{40,}/g, '***').slice(0, 300); };
+
+function ambienteAtual() { return process.env.NFSE_PRODUCAO_LIBERADA === 'sim' ? 'producao' : 'homologacao'; }
+
+async function baixarCofre(path) {
+  const base = process.env.SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!base || !key) throw new Error('Servidor sem as chaves do Supabase.');
+  const h = { apikey: key }; if (String(key).startsWith('eyJ')) h.Authorization = 'Bearer ' + key;
+  const r = await fetch(base + '/storage/v1/object/cofre-certificados/' + path.split('/').map(encodeURIComponent).join('/'), { headers: h });
+  if (!r.ok) throw new Error('Não encontrei o arquivo do certificado no cofre.');
+  return Buffer.from(await r.arrayBuffer());
+}
+
+// CEP -> codigo IBGE do municipio (API publica gratuita ViaCEP)
+async function ibgeDoCep(cep) {
+  const c = soDig(cep); if (c.length !== 8) return '';
+  try { const r = await fetch('https://viacep.com.br/ws/' + c + '/json/'); const j = await r.json(); return j && j.ibge ? String(j.ibge) : ''; } catch (e) { return ''; }
+}
+
+module.exports = async function (req, res) {
+  try {
+    if (req.method !== 'POST') return resp(res, 405, { ok: false, erro: 'Use POST.' });
+    const auth = String(req.headers.authorization || '');
+    const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
+    if (!token) return resp(res, 401, { ok: false, erro: 'Faça login novamente.' });
+    const b = await lerCorpo(req);
+    const acao = limpa(b.acao);
+    const cid = parseInt(b.cliente_id, 10);
+    if (!cid) return resp(res, 400, { ok: false, erro: 'Empresa não informada.' });
+    if (!(await B.podeGerir(token, cid))) return resp(res, 403, { ok: false, erro: 'Somente o administrador da empresa pode emitir NFS-e Nacional.' });
+    const amb = ambienteAtual();
+
+    if (acao === 'listar') {
+      const rows = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?cliente_id=eq.' + cid + '&order=criado_em.desc&limit=100&select=id,ambiente,serie,numero,status,chave_acesso,tomador_nome,tomador_doc,valor,descricao,mensagem,criado_em', { service: true });
+      return resp(res, 200, { ok: true, ambiente: amb, notas: rows || [] });
+    }
+    if (acao !== 'emitir' && acao !== 'consultar') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
+
+    // ---- certificado do cofre + senha digitada agora ----
+    const certId = parseInt(b.certificado_id, 10); const senha = String(b.senha == null ? '' : b.senha);
+    if (!certId) return resp(res, 400, { ok: false, erro: 'Escolha o certificado.' });
+    if (!senha) return resp(res, 400, { ok: false, erro: 'Digite a senha do certificado.' });
+    const cr = await B.sbFetch('/rest/v1/certificados_digitais?id=eq.' + certId + '&cliente_id=eq.' + cid + '&select=id,tipo,status,validade_fim,pfx_path,cnpj_cpf_titular', { service: true });
+    const cert = Array.isArray(cr) ? cr[0] : null;
+    if (!cert || !cert.pfx_path) return resp(res, 400, { ok: false, erro: 'Esse certificado não está guardado no cofre.' });
+    if (cert.tipo !== 'A1' || cert.status !== 'ativo') return resp(res, 400, { ok: false, erro: 'Use um certificado A1 ativo.' });
+    if (cert.validade_fim && new Date(cert.validade_fim + 'T23:59:59') < new Date()) return resp(res, 400, { ok: false, erro: 'Certificado vencido.' });
+    const pfx = await baixarCofre(cert.pfx_path);
+    let aberto;
+    try { aberto = N.abrirPfx(pfx, senha); } catch (e) { return resp(res, 400, { ok: false, erro: 'Não consegui abrir o certificado. Confira a senha.' }); }
+    const cred = { pfx: pfx, senha: senha };
+
+    // ---- empresa emitente (dados do cadastro, nunca do navegador) ----
+    const er = await B.sbFetch('/rest/v1/clientes_contratantes?id=eq.' + cid + '&select=cnpj,razao_social,inscricao_municipal,cep,email,telefone,regime_tributario', { service: true });
+    const emp = Array.isArray(er) ? er[0] : null;
+    if (!emp || soDig(emp.cnpj).length !== 14) return resp(res, 400, { ok: false, erro: 'Cadastro da empresa sem CNPJ. Preencha em Parâmetros Fiscais.' });
+    const cn = (aberto.cert.subject.getField('CN') || {}).value || ''; const m = cn.match(/:(\d{14})$/);
+    if (!m || m[1] !== soDig(emp.cnpj)) return resp(res, 400, { ok: false, erro: 'O certificado não é do CNPJ desta empresa. Emissão bloqueada por segurança.' });
+
+    if (acao === 'consultar') {
+      const chave = soDig(b.chave_acesso);
+      if (chave.length < 40) return resp(res, 400, { ok: false, erro: 'Chave de acesso inválida.' });
+      const r = await N.consultar(amb, chave, cred);
+      return resp(res, 200, { ok: r.ok, ambiente: amb, chave_acesso: r.chaveAcesso, status_http: r.status, mensagem: r.mensagem });
+    }
+
+    // ---- emitir ----
+    const n = b.nota || {}; const T = n.tomador || {}; const S = n.servico || {};
+    const optante = /simples/i.test(String(emp.regime_tributario || ''));
+    const codMun = await ibgeDoCep(emp.cep);
+    if (!codMun) return resp(res, 400, { ok: false, erro: 'Não consegui descobrir o município da empresa pelo CEP cadastrado.' });
+    const codMunTom = soDig(T.codigo_municipio) || await ibgeDoCep(T.cep);
+    const serie = '1';
+    // reserva o numero da DPS (indice unico impede duplicidade)
+    const ult = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?cliente_id=eq.' + cid + '&ambiente=eq.' + amb + '&serie=eq.' + serie + '&order=numero.desc&limit=1&select=numero', { service: true });
+    const numero = (Array.isArray(ult) && ult[0] ? Number(ult[0].numero) : 0) + 1;
+    const d = {
+      ambiente: amb, serie: serie, numero: numero, dataEmissao: new Date(), optanteSimples: optante, aliquotaSimples: Number(n.aliquota_simples),
+      prestador: { cnpj: emp.cnpj, inscricaoMunicipal: emp.inscricao_municipal, telefone: emp.telefone, email: emp.email, codigoMunicipio: codMun },
+      tomador: { cpf: soDig(T.documento).length === 11 ? T.documento : '', cnpj: soDig(T.documento).length === 14 ? T.documento : '', nome: limpa(T.nome), codigoMunicipio: codMunTom, cep: T.cep, logradouro: limpa(T.logradouro), numero: limpa(T.numero), complemento: limpa(T.complemento), bairro: limpa(T.bairro), telefone: T.telefone, email: limpa(T.email) },
+      servico: { codigoTribNac: S.codigo_trib_nac, codigoTribMun: limpa(S.codigo_trib_mun), descricao: limpa(S.descricao), valor: Number(S.valor), issRetido: !!S.iss_retido }
+    };
+    const erros = N.validar(d); if (erros.length) return resp(res, 400, { ok: false, erro: erros.join(' ') });
+    const email = await B.emailDoToken(token);
+    const reg = { cliente_id: cid, ambiente: amb, serie: serie, numero: numero, status: 'processando', tomador_doc: soDig(T.documento), tomador_nome: d.tomador.nome, valor: d.servico.valor, descricao: d.servico.descricao, criado_por: email };
+    let linha;
+    try { linha = await B.sbFetch('/rest/v1/nfse_nacional_emitidas', { method: 'POST', service: true, prefer: 'return=representation', body: reg }); }
+    catch (e) { return resp(res, 409, { ok: false, erro: 'Outra emissão estava em andamento. Tente novamente.' }); }
+    const id = linha && linha[0] ? linha[0].id : null;
+    let r;
+    try { r = await N.emitir(d, cred); } catch (e) { r = { ok: false, mensagem: msg(e) }; }
+    const upd = r.ok ? { status: 'autorizada', chave_acesso: r.chaveAcesso, xml_nfse: r.nfseXml, id_dps: r.idDps, mensagem: null }
+      : { status: 'recusada', id_dps: r.idDps || null, mensagem: String(r.mensagem || 'Recusada.').slice(0, 1000), retorno: r.erros ? JSON.stringify(r.erros).slice(0, 4000) : null };
+    if (id) { try { await B.sbFetch('/rest/v1/nfse_nacional_emitidas?id=eq.' + id, { method: 'PATCH', service: true, prefer: 'return=minimal', body: upd }); } catch (e) {} }
+    return resp(res, r.ok ? 200 : 422, { ok: r.ok, ambiente: amb, numero: numero, chave_acesso: r.chaveAcesso || null, erro: r.ok ? null : upd.mensagem });
+  } catch (e) {
+    return resp(res, 500, { ok: false, erro: msg(e) });
+  }
+};
