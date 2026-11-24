@@ -248,6 +248,60 @@
                     <input type="text" id="observacao" class="form-control" placeholder="Detalhes técnicos...">
                 </div>
             </div>
+            <div style="margin-top:18px; padding:14px; border:1px solid var(--border, #e2e8f0); border-radius:8px; background:var(--bg);">
+                <div style="font-weight:700; margin-bottom:4px;"><i class="fas fa-file-invoice" style="color:var(--primary)"></i> Dados Fiscais (NF-e / NFS-e &mdash; Reforma Tributária IBS/CBS)</div>
+                <div style="font-size:11px; color:var(--text-light); margin-bottom:10px;">Opcional por enquanto. Preencha conforme a Nota Técnica 2025.002 (tabelas CST e cClassTrib do Informe Técnico) com orientação da contabilidade. Para Simples/MEI, os campos IBS/CBS passam a valer na NF-e em 04/01/2027.</div>
+                <div class="form-row-3" style="grid-template-columns: 1fr 1fr 2fr 1fr;">
+                    <div>
+                        <label>NCM (8 dígitos)</label>
+                        <input type="text" id="ncm" class="form-control" maxlength="10" placeholder="Ex: 85171300">
+                    </div>
+                    <div>
+                        <label>CEST (7 dígitos)</label>
+                        <input type="text" id="cest" class="form-control" maxlength="9" placeholder="Se houver ST">
+                    </div>
+                    <div>
+                        <label>Origem da Mercadoria</label>
+                        <select id="origem_merc" class="form-control">
+                            <option value="">Não informada</option>
+                            <option value="0">0 - Nacional</option>
+                            <option value="1">1 - Estrangeira (importação direta)</option>
+                            <option value="2">2 - Estrangeira (adquirida no mercado interno)</option>
+                            <option value="3">3 - Nacional, importação 40% a 70%</option>
+                            <option value="4">4 - Nacional, processos produtivos básicos</option>
+                            <option value="5">5 - Nacional, importação até 40%</option>
+                            <option value="6">6 - Estrangeira, sem similar nacional (importação direta)</option>
+                            <option value="7">7 - Estrangeira, sem similar nacional (mercado interno)</option>
+                            <option value="8">8 - Nacional, importação superior a 70%</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Monofásico (CBS/IBS)</label>
+                        <select id="monofasico" class="form-control">
+                            <option value="N">Não</option>
+                            <option value="S">Sim</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row-3" style="grid-template-columns: 1fr 1fr 1fr 1fr; margin-top:10px;">
+                    <div>
+                        <label>CST IBS/CBS (3 dígitos)</label>
+                        <input type="text" id="cst_ibs_cbs" class="form-control" maxlength="3" placeholder="Ex: 000">
+                    </div>
+                    <div>
+                        <label>cClassTrib (6 dígitos)</label>
+                        <input type="text" id="cclasstrib" class="form-control" maxlength="6" placeholder="Ex: 000001">
+                    </div>
+                    <div>
+                        <label>NBS (serviços)</label>
+                        <input type="text" id="nbs" class="form-control" maxlength="12" placeholder="Ex: 1.0101.10.00">
+                    </div>
+                    <div>
+                        <label>Item LC 116 (serviços)</label>
+                        <input type="text" id="item_lc116" class="form-control" maxlength="7" placeholder="Ex: 1.07">
+                    </div>
+                </div>
+            </div>
             <div style="margin-top: 15px;">
                 <button id="btnSalvar" class="btn btn-primary" type="button" onclick="salvarProduto()"><i class="fas fa-save"></i> Salvar Item</button>
                 <button id="btnCancelar" class="btn btn-outline" type="button" onclick="limparForm()" style="display:none; margin-left:10px;">Cancelar</button>
@@ -648,6 +702,19 @@ async function salvarProduto() {
     const estoque = document.getElementById('estoque').value;
     const observacao = document.getElementById('observacao').value;
     const centro_custo = document.getElementById('centro_custo').value;
+    const ncm = document.getElementById('ncm').value.replace(/\D/g,'');
+    const cest = document.getElementById('cest').value.replace(/\D/g,'');
+    const origem_merc = document.getElementById('origem_merc').value;
+    const monofasico = document.getElementById('monofasico').value;
+    const cst_ibs_cbs = document.getElementById('cst_ibs_cbs').value.replace(/\D/g,'');
+    const cclasstrib = document.getElementById('cclasstrib').value.replace(/\D/g,'');
+    const nbs = document.getElementById('nbs').value.trim();
+    const item_lc116 = document.getElementById('item_lc116').value.trim();
+
+    if(ncm && ncm.length !== 8) { toast("NCM deve ter 8 dígitos.", "error"); return; }
+    if(cest && cest.length !== 7) { toast("CEST deve ter 7 dígitos.", "error"); return; }
+    if(cst_ibs_cbs && cst_ibs_cbs.length !== 3) { toast("CST IBS/CBS deve ter 3 dígitos.", "error"); return; }
+    if(cclasstrib && cclasstrib.length !== 6) { toast("cClassTrib deve ter 6 dígitos.", "error"); return; }
 
     if(!codigo || !descricao || !centro_custo) { 
         toast("Código Interno, Descrição e Centro de Custo são obrigatórios!", "error"); 
@@ -659,6 +726,8 @@ async function salvarProduto() {
     const cidAtual = window.clienteIdAtual();
     let payload = { 
         codigo, codigo_barras, descricao, tipo, unidade, preco_custo, preco_venda, estoque, observacao, centro_custo,
+        ncm: ncm || null, cest: cest || null, origem_merc: origem_merc || null, monofasico,
+        cst_ibs_cbs: cst_ibs_cbs || null, cclasstrib: cclasstrib || null, nbs: nbs || null, item_lc116: item_lc116 || null,
         updated_at: obterDataHoraLocalISO()
     };
     let res;
@@ -694,6 +763,15 @@ window.prepararEdicao = (id, codigo, codigo_barras, descricao, tipo, unidade, pr
     document.getElementById('estoque').value = estoque || '';
     document.getElementById('observacao').value = observacao || '';
     document.getElementById('centro_custo').value = centro_custo || '';
+    const itF = listaProdutosCache.find(x => String(x.id) === String(id)) || {};
+    document.getElementById('ncm').value = itF.ncm || '';
+    document.getElementById('cest').value = itF.cest || '';
+    document.getElementById('origem_merc').value = itF.origem_merc || '';
+    document.getElementById('monofasico').value = itF.monofasico || 'N';
+    document.getElementById('cst_ibs_cbs').value = itF.cst_ibs_cbs || '';
+    document.getElementById('cclasstrib').value = itF.cclasstrib || '';
+    document.getElementById('nbs').value = itF.nbs || '';
+    document.getElementById('item_lc116').value = itF.item_lc116 || '';
     document.getElementById('formTitle').innerHTML = `<i class="fas fa-edit"></i> Editando Item (${codigo})`;
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Atualizar Item';
     document.getElementById('btnCancelar').style.display = "inline-block";
@@ -713,6 +791,8 @@ function limparForm() {
     document.getElementById('preco_venda').value = '';
     document.getElementById('estoque').value = '';
     document.getElementById('observacao').value = '';
+    ['ncm','cest','origem_merc','cst_ibs_cbs','cclasstrib','nbs','item_lc116'].forEach(k => { document.getElementById(k).value = ''; });
+    document.getElementById('monofasico').value = 'N';
     document.getElementById('centro_custo').value = '';
     document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Cadastro / Edição de Item';
     document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar Item';
