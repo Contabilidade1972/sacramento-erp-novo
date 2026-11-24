@@ -176,6 +176,7 @@
         <button class="aba ativa" data-aba="imp" type="button" onclick="mudarAba('imp')"><i class="fas fa-file-import"></i> Importar XML</button>
         <button class="aba" data-aba="notas" type="button" onclick="mudarAba('notas')"><i class="fas fa-list"></i> Notas</button>
         <button class="aba" data-aba="res" type="button" onclick="mudarAba('res')"><i class="fas fa-chart-column"></i> Resumo mensal</button>
+        <button class="aba" data-aba="ibs" type="button" onclick="mudarAba('ibs')"><i class="fas fa-scale-balanced"></i> Apuração IBS/CBS</button>
     </div>
 
     <!-- IMPORTAR -->
@@ -263,6 +264,22 @@
             </table></div>
         </div>
     </div>
+
+    <!-- APURAÇÃO IBS/CBS -->
+    <div class="painel-aba" id="aba-ibs">
+        <div class="panel">
+            <div class="panel-title">
+                <span class="t"><i class="fas fa-scale-balanced" style="color:var(--primary);"></i> Apuração mensal de IBS e CBS (não cumulativa)</span>
+                <button class="btn-acao cinza" type="button" onclick="imprimirApuIbsCbs()"><i class="fas fa-print"></i> Imprimir</button>
+            </div>
+            <p class="dica" style="margin-bottom:12px;">Débito = IBS/CBS destacados nas notas de <b>venda</b>. Crédito = IBS/CBS destacados nas notas de <b>compra</b>. Saldo do mês = débito − crédito − crédito acumulado de meses anteriores. Notas canceladas não entram. É uma <b>conferência</b> a partir dos XML importados: o recolhimento oficial segue as regras da Receita/Comitê Gestor.</p>
+            <div class="aviso azul" style="margin-bottom:12px;"><span>Em 2026 a CBS (0,9%) e o IBS (0,1%) são alíquotas de teste. A partir de 2027 a CBS substitui o PIS e a Cofins. O crédito das compras só vale quando o fornecedor destacou IBS/CBS e a compra dá direito a crédito (consumo pessoal, por exemplo, não dá). Confirme com a contabilidade antes de usar os valores.</span></div>
+            <div class="table-wrap"><table class="tabela">
+                <thead><tr><th>Mês</th><th class="num">CBS débito</th><th class="num">CBS crédito</th><th class="num">CBS a recolher</th><th class="num">CBS crédito a transportar</th><th class="num">IBS débito</th><th class="num">IBS crédito</th><th class="num">IBS a recolher</th><th class="num">IBS crédito a transportar</th></tr></thead>
+                <tbody id="tbApuIbs"></tbody>
+            </table></div>
+        </div>
+    </div>
 </div>
 
 <div class="modal-overlay" id="modalItens"><div class="modal-box" style="max-width:980px;">
@@ -309,6 +326,7 @@
         document.querySelectorAll('.painel-aba').forEach(function (p) { p.classList.toggle('ativa', p.id === 'aba-' + a); });
         if (a === 'notas') renderNotas();
         if (a === 'res') renderResumo();
+        if (a === 'ibs') renderApuIbsCbs();
     }
 
     // ---------- contexto (mesma regra da Escrituração) ----------
@@ -669,6 +687,43 @@
         document.getElementById('tbResumo').innerHTML = l.length ? l.map(function (x) {
             return '<tr><td><b>' + mesBR(x.mes) + '</b></td><td class="num">' + x.ns + '</td><td class="num">' + brl(x.merc) + '</td><td class="num">' + brl(x.serv) + '</td><td class="num"><b>' + brl(x.totS) + '</b></td><td class="num">' + x.ne + '</td><td class="num">' + brl(x.totE) + '</td><td class="num">' + brl(x.icms) + '</td><td class="num">' + brl(x.iss) + '</td><td class="num">' + brl(x.ibs) + '</td><td class="num">' + brl(x.cbs) + '</td></tr>';
         }).join('') : '<tr><td colspan="11" style="text-align:center; color:var(--text-light); padding:26px;">Ainda não há notas importadas.</td></tr>';
+    }
+
+    // ---------- apuração IBS/CBS (não cumulativa) ----------
+    function apuIbsCbs() {
+        const m = {};
+        notas.forEach(function (n) {
+            if (n.situacao === 'cancelada') return;
+            const x = m[n.competencia] = m[n.competencia] || { mes: n.competencia, dIbs: 0, cIbs: 0, dCbs: 0, cCbs: 0 };
+            if (n.direcao === 'saida') { x.dIbs += Number(n.valor_ibs || 0); x.dCbs += Number(n.valor_cbs || 0); }
+            else { x.cIbs += Number(n.valor_ibs || 0); x.cCbs += Number(n.valor_cbs || 0); }
+        });
+        let credIbs = 0, credCbs = 0;
+        return Object.keys(m).sort().map(function (k) {
+            const x = m[k];
+            const sIbs = Math.round((x.dIbs - x.cIbs - credIbs) * 100) / 100, sCbs = Math.round((x.dCbs - x.cCbs - credCbs) * 100) / 100;
+            x.pagarIbs = sIbs > 0 ? sIbs : 0; x.pagarCbs = sCbs > 0 ? sCbs : 0;
+            credIbs = sIbs < 0 ? -sIbs : 0; credCbs = sCbs < 0 ? -sCbs : 0;
+            x.credIbs = credIbs; x.credCbs = credCbs;
+            return x;
+        }).reverse();
+    }
+    function renderApuIbsCbs() {
+        const l = apuIbsCbs();
+        document.getElementById('tbApuIbs').innerHTML = l.length ? l.map(function (x) {
+            return '<tr><td><b>' + mesBR(x.mes) + '</b></td><td class="num">' + brl(x.dCbs) + '</td><td class="num">' + brl(x.cCbs) + '</td><td class="num"><b>' + brl(x.pagarCbs) + '</b></td><td class="num">' + brl(x.credCbs) + '</td><td class="num">' + brl(x.dIbs) + '</td><td class="num">' + brl(x.cIbs) + '</td><td class="num"><b>' + brl(x.pagarIbs) + '</b></td><td class="num">' + brl(x.credIbs) + '</td></tr>';
+        }).join('') : '<tr><td colspan="9" style="text-align:center; color:var(--text-light); padding:26px;">Ainda não há notas importadas.</td></tr>';
+    }
+    function imprimirApuIbsCbs() {
+        const l = apuIbsCbs();
+        if (!l.length) { toast('Não há notas para imprimir.', 'info'); return; }
+        ERPPrint.imprimir({
+            titulo: 'Apuração IBS/CBS', subtitulo: 'Débitos (vendas) e créditos (compras) destacados nos XML importados', codigo: 'FIS-IC', orientacao: 'landscape', empresa: nomeEmp(), cnpj: cnpjEmp(),
+            filtros: [['Empresa', nomeEmp()]], resumo: [['Meses', String(l.length)]],
+            colunas: [{ t: 'Mês', w: 1 }, { t: 'CBS débito', w: 1.2, a: 'r' }, { t: 'CBS crédito', w: 1.2, a: 'r' }, { t: 'CBS a recolher', w: 1.3, a: 'r' }, { t: 'CBS créd. a transportar', w: 1.4, a: 'r' }, { t: 'IBS débito', w: 1.2, a: 'r' }, { t: 'IBS crédito', w: 1.2, a: 'r' }, { t: 'IBS a recolher', w: 1.3, a: 'r' }, { t: 'IBS créd. a transportar', w: 1.4, a: 'r' }],
+            linhas: l.map(function (x) { return { c: [mesBR(x.mes), brl(x.dCbs), brl(x.cCbs), brl(x.pagarCbs), brl(x.credCbs), brl(x.dIbs), brl(x.cIbs), brl(x.pagarIbs), brl(x.credIbs)] }; }),
+            totais: null, observacao: 'Conferência a partir dos XML importados; o recolhimento oficial segue as regras da Receita Federal e do Comitê Gestor do IBS. Em 2026 as alíquotas são de teste.', assinaturas: ['Responsável pela empresa', 'Contador responsável']
+        });
     }
 
     // ---------- impressão (padrão dos relatórios) ----------
