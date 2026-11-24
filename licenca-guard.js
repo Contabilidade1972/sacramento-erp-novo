@@ -33,7 +33,7 @@
         'relatorio_parceiros_financeiro.html': 'financeiro', 'relatorios.html': 'financeiro', 'transferencias.html': 'financeiro',
         'open_finance.html': 'financeiro',
         'modulo_contabil.html': 'contabil_fiscal', 'contabilidade.html': 'contabil_fiscal', 'fiscal_apuracao.html': 'contabil_fiscal',
-        'fiscal_livros.html': 'contabil_fiscal', 'fiscal_notas.html': 'contabil_fiscal', 'fiscal_contabil.html': 'contabil_fiscal',
+        'fiscal_livros.html': 'contabil_fiscal', 'distribuicao_lucros.html': 'contabil_fiscal', 'fiscal_notas.html': 'contabil_fiscal', 'fiscal_contabil.html': 'contabil_fiscal',
         'calendario_fiscal.html': 'contabil_fiscal', 'configuracoes_fiscais.html': 'contabil_fiscal',
         'certificados_digitais.html': 'contabil_fiscal', 'assinar_documento.html': 'contabil_fiscal',
         'produtos.html': 'catalogo_estoque', 'estoque.html': 'catalogo_estoque',

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distribuição de Lucros e Dividendos — Sacramento ERP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth-guard.js"></script>
+    <script src="erp-core.js"></script>
+    <script src="erp-print.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #1e3a8a;
+            --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card: #ffffff; --text-main: #0f172a; --text-light: #64748b; --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text-main); min-height: 100vh; display: flex; flex-direction: column; }
+        .container { max-width: 1400px; margin: 30px auto; padding: 0 24px; width: 100%; flex: 1; display: flex; flex-direction: column; gap: 22px; }
+        .page-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .btn-acao { background: var(--primary); color: #fff; border: none; padding: 10px 18px; border-radius: 10px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: background 0.2s; box-shadow: 0 2px 6px rgba(37,99,235,0.2); font-family: inherit; }
+        .btn-acao:hover { background: var(--primary-dark); }
+        .btn-acao.sucesso { background: var(--success); box-shadow: 0 2px 6px rgba(16,185,129,0.2); }
+        .btn-acao.sucesso:hover { background: #059669; }
+        .btn-acao.cinza { background: #64748b; box-shadow: none; }
+        .btn-acao.cinza:hover { background: #475569; }
+        .btn-acao:disabled { opacity: .55; cursor: not-allowed; }
+        .page-title { font-size: 22px; font-weight: 800; color: var(--secondary); display: flex; align-items: center; gap: 10px; }
+        .page-subtitle { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.03); display: flex; flex-direction: column; gap: 6px; border-top: 4px solid var(--secondary); }
+        .kpi-card.verde { border-top-color: var(--success); } .kpi-card.azul { border-top-color: var(--primary); } .kpi-card.amarelo { border-top-color: var(--warning); } .kpi-card.vermelho { border-top-color: var(--danger); }
+        .kpi-title { font-size: 10.5px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.6px; }
+        .kpi-value { font-size: 24px; font-weight: 800; color: var(--secondary); letter-spacing: -0.5px; }
+        .kpi-sub { font-size: 11px; color: var(--text-light); }
+        .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); }
+        .panel.recolhido { display: none; }
+        .panel-title { font-size: 15px; font-weight: 800; color: var(--secondary); margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+        .panel-title .t { display: flex; align-items: center; gap: 8px; }
+        .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 14px; }
+        label { font-size: 11px; font-weight: 700; color: var(--text-light); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: .4px; }
+        .form-control { width: 100%; height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 13px; font-family: inherit; background: #fff; color: var(--text-main); outline: none; }
+        .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .dica { font-size: 11px; color: var(--text-light); margin-top: 5px; }
+        .aviso { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+        .info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; margin-bottom: 14px; }
+        .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+        .tabela { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tabela th { background: var(--bg); padding: 12px 14px; text-align: left; font-weight: 700; font-size: 11px; text-transform: uppercase; color: var(--text-light); border-bottom: 2px solid var(--border); white-space: nowrap; }
+        .tabela td { padding: 11px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .tabela tbody tr:hover { background: #f8fafc; }
+        .tabela .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .tabela tfoot td { background: var(--bg); font-weight: 800; border-top: 2px solid var(--border); border-bottom: none; }
+        .badge-st { padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 10px; text-transform: uppercase; display: inline-block; letter-spacing: .3px; }
+        .b-iso { background: #dcfce7; color: #166534; } .b-ret { background: #fee2e2; color: #991b1b; } .b-25 { background: #e0e7ff; color: #3730a3; }
+        .btn-mini { border: 1.5px solid var(--border); background: #fff; color: var(--text-main); border-radius: 8px; padding: 6px 9px; font-size: 12px; cursor: pointer; margin-left: 4px; }
+        .btn-mini:hover { background: var(--bg); }
+        .btn-mini.perigo { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        .filtros { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+        .filtros > div { min-width: 150px; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 4000; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 12px 16px; border-radius: 10px; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); max-width: 420px; }
+        .toast.success { background: var(--success); } .toast.error { background: var(--danger); } .toast.info { background: var(--primary); }
+        @media (max-width: 1100px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .form-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 600px) { .kpi-grid, .form-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container">
+    <div class="page-toolbar">
+        <a href="modulo_contabil.html" class="btn-acao"><i class="fas fa-arrow-left"></i> Voltar a Contabilidade & Fiscal</a>
+        <button class="btn-acao" type="button" onclick="novaDistribuicao()"><i class="fas fa-plus"></i> Nova Distribuição</button>
+        <button class="btn-acao sucesso" type="button" onclick="executarImpressao()"><i class="fas fa-print"></i> Imprimir Conferência</button>
+        <button class="btn-acao cinza" type="button" onclick="exportarCsv()"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+    </div>
+
+    <div>
+        <div class="page-title"><i class="fas fa-hand-holding-dollar" style="color:var(--primary);"></i> Distribuição de Lucros e Dividendos</div>
+        <div class="page-subtitle">Pagamentos aos sócios, retenção de IRRF (Lei 15.270/2025) e conferência para o evento R-4010 da EFD-Reinf (natureza 12001)</div>
+    </div>
+
+    <div class="kpi-grid">
+        <div class="kpi-card azul"><div class="kpi-title">Total distribuído no período</div><div class="kpi-value" id="kpiTotal">R$ 0,00</div><div class="kpi-sub" id="kpiTotalSub"></div></div>
+        <div class="kpi-card verde"><div class="kpi-title">Isento</div><div class="kpi-value" style="color:#166534;" id="kpiIsento">R$ 0,00</div><div class="kpi-sub">Lucros de 2025 e até R$ 50 mil/mês</div></div>
+        <div class="kpi-card vermelho"><div class="kpi-title">Sujeito à retenção</div><div class="kpi-value" id="kpiTrib">R$ 0,00</div><div class="kpi-sub">Acima do limite mensal por sócio</div></div>
+        <div class="kpi-card amarelo"><div class="kpi-title">IRRF a recolher (DARF 1841-01)</div><div class="kpi-value" id="kpiIrrf">R$ 0,00</div><div class="kpi-sub" id="kpiIrrfSub"></div></div>
+    </div>
+
+    <div class="panel recolhido" id="painelForm">
+        <div class="panel-title"><span class="t" id="formTitle"><i class="fas fa-plus-circle" style="color:var(--primary);"></i> Registrar distribuição</span></div>
+        <input type="hidden" id="edit_id">
+        <div class="form-grid">
+            <div><label>Sócio *</label><select id="f_socio" class="form-control"></select></div>
+            <div>
+                <label>Data em que o dinheiro foi disponibilizado *</label>
+                <input type="date" id="f_data" class="form-control">
+                <div class="dica">Dia em que foi pago, creditado ou colocado à disposição do sócio. É essa data que define o mês.</div>
+            </div>
+            <div><label>Valor (R$) *</label><input type="number" step="0.01" min="0.01" id="f_valor" class="form-control" placeholder="0,00"></div>
+            <div>
+                <label>Origem do lucro *</label>
+                <select id="f_origem" class="form-control" onchange="origemMudou()">
+                    <option value="2026_EM_DIANTE">Lucro apurado a partir de 2026</option>
+                    <option value="ATE_2025">Lucro apurado e aprovado até 31/12/2025</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-grid">
+            <div><label>Data da ata de aprovação</label><input type="date" id="f_ata" class="form-control"><div class="dica" id="dicaAta">Opcional.</div></div>
+            <div style="grid-column: span 3;"><label>Observação</label><input type="text" id="f_obs" class="form-control" placeholder="Ex.: antecipação de lucros, ata nº, comprovante"></div>
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn-acao" type="button" id="btnSalvar" onclick="salvarDistribuicao()"><i class="fas fa-save"></i> Salvar</button>
+            <button class="btn-acao cinza" type="button" onclick="cancelarForm()"><i class="fas fa-times"></i> Cancelar</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-scale-balanced" style="color:var(--primary);"></i> Parâmetros da retenção</span></div>
+        <div class="filtros">
+            <div><label>Limite mensal por sócio (R$)</label><input type="number" step="0.01" id="p_limite" class="form-control" value="50000" onchange="recalcular()"></div>
+            <div><label>Alíquota do IRRF (%)</label><input type="number" step="0.01" id="p_aliq" class="form-control" value="10" onchange="recalcular()"></div>
+            <div>
+                <label>Base da alíquota</label>
+                <select id="p_base" class="form-control" onchange="recalcular()">
+                    <option value="TOTAL">Valor total do mês (regra da Receita)</option>
+                    <option value="EXCEDENTE">Só o que passa do limite</option>
+                </select>
+            </div>
+        </div>
+        <div class="dica">Valores padrão da Lei 15.270/2025: retenção de 10% quando o total pago a um sócio pessoa física residente passa de R$ 50.000 no mês, sobre o valor total pago no mês. Lucros apurados e aprovados até 31/12/2025 ficam isentos, não entram no limite e vão com tipo de isenção 12.</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-table-list" style="color:var(--primary);"></i> Conferência por sócio e mês (base do R-4010)</span></div>
+        <div class="filtros">
+            <div><label>Ano</label><select id="f_ano" class="form-control" onchange="recalcular()"></select></div>
+        </div>
+        <div class="table-wrap" id="resumoMensal"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+        <div class="dica" style="margin-top:10px;">Evento R-4010, natureza de rendimento 12001. O mês é o da disponibilização do dinheiro. Confira os prazos no Calendário Fiscal antes de transmitir: o sistema não envia a EFD-Reinf, só organiza os valores.</div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-title"><span class="t"><i class="fas fa-list" style="color:var(--primary);"></i> Pagamentos registrados</span></div>
+        <div class="table-wrap" id="listaDist"><div style="padding:30px; text-align:center; color:var(--text-light);">Carregando...</div></div>
+    </div>
+</div>
+
+<script>
+    const sb = window.sb || supabase.createClient('https://vcuhkvqrbkyulnnyqnbf.supabase.co', 'sb_publishable_Dee0dPFyiuzYkz8Zbx_hrA_RqSZeWei');
+    const EMAIL_MASTER = "lucianojorgesacramento@gmail.com";
+    let socios = [], dists = [], resumo = [];
+
+    function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
+    function r2(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+    function brl(n) { return (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }); }
+    function dataBR(d) { const s = String(d || '').substring(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split('-').reverse().join('/') : '—'; }
+    function compBR(c) { const p = String(c).split('-'); return p[1] + '/' + p[0]; }
+    function nomeSocio(id) { const s = socios.find(function (x) { return String(x.id) === String(id); }); return s ? s.nome : '(sócio removido)'; }
+    function cpfSocio(id) { const s = socios.find(function (x) { return String(x.id) === String(id); }); return s ? (s.cpf || '') : ''; }
+
+    function obterClienteIdAtivo() {
+        try {
+            const u = JSON.parse(localStorage.getItem('usuarioLogado') || '{}');
+            const isMaster = (u.email || '').toLowerCase().trim() === EMAIL_MASTER || (u.perfil || '').toLowerCase().includes('master');
+            if (isMaster) { const sel = localStorage.getItem('empresaSelecionada'); if (sel) return parseInt(sel); }
+            return u.cliente_id ? parseInt(u.cliente_id) : 1;
+        } catch (e) { return 1; }
+    }
+    function toast(msg, type) {
+        type = type || 'success';
+        let c = document.getElementById('toastContainer');
+        const x = document.createElement('div'); x.className = 'toast ' + type; x.textContent = msg; c.appendChild(x);
+        setTimeout(function () { x.remove(); }, type === 'error' ? 7000 : 3500);
+    }
+    async function lerTudo(tabela, cid) {
+        const out = [], PAG = 1000;
+        for (let ini = 0; ini < 200000; ini += PAG) {
+            const r = await sb.from(tabela).select('*').eq('cliente_id', cid).order('id', { ascending: true }).range(ini, ini + PAG - 1);
+            if (r.error) throw r.error;
+            out.push.apply(out, r.data || []);
+            if (!r.data || r.data.length < PAG) break;
+        }
+        return out;
+    }
+
+    /* ---------- datas ---------- */
+    // Último dia útil do 2º decêndio (até o dia 20) do mês seguinte à competência. Só considera fim de semana; confira feriados.
+    function vencimentoDarf(comp) {
+        const p = comp.split('-'); let ano = +p[0], mes = +p[1] + 1;
+        if (mes > 12) { mes = 1; ano++; }
+        const d = new Date(Date.UTC(ano, mes - 1, 20));
+        while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() - 1);
+        return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0');
+    }
+    function prazoReinf(comp) {
+        const p = comp.split('-'); let ano = +p[0], mes = +p[1] + 1;
+        if (mes > 12) { mes = 1; ano++; }
+        return ano + '-' + String(mes).padStart(2, '0') + '-15';
+    }
+
+    /* ---------- cálculo ---------- */
+    function parametros() {
+        return {
+            limite: Number(document.getElementById('p_limite').value) || 0,
+            aliq: (Number(document.getElementById('p_aliq').value) || 0) / 100,
+            base: document.getElementById('p_base').value
+        };
+    }
+    // Agrupa por sócio + mês. Parcela "até 2025" é isenta e não entra no limite; a parcela de 2026 em diante sofre o limite.
+    function calcular(lista) {
+        const P = parametros(), mapa = {};
+        lista.forEach(function (d) {
+            const comp = String(d.data_disponibilizacao).substring(0, 7);
+            const k = d.socio_id + '|' + comp;
+            if (!mapa[k]) mapa[k] = { socio_id: d.socio_id, comp: comp, total: 0, ate25: 0, novo: 0 };
+            const v = Number(d.valor) || 0;
+            mapa[k].total += v;
+            if (d.origem === 'ATE_2025') mapa[k].ate25 += v; else mapa[k].novo += v;
+        });
+        return Object.keys(mapa).map(function (k) {
+            const m = mapa[k];
+            m.total = r2(m.total); m.ate25 = r2(m.ate25); m.novo = r2(m.novo);
+            const retem = m.novo > P.limite;
+            m.tributavel = retem ? (P.base === 'TOTAL' ? m.novo : r2(m.novo - P.limite)) : 0;
+            m.irrf = r2(m.tributavel * P.aliq);
+            m.isento2026 = retem ? r2(m.novo - m.tributavel) : m.novo; // parcela de 2026 sem retenção
+            m.retem = retem;
+            return m;
+        }).sort(function (a, b) { return a.comp.localeCompare(b.comp) || nomeSocio(a.socio_id).localeCompare(nomeSocio(b.socio_id), 'pt-BR'); });
+    }
+
+    function recalcular() {
+        const ano = document.getElementById('f_ano').value;
+        const lista = dists.filter(function (d) { return String(d.data_disponibilizacao).substring(0, 4) === ano; });
+        resumo = calcular(lista);
+        renderKpis(); renderResumo(); renderLista(lista);
+    }
+    function renderKpis() {
+        const t = resumo.reduce(function (a, m) { return a + m.total; }, 0);
+        const iso = resumo.reduce(function (a, m) { return a + m.ate25 + m.isento2026; }, 0);
+        const trib = resumo.reduce(function (a, m) { return a + m.tributavel; }, 0);
+        const ir = resumo.reduce(function (a, m) { return a + m.irrf; }, 0);
+        document.getElementById('kpiTotal').textContent = brl(t);
+        document.getElementById('kpiTotalSub').textContent = resumo.length + ' linha(s) sócio/mês';
+        document.getElementById('kpiIsento').textContent = brl(iso);
+        document.getElementById('kpiTrib').textContent = brl(trib);
+        document.getElementById('kpiIrrf').textContent = brl(ir);
+        document.getElementById('kpiIrrfSub').textContent = ir > 0 ? 'Pague até o último dia útil do 2º decêndio do mês seguinte' : 'Nada a recolher';
+    }
+    function renderResumo() {
+        const el = document.getElementById('resumoMensal');
+        if (!resumo.length) { el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhuma distribuição neste ano.</div>'; return; }
+        let h = '<table class="tabela"><thead><tr><th>Mês</th><th>Sócio</th><th>CPF</th><th class="num">Total pago</th><th class="num">Lucros até 2025 (isenção 12)</th><th class="num">Lucros 2026+ sem retenção</th><th class="num">Rendimento tributável</th><th class="num">IRRF (DARF 1841-01)</th><th>Vence DARF</th><th>Prazo R-4010</th></tr></thead><tbody>';
+        let tt = 0, ta = 0, ti = 0, tr = 0, tx = 0;
+        resumo.forEach(function (m) {
+            tt += m.total; ta += m.ate25; ti += m.isento2026; tr += m.tributavel; tx += m.irrf;
+            h += '<tr><td>' + compBR(m.comp) + '</td><td><strong>' + esc(nomeSocio(m.socio_id)) + '</strong></td><td>' + esc(cpfSocio(m.socio_id) || '—') + '</td>' +
+                '<td class="num">' + brl(m.total) + '</td><td class="num">' + (m.ate25 ? brl(m.ate25) : '—') + '</td><td class="num">' + (m.isento2026 ? brl(m.isento2026) : '—') + '</td>' +
+                '<td class="num">' + (m.retem ? '<span class="badge-st b-ret">' + brl(m.tributavel) + '</span>' : '—') + '</td><td class="num">' + (m.irrf ? brl(m.irrf) : '—') + '</td>' +
+                '<td>' + (m.irrf ? dataBR(vencimentoDarf(m.comp)) : '—') + '</td><td>' + dataBR(prazoReinf(m.comp)) + '</td></tr>';
+        });
+        h += '</tbody><tfoot><tr><td colspan="3">TOTAL DO ANO</td><td class="num">' + brl(tt) + '</td><td class="num">' + brl(ta) + '</td><td class="num">' + brl(ti) + '</td><td class="num">' + brl(tr) + '</td><td class="num">' + brl(tx) + '</td><td colspan="2"></td></tr></tfoot></table>';
+        el.innerHTML = h;
+    }
+    function renderLista(lista) {
+        const el = document.getElementById('listaDist');
+        if (!lista.length) { el.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-light);">Nenhum pagamento neste ano. Clique em "Nova Distribuição".</div>'; return; }
+        const ord = lista.slice().sort(function (a, b) { return String(b.data_disponibilizacao).localeCompare(String(a.data_disponibilizacao)); });
+        let h = '<table class="tabela"><thead><tr><th>Data</th><th>Sócio</th><th class="num">Valor</th><th>Origem</th><th>Ata</th><th>Observação</th><th style="text-align:right;">Ações</th></tr></thead><tbody>';
+        ord.forEach(function (d) {
+            const o25 = d.origem === 'ATE_2025';
+            h += '<tr><td>' + dataBR(d.data_disponibilizacao) + '</td><td><strong>' + esc(nomeSocio(d.socio_id)) + '</strong></td><td class="num">' + brl(d.valor) + '</td>' +
+                '<td><span class="badge-st ' + (o25 ? 'b-25' : 'b-iso') + '">' + (o25 ? 'Até 2025' : '2026 em diante') + '</span></td><td>' + dataBR(d.ata_data) + '</td><td>' + esc(d.observacao || '—') + '</td>' +
+                '<td style="text-align:right; white-space:nowrap;"><button class="btn-mini" title="Editar" onclick="editarDist(' + Number(d.id) + ')"><i class="fas fa-pen"></i></button><button class="btn-mini perigo" title="Excluir" onclick="excluirDist(' + Number(d.id) + ')"><i class="fas fa-trash"></i></button></td></tr>';
+        });
+        el.innerHTML = h + '</tbody></table>';
+    }
+
+    /* ---------- formulário ---------- */
+    function preencherSocios() {
+        const sel = document.getElementById('f_socio');
+        sel.innerHTML = '<option value="">Selecione...</option>' + socios.map(function (s) {
+            return '<option value="' + Number(s.id) + '">' + esc(s.nome) + (s.cpf ? ' — ' + esc(s.cpf) : '') + '</option>';
+        }).join('');
+    }
+    function origemMudou() {
+        const o = document.getElementById('f_origem').value, d = document.getElementById('dicaAta');
+        d.textContent = o === 'ATE_2025' ? 'Informe a data da ata: o lucro precisa ter sido apurado e aprovado até 31/12/2025 para ficar isento.' : 'Opcional.';
+    }
+    function limparForm() {
+        ['edit_id', 'f_socio', 'f_data', 'f_valor', 'f_ata', 'f_obs'].forEach(function (i) { document.getElementById(i).value = ''; });
+        document.getElementById('f_origem').value = '2026_EM_DIANTE'; origemMudou();
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-plus-circle" style="color:var(--primary);"></i> Registrar distribuição';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-save"></i> Salvar';
+    }
+    function novaDistribuicao() {
+        if (!socios.length) { toast('Cadastre os sócios antes (Cadastros & Estrutura > Sócios & Acionistas).', 'error'); return; }
+        limparForm(); document.getElementById('painelForm').classList.remove('recolhido'); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function cancelarForm() { limparForm(); document.getElementById('painelForm').classList.add('recolhido'); }
+    function editarDist(id) {
+        const d = dists.find(function (x) { return Number(x.id) === Number(id); }); if (!d) return;
+        limparForm();
+        document.getElementById('edit_id').value = d.id;
+        document.getElementById('f_socio').value = d.socio_id;
+        document.getElementById('f_data').value = String(d.data_disponibilizacao).substring(0, 10);
+        document.getElementById('f_valor').value = d.valor;
+        document.getElementById('f_origem').value = d.origem || '2026_EM_DIANTE'; origemMudou();
+        document.getElementById('f_ata').value = d.ata_data || '';
+        document.getElementById('f_obs').value = d.observacao || '';
+        document.getElementById('formTitle').innerHTML = '<i class="fas fa-edit" style="color:var(--primary);"></i> Editando pagamento (#' + Number(d.id) + ')';
+        document.getElementById('btnSalvar').innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar';
+        document.getElementById('painelForm').classList.remove('recolhido'); window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    async function salvarDistribuicao() {
+        const cid = obterClienteIdAtivo(), id = document.getElementById('edit_id').value;
+        const socio = document.getElementById('f_socio').value, data = document.getElementById('f_data').value;
+        const valor = parseFloat(document.getElementById('f_valor').value), origem = document.getElementById('f_origem').value;
+        const ata = document.getElementById('f_ata').value || null;
+        if (!socio) { toast('Escolha o sócio.', 'error'); return; }
+        if (!data) { toast('Informe a data em que o dinheiro foi disponibilizado.', 'error'); return; }
+        if (isNaN(valor) || valor <= 0) { toast('Informe um valor maior que zero.', 'error'); return; }
+        if (origem === 'ATE_2025') {
+            if (!ata) { toast('Para lucro "até 2025" informe a data da ata de aprovação.', 'error'); return; }
+            if (ata > '2025-12-31' && !confirm('A ata é posterior a 31/12/2025. Nesse caso o lucro NÃO fica isento pela regra de transição.\n\nDeseja salvar mesmo assim como "até 2025"?\n(O correto seria marcar "a partir de 2026".)')) return;
+        }
+        const payload = { cliente_id: cid, socio_id: Number(socio), data_disponibilizacao: data, valor: r2(valor), origem: origem, ata_data: ata, observacao: document.getElementById('f_obs').value.trim() || null };
+        const btn = document.getElementById('btnSalvar'); btn.disabled = true;
+        try {
+            const r = id ? await sb.from('distribuicoes_lucros').update(payload).eq('id', id).eq('cliente_id', cid) : await sb.from('distribuicoes_lucros').insert([payload]);
+            if (r.error) { toast('Erro ao salvar: ' + r.error.message, 'error'); return; }
+            toast(id ? 'Pagamento atualizado!' : 'Distribuição registrada!');
+            cancelarForm(); await carregar(String(data).substring(0, 4));
+        } finally { btn.disabled = false; }
+    }
+    async function excluirDist(id) {
+        if (!confirm('Deseja realmente excluir este pagamento de lucros?')) return;
+        const r = await sb.from('distribuicoes_lucros').delete().eq('id', id).eq('cliente_id', obterClienteIdAtivo());
+        if (r.error) { toast('Erro ao excluir: ' + r.error.message, 'error'); return; }
+        toast('Pagamento removido.'); await carregar(document.getElementById('f_ano').value);
+    }
+
+    /* ---------- carga ---------- */
+    async function carregar(anoPref) {
+        const cid = obterClienteIdAtivo();
+        try {
+            socios = await lerTudo('socios', cid);
+            socios.sort(function (a, b) { return String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'); });
+            dists = await lerTudo('distribuicoes_lucros', cid);
+        } catch (e) {
+            const msg = String(e.message || e);
+            document.getElementById('resumoMensal').innerHTML = '<div style="padding:30px; text-align:center; color:var(--danger); font-weight:600;">Erro ao carregar: ' + esc(msg) + (/distribuicoes_lucros/.test(msg) ? '<br>A tabela ainda não foi criada no banco.' : '') + '</div>';
+            document.getElementById('listaDist').innerHTML = ''; return;
+        }
+        preencherSocios();
+        const anos = {}; const hoje = new Date().getFullYear();
+        anos[hoje] = 1; anos[2026] = 1; dists.forEach(function (d) { anos[String(d.data_disponibilizacao).substring(0, 4)] = 1; });
+        const sel = document.getElementById('f_ano');
+        sel.innerHTML = Object.keys(anos).sort().map(function (a) { return '<option value="' + a + '">' + a + '</option>'; }).join('');
+        sel.value = (anoPref && anos[anoPref]) ? anoPref : String(hoje);
+        recalcular();
+    }
+
+    /* ---------- impressão e CSV ---------- */
+    function executarImpressao() {
+        if (!resumo.length) { toast('Não há distribuições neste ano para imprimir.', 'error'); return; }
+        const ano = document.getElementById('f_ano').value, P = parametros();
+        const soma = function (f) { return resumo.reduce(function (a, m) { return a + m[f]; }, 0); };
+        ERPPrint.imprimir({
+            titulo: 'Conferência de Lucros e Dividendos', subtitulo: 'Base para o evento R-4010 da EFD-Reinf (natureza 12001)', codigo: 'FIS-LD', orientacao: 'landscape',
+            filtros: [['Ano', ano], ['Limite mensal por sócio', brl(P.limite)], ['Alíquota', (P.aliq * 100).toLocaleString('pt-BR') + '%'], ['Base', P.base === 'TOTAL' ? 'Valor total do mês' : 'Excedente ao limite']],
+            resumo: [['Total distribuído', brl(soma('total'))], ['Sujeito à retenção', brl(soma('tributavel'))], ['IRRF a recolher', brl(soma('irrf'))]],
+            colunas: [{ t: 'Mês', w: .8 }, { t: 'Sócio', w: 2.6 }, { t: 'CPF', w: 1.4 }, { t: 'Total pago', w: 1.3, a: 'right' }, { t: 'Até 2025 (isenção 12)', w: 1.4, a: 'right' }, { t: '2026+ sem retenção', w: 1.4, a: 'right' }, { t: 'Tributável', w: 1.3, a: 'right' }, { t: 'IRRF', w: 1.1, a: 'right' }, { t: 'Vence DARF', w: 1 }],
+            linhas: resumo.map(function (m) {
+                return [compBR(m.comp), { t: nomeSocio(m.socio_id), cls: 'bold' }, cpfSocio(m.socio_id) || '—', brl(m.total), m.ate25 ? brl(m.ate25) : '—', m.isento2026 ? brl(m.isento2026) : '—', m.tributavel ? brl(m.tributavel) : '—', m.irrf ? brl(m.irrf) : '—', m.irrf ? dataBR(vencimentoDarf(m.comp)) : '—'];
+            }),
+            totais: ['TOTAL', '', '', brl(soma('total')), brl(soma('ate25')), brl(soma('isento2026')), brl(soma('tributavel')), brl(soma('irrf')), ''],
+            assinaturas: ['Responsável legal', 'Contador'],
+            observacao: 'IRRF pela Lei 15.270/2025: retenção quando o total mensal pago ao sócio (lucros apurados a partir de 2026) passa do limite. Lucros apurados e aprovados até 31/12/2025 são isentos (tipo de isenção 12). DARF 1841-01. Datas de vencimento não consideram feriados.'
+        });
+    }
+    function exportarCsv() {
+        if (!resumo.length) { toast('Não há dados para exportar.', 'error'); return; }
+        const linhas = [['Competencia', 'Socio', 'CPF', 'Total pago', 'Lucros ate 2025 (isencao 12)', 'Lucros 2026+ sem retencao', 'Rendimento tributavel', 'IRRF', 'Vencimento DARF']];
+        resumo.forEach(function (m) {
+            linhas.push([compBR(m.comp), nomeSocio(m.socio_id), cpfSocio(m.socio_id), m.total.toFixed(2).replace('.', ','), m.ate25.toFixed(2).replace('.', ','), m.isento2026.toFixed(2).replace('.', ','), m.tributavel.toFixed(2).replace('.', ','), m.irrf.toFixed(2).replace('.', ','), m.irrf ? dataBR(vencimentoDarf(m.comp)) : '']);
+        });
+        const csv = '﻿' + linhas.map(function (l) { return l.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'); }).join('\r\n');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        a.download = 'lucros_dividendos_' + document.getElementById('f_ano').value + '.csv'; a.click();
+    }
+
+    window.onload = function () { carregar(); };
+</script>
+<button onclick="location.href='central_ajuda.html'" title="Central de Ajuda" style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; width: 52px; height: 52px; border-radius: 50%; background: #2563eb; color: #fff; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 6px 20px rgba(37,99,235,0.45); display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+    <i class="fas fa-question"></i>
+</button>
+</body>
+</html>

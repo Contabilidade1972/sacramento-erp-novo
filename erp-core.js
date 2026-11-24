@@ -97,6 +97,7 @@
         { nome:"Painel de Saldos P&D", url:"painel_saldos.html", icon:"fa-chart-pie", keywords:["saldo","painel","pd"] },
         { nome:"Ativos & Equipamentos", url:"ativos_equipamentos.html", icon:"fa-boxes", keywords:["ativo","equipamento","patrimonio"] },
         { nome:"Ativos & Equipamentos de P&D", url:"ativos_pd.html", icon:"fa-microscope", keywords:["ativo","equipamento","pd","laboratorio","pesquisa"] },
+        { nome:"Distribuição de Lucros e Dividendos", url:"distribuicao_lucros.html", icon:"fa-hand-holding-dollar", keywords:["lucro","lucros","dividendo","dividendos","distribuicao","reinf","r-4010","irrf","socio"] },
         { nome:"Sócios & Acionistas", url:"socios.html", icon:"fa-users", keywords:["socio","acionista","participacao"] },
         { nome:"Documentos Recebidos", url:"documentos_recebidos.html", icon:"fa-file-invoice", keywords:["xml","nfe","cte","recebido"] },
         { nome:"Contabilidade (ECD/ECF)", url:"modulo_contabil.html", icon:"fa-book", keywords:["contabilidade","ecd","ecf","balanco"] },
