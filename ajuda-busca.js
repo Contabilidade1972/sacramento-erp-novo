@@ -96,8 +96,8 @@
     return melhor;
   }
 
-  function pontuar(item, toks) {
-    var total = 0;
+  function pontuar(item, toks, parcial) {
+    var total = 0, faltou = 0;
     for (var i = 0; i < toks.length; i++) {
       var tk = toks[i], alt = [tk].concat((SIN[tk] || []).slice(0, 4)), ganho = 0;
       for (var a = 0; a < alt.length; a++) {
@@ -105,9 +105,10 @@
         var g = Math.max(casa(alt[a], item.t) * 5, casa(alt[a], item.k) * 3, casa(alt[a], item.c) * 1) * pes;
         if (g > ganho) ganho = g;
       }
-      if (ganho === 0) return 0; /* todo termo digitado precisa aparecer em algum lugar */
+      if (ganho === 0) { if (!parcial) return 0; faltou++; continue; } /* na busca exata todo termo precisa aparecer; na parcial, aceita faltar até metade */
       total += ganho;
     }
+    if (parcial) { if (total === 0 || faltou > toks.length / 2) return 0; total = total * 0.5; }
     var q = toks.join(' ');
     if (item.ts.indexOf(sa(q)) > -1) total += 6;
     if (item.e.url && paginaAtual() === item.e.url.split('#')[0].split('/').pop()) total += 1.5; /* leve preferência pela tela em que o usuário está */
@@ -120,6 +121,9 @@
     var toks = tokens(q); if (!toks.length) return [];
     var res = [];
     montarIndice().forEach(function (it) { var p = pontuar(it, toks); if (p > 0) res.push({ it: it.e, p: p, n: it.n }); });
+    if (res.length < 4 && toks.length > 1) { /* poucos resultados: tenta de novo aceitando que falte parte das palavras */
+      montarIndice().forEach(function (it) { var p = pontuar(it, toks, true); if (p > 0 && !res.some(function (x) { return x.n === it.n; })) res.push({ it: it.e, p: p, n: it.n }); });
+    }
     res.sort(function (a, b) { return b.p - a.p || ((TIPOS[a.it.tipo] || {}).ordem || 9) - ((TIPOS[b.it.tipo] || {}).ordem || 9) || a.n - b.n; });
     return res.slice(0, limite || 30);
   }
