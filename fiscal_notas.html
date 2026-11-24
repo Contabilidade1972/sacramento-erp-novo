@@ -265,9 +265,9 @@
     </div>
 </div>
 
-<div class="modal-overlay" id="modalItens"><div class="modal-box" style="max-width:760px;">
+<div class="modal-overlay" id="modalItens"><div class="modal-box" style="max-width:980px;">
     <h3 id="itensTitulo">Itens da nota</h3>
-    <div class="table-wrap"><table class="tabela"><thead><tr><th>#</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Total</th></tr></thead><tbody id="tbItens"></tbody></table></div>
+    <div class="table-wrap"><table class="tabela"><thead><tr><th>#</th><th>Descrição</th><th>NCM</th><th>CFOP</th><th class="num">Qtd</th><th class="num">Unitário</th><th class="num">Total</th><th>CST IBS/CBS</th><th>cClassTrib</th><th class="num">IBS</th><th class="num">CBS</th></tr></thead><tbody id="tbItens"></tbody></table></div>
     <div style="display:flex; justify-content:flex-end;"><button class="btn-acao cinza" type="button" onclick="document.getElementById('modalItens').style.display='none'">Fechar</button></div>
 </div></div>
 
@@ -396,6 +396,16 @@
         }
         return { ibs: Math.round(ibs * 100) / 100, cbs: Math.round(cbs * 100) / 100 };
     }
+    // IBS/CBS por item (det > imposto > IBSCBS): CST, cClassTrib, valores e indicação de monofásico
+    function itemIbsCbs(d) {
+        const g = eFirst(d, 'IBSCBS');
+        if (!g) return null;
+        const gi = eFirst(g, 'gIBSCBS'), mono = eFirst(g, 'gIBSCBSMono');
+        const r2 = function (v) { return Math.round(v * 100) / 100; };
+        let vi = gi ? num(eTxt(gi, 'vIBS')) : 0, vc = gi ? num(eTxt(eFirst(gi, 'gCBS'), 'vCBS')) : 0;
+        if (mono) { vi += num(eTxt(mono, 'vTotIBSMonoItem') || eTxt(mono, 'vIBSMono')); vc += num(eTxt(mono, 'vTotCBSMonoItem') || eTxt(mono, 'vCBSMono')); }
+        return { cst: eTxt(g, 'CST'), cclasstrib: eTxt(g, 'cClassTrib'), vibs: r2(vi), vcbs: r2(vc), mono: !!mono };
+    }
     function docDe(root) { return soDig(eTxt(root, 'CNPJ') || eTxt(root, 'Cnpj') || eTxt(root, 'CPF') || eTxt(root, 'Cpf')); }
 
     // Lê UM arquivo e devolve { erro } ou { notas: [ {...} ] } (um arquivo pode trazer várias notas)
@@ -417,7 +427,7 @@
                 const cStat = eTxt(doc, 'cStat');
                 const itens = eAll(inf, 'det').map(function (d, i) {
                     const p = eFirst(d, 'prod');
-                    return { descricao: eTxt(p, 'xProd'), ncm: eTxt(p, 'NCM'), cfop: eTxt(p, 'CFOP'), quantidade: num(eTxt(p, 'qCom')), valor_unitario: num(eTxt(p, 'vUnCom')), valor_total: num(eTxt(p, 'vProd')) };
+                    return { descricao: eTxt(p, 'xProd'), ncm: eTxt(p, 'NCM'), cfop: eTxt(p, 'CFOP'), quantidade: num(eTxt(p, 'qCom')), valor_unitario: num(eTxt(p, 'vUnCom')), valor_total: num(eTxt(p, 'vProd')), ibscbs: itemIbsCbs(d) };
                 });
                 lista.push({
                     modelo: 'nfe', valor_ibs: ic.ibs, valor_cbs: ic.cbs, dedup: chave || ('nfe:' + docDe(emit) + ':' + eTxt(ide, 'nNF') + ':' + eTxt(ide, 'serie')), chave: chave,
@@ -622,8 +632,8 @@
         const r = await sb.from('fiscal_itens').select('*').eq('nota_id', id).order('seq');
         document.getElementById('itensTitulo').textContent = (n && n.modelo === 'nfe' ? 'NF-e ' : 'NFS-e ') + (n ? n.numero : '') + ' — itens';
         document.getElementById('tbItens').innerHTML = ((r && r.data) || []).map(function (i) {
-            return '<tr><td>' + i.seq + '</td><td>' + esc(i.descricao) + '</td><td>' + esc(i.ncm) + '</td><td>' + esc(i.cfop) + '</td><td class="num">' + brl(i.quantidade) + '</td><td class="num">' + brl(i.valor_unitario) + '</td><td class="num">' + brl(i.valor_total) + '</td></tr>';
-        }).join('') || '<tr><td colspan="7">Sem itens.</td></tr>';
+            return '<tr><td>' + i.seq + '</td><td>' + esc(i.descricao) + '</td><td>' + esc(i.ncm) + '</td><td>' + esc(i.cfop) + '</td><td class="num">' + brl(i.quantidade) + '</td><td class="num">' + brl(i.valor_unitario) + '</td><td class="num">' + brl(i.valor_total) + '</td><td>' + esc(i.cst_ibs_cbs || '') + (i.monofasico ? ' <span class="sub">monofásico</span>' : '') + '</td><td>' + esc(i.cclasstrib || '') + '</td><td class="num">' + brl(i.valor_ibs) + '</td><td class="num">' + brl(i.valor_cbs) + '</td></tr>';
+        }).join('') || '<tr><td colspan="11">Sem itens.</td></tr>';
         document.getElementById('modalItens').style.display = 'flex';
     }
     async function baixarXml(id) {
