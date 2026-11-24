@@ -114,7 +114,7 @@
         <!-- ABA APURAÇÃO TRADICIONAL -->
         <div id="tab_apuracao" class="tab-content">
             <div class="panel" style="border: 1.5px dashed var(--border); background: var(--bg); margin-bottom: 24px;">
-                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova simulação (ISS, PIS, COFINS, IRPJ, CSLL)</span> <span class="tag-sim">Simulação, sem valor oficial</span></div>
+                <div class="panel-header" style="border:none; margin-bottom:12px;"><span><i class="fas fa-plus-circle" style="color:var(--success)"></i> Nova simulação (ISS, PIS, COFINS, IRPJ, CSLL; CBS a partir de 2027)</span> <span class="tag-sim">Simulação, sem valor oficial</span></div>
                 <div class="aviso vermelho" style="margin-bottom:14px;">
                     <i class="fas fa-triangle-exclamation" style="margin-top:3px;"></i>
                     <div><strong>Esta tela multiplica a receita por alíquotas efetivas que você informa na aba Parâmetros. Ela não é a apuração oficial.</strong> No Lucro Presumido, o IRPJ e a CSLL usam base presumida (8% a 32% da receita), são trimestrais e têm adicional de IRPJ; o PIS/COFINS pode ser cumulativo ou não cumulativo. No Lucro Real, a base é o lucro contábil ajustado. No Simples Nacional, o imposto é o DAS, calculado no PGDAS-D por anexo e faixa de receita. Por isso, para o Simples a simulação fica bloqueada. Não use estes valores para recolher tributos. O motor de apuração por regime está em desenvolvimento.</div>
@@ -135,6 +135,10 @@
                     <div>
                         <label>Receita Bruta do Período (R$)</label>
                         <input type="number" id="receitaBruta" class="form-control" step="0.01" min="0" placeholder="0,00">
+                    </div>
+                    <div>
+                        <label>Créditos de CBS das compras (R$) <span style="font-weight:500; text-transform:none;">— só a partir de 01/2027</span></label>
+                        <input type="number" id="creditoCbs" class="form-control" step="0.01" min="0" placeholder="0,00">
                     </div>
                     <div style="display:flex; align-items:flex-end; gap:8px; margin-bottom:12px;">
                         <button class="btn-primary" onclick="calcularImpostos()"><i class="fas fa-calculator"></i> Simular</button>
@@ -329,19 +333,44 @@ function calcularImpostos(){
         apuracaoTemp = null; return;
     }
     if(isNaN(receita) || receita <= 0) { toast("Informe a receita bruta do período.", "error"); return; }
+    const comp = document.getElementById('compApuracao').value;
+    const novaRegra = !!comp && comp >= '2027-01'; // 2027 em diante: PIS e Cofins extintos, entra a CBS (LC 214/2025)
     const linhas = [];
-    let total = 0;
-    ['ISS','PIS','COFINS','IRPJ','CSLL'].forEach(imp => {
-        const alq = paramMap[imp] || 0;
-        const val = receita * alq / 100;
-        linhas.push({ imp: imp, alq: alq, val: val });
-        total += val;
-    });
+    let total = 0, avisosExtra = '';
+    if(!novaRegra) {
+        ['ISS','PIS','COFINS','IRPJ','CSLL'].forEach(imp => {
+            const alq = paramMap[imp] || 0;
+            const val = receita * alq / 100;
+            linhas.push({ imp: imp, alq: alq, val: val });
+            total += val;
+        });
+    } else {
+        ['ISS','PIS','COFINS','IRPJ','CSLL'].forEach(imp => {
+            const extinto = (imp === 'PIS' || imp === 'COFINS');
+            const alq = extinto ? 0 : (paramMap[imp] || 0);
+            const val = receita * alq / 100;
+            linhas.push({ imp: imp, alq: alq, val: val, extinto: extinto });
+            total += val;
+        });
+        const alqCbs = paramMap['CBS (Reforma)'] || 0;
+        const credito = Math.max(0, parseFloat(document.getElementById('creditoCbs').value) || 0);
+        const cbsBruta = receita * alqCbs / 100;
+        const cbsLiq = Math.max(0, cbsBruta - credito);
+        linhas.push({ imp: 'CBS (Reforma)', alq: alqCbs, val: cbsLiq, cbsBruta: cbsBruta, credito: credito });
+        total += cbsLiq;
+        const alqIbs = paramMap['IBS (Reforma)'] || 0;
+        const valIbs = receita * alqIbs / 100;
+        linhas.push({ imp: 'IBS (Reforma)', alq: alqIbs, val: valIbs });
+        total += valIbs;
+        avisosExtra = '<div style="margin-top:10px; font-size:12px; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 12px;"><i class="fas fa-circle-info"></i> <strong>Regra de 2027:</strong> o PIS e a Cofins foram extintos e a CBS passa a ser cobrada. A CBS é não cumulativa: o valor é a receita vezes a alíquota, menos os créditos das compras que você informar. O ISS continua até a transição do IBS. Informe em Parâmetros a alíquota efetiva da CBS de 2027 (a de 0,9% é só de teste de 2026).' + (alqCbs === 0.9 ? ' <strong style="color:#b45309;">Atenção: a CBS está em 0,9% (valor de teste de 2026); atualize em Parâmetros.</strong>' : '') + '</div>';
+    }
     let html = '<table class="analitica-table"><thead><tr><th>Imposto</th><th style="text-align:right;">Alíquota (%)</th><th style="text-align:right;">Valor (R$)</th></tr></thead><tbody>';
     linhas.forEach(l => {
-        html += `<tr><td><strong>${l.imp}</strong></td><td style="text-align:right;">${l.alq.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(l.val)}</td></tr>`;
+        const nome = l.extinto ? (l.imp + ' <span style="font-weight:500; color:#64748b;">(extinto em 2027)</span>') : (l.credito ? (l.imp + ' <span style="font-weight:500; color:#64748b;">(bruta ' + formatBRL(l.cbsBruta) + ' − créditos ' + formatBRL(l.credito) + ')</span>') : l.imp);
+        html += `<tr><td><strong>${nome}</strong></td><td style="text-align:right;">${l.alq.toFixed(3)}</td><td style="text-align:right; font-weight:bold;">${formatBRL(l.val)}</td></tr>`;
     });
     html += `<tr style="background:var(--bg);"><td colspan="2"><strong>Total simulado</strong></td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(total)}</td></tr></tbody></table>`;
+    html += avisosExtra;
     html += '<div style="margin-top:10px; font-size:12px; color:#991b1b; font-weight:700;"><i class="fas fa-triangle-exclamation"></i> SIMULAÇÃO: não é a apuração oficial. Não usar para recolhimento.</div>';
     if(linhas.every(l => l.alq === 0)) html += '<div style="margin-top:6px; font-size:12px; color:#b45309;">Todas as alíquotas estão em 0. Configure-as na aba Parâmetros.</div>';
     document.getElementById('previewImpostos').innerHTML = html;
@@ -375,13 +404,14 @@ async function salvarApuracao(){
     const u = obterUsuarioAtual();
     let row = { cliente_id: cid, competencia: competencia, regime: regime, receita_bruta: apuracaoTemp.receita, criado_por: (u && u.email) ? u.email : null };
     const map = { ISS: 'iss', PIS: 'pis', COFINS: 'cofins', IRPJ: 'irpj', CSLL: 'csll' };
-    apuracaoTemp.linhas.forEach(l => { row[map[l.imp]] = l.val; });
+    apuracaoTemp.linhas.forEach(l => { if (map[l.imp]) row[map[l.imp]] = l.val; }); // CBS/IBS entram só no total (coluna CBS + IBS da lista)
     row.total_impostos = apuracaoTemp.total;
     const { error } = await sb.from('apuracoes_impostos').insert([row]);
     if(error) { toast("Erro ao salvar apuração: " + error.message, "error"); return; }
     toast("Simulação salva (sem valor oficial).", "info");
     document.getElementById('previewImpostos').innerHTML = '';
     document.getElementById('receitaBruta').value = '';
+    document.getElementById('creditoCbs').value = '';
     apuracaoTemp = null;
     carregarApuracoes();
 }
@@ -391,9 +421,10 @@ async function carregarApuracoes(){
     try {
         const { data } = await sbFiltroLeitura('apuracoes_impostos').order('competencia', { ascending: false }).order('id', { ascending: false }).limit(60);
         if(!data || !data.length) { el.innerHTML = '<div class="empty-state">Nenhuma simulação salva ainda.</div>'; return; }
-        let html = '<table class="analitica-table"><thead><tr><th>Competência</th><th>Regime</th><th style="text-align:right;">Receita (R$)</th><th style="text-align:right;">ISS</th><th style="text-align:right;">PIS</th><th style="text-align:right;">COFINS</th><th style="text-align:right;">IRPJ</th><th style="text-align:right;">CSLL</th><th style="text-align:right;">Total</th></tr></thead><tbody>';
+        let html = '<table class="analitica-table"><thead><tr><th>Competência</th><th>Regime</th><th style="text-align:right;">Receita (R$)</th><th style="text-align:right;">ISS</th><th style="text-align:right;">PIS</th><th style="text-align:right;">COFINS</th><th style="text-align:right;">IRPJ</th><th style="text-align:right;">CSLL</th><th style="text-align:right;">CBS + IBS</th><th style="text-align:right;">Total</th></tr></thead><tbody>';
         data.forEach(a => {
-            html += `<tr><td>${esc(a.competencia)}</td><td>${esc(a.regime)}</td><td style="text-align:right;">${formatBRL(a.receita_bruta)}</td><td style="text-align:right;">${formatBRL(a.iss)}</td><td style="text-align:right;">${formatBRL(a.pis)}</td><td style="text-align:right;">${formatBRL(a.cofins)}</td><td style="text-align:right;">${formatBRL(a.irpj)}</td><td style="text-align:right;">${formatBRL(a.csll)}</td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(a.total_impostos)}</td></tr>`;
+            const novos = Math.max(0, (parseFloat(a.total_impostos)||0) - ((parseFloat(a.iss)||0)+(parseFloat(a.pis)||0)+(parseFloat(a.cofins)||0)+(parseFloat(a.irpj)||0)+(parseFloat(a.csll)||0)));
+            html += `<tr><td>${esc(a.competencia)}</td><td>${esc(a.regime)}</td><td style="text-align:right;">${formatBRL(a.receita_bruta)}</td><td style="text-align:right;">${formatBRL(a.iss)}</td><td style="text-align:right;">${formatBRL(a.pis)}</td><td style="text-align:right;">${formatBRL(a.cofins)}</td><td style="text-align:right;">${formatBRL(a.irpj)}</td><td style="text-align:right;">${formatBRL(a.csll)}</td><td style="text-align:right;">${novos > 0.004 ? formatBRL(novos) : '-'}</td><td style="text-align:right; font-weight:800; color:var(--primary);">${formatBRL(a.total_impostos)}</td></tr>`;
         });
         html += '</tbody></table>';
         el.innerHTML = html;
