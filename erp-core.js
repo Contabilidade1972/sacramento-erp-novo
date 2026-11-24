@@ -1,5 +1,6 @@
 /* ============================================================
     erp-core.js — Motor Central v6.5 (DEFINITIVO & BLINDADO MULTI-TENANT)
+    - v7.4: BUSCA INTELIGENTE E AJUDA — carrega ajuda-base.js + ajuda-busca.js (Ctrl+K; telas, abas, como fazer, normas)
     - v7.2: TRAVA DE MÓDULOS POR LICENÇA — carrega licenca-guard.js (bloqueio, faixas de aviso, degustação) + rota de busca "Licenças"
     - v7.1: causa real = campos type=password do modal "trocar senha" faziam o Chrome preencher o e-mail na busca; agora não há campo password na página.
     - v7.3: busca do topo não abre mais com e-mail; busca tolerante (plural/várias palavras); atalhos Notas Fiscais, Livros e Apuração
@@ -458,7 +459,7 @@
                     '<div class="brand-info"><h1 id="brandTitleCore">Sacramento ERP</h1><span id="brandSubtitleCore">' + mod + '</span></div>' +
                 '</a>' +
                 '<div class="search-global-box"><i class="fas fa-search"></i>' +
-                    '<input type="text" id="inputBuscaGlobalCore" name="busca_modulo_sacramento" placeholder="Pesquisar módulo..." autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute(\'readonly\')">' +
+                    '<input type="text" id="inputBuscaGlobalCore" name="busca_modulo_sacramento" placeholder="Buscar tela ou ajuda (Ctrl+K)" autocomplete="off" data-lpignore="true" data-1p-ignore readonly onfocus="this.removeAttribute(\'readonly\')">' +
                     '<div class="search-results-dropdown" id="dropdownResultadosCore"></div>' +
                 '</div>' +
                 '<div class="site-nav-right">' +
@@ -522,11 +523,13 @@
         if (inputBusca && dropdown) {
             var semAcento = function(t){ return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); };
             inputBusca.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') { var primeiro = dropdown.querySelector('a.search-item'); if (primeiro) { window.location.href = primeiro.getAttribute('href'); } }
+                if (e.key === 'Enter') { var primeiro = dropdown.querySelector('a.search-item'); if (primeiro) { if (primeiro.hasAttribute('data-eb-id') || primeiro.hasAttribute('data-eb-abrir')) { primeiro.click(); } else { window.location.href = primeiro.getAttribute('href'); } } }
             });
             inputBusca.addEventListener('input', function(e) {
                 var q = semAcento(e.target.value);
                 if (!q) { dropdown.style.display = 'none'; return; }
+                // v7.4: busca inteligente (telas, abas, como fazer, normas) quando a base de ajuda está carregada
+                if (window.ERP_BUSCA && window.ERP_AJUDA && window.ERP_AJUDA.length) { window.ERP_BUSCA.render(e.target.value, dropdown); return; }
                 var encontrados = rotasModulos.filter(function(m) { return buscaCombina(m, q, semAcento); });
                 if (encontrados.length === 0) {
                     dropdown.innerHTML = '<div class="search-dropdown-header">Resultados</div><div class="search-item" style="color:#64748b;">Nenhum módulo encontrado.</div>';
@@ -883,6 +886,21 @@ window.addEventListener('beforeprint', () => {
     if (document.querySelector('script[src*="assistente-ia.js"]') || window.__assistenteIaCarregado) return;
     var sc = document.createElement('script'); sc.src = '/assistente-ia.js'; sc.defer = true;
     document.head.appendChild(sc);
+  } catch (e) {}
+})();
+
+/* ===== BUSCA INTELIGENTE E AJUDA (v7.4) =====
+   O conteúdo fica em ajuda-base.js e o motor em ajuda-busca.js; aqui só garantimos que sejam carregados (Ctrl+K abre a busca). */
+(function () {
+  try {
+    if (window.ERP_BUSCA || document.querySelector('script[src*="ajuda-busca.js"]')) return;
+    var b = document.createElement('script'); b.src = '/ajuda-base.js'; b.defer = true;
+    b.onload = function () {
+      var c = document.createElement('script'); c.src = '/ajuda-conteudo.js'; c.defer = true;
+      c.onload = function () { var m = document.createElement('script'); m.src = '/ajuda-busca.js'; m.defer = true; document.head.appendChild(m); };
+      document.head.appendChild(c);
+    };
+    document.head.appendChild(b);
   } catch (e) {}
 })();
 
