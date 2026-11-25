@@ -137,6 +137,8 @@ async function emitir(d, cred) {
   var m = montarDpsXml(d);
   var c = abrirPfx(cred.pfx, cred.senha);
   var assinado = assinarDps(m.xml, m.id, c);
+  // O Emissor Nacional exige a declaracao UTF-8 no topo do XML (erro E1229).
+  if (!/^\s*<\?xml/.test(assinado)) assinado = '<?xml version="1.0" encoding="UTF-8"?>' + assinado;
   var r = await chamar(d.ambiente, 'POST', '/nfse', { dpsXmlGZipB64: compactar(assinado) }, cred);
   var j = r.json || {};
   if (j.chaveAcesso) return { ok: true, chaveAcesso: j.chaveAcesso, nfseXml: j.nfseXmlGZipB64 ? descompactar(j.nfseXmlGZipB64) : null, idDps: m.id };
