@@ -1,6 +1,7 @@
 // POST /api/nfse-nacional  { acao: 'emitir' | 'consultar' | 'listar', cliente_id, certificado_id, senha, nota:{...} }
 // Emite NFS-e pelo Emissor Publico Nacional (gratuito). A senha do certificado vem a cada pedido, e usada so na memoria e NUNCA guardada.
 // Producao so e liberada quando a variavel NFSE_PRODUCAO_LIBERADA = "sim" existir no servidor; fora disso tudo vai para o ambiente de TESTES do governo.
+const https = require('https');
 const B = require('./_banco');
 const N = require('./_nfse_nacional');
 
@@ -51,7 +52,7 @@ module.exports = async function (req, res) {
       const rows = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?cliente_id=eq.' + cid + '&order=criado_em.desc&limit=100&select=id,ambiente,serie,numero,status,chave_acesso,tomador_nome,tomador_doc,valor,descricao,mensagem,criado_em', { service: true });
       return resp(res, 200, { ok: true, ambiente: amb, notas: rows || [] });
     }
-    if (acao !== 'emitir' && acao !== 'consultar') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
+    if (acao !== 'emitir' && acao !== 'consultar' && acao !== 'parametros') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
 
     // ---- certificado do cofre + senha digitada agora ----
     const certId = parseInt(b.certificado_id, 10); const senha = String(b.senha == null ? '' : b.senha);
@@ -79,6 +80,21 @@ module.exports = async function (req, res) {
     const cn = (aberto.cert.subject.getField('CN') || {}).value || ''; const m = cn.match(/:(\d{14})$/);
     if (!m || m[1] !== soDig(emp.cnpj)) return resp(res, 400, { ok: false, erro: 'O certificado não é do CNPJ desta empresa. Emissão bloqueada por segurança.' });
 
+    if (acao === 'parametros') {
+      // Consulta oficial da parametrizacao do municipio no Emissor Nacional (somente leitura, nao emite nada).
+      const cMun = soDig(b.codigo_municipio) || await ibgeDoCep(emp.cep);
+      const cServ = soDig(b.codigo_servico);
+      const caminho = '/parametros_municipais/' + cMun + '/' + (cServ ? cServ : 'convenio');
+      const c = aberto; const u = new URL(N.URLS[amb] + caminho);
+      const rr = await new Promise(function (resolve, reject) {
+        const rq = https.request({ method: 'GET', hostname: u.hostname, path: u.pathname, port: 443, key: c.keyPem, cert: c.certPem, headers: { Accept: 'application/json' }, timeout: 40000 }, function (rs) {
+          let t = ''; rs.on('data', function (x) { t += x; if (t.length > 2e6) rq.destroy(new Error('Resposta grande demais.')); });
+          rs.on('end', function () { resolve({ status: rs.statusCode, texto: t.slice(0, 6000) }); });
+        });
+        rq.on('timeout', function () { rq.destroy(new Error('Tempo esgotado.')); }); rq.on('error', reject); rq.end();
+      });
+      return resp(res, 200, { ok: rr.status === 200, ambiente: amb, caminho: caminho, status_http: rr.status, retorno: rr.texto });
+    }
     if (acao === 'consultar') {
       const chave = soDig(b.chave_acesso);
       if (chave.length < 40) return resp(res, 400, { ok: false, erro: 'Chave de acesso inválida.' });
