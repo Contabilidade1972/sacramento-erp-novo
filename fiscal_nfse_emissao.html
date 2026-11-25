@@ -312,6 +312,50 @@ async function cancelarNota(id, numero){
         await carregarNotas();
     } catch(e) { msg.style.color = '#b91c1c'; msg.textContent = e.message; document.getElementById('senhaCert').value = ''; }
 }
+var qrSvg = function(text){
+    var b = [], i, k, q; for (i = 0; i < text.length; i++) b.push(text.charCodeAt(i) & 255);
+    var EC = [10,16,26,18,24,16,18,22,22,26], NB = [1,1,1,2,2,4,4,4,5,5];
+    var AP = [[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50]];
+    var raw = function(v){ var n = (16*v+128)*v+64; if (v >= 2) { var a = Math.floor(v/7)+2; n -= (25*a-10)*a-55; if (v >= 7) n -= 36; } return n; };
+    var ver = 1; for (; ver <= 10; ver++) if (12 + 8*b.length + (ver >= 10 ? 8 : 0) <= 8*(Math.floor(raw(ver)/8) - EC[ver-1]*NB[ver-1])) break;
+    if (ver > 10) return '';
+    var total = Math.floor(raw(ver)/8), ne = EC[ver-1], nb = NB[ver-1], cap = total - ne*nb, bits = [];
+    var put = function(val, n){ for (var j = n-1; j >= 0; j--) bits.push((val >>> j) & 1); };
+    put(4, 4); put(b.length, ver >= 10 ? 16 : 8); b.forEach(function(x){ put(x, 8); });
+    put(0, Math.min(4, cap*8 - bits.length)); while (bits.length % 8) bits.push(0);
+    for (var pad = 236; bits.length < cap*8; pad ^= 236 ^ 17) put(pad, 8);
+    var data = []; for (i = 0; i < bits.length; i += 8) { var y = 0; for (k = 0; k < 8; k++) y = y*2 + bits[i+k]; data.push(y); }
+    var gf = function(x, y){ var z = 0; for (var j = 7; j >= 0; j--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> j) & 1) * x; } return z; };
+    var gen = [1], root = 1; for (i = 0; i < ne; i++) { var nx = []; for (k = 0; k <= gen.length; k++) nx.push(0); for (k = 0; k < gen.length; k++) { nx[k] ^= gen[k]; nx[k+1] ^= gf(gen[k], root); } gen = nx; root = gf(root, 2); }
+    var nShort = nb - total % nb, bl = Math.floor(total/nb), dl = bl - ne, blocks = [], pos = 0;
+    for (i = 0; i < nb; i++) { var dd = data.slice(pos, pos + dl + (i < nShort ? 0 : 1)); pos += dd.length; var rs = []; for (k = 0; k < ne; k++) rs.push(0);
+        dd.forEach(function(x){ var f = x ^ rs.shift(); rs.push(0); for (var j = 0; j < ne; j++) rs[j] ^= gf(gen[j+1], f); }); blocks.push({ d: dd, e: rs }); }
+    var out = []; for (i = 0; i < dl + 1; i++) blocks.forEach(function(bk, j){ if (i < dl || j >= nShort) out.push(bk.d[i]); });
+    for (i = 0; i < ne; i++) blocks.forEach(function(bk){ out.push(bk.e[i]); });
+    var n = ver*4+17, M = [], F = []; for (i = 0; i < n; i++) { M.push([]); F.push([]); for (k = 0; k < n; k++) { M[i].push(0); F[i].push(0); } }
+    var set = function(x, y, d){ if (x >= 0 && x < n && y >= 0 && y < n) { M[y][x] = d ? 1 : 0; F[y][x] = 1; } };
+    for (i = 0; i < n; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+    var finder = function(cx, cy){ for (var dy = -4; dy <= 4; dy++) for (var dx = -4; dx <= 4; dx++) { var d = Math.max(Math.abs(dx), Math.abs(dy)); set(cx+dx, cy+dy, d !== 2 && d !== 4); } };
+    finder(3, 3); finder(n-4, 3); finder(3, n-4);
+    var ap = AP[ver-1], al = ap.length;
+    ap.forEach(function(ax, a){ ap.forEach(function(ay, c){ if ((a === 0 && c === 0) || (a === 0 && c === al-1) || (a === al-1 && c === 0)) return; for (var dy = -2; dy <= 2; dy++) for (var dx = -2; dx <= 2; dx++) set(ax+dx, ay+dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1); }); });
+    var fmt = function(mask){ var rem = mask; for (var j = 0; j < 10; j++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537); var bt = ((mask << 10) | rem) ^ 0x5412, gb = function(j){ return (bt >>> j) & 1; };
+        for (var j = 0; j <= 5; j++) set(8, j, gb(j)); set(8, 7, gb(6)); set(8, 8, gb(7)); set(7, 8, gb(8)); for (j = 9; j < 15; j++) set(14-j, 8, gb(j));
+        for (j = 0; j < 8; j++) set(n-1-j, 8, gb(j)); for (j = 8; j < 15; j++) set(8, n-15+j, gb(j)); set(8, n-8, 1); };
+    fmt(0);
+    if (ver >= 7) { var rm = ver; for (i = 0; i < 12; i++) rm = (rm << 1) ^ ((rm >>> 11) * 0x1F25); var vb = (ver << 12) | rm; for (i = 0; i < 18; i++) { var bt2 = (vb >>> i) & 1, a2 = n-11 + i % 3, b2 = Math.floor(i/3); set(a2, b2, bt2); set(b2, a2, bt2); } }
+    var cb = []; out.forEach(function(x){ for (var j = 7; j >= 0; j--) cb.push((x >>> j) & 1); });
+    var idx = 0; for (var right = n-1; right >= 1; right -= 2) { if (right === 6) right = 5; for (var vert = 0; vert < n; vert++) for (var j = 0; j < 2; j++) { var x = right - j, up = ((right + 1) & 2) === 0, yy = up ? n-1-vert : vert; if (!F[yy][x] && idx < cb.length) { M[yy][x] = cb[idx]; idx++; } } }
+    var mk = [function(x,y){return (x+y)%2===0;},function(x,y){return y%2===0;},function(x,y){return x%3===0;},function(x,y){return (x+y)%3===0;},function(x,y){return (Math.floor(x/3)+Math.floor(y/2))%2===0;},function(x,y){return x*y%2+x*y%3===0;},function(x,y){return (x*y%2+x*y%3)%2===0;},function(x,y){return ((x+y)%2+x*y%3)%2===0;}];
+    var build = function(m){ var G = []; for (var y2 = 0; y2 < n; y2++) { G.push([]); for (var x2 = 0; x2 < n; x2++) G[y2].push(M[y2][x2] ^ (!F[y2][x2] && mk[m](x2, y2) ? 1 : 0)); } return G; };
+    var pen = function(G){ var p = 0, y2, x2, run; for (var t = 0; t < 2; t++) for (y2 = 0; y2 < n; y2++) { run = 1; for (x2 = 1; x2 < n; x2++) { var a = t ? G[x2][y2] : G[y2][x2], c = t ? G[x2-1][y2] : G[y2][x2-1]; if (a === c) { run++; if (run === 5) p += 3; else if (run > 5) p++; } else run = 1; } }
+        for (y2 = 0; y2 < n-1; y2++) for (x2 = 0; x2 < n-1; x2++) if (G[y2][x2] === G[y2][x2+1] && G[y2][x2] === G[y2+1][x2] && G[y2][x2] === G[y2+1][x2+1]) p += 3;
+        var dk = 0; for (y2 = 0; y2 < n; y2++) for (x2 = 0; x2 < n; x2++) dk += G[y2][x2]; return p + Math.floor(Math.abs(dk*20 - n*n*10) / (n*n)) * 10; };
+    var best = 0, bestP = 1e9, Gs = []; for (var m = 0; m < 8; m++) { Gs.push(build(m)); var pp = pen(Gs[m]); if (pp < bestP) { bestP = pp; best = m; } }
+    M = Gs[best]; fmt(best);
+    var path = '', s = n + 8; for (var r2 = 0; r2 < n; r2++) for (var c2 = 0; c2 < n; c2++) if (M[r2][c2]) path += 'M' + (c2+4) + ',' + (r2+4) + 'h1v1h-1z';
+    return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + s + ' ' + s + '" shape-rendering="crispEdges"><rect width="' + s + '" height="' + s + '" fill="#fff"/><path d="' + path + '"/></svg>';
+};
 async function imprimirNota(id){
     var w = window.open('', '_blank');
     if (!w) { alert('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.'); return; }
@@ -356,12 +400,13 @@ async function imprimirNota(id){
         var ti = function(t){ return '<div class="ti">' + t + '</div>'; };
         var chave = j.chave || '';
         var nNFSe = g(d,'nNFSe'), nFmt = ('000000000' + nNFSe).slice(-9).replace(/^(\d{3})(\d{3})(\d{3})$/,'$1.$2.$3');
-        var css = '@page{size:A4;margin:0}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;padding:9mm;font-size:9px}.bx{border-left:1px solid #000;border-top:1px solid #000}.g{display:grid;grid-template-columns:repeat(12,1fr)}.c{padding:1px 4px 2px;border-right:1px solid #000;border-bottom:1px solid #000;min-height:21px;overflow:hidden}.r{display:block;font-size:5.8px;text-transform:uppercase;color:#000}.v{display:block;font-size:9px;margin-top:1px;word-break:break-word}.v.m{font-size:8.5px;font-weight:700;letter-spacing:.3px}.ti{font-size:7.5px;font-weight:700;text-transform:uppercase;margin:6px 0 1px}.hd{display:grid;grid-template-columns:42% 18% 40%}.hd>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:5px 6px}.em{display:flex;gap:8px;align-items:flex-start}.em img{max-width:70px;max-height:62px}.em b{font-size:12px;display:block;margin-bottom:2px}.em div{font-size:8px;line-height:1.35}.tt{text-align:center}.tt b{font-size:15px;display:block}.tt span{font-size:7px;display:block;margin:2px 0 4px}.tt .nn{font-size:9px;font-weight:700;text-align:left;margin-top:4px}.ch{font-size:5.8px;text-transform:uppercase;margin-top:3px}.cv{font-size:8.5px;font-weight:700;text-align:center;margin:2px 0}.au{font-size:7.5px;text-align:center;border-top:1px solid #000;margin-top:3px;padding-top:2px}.tb{display:grid;grid-template-columns:12% 1fr 14% 14%}.tb>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 4px}.tb .th{font-size:5.8px;text-transform:uppercase;min-height:12px}.ds{min-height:150px;font-size:9px;white-space:pre-wrap}.mk{position:fixed;top:42%;left:0;right:0;text-align:center;font-size:54px;font-weight:700;color:rgba(185,28,28,.13);transform:rotate(-24deg);z-index:0;pointer-events:none}.ft{font-size:7px;margin-top:4px}';
+        var css = '@page{size:A4;margin:0}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0;padding:9mm;font-size:9px}.bx{border-left:1px solid #000;border-top:1px solid #000}.g{display:grid;grid-template-columns:repeat(12,1fr)}.c{padding:1px 4px 2px;border-right:1px solid #000;border-bottom:1px solid #000;min-height:21px;overflow:hidden}.r{display:block;font-size:5.8px;text-transform:uppercase;color:#000}.v{display:block;font-size:9px;margin-top:1px;word-break:break-word}.v.m{font-size:8.5px;font-weight:700;letter-spacing:.3px}.ti{font-size:7.5px;font-weight:700;text-transform:uppercase;margin:6px 0 1px}.hd{display:grid;grid-template-columns:42% 18% 40%}.hd>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:5px 6px}.em{display:flex;gap:8px;align-items:flex-start}.em img{max-width:70px;max-height:62px}.em b{font-size:12px;display:block;margin-bottom:2px}.em div{font-size:8px;line-height:1.35}.tt{text-align:center}.tt b{font-size:15px;display:block}.tt span{font-size:7px;display:block;margin:2px 0 4px}.tt .nn{font-size:9px;font-weight:700;text-align:left;margin-top:4px}.ch{font-size:5.8px;text-transform:uppercase;margin-top:3px}.cv{font-size:8.5px;font-weight:700;text-align:center;margin:2px 0}.au{font-size:7.5px;text-align:center;border-top:1px solid #000;margin-top:3px;padding-top:2px}.tb{display:grid;grid-template-columns:12% 1fr 14% 14%}.tb>div{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 4px}.tb .th{font-size:5.8px;text-transform:uppercase;min-height:12px}.ds{min-height:150px;font-size:9px;white-space:pre-wrap}.mk{position:fixed;top:42%;left:0;right:0;text-align:center;font-size:54px;font-weight:700;color:rgba(185,28,28,.13);transform:rotate(-24deg);z-index:0;pointer-events:none}.ft{font-size:7px;margin-top:4px}.qr svg{width:25mm;height:25mm;display:block;margin:5px auto 0}';
         var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>DANFSe ' + esc(nNFSe) + '</title><style>' + css + '</style></head><body>';
         if (cancel) html += '<div class="mk">CANCELADA</div>'; else if (teste) html += '<div class="mk">SEM VALIDADE JURÍDICA</div>';
         var endEmit = [g(emit,'xLgr'), g(emit,'nro'), g(emit,'xBairro')].filter(Boolean).join(', ') + ' - ' + munEmit + ' - CEP: ' + cepf(g(emit,'CEP')) + (g(emit,'fone') ? ' - Fone: ' + fone(g(emit,'fone')) : '');
+        html += '<div class="bx"><div class="g"><div class="c" style="grid-column:1 / span 9;border-right:1px solid #000"><span class="r">Recebemos de ' + esc(g(emit,'xNome')) + ' os serviços constantes da NFS-e indicada ao lado</span></div><div class="c" style="grid-column:10 / span 3;grid-row:1 / span 2;text-align:center;border-right:1px solid #000"><span class="r">NFS-e</span><span class="v" style="font-weight:700">Nº ' + esc(nFmt) + '</span><span class="v">SÉRIE ' + esc(g(dps,'serie')) + '</span></div><div class="c" style="grid-column:1 / span 3;border-right:1px solid #000"><span class="r">Data de recebimento</span><span class="v">&nbsp;</span></div><div class="c" style="grid-column:4 / span 6;border-right:1px solid #000"><span class="r">Identificação e assinatura do recebedor</span><span class="v">&nbsp;</span></div></div></div><div style="border-top:1px dashed #000;margin:5px 0 7px"></div>';
         html += '<div class="bx"><div class="hd"><div><div class="em">' + (logo ? '<img src="' + esc(logo) + '">' : '') + '<div><b>' + esc(g(emit,'xNome')) + '</b>' + esc(endEmit) + '<br>' + esc(g(emit,'email')) + '</div></div></div>';
-        html += '<div class="tt"><b>DANFSE</b><span>Documento Auxiliar da Nota Fiscal de Serviço Eletrônica</span><div class="nn">Nº ' + esc(nFmt) + '<br>SÉRIE ' + esc(g(dps,'serie')) + '</div></div>';
+        html += '<div class="tt"><b>DANFSE</b><span>Documento Auxiliar da Nota Fiscal de Serviço Eletrônica</span><div class="nn">Nº ' + esc(nFmt) + '<br>SÉRIE ' + esc(g(dps,'serie')) + '</div><div class="qr">' + qrSvg('https://www.nfse.gov.br/ConsultaPublica?tpc=1&chave=' + chave) + '</div></div>';
         html += '<div>' + barcode(chave) + '<div class="ch">Chave de acesso</div><div class="cv">' + esc(chave.replace(/(\d{4})(?=\d)/g,'$1 ')) + '</div><div class="au">Consulta de autenticidade no portal nacional da NFS-e: www.nfse.gov.br/ConsultaPublica</div></div></div>';
         html += '<div class="g">' + c(7, 'Natureza da operação', 'Prestação de serviço') + c(5, 'Número DFSe / data e hora do processamento', g(d,'nDFSe') + (g(d,'dhProc') ? '   ' + dt(g(d,'dhProc')) : '')) + '</div>';
         html += '<div class="g">' + c(3, 'Inscrição municipal', g(emit,'IM')) + c(3, 'CNPJ', fmtDoc(g(emit,'CNPJ'))) + c(3, 'Competência', dt(g(dps,'dCompet'))) + c(3, 'Município emissor', munEmit) + '</div>';
