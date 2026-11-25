@@ -52,7 +52,7 @@ module.exports = async function (req, res) {
       const rows = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?cliente_id=eq.' + cid + '&order=criado_em.desc&limit=100&select=id,ambiente,serie,numero,status,chave_acesso,tomador_nome,tomador_doc,valor,descricao,mensagem,criado_em', { service: true });
       return resp(res, 200, { ok: true, ambiente: amb, notas: rows || [] });
     }
-    if (acao !== 'emitir' && acao !== 'consultar' && acao !== 'parametros') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
+    if (acao !== 'emitir' && acao !== 'consultar' && acao !== 'parametros' && acao !== 'cancelar') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
 
     // ---- certificado do cofre + senha digitada agora ----
     const certId = parseInt(b.certificado_id, 10); const senha = String(b.senha == null ? '' : b.senha);
@@ -103,6 +103,24 @@ module.exports = async function (req, res) {
         else if (rr.status !== 404 && rr.status !== 0 && !/<html/i.test(rr.texto)) achou = { caminho: h + p + fim, status_http: rr.status, retorno: rr.texto };
       } }
       return resp(res, 200, { ok: !!achou, ambiente: amb, tentativas: tentativas, achou: achou });
+    }
+
+    if (acao === 'cancelar') {
+      const notaId = parseInt(b.nota_id, 10);
+      if (!notaId) return resp(res, 400, { ok: false, erro: 'Nota não informada.' });
+      const nr = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?id=eq.' + notaId + '&cliente_id=eq.' + cid + '&select=id,status,ambiente,chave_acesso,numero', { service: true });
+      const nota = Array.isArray(nr) ? nr[0] : null;
+      if (!nota) return resp(res, 404, { ok: false, erro: 'Nota não encontrada nesta empresa.' });
+      if (nota.status !== 'autorizada' || !nota.chave_acesso) return resp(res, 400, { ok: false, erro: 'Só dá para cancelar nota autorizada.' });
+      if (nota.ambiente !== amb) return resp(res, 400, { ok: false, erro: 'Essa nota é de outro ambiente (' + nota.ambiente + ').' });
+      let rc;
+      try { rc = await N.cancelar(amb, { cnpjAutor: soDig(emp.cnpj), chave: nota.chave_acesso, codMotivo: limpa(b.cod_motivo) || '9', motivo: limpa(b.motivo), data: new Date() }, cred); }
+      catch (e) { return resp(res, 400, { ok: false, erro: msg(e) }); }
+      if (rc.ok) {
+        try { await B.sbFetch('/rest/v1/nfse_nacional_emitidas?id=eq.' + notaId, { method: 'PATCH', service: true, prefer: 'return=minimal', body: { status: 'cancelada', mensagem: ('Cancelada: ' + limpa(b.motivo)).slice(0, 1000), retorno: String(rc.bruto || '').slice(0, 4000) } }); } catch (e) {}
+        return resp(res, 200, { ok: true, ambiente: amb, numero: nota.numero });
+      }
+      return resp(res, 422, { ok: false, erro: 'O Emissor Nacional não aceitou o cancelamento: ' + String(rc.mensagem || ('código ' + rc.status)).slice(0, 300) });
     }
 
     if (acao === 'consultar') {
