@@ -133,6 +133,54 @@ function chamar(ambiente, metodo, caminho, corpo, cred) {
   });
 }
 
+// ---- Cancelamento (evento e101101) ----
+// p = { ambiente, cnpjAutor, chave, codMotivo (1,2 ou 9), motivo (15 a 255 caracteres), data }
+function montarCancelamentoXml(p) {
+  var chave = so(p.chave);
+  if (chave.length !== 50) throw new Error('Chave de acesso invalida.');
+  var mot = String(p.motivo == null ? '' : p.motivo).trim();
+  if (mot.length < 15 || mot.length > 255) throw new Error('Explique o motivo do cancelamento (de 15 a 255 caracteres).');
+  var cod = String(p.codMotivo || '9');
+  if (['1', '2', '9'].indexOf(cod) < 0) throw new Error('Codigo de motivo invalido.');
+  var dt = p.data instanceof Date ? p.data : new Date();
+  var iso = new Date(dt.getTime() - 3 * 3600 * 1000 - 60000).toISOString().slice(0, 19);
+  var id = 'PRE' + chave + '101101';
+  var x = '<pedRegEvento xmlns="' + NS + '" versao="1.01"><infPedReg Id="' + id + '">';
+  x += tag('tpAmb', p.ambiente === 'producao' ? '1' : '2') + tag('verAplic', 'sacramento-1.0') + tag('dhEvento', iso + '-03:00');
+  x += tag('CNPJAutor', zpad(p.cnpjAutor, 14)) + tag('chNFSe', chave);
+  x += '<e101101>' + tag('xDesc', 'Cancelamento de NFS-e') + tag('cMotivo', cod) + tag('xMotivo', mot) + '</e101101>';
+  x += '</infPedReg></pedRegEvento>';
+  return { xml: x, id: id };
+}
+
+function assinarEvento(xml, cred) {
+  var sig = new SignedXml({
+    privateKey: cred.keyPem,
+    publicCert: cred.certPem,
+    signatureAlgorithm: 'http://www.w3.org/2001/04/xmldsig-more#rsa-sha256',
+    canonicalizationAlgorithm: 'http://www.w3.org/2001/10/xml-exc-c14n#WithComments',
+    getKeyInfoContent: function () { return '<X509Data><X509Certificate>' + certBase64(cred.certPem) + '</X509Certificate></X509Data>'; }
+  });
+  sig.addReference({
+    xpath: "//*[local-name(.)='infPedReg']",
+    transforms: ['http://www.w3.org/2000/09/xmldsig#enveloped-signature', 'http://www.w3.org/2001/10/xml-exc-c14n#WithComments'],
+    digestAlgorithm: 'http://www.w3.org/2001/04/xmlenc#sha256'
+  });
+  sig.computeSignature(xml, { prefix: '', location: { reference: "//*[local-name(.)='infPedReg']", action: 'after' } });
+  return sig.getSignedXml();
+}
+
+async function cancelar(ambiente, p, cred) {
+  var m = montarCancelamentoXml(Object.assign({ ambiente: ambiente }, p));
+  var c = cred._abertura || (cred._abertura = abrirPfx(cred.pfx, cred.senha));
+  var assinado = assinarEvento(m.xml, c);
+  if (!/^\s*<\?xml/.test(assinado)) assinado = '<?xml version="1.0" encoding="UTF-8"?>' + assinado;
+  var r = await chamar(ambiente, 'POST', '/nfse/' + encodeURIComponent(so(p.chave)) + '/eventos', { pedidoRegistroEventoXmlGZipB64: compactar(assinado) }, cred);
+  var j = r.json || {};
+  var ok = r.status >= 200 && r.status < 300 && !j.erros && !j.erro;
+  return { ok: ok, status: r.status, mensagem: j.mensagem || (j.erros ? JSON.stringify(j.erros).slice(0, 500) : null) || (j.erro ? JSON.stringify(j.erro).slice(0, 500) : null) || r.texto || null, bruto: JSON.stringify(j).slice(0, 1500) };
+}
+
 async function emitir(d, cred) {
   var m = montarDpsXml(d);
   var c = abrirPfx(cred.pfx, cred.senha);
@@ -151,4 +199,4 @@ async function consultar(ambiente, chave, cred) {
   return { ok: r.status === 200 && !!j.chaveAcesso, status: r.status, chaveAcesso: j.chaveAcesso || null, nfseXml: j.nfseXmlGZipB64 ? descompactar(j.nfseXmlGZipB64) : null, mensagem: j.mensagem || null };
 }
 
-module.exports = { URLS, NS, validar, idDps, montarDpsXml, abrirPfx, assinarDps, compactar, descompactar, emitir, consultar };
+module.exports = { URLS, NS, validar, idDps, montarDpsXml, abrirPfx, assinarDps, compactar, descompactar, emitir, consultar, cancelar, montarCancelamentoXml, assinarEvento };
