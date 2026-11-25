@@ -69,7 +69,12 @@ module.exports = async function (req, res) {
 
     // ---- empresa emitente (dados do cadastro, nunca do navegador) ----
     const er = await B.sbFetch('/rest/v1/clientes_contratantes?id=eq.' + cid + '&select=cnpj,razao_social,inscricao_municipal,cep,email,telefone,regime_tributario', { service: true });
-    const emp = Array.isArray(er) ? er[0] : null;
+    const emp0 = Array.isArray(er) ? er[0] : null;
+    // Parametros Fiscais (configuracoes_fiscais) e a fonte principal do prestador; o cadastro geral so completa o que faltar.
+    const fr = await B.sbFetch('/rest/v1/configuracoes_fiscais?cliente_id=eq.' + cid + '&order=id.desc&limit=1&select=cnpj,inscricao_municipal,cep,email,regime_tributario', { service: true });
+    const fis = Array.isArray(fr) && fr[0] ? fr[0] : {};
+    const emp = emp0 ? Object.assign({}, emp0) : null;
+    if (emp) Object.keys(fis).forEach(function (k) { if (String(fis[k] == null ? '' : fis[k]).trim() !== '') emp[k] = fis[k]; });
     if (!emp || soDig(emp.cnpj).length !== 14) return resp(res, 400, { ok: false, erro: 'Cadastro da empresa sem CNPJ. Preencha em Parâmetros Fiscais.' });
     const cn = (aberto.cert.subject.getField('CN') || {}).value || ''; const m = cn.match(/:(\d{14})$/);
     if (!m || m[1] !== soDig(emp.cnpj)) return resp(res, 400, { ok: false, erro: 'O certificado não é do CNPJ desta empresa. Emissão bloqueada por segurança.' });
