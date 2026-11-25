@@ -114,9 +114,12 @@ function chamar(ambiente, metodo, caminho, corpo, cred) {
   var base = URLS[ambiente === 'producao' ? 'producao' : 'homologacao'];
   var u = new URL(base + caminho);
   var dados = corpo ? Buffer.from(JSON.stringify(corpo), 'utf8') : null;
+  // Nao passamos o .pfx direto ao Node: o OpenSSL 3 recusa os .pfx antigos (RC2/3DES) com "Unsupported PKCS12 PFX data".
+  // Abrimos com node-forge (que le esses formatos) e entregamos chave + certificado em PEM.
+  var c = cred._abertura || (cred._abertura = abrirPfx(cred.pfx, cred.senha));
   return new Promise(function (resolve, reject) {
     var req = https.request({
-      method: metodo, hostname: u.hostname, path: u.pathname + u.search, port: 443, pfx: cred.pfx, passphrase: cred.senha,
+      method: metodo, hostname: u.hostname, path: u.pathname + u.search, port: 443, key: c.keyPem, cert: c.certPem,
       headers: Object.assign({ Accept: 'application/json' }, dados ? { 'Content-Type': 'application/json', 'Content-Length': dados.length } : {}),
       timeout: 40000
     }, function (res) {
