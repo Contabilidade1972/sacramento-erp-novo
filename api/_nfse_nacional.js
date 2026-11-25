@@ -53,7 +53,7 @@ function montarDpsXml(d) {
   var tpAmb = d.ambiente === 'producao' ? '1' : '2';
   var x = '<DPS xmlns="' + NS + '" versao="1.01"><infDPS Id="' + id + '">';
   x += tag('tpAmb', tpAmb) + tag('dhEmi', iso + '-03:00') + tag('verAplic', 'sacramento-1.0') + tag('serie', String(Number(d.serie))) + tag('nDPS', String(Number(d.numero)));
-  x += tag('dCompet', iso.slice(0, 10)) + tag('tpEmit', '1') + tag('cLocEmi', zpad(P.codigoMunicipio, 7));
+  x += tag('dCompet', iso.slice(0, 10)) + tag('tpEmit', '1') + tag('finNFSe', '0') + tag('cLocEmi', zpad(P.codigoMunicipio, 7));
   x += '<prest>' + tag('CNPJ', zpad(P.cnpj, 14)) + tag('IM', so(P.inscricaoMunicipal)) + tag('fone', so(P.telefone)) + tag('email', P.email);
   x += '<regTrib>' + tag('opSimpNac', d.optanteSimples ? '3' : '1') + (d.optanteSimples ? tag('regApTribSN', '1') : '') + tag('regEspTrib', '0') + '</regTrib></prest>';
   x += '<toma>' + (so(T.cpf).length === 11 ? tag('CPF', so(T.cpf)) : tag('CNPJ', zpad(T.cnpj, 14))) + tag('xNome', T.nome);
