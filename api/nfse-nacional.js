@@ -81,20 +81,30 @@ module.exports = async function (req, res) {
     if (!m || m[1] !== soDig(emp.cnpj)) return resp(res, 400, { ok: false, erro: 'O certificado não é do CNPJ desta empresa. Emissão bloqueada por segurança.' });
 
     if (acao === 'parametros') {
-      // Consulta oficial da parametrizacao do municipio no Emissor Nacional (somente leitura, nao emite nada).
+      // Consulta oficial da parametrizacao do municipio (somente leitura). Testa os enderecos provaveis e devolve o status de cada um.
       const cMun = soDig(b.codigo_municipio) || await ibgeDoCep(emp.cep);
       const cServ = soDig(b.codigo_servico);
-      const caminho = '/parametros_municipais/' + cMun + '/' + (cServ ? cServ : 'convenio');
-      const c = aberto; const u = new URL(N.URLS[amb] + caminho);
-      const rr = await new Promise(function (resolve, reject) {
-        const rq = https.request({ method: 'GET', hostname: u.hostname, path: u.pathname, port: 443, key: c.keyPem, cert: c.certPem, headers: { Accept: 'application/json' }, timeout: 40000 }, function (rs) {
-          let t = ''; rs.on('data', function (x) { t += x; if (t.length > 2e6) rq.destroy(new Error('Resposta grande demais.')); });
-          rs.on('end', function () { resolve({ status: rs.statusCode, texto: t.slice(0, 6000) }); });
+      const fim = '/parametros_municipais/' + cMun + '/' + (cServ ? cServ : 'convenio');
+      const hosts = amb === 'producao' ? ['https://sefin.nfse.gov.br', 'https://adn.nfse.gov.br'] : ['https://sefin.producaorestrita.nfse.gov.br', 'https://adn.producaorestrita.nfse.gov.br'];
+      const pref = ['/API/SefinNacional', '/SefinNacional', '', '/contribuintes', '/parametrizacao'];
+      const tentativas = []; let achou = null;
+      for (const h of hosts) { for (const p of pref) {
+        if (achou) break;
+        const u = new URL(h + p + fim);
+        const rr = await new Promise(function (resolve) {
+          const rq = https.request({ method: 'GET', hostname: u.hostname, path: u.pathname, port: 443, key: aberto.keyPem, cert: aberto.certPem, headers: { Accept: 'application/json' }, timeout: 15000 }, function (rs) {
+            let t = ''; rs.on('data', function (x) { t += x; if (t.length > 2e6) rq.destroy(); });
+            rs.on('end', function () { resolve({ status: rs.statusCode, texto: t.slice(0, 5000) }); });
+          });
+          rq.on('timeout', function () { rq.destroy(); }); rq.on('error', function (e) { resolve({ status: 0, texto: String(e.message || e).slice(0, 100) }); }); rq.end();
         });
-        rq.on('timeout', function () { rq.destroy(new Error('Tempo esgotado.')); }); rq.on('error', reject); rq.end();
-      });
-      return resp(res, 200, { ok: rr.status === 200, ambiente: amb, caminho: caminho, status_http: rr.status, retorno: rr.texto });
+        tentativas.push(h.replace('https://', '') + p + ' -> ' + rr.status);
+        if (rr.status === 200) achou = { caminho: h + p + fim, retorno: rr.texto };
+        else if (rr.status !== 404 && rr.status !== 0 && !/<html/i.test(rr.texto)) achou = { caminho: h + p + fim, status_http: rr.status, retorno: rr.texto };
+      } }
+      return resp(res, 200, { ok: !!achou, ambiente: amb, tentativas: tentativas, achou: achou });
     }
+
     if (acao === 'consultar') {
       const chave = soDig(b.chave_acesso);
       if (chave.length < 40) return resp(res, 400, { ok: false, erro: 'Chave de acesso inválida.' });
