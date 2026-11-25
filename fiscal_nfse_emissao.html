@@ -185,9 +185,13 @@
         </div>
 
         <div style="font-size:12px; font-weight:800; color:var(--secondary); margin:4px 0 10px;">2. O serviço</div>
+        <div style="margin-bottom:12px;">
+            <label>Atalho: serviço já testado</label><select id="s_atalho" class="form-control" onchange="aplicarAtalhoServico(this.value)"><option value="">Escolher um serviço comum (opcional)</option><option value="020101|001">Pesquisa e desenvolvimento de qualquer natureza (02.01.01 / 001) — testado e autorizado em Belo Horizonte</option></select>
+            <div style="font-size:11px; color:var(--text-light); margin-top:4px;">Belo Horizonte exige o código municipal (desdobramento) junto do código nacional. Sem ele, o Emissor Nacional recusa a nota (erro E0312).</div>
+        </div>
         <div class="form-row">
             <div><label>Código de tributação nacional *</label><input id="s_cod" class="form-control" placeholder="Ex.: 17.01.01" maxlength="9"></div>
-            <div><label>Código municipal (se a prefeitura exigir)</label><input id="s_codmun" class="form-control" maxlength="20"></div>
+            <div><label>Código municipal (desdobramento) *</label><input id="s_codmun" class="form-control" maxlength="20" placeholder="Ex.: 001"></div>
             <div><label>Valor do serviço (R$) *</label><input id="s_valor" class="form-control" placeholder="Ex.: 1.500,00" onblur="formatarCampoMoeda(this)"></div>
             <div><label>Alíquota total do Simples (%) *</label><input id="s_aliq" class="form-control" placeholder="Ex.: 6,00" title="Alíquota efetiva do DAS do mês, em percentual"></div>
         </div>
@@ -300,6 +304,12 @@ async function carregarCertificados(){
     sel.innerHTML = lista.map(function(c){ return '<option value="' + esc(c.id) + '">' + esc(c.nome_titular || 'Certificado') + (c.cnpj_cpf_titular ? ' — ' + esc(fmtDoc(c.cnpj_cpf_titular)) : '') + '</option>'; }).join('');
     dica.textContent = '';
 }
+function aplicarAtalhoServico(v){
+    if (!v) return;
+    var p = v.split('|');
+    document.getElementById('s_cod').value = p[0].replace(/(\d{2})(\d{2})(\d{2})/, '$1.$2.$3');
+    document.getElementById('s_codmun').value = p[1] || '';
+}
 function lerNota(){
     return {
         aliquota_simples: parseValorBR(document.getElementById('s_aliq').value),
@@ -314,6 +324,7 @@ async function emitir(){
     if (!cert) { msg.textContent = 'Escolha o certificado.'; return; }
     if (!senha) { msg.textContent = 'Digite a senha do certificado.'; return; }
     var nota = lerNota();
+    if (!nota.servico.codigo_trib_mun.trim() && !confirm('O código municipal está vazio. Belo Horizonte exige esse código (para pesquisa e desenvolvimento é 001) e, sem ele, o Emissor Nacional recusa a nota. Continuar mesmo assim?')) return;
     if (!confirm('Emitir NFS-e no valor de R$ ' + fmtBR(nota.servico.valor) + ' para ' + (nota.tomador.nome || 'o tomador informado') + '?')) return;
     btn.disabled = true; msg.style.color = '#1e3a8a'; msg.textContent = 'Enviando ao Emissor Nacional...';
     try {
