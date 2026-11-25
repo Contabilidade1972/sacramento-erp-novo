@@ -62,7 +62,7 @@ function montarDpsXml(d) {
   }
   x += tag('fone', so(T.telefone)) + tag('email', T.email) + '</toma>';
   x += '<serv><locPrest>' + tag('cLocPrestacao', zpad(P.codigoMunicipio, 7)) + '</locPrest>';
-  x += '<cServ>' + tag('cTribNac', zpad(S.codigoTribNac, 6)) + tag('cTribMun', S.codigoTribMun) + tag('xDescServ', S.descricao) + (S.cnbs ? tag('cNBS', S.cnbs) : '') + '</cServ></serv>';
+  x += '<cServ>' + tag('cTribNac', zpad(S.codigoTribNac, 6)) + tag('cTribMun', S.codigoTribMun) + (S.cnbs ? tag('cNBS', S.cnbs) : '') + tag('xDescServ', S.descricao) + '</cServ></serv>';
   x += '<valores><vServPrest>' + tag('vServ', dec2(S.valor)) + '</vServPrest>';
   x += '<trib><tribMun>' + tag('tribISSQN', '1') + tag('tpRetISSQN', S.issRetido ? '2' : '1') + '</tribMun>';
   x += '<totTrib>' + (d.optanteSimples ? tag('pTotTribSN', dec2(d.aliquotaSimples)) : '<pTotTrib>' + tag('pTotTribFed', '0.00') + tag('pTotTribEst', '0.00') + tag('pTotTribMun', '0.00') + '</pTotTrib>') + '</totTrib></trib></valores>';
