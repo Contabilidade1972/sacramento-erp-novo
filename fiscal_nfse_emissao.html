@@ -289,6 +289,7 @@ async function carregarNotas(){
             var det = n.chave_acesso ? '<span style="font-family:monospace; font-size:11px; word-break:break-all;">' + esc(n.chave_acesso) + '</span>' : esc(n.mensagem || '—');
             if (n.status === 'autorizada') det += '<div style="margin-top:6px;"><button type="button" style="padding:3px 10px; font-size:11px; border:1px solid #b91c1c; color:#b91c1c; background:#fff; border-radius:6px; cursor:pointer;" onclick="cancelarNota(' + Number(n.id) + ', ' + Number(n.numero) + ')">Cancelar nota</button></div>';
             if (n.status === 'cancelada' && n.mensagem) det += '<div style="font-size:11px; color:var(--text-light); margin-top:4px;">' + esc(n.mensagem) + '</div>';
+            if (n.status === 'autorizada' || n.status === 'cancelada') det += '<div style="margin-top:6px;"><button type="button" style="padding:3px 10px; font-size:11px; border:1px solid #1e3a8a; color:#1e3a8a; background:#fff; border-radius:6px; cursor:pointer;" onclick="imprimirNota(' + Number(n.id) + ')">Imprimir / PDF</button></div>';
             return '<tr><td>' + esc(n.numero) + (n.ambiente === 'homologacao' ? ' <span class="badge b-aten" title="Nota de teste, sem validade jurídica">teste</span>' : '') + '</td><td>' + fmtDataHora(n.criado_em) + '</td><td>' + esc(n.tomador_nome || '') + '<div style="font-size:11px; color:var(--text-light);">' + esc(fmtDoc(n.tomador_doc)) + '</div></td><td style="text-align:right;">R$ ' + fmtBR(n.valor) + '</td><td><span class="badge ' + s[1] + '">' + s[0] + '</span></td><td>' + det + '</td></tr>';
         }).join('');
     } catch(e) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">' + esc(e.message) + '</td></tr>'; }
@@ -310,6 +311,36 @@ async function cancelarNota(id, numero){
         else { msg.style.color = '#b91c1c'; msg.textContent = j.erro || 'Não foi possível cancelar.'; }
         await carregarNotas();
     } catch(e) { msg.style.color = '#b91c1c'; msg.textContent = e.message; document.getElementById('senhaCert').value = ''; }
+}
+async function imprimirNota(id){
+    var w = window.open('', '_blank');
+    if (!w) { alert('O navegador bloqueou a janela. Permita pop-ups para este site e tente de novo.'); return; }
+    w.document.write('<p style="font-family:Arial;padding:20px;">Preparando a nota...</p>');
+    try {
+        var j = await chamarApi({ acao:'xml', nota_id: id });
+        if (!j.ok) { w.document.body.innerHTML = '<p style="font-family:Arial;padding:20px;color:#b91c1c;">' + esc(j.erro || 'Não foi possível abrir a nota.') + '</p>'; return; }
+        var d = new DOMParser().parseFromString(j.xml, 'text/xml');
+        var g = function(ctx, t){ var e = (ctx || d).getElementsByTagName(t)[0]; return e ? e.textContent.trim() : ''; };
+        var emit = d.getElementsByTagName('emit')[0], toma = d.getElementsByTagName('toma')[0], serv = d.getElementsByTagName('serv')[0], dps = d.getElementsByTagName('infDPS')[0];
+        var dt = function(s){ var m = String(s||'').match(/(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?/); return m ? m[3]+'/'+m[2]+'/'+m[1] + (m[4] ? ' '+m[4]+':'+m[5] : '') : ''; };
+        var num = function(s){ var n = parseFloat(String(s||'').replace(',','.')); return isNaN(n) ? null : n; };
+        var vServ = num(g(dps,'vServ')), pAliq = num(g(d,'pAliqAplic')) , vIss = num(g(d,'vISSQN'));
+        var cancel = j.status === 'cancelada', teste = j.ambiente === 'homologacao';
+        var logr = function(c){ var l = [g(c,'xLgr'), g(c,'nro'), g(c,'xCpl'), g(c,'xBairro')].filter(Boolean).join(', '); var cep = g(c,'CEP'); return l + (cep ? ' — CEP ' + cep.replace(/^(\d{5})(\d{3})$/,'$1-$2') : ''); };
+        var linha = function(r, v){ return '<tr><th>' + r + '</th><td>' + (v ? esc(v) : '—') + '</td></tr>'; };
+        var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>NFS-e ' + esc(g(d,'nNFSe')) + '</title><style>@page{size:A4;margin:12mm}body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:0}h1{font-size:16px;margin:0}h2{font-size:12px;background:#e5e7eb;margin:14px 0 0;padding:5px 8px;text-transform:uppercase}table{width:100%;border-collapse:collapse}th{width:26%;text-align:left;padding:5px 8px;border:1px solid #d1d5db;background:#f9fafb;font-weight:600}td{padding:5px 8px;border:1px solid #d1d5db}.topo{display:flex;justify-content:space-between;border-bottom:2px solid #111;padding-bottom:8px}.faixa{margin-top:8px;padding:6px;text-align:center;font-weight:700;border:2px solid #b91c1c;color:#b91c1c}.chave{font-family:monospace;word-break:break-all}</style></head><body>';
+        html += '<div class="topo"><div><h1>DANFSe — Documento Auxiliar da NFS-e</h1><div>' + esc(g(emit,'xNome')) + '</div><div>CNPJ ' + esc(fmtDoc(g(emit,'CNPJ'))) + (g(emit,'IM') ? ' · IM ' + esc(g(emit,'IM')) : '') + '</div></div><div style="text-align:right"><div>NFS-e nº <strong>' + esc(g(d,'nNFSe')) + '</strong></div><div>DPS nº ' + esc(g(dps,'nDPS')) + ' · série ' + esc(g(dps,'serie')) + '</div><div>Emissão: ' + esc(dt(g(d,'dhProc'))) + '</div></div></div>';
+        if (cancel) html += '<div class="faixa">NOTA CANCELADA' + (j.motivo ? ' — ' + esc(String(j.motivo).replace(/^Cancelada:\s*/,'')) : '') + '</div>';
+        if (teste) html += '<div class="faixa">EMITIDA EM AMBIENTE DE TESTES — SEM VALIDADE JURÍDICA</div>';
+        html += '<h2>Chave de acesso</h2><table><tr><td class="chave">' + esc(j.chave || '') + '</td></tr></table>';
+        html += '<h2>Prestador</h2><table>' + linha('Razão social', g(emit,'xNome')) + linha('CNPJ', fmtDoc(g(emit,'CNPJ'))) + linha('Inscrição municipal', g(emit,'IM')) + linha('Endereço', logr(emit) + (g(emit,'UF') ? ' — ' + g(emit,'UF') : '')) + linha('Telefone / e-mail', [g(emit,'fone'), g(emit,'email')].filter(Boolean).join(' · ')) + '</table>';
+        html += '<h2>Tomador</h2><table>' + linha('Nome', g(toma,'xNome')) + linha('CNPJ / CPF', fmtDoc(g(toma,'CNPJ') || g(toma,'CPF'))) + linha('Endereço', logr(toma)) + linha('E-mail', g(toma,'email')) + '</table>';
+        html += '<h2>Serviço</h2><table>' + linha('Código nacional', g(serv,'cTribNac') + (g(d,'xTribNac') ? ' — ' + g(d,'xTribNac') : '')) + linha('Código municipal', g(serv,'cTribMun')) + linha('Local da prestação', g(d,'xLocPrestacao')) + linha('Descrição', g(serv,'xDescServ')) + '</table>';
+        html += '<h2>Valores</h2><table>' + linha('Valor do serviço', vServ == null ? '' : 'R$ ' + fmtBR(vServ)) + linha('Alíquota ISS', pAliq == null ? '' : fmtBR(pAliq) + '%') + linha('ISS', vIss == null ? '' : 'R$ ' + fmtBR(vIss)) + linha('ISS retido', g(d,'tpRetISSQN') === '2' ? 'Sim' : 'Não') + '</table>';
+        html += '<p style="margin-top:14px;font-size:10px;color:#555">Documento gerado pelo Sacramento ERP a partir do XML autorizado no Emissor Nacional de NFS-e. A validade é a do XML, consultável pela chave de acesso.</p></body></html>';
+        w.document.open(); w.document.write(html); w.document.close();
+        setTimeout(function(){ try { w.focus(); w.print(); } catch(e){} }, 500);
+    } catch(e) { try { w.document.body.innerHTML = '<p style="font-family:Arial;padding:20px;color:#b91c1c;">' + esc(e.message) + '</p>'; } catch(x){} }
 }
 async function carregarCertificados(){
     var sel = document.getElementById('selCert'), dica = document.getElementById('dicaCert');
