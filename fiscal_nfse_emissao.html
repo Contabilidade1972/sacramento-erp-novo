@@ -287,9 +287,29 @@ async function carregarNotas(){
         tb.innerHTML = l.map(function(n){
             var s = ST[n.status] || [n.status, 'b-inat'];
             var det = n.chave_acesso ? '<span style="font-family:monospace; font-size:11px; word-break:break-all;">' + esc(n.chave_acesso) + '</span>' : esc(n.mensagem || '—');
+            if (n.status === 'autorizada') det += '<div style="margin-top:6px;"><button type="button" style="padding:3px 10px; font-size:11px; border:1px solid #b91c1c; color:#b91c1c; background:#fff; border-radius:6px; cursor:pointer;" onclick="cancelarNota(' + Number(n.id) + ', ' + Number(n.numero) + ')">Cancelar nota</button></div>';
+            if (n.status === 'cancelada' && n.mensagem) det += '<div style="font-size:11px; color:var(--text-light); margin-top:4px;">' + esc(n.mensagem) + '</div>';
             return '<tr><td>' + esc(n.numero) + (n.ambiente === 'homologacao' ? ' <span class="badge b-aten" title="Nota de teste, sem validade jurídica">teste</span>' : '') + '</td><td>' + fmtDataHora(n.criado_em) + '</td><td>' + esc(n.tomador_nome || '') + '<div style="font-size:11px; color:var(--text-light);">' + esc(fmtDoc(n.tomador_doc)) + '</div></td><td style="text-align:right;">R$ ' + fmtBR(n.valor) + '</td><td><span class="badge ' + s[1] + '">' + s[0] + '</span></td><td>' + det + '</td></tr>';
         }).join('');
     } catch(e) { tb.innerHTML = '<tr><td colspan="6" class="empty-state">' + esc(e.message) + '</td></tr>'; }
+}
+async function cancelarNota(id, numero){
+    var msg = document.getElementById('msgEmitir');
+    var cert = document.getElementById('selCert').value, senha = document.getElementById('senhaCert').value;
+    msg.style.color = '#b91c1c';
+    if (!cert || !senha) { msg.textContent = 'Para cancelar, escolha o certificado e digite a senha dele no campo "Senha do certificado" e clique em Cancelar nota de novo.'; document.getElementById('senhaCert').focus(); return; }
+    var motivo = prompt('Motivo do cancelamento da nota nº ' + numero + ' (mínimo 15 caracteres):');
+    if (!motivo) return;
+    if (motivo.trim().length < 15) { msg.textContent = 'Explique melhor o motivo (mínimo 15 caracteres).'; return; }
+    if (!confirm('Cancelar a NFS-e nº ' + numero + '? O cancelamento não pode ser desfeito.')) return;
+    msg.style.color = '#1e3a8a'; msg.textContent = 'Enviando o cancelamento ao Emissor Nacional...';
+    try {
+        var j = await chamarApi({ acao:'cancelar', nota_id: id, cod_motivo: '9', motivo: motivo, certificado_id: cert, senha: senha });
+        document.getElementById('senhaCert').value = '';
+        if (j.ok) { msg.style.color = '#15803d'; msg.textContent = 'Nota nº ' + j.numero + ' cancelada.'; toast('NFS-e cancelada.'); }
+        else { msg.style.color = '#b91c1c'; msg.textContent = j.erro || 'Não foi possível cancelar.'; }
+        await carregarNotas();
+    } catch(e) { msg.style.color = '#b91c1c'; msg.textContent = e.message; document.getElementById('senhaCert').value = ''; }
 }
 async function carregarCertificados(){
     var sel = document.getElementById('selCert'), dica = document.getElementById('dicaCert');
