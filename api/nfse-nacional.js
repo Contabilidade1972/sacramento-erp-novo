@@ -151,7 +151,7 @@ module.exports = async function (req, res) {
       ambiente: amb, serie: serie, numero: numero, dataEmissao: new Date(), optanteSimples: optante, aliquotaSimples: Number(n.aliquota_simples),
       prestador: { cnpj: emp.cnpj, inscricaoMunicipal: emp.inscricao_municipal, telefone: emp.telefone, email: emp.email, codigoMunicipio: codMun },
       tomador: { cpf: soDig(T.documento).length === 11 ? T.documento : '', cnpj: soDig(T.documento).length === 14 ? T.documento : '', nome: limpa(T.nome), codigoMunicipio: codMunTom, cep: T.cep, logradouro: limpa(T.logradouro), numero: limpa(T.numero), complemento: limpa(T.complemento), bairro: limpa(T.bairro), telefone: T.telefone, email: limpa(T.email) },
-      servico: { codigoTribNac: S.codigo_trib_nac, codigoTribMun: limpa(S.codigo_trib_mun), descricao: limpa(S.descricao), valor: Number(S.valor), issRetido: !!S.iss_retido }
+      servico: { codigoTribNac: S.codigo_trib_nac, codigoTribMun: limpa(S.codigo_trib_mun), descricao: limpa(S.descricao), valor: Number(S.valor), issRetido: !!S.iss_retido, cnbs: String(S.cnbs || '').replace(/\D/g, '') }
     };
     const erros = N.validar(d); if (erros.length) return resp(res, 400, { ok: false, erro: erros.join(' ') });
     const email = await B.emailDoToken(token);
