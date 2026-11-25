@@ -52,6 +52,13 @@ module.exports = async function (req, res) {
       const rows = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?cliente_id=eq.' + cid + '&order=criado_em.desc&limit=100&select=id,ambiente,serie,numero,status,chave_acesso,tomador_nome,tomador_doc,valor,descricao,mensagem,criado_em', { service: true });
       return resp(res, 200, { ok: true, ambiente: amb, notas: rows || [] });
     }
+    if (acao === 'xml') {
+      const nid = parseInt(b.nota_id, 10);
+      const xr = await B.sbFetch('/rest/v1/nfse_nacional_emitidas?id=eq.' + (nid || 0) + '&cliente_id=eq.' + cid + '&select=id,numero,status,ambiente,chave_acesso,xml_nfse,mensagem', { service: true });
+      const xn = Array.isArray(xr) ? xr[0] : null;
+      if (!xn || !xn.xml_nfse) return resp(res, 404, { ok: false, erro: 'Nota sem XML guardado.' });
+      return resp(res, 200, { ok: true, numero: xn.numero, status: xn.status, ambiente: xn.ambiente, chave: xn.chave_acesso, xml: xn.xml_nfse, motivo: xn.mensagem });
+    }
     if (acao !== 'emitir' && acao !== 'consultar' && acao !== 'parametros' && acao !== 'cancelar') return resp(res, 400, { ok: false, erro: 'Ação inválida.' });
 
     // ---- certificado do cofre + senha digitada agora ----
